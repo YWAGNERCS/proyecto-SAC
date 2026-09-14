@@ -1,260 +1,208 @@
-# DOCUMENTACIÓN PARA EL SISTEMA WEB "JD REFRIGERACIÓN"
+# DOCUMENTACIÓN DEL SISTEMA WEB "JD REFRIGERACIÓN"
+
+> ⚠️ **Alerta de seguridad activa** — `application.properties` contiene una contraseña real de aplicación de Gmail en texto plano (`spring.mail.password`). Debe revocarse en la cuenta de Google y reemplazarse por una variable de entorno antes de compartir este repositorio con nadie más o subirlo a GitHub. Este aviso se mantiene aquí hasta confirmar que fue resuelto.
+
+---
+
+## Índice
+1. [Documentación funcional](#1-documentación-funcional-qué-hace-el-sistema)
+2. [Documentación técnica](#2-documentación-técnica-cómo-está-construido)
+3. [Manual de usuario](#3-manual-de-usuario-cómo-se-opera)
+4. [Estado y trazabilidad del proyecto](#4-estado-y-trazabilidad-del-proyecto-fases-de-ingeniería-de-software)
 
 ---
 
 ## 1. DOCUMENTACIÓN FUNCIONAL (¿Qué hace el sistema?)
 
 ### Objetivo general
-Desarrollar e implementar un sistema integral web (ERP/CRM) para la empresa JD Refrigeración S.A.C., que permita centralizar y automatizar el control de su catálogo de productos, registro inteligente de clientes/proveedores, flujo completo de cotizaciones y ventas, y la gestión proactiva de mantenimientos técnicos, mejorando así la eficiencia operativa y la atención al cliente.
+Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeración S.A.C., que centralice y automatice el catálogo de productos, el registro inteligente de clientes/proveedores, el flujo completo de cotizaciones y ventas, y la gestión proactiva de mantenimientos técnicos, mejorando la eficiencia operativa y la atención al cliente.
 
 ### Alcance del proyecto
+
 **Incluye:**
-- Gestión del catálogo de productos con soporte multimoneda y cálculo de rentabilidad.
-- Módulo de Clientes y Proveedores con autocompletado en tiempo real usando APIs de RUC/DNI.
-- Módulo de Cotizaciones con exportación instantánea a PDF y envío automático por correo (SMTP).
-- Módulo de Ventas con control de créditos (pagos pendientes) y facturación electrónica simulada.
-- Módulo de Mantenimientos y Garantías con alertas automáticas (Cron Jobs) al correo de la oficina.
-- Módulo de Inventario con incremento automático tras compras y reportes programados de stock mínimo.
-- **Módulo de Reportes** con cálculo en tiempo real de ingresos totales y cuentas por cobrar (Soles y Dólares).
+- Catálogo de productos con soporte multimoneda (soles/dólares) y cálculo de rentabilidad por margen porcentual.
+- Clientes y Proveedores con autocompletado en tiempo real vía API de RUC/DNI.
+- Cotizaciones con exportación a PDF y envío automático por correo (SMTP).
+- Ventas con control de crédito/contado y conversión directa desde cotización aceptada.
+- Facturación electrónica (simulada, a la espera de credenciales productivas de un OSE).
+- Mantenimientos y Garantías con alertas automáticas (Cron Job diario).
+- Inventario con incremento automático tras compras y alertas de stock mínimo.
+- Reportes: ventas por periodo, cobranza (separando pendientes de atrasadas), y cotizaciones pendientes.
 
 **Queda explícitamente fuera del alcance:**
 - Módulo de planillas y recursos humanos.
-- Pasarelas de pago online con tarjeta de crédito (las ventas se registran como pagadas o a crédito internamente).
+- Pasarelas de pago online con tarjeta de crédito (las ventas se registran como pagadas o a crédito, sin procesar pagos reales).
 - Control de GPS de los técnicos de mantenimiento.
+- Frontend del portal público (**pendiente de construir** — hoy solo existe como API REST, sin interfaz visual).
 
-### Módulos Desarrollados
-1. **Módulo de Catálogo:** Gestión de productos, cálculo de precios y stock.
-2. **Módulo de Clientes:** Registro de clientes B2B/B2C con autocompletado RUC/DNI.
-3. **Módulo de Proveedores y Compras:** Gestión del reabastecimiento de inventario.
-4. **Módulo de Cotizaciones:** Emisión rápida de presupuestos formales (PDF) enviados por correo.
-5. **Módulo de Ventas:** Conversión de cotizaciones a ventas sin redigitar, control de ventas a crédito y al contado.
-6. **Módulo de Facturación:** Emisión de comprobantes de pago electrónicos (UBL 2.1 simulado).
-7. **Módulo de Inventario:** Control estricto de entradas y salidas de stock, con alertas por bajo inventario.
-8. **Módulo de Mantenimientos:** Generación de cronogramas para los mantenimientos preventivos a futuro.
-9. **Módulo de Notificaciones:** Motor de envíos asíncronos por Correo Electrónico (SMTP) y WhatsApp.
-10. **Módulo de Reportes:** Panel analítico de ingresos brutos y cuentas por cobrar en múltiples monedas.
+### Módulos desarrollados (backend)
+
+| # | Módulo | Estado |
+|---|---|---|
+| 1 | Catálogo | ✅ |
+| 2 | Clientes (autocompletado RUC/DNI) | ✅ |
+| 3 | Proveedores y Compras | ✅ |
+| 4 | Cotizaciones (+ PDF, + envío por correo) | ✅ |
+| 5 | Ventas (+ conversión desde cotización, + control de crédito) | ✅ |
+| 6 | Facturación (Comprobante, XML UBL 2.1) | ⚠️ Simulado — falta integración productiva con OSE (Nubefact) |
+| 7 | Inventario (alertas de stock mínimo) | ✅ |
+| 8 | Mantenimientos (cronogramas preventivos automáticos) | ✅ |
+| 9 | Notificaciones (SMTP + WhatsApp) | ✅ |
+| 10 | Reportes (ventas por periodo, cobranza, cotizaciones pendientes) | ✅ |
+| 11 | Administración (login y roles) | ✅ |
+| — | **Frontend del portal público** | ❌ No construido |
 
 ### Requerimientos Funcionales (RF)
-- **RF-01 (Gestión de Accesos):** El sistema debe proveer un mecanismo de autenticación y autorización basado en roles (Administrador, Asistente) para restringir el acceso a los módulos operativos.
-- **RF-02 (Integración Externa):** El sistema debe integrar servicios de terceros (API REST `apis.net.pe`) para la resolución automática de datos fiscales (Razón Social y Dirección) a partir de un RUC/DNI válido.
-- **RF-03 (Emisión Documental):** El sistema debe generar automáticamente documentos pre-formateados en formato PDF para las cotizaciones, incrustando la identidad visual corporativa y variables dinámicas.
-- **RF-04 (Flujo Transaccional):** El sistema debe habilitar la conversión directa de una entidad "Cotización" (en estado Aceptada) hacia una entidad "Venta", garantizando la persistencia de datos sin redundancia de ingreso manual.
-- **RF-05 (Control de Kardex):** El sistema debe gestionar el inventario mediante actualizaciones atómicas; decrementando el stock al procesar una venta y aplicando un incremento tras el registro de compras.
-- **RF-06 (Planificación de Servicios):** El sistema debe programar automáticamente ciclos de mantenimiento preventivo (4 periodos) tras detectar la facturación de equipos categorizados como "Climatización" o "Refrigeración".
-- **RF-07 (Procesamiento Asíncrono):** El sistema debe ejecutar procesos en segundo plano (Cron Jobs) con periodicidad diaria a las 08:00 AM, evaluando umbrales de stock crítico e inminencia de mantenimientos (ventana de 7 días) para despachar alertas vía SMTP.
-- **RF-08 (Analítica Financiera):** El sistema debe calcular y consolidar en tiempo real las métricas de ingresos brutos y cuentas por cobrar, aplicando segmentación por divisa transaccional (Soles y Dólares).
+
+> Nota: A continuación se detallan los **16 Requerimientos Funcionales (RF)** originales del proyecto.
+
+- **RF-01 (Autenticación):** El sistema debe permitir el inicio de sesión con credenciales seguras.
+- **RF-02 (Roles y Permisos):** El sistema debe restringir módulos según el rol del usuario (Administrador, Asistente).
+- **RF-03 (Catálogo de Productos):** El sistema debe gestionar productos soportando moneda dual (soles/dólares) y calcular rentabilidad según margen porcentual.
+- **RF-04 (Autocompletado de Clientes/Proveedores):** El sistema debe consultar una API externa (apis.net.pe) para extraer Razón Social y Dirección a partir del RUC o DNI.
+- **RF-05 (Gestión de Cotizaciones):** El sistema debe permitir la creación de cotizaciones calculando IGV y subtotales automáticamente.
+- **RF-06 (Exportación a PDF):** El sistema debe generar un documento PDF formal y con diseño corporativo al guardar una cotización.
+- **RF-07 (Envío de Cotizaciones por Correo):** El sistema debe despachar la cotización en formato PDF directamente al correo del cliente vía SMTP.
+- **RF-08 (Conversión a Venta):** El sistema debe permitir convertir una Cotización (en estado Aceptada) en una Venta sin tener que redigitar los datos.
+- **RF-09 (Control de Créditos):** El sistema debe registrar si una venta es al contado o al crédito, llevando un control de deudas pendientes.
+- **RF-10 (Facturación Electrónica):** El sistema debe generar la estructura para la emisión de comprobantes (simulación UBL 2.1).
+- **RF-11 (Actualización de Stock - Salidas):** El sistema debe descontar atómicamente el inventario al procesar una venta.
+- **RF-12 (Actualización de Stock - Entradas):** El sistema debe incrementar el inventario automáticamente al registrar compras a proveedores.
+- **RF-13 (Alertas de Stock Mínimo):** El sistema debe evaluar diariamente los productos bajo el stock crítico y generar alertas.
+- **RF-14 (Programación de Mantenimientos):** El sistema debe programar automáticamente 4 mantenimientos preventivos tras vender equipos de refrigeración/climatización.
+- **RF-15 (Alertas de Mantenimiento Asíncronas):** Un proceso en segundo plano (Cron Job) debe buscar a las 8:00 AM los mantenimientos próximos a 7 días y enviar un correo a la oficina.
+- **RF-16 (Reportes y Analítica Financiera):** El sistema debe consolidar en tiempo real los ingresos y las cuentas por cobrar, aplicando segmentación por moneda.
 
 ### Requerimientos No Funcionales (RNF)
-- **RNF-01 (Arquitectura de Software):** El sistema debe adherirse al patrón arquitectónico Modelo-Vista-Controlador (MVC), estructurado lógicamente en 3 capas (Controladores, Servicios, Repositorios) para garantizar alta cohesión y bajo acoplamiento.
-- **RNF-02 (Rendimiento y Latencia):** El tiempo de procesamiento y respuesta de los endpoints analíticos y transaccionales no debe superar los 1000 milisegundos bajo carga de trabajo estándar.
-- **RNF-03 (Interoperabilidad):** El backend debe operar de forma completamente desacoplada de la interfaz gráfica, exponiendo estrictamente APIs RESTful bajo el estándar de mensajería JSON.
-- **RNF-04 (Mantenibilidad e IoC):** El código fuente debe implementar el patrón de Inyección de Dependencias gestionado por Spring Framework, debiendo externalizar todas las credenciales y variables sensibles en archivos de configuración (`properties`).
-- **RNF-05 (Seguridad de la Información):** Todos los endpoints administrativos (`/api/admin/**`) deben aplicar políticas de interceptación de seguridad (HTTP Basic Auth). Las contraseñas en base de datos deben aplicar funciones de hashing criptográfico unidireccional (BCrypt).
 
-### Casos de Uso / Historias de Usuario
-- **Caso de Uso 1 (Cotizar):** El actor "Vendedor" ingresa al sistema, selecciona el cliente, escoge productos del catálogo. El sistema calcula IGV y totales. El vendedor guarda, y el sistema envía el PDF al cliente.
-- **Caso de Uso 2 (Alertas de Garantía):** El "Sistema (Actor Autónomo)" despierta a las 8:00 AM, consulta la base de datos por mantenimientos pendientes a 7 días. Agrupa los resultados, arma un documento HTML y lo envía a la oficina para que llamen al cliente.
+- **RNF-01 (Arquitectura):** Patrón en capas (Controladores, Servicios, Repositorios) sobre un monolito modular, con alta cohesión y bajo acoplamiento.
+- **RNF-02 (Rendimiento):** Tiempo de respuesta de endpoints transaccionales y analíticos no debe superar 1000 ms bajo carga estándar. *(pendiente de medición formal — hoy es un objetivo, no un dato verificado)*
+- **RNF-03 (Interoperabilidad):** Backend desacoplado del frontend, exponiendo únicamente APIs RESTful en JSON.
+- **RNF-04 (Mantenibilidad e IoC):** Inyección de dependencias vía Spring; **toda credencial sensible debe externalizarse** en variables de entorno (ver alerta de seguridad al inicio de este documento — actualmente incumplido en `application.properties`).
+- **RNF-05 (Seguridad):** Endpoints `/api/admin/**` protegidos con HTTP Basic Auth; contraseñas de usuario almacenadas con BCrypt.
+
+### Casos de uso / Historias de usuario
+
+- **CU-01 (Cotizar):** El Vendedor selecciona cliente y productos; el sistema calcula IGV y totales; al guardar, envía el PDF al cliente automáticamente.
+- **CU-02 (Alertas de garantía):** El sistema, de forma autónoma, revisa diariamente a las 8:00 AM los mantenimientos próximos a 7 días y envía un correo a la oficina con la lista de clientes a contactar.
 
 ---
 
 ## 2. DOCUMENTACIÓN TÉCNICA (¿Cómo está construido?)
 
-### Stack Tecnológico
-- **Backend:** Java 21 (JDK 21)
-- **Framework Principal:** Spring Boot 3.3.4
-- **ORM / Persistencia:** Spring Data JPA / Hibernate
-- **Seguridad:** Spring Security (HTTP Basic Auth)
-- **Base de Datos:** Oracle Database Express Edition (21c/11g)
-- **Librerías Extra:** `openpdf` (Para generar reportes/PDFs), `spring-boot-starter-mail` (SMTP JavaMail), `springdoc-openapi` (Swagger para documentación).
+### Stack tecnológico
 
-### Arquitectura de Software
-Se ha utilizado un **Patrón de Arquitectura en Capas** con filosofía **MVC (Modelo-Vista-Controlador)** para las APIs REST:
-1. **Capa de Controladores (Controllers):** Expone los endpoints REST (`/api/admin/...`) y gestiona las solicitudes HTTP.
-2. **Capa de Servicio (Services):** Contiene las reglas de negocio (ej. calcular subtotales, verificar estados antes de procesar ventas).
-3. **Capa de Repositorio (Repositories):** Interfaces JPA que se comunican directamente con Oracle sin necesidad de escribir SQL manual.
-4. **Capa de Integración:** Clientes Rest (`ConsultaRucClient`, `NubefactClientSimulado`) para comunicarse con APIs externas.
+- **Backend:** Java 21 (JDK 21) — *ver nota de versión más abajo*
+- **Framework:** Spring Boot 3.5.16
+- **ORM/Persistencia:** Spring Data JPA / Hibernate
+- **Seguridad:** Spring Security (HTTP Basic Auth + BCrypt)
+- **Base de datos:** Oracle Database Express Edition (desarrollo local también soporta H2 en memoria)
+- **Librerías adicionales:** `openpdf` 1.3.32 (PDFs), `spring-boot-starter-mail` (SMTP), `springdoc-openapi-starter-webmvc-ui` 2.6.0 (Swagger)
 
-### Modelo y Diccionario de Datos
-*El sistema está completamente normalizado (3FN).*
-- **Tabla `PRODUCTOS`:** Almacena `id` (PK), `nombre`, `sector`, `costo_base`, `moneda`, `stock_actual`, `stock_minimo`.
-- **Tabla `CLIENTES` / `PROVEEDORES`:** Almacena `id` (PK), `tipo` (Empresa o Natural), `ruc`, `dni`, `correo`.
-- **Tabla `VENTAS`:** Almacena la cabecera transaccional. `id` (PK), `cliente_id` (FK), `cotizacion_id` (FK), `tipo_pago`, `estado_pago`.
-- **Tabla `DETALLE_VENTAS`:** Desglosa la venta. `id` (PK), `venta_id` (FK), `producto_id` (FK), `cantidad`, `precio_unitario`.
-- **Tabla `MANTENIMIENTOS`:** `id` (PK), `venta_id` (FK), `fecha_programada`, `estado`, `alerta_enviada`.
+> **Nota sobre la versión de Java:** existe un registro de una herramienta automatizada de modernización que intentó actualizar el proyecto a Java 25 (con Spring Boot 3.5.16) y reportó éxito en compilación y pruebas. Sin embargo, el `pom.xml` actual todavía declara `<java.version>21</java.version>`. **Antes de asumir que el proyecto corre en Java 25, hay que confirmar con quien ejecutó esa herramienta si el cambio se revirtió intencionalmente o quedó a medias.**
 
-### Estructura del Código (Directorio Principal)
+### Arquitectura de software
+
+Monolito modular con patrón en capas (estilo MVC para las APIs REST):
+
+1. **Controllers** — exponen los endpoints REST (`/api/admin/...`, `/api/publico/...`).
+2. **Services** — contienen las reglas de negocio (cálculo de subtotales, validaciones de estado, etc.).
+3. **Repositories** — interfaces JPA que se comunican con Oracle/H2 sin SQL manual.
+4. **Integrations** — clientes REST hacia servicios externos (`ConsultaRucClient`, `OseClient`/`NubefactClientSimulado`).
+
+### Modelo de datos (resumen)
+
+| Tabla | Campos clave |
+|---|---|
+| `PRODUCTOS` | id (PK), nombre, sector, costo_base, moneda, stock_actual, stock_minimo |
+| `CLIENTES` / `PROVEEDORES` | id (PK), tipo (Empresa/Natural), ruc, dni, correo |
+| `VENTAS` | id (PK), cliente_id (FK), cotizacion_id (FK), tipo_pago, estado_pago |
+| `DETALLE_VENTAS` | id (PK), venta_id (FK), producto_id (FK), cantidad, precio_unitario |
+| `MANTENIMIENTOS` | id (PK), venta_id (FK), fecha_programada, estado, alerta_enviada |
+
+*El modelo apunta a 3FN; pendiente de verificación formal con diagrama entidad-relación completo.*
+
+### Estructura del código
+
 ```text
 src/main/java/com/jdrefrigeracion/
-├── catalogo/        (Lógica de productos)
-├── clientes/        (Lógica de clientes y API RUC)
-├── compras/         (Lógica de proveedores e ingreso de mercadería)
-├── config/          (Configuración de Spring Security)
-├── cotizaciones/    (Generación de PDF e Items de cotización)
-├── facturacion/     (Emisión de boletas/facturas electrónicas OSE)
-├── inventario/      (Reportes y alertas de stock mínimo)
-├── mantenimiento/   (Cron Jobs diarios y alertas de garantías)
-├── notificaciones/  (Gestor de envíos SMTP y WhatsApp)
-├── reportes/        (Cálculos matemáticos de ingresos y deudas)
-└── ventas/          (Procesamiento de ventas y créditos)
+├── catalogo/        (productos, precios, stock)
+├── clientes/         (clientes + integración RUC/DNI)
+├── compras/          (registro de compras, incremento de stock)
+├── proveedores/      (datos maestros de proveedores)
+├── config/           (Spring Security)
+├── cotizaciones/     (cotizaciones, generación de PDF)
+├── facturacion/      (comprobantes electrónicos, integración OSE)
+├── inventario/       (alertas de stock mínimo)
+├── mantenimiento/    (cron jobs, alertas de garantía)
+├── notificaciones/   (envío por SMTP y WhatsApp)
+├── reportes/         (ventas por periodo, cobranza, cotizaciones pendientes)
+├── seguridad/        (usuarios, roles, autenticación)
+└── ventas/           (procesamiento de ventas y créditos)
 ```
 
-### Guía de Instalación y Despliegue
-1. Instalar **Java JDK 21** y configurar variables de entorno `JAVA_HOME`.
-2. Instalar **Oracle Database XE** (Asegurar que escuche en `localhost:1521/xe`).
-3. En el archivo `application.properties`, colocar las credenciales de Oracle:
+### Guía de instalación
+
+1. Instalar **JDK 21** (confirmar que coincide con lo que declara `pom.xml` antes de instalar otra versión) y configurar `JAVA_HOME`.
+2. Instalar **Oracle Database XE** (o usar el perfil H2 en memoria ya configurado para desarrollo).
+3. Configurar credenciales de base de datos **como variables de entorno**, no directamente en `application.properties`:
    ```properties
    spring.datasource.url=jdbc:oracle:thin:@localhost:1521:xe
-   spring.datasource.username=SYSTEM
-   spring.datasource.password=Oracle123
+   spring.datasource.username=${DB_USERNAME}
+   spring.datasource.password=${DB_PASSWORD}
+   spring.mail.password=${MAIL_PASSWORD}
    ```
-4. Abrir la terminal en la raíz del proyecto y ejecutar la instalación de dependencias:
-   `mvn clean install`
-5. Ejecutar el servidor embebido (Tomcat) de Spring Boot:
-   `mvn spring-boot:run`
+4. Ejecutar `mvn clean install`.
+5. Ejecutar `mvn spring-boot:run`.
+
+> **Control de versiones:** el workspace no está inicializado como repositorio Git (confirmado también por la herramienta de modernización automática). Se recomienda crear un repositorio compartido (GitHub) cuanto antes — ya se ha perdido trabajo entre integrantes por depender de compartir ZIPs manualmente.
 
 ---
 
 ## 3. MANUAL DE USUARIO (¿Cómo se opera?)
 
-### Requisitos de Entorno
-- **Navegador Web:** Google Chrome, Mozilla Firefox o Microsoft Edge actualizados.
-- **Conexión a Internet:** Requerido obligatoriamente para emitir comprobantes a SUNAT/Nubefact, para consultar RUCs, y enviar PDFs por correo electrónico.
+### Requisitos de entorno
+- Navegador web actualizado (Chrome, Firefox o Edge).
+- Conexión a internet obligatoria (consulta de RUC/DNI, envío de correos, facturación electrónica).
 
-### Guía de Inicio Rápido
-1. El sistema inicia en segundo plano protegiendo las rutas administrativas.
-2. Todo acceso al sistema requerirá iniciar sesión.
-   - Cuenta de Gerencia: `lisandro` / `123456`
-   - Cuenta de Asistente: `lucy` / `654321`
+### Acceso al sistema
 
-### Flujos de Operación (Ejemplos Críticos)
-- **Para registrar un cliente B2B (Empresa):** Ingresar a la sección Clientes, colocar únicamente el RUC (ej. 20100055237) y hacer clic en autocompletar. El sistema automáticamente traerá el nombre y dirección para guardarlo.
-- **Para generar una Venta desde una Cotización:** Buscar la cotización por su ID. Verificar que su estado sea "Aceptada". Seleccionar si es al contado o al crédito (indicando los días de crédito) y presionar "Convertir". El sistema descontará el stock y emitirá la Factura.
-- **Para extraer Reportes Financieros:** Ingresar al panel administrativo y consultar los endpoints de `/api/admin/reportes`. El sistema sumará automáticamente el dinero de las ventas y las deudas pendientes discriminando por moneda (Soles o Dólares).
-- **Para revisar mantenimientos:** No es necesario buscar los mantenimientos manualmente. El sistema informará a la asistente mediante un correo a las 8:00 AM exactas indicándole a quién debe llamar en la semana.
+> ⚠️ Las credenciales de ejemplo de esta sección son solo para el entorno de desarrollo/pruebas. **No deben quedar documentadas en texto plano en un repositorio una vez el sistema pase a un ambiente real** — reemplazar por contraseñas generadas y gestionadas de forma segura.
 
-### Mantenimiento y FAQ
-- **Pregunta:** *"Generé la cotización pero el cliente no recibió el correo."*
-  - **Solución:** Verifique si el correo del cliente no terminó en `.con` en vez de `.com`. Reenvíe la cotización forzando el botón de notificar. Asegúrese de que el servidor tenga acceso al puerto 587 (SMTP de Gmail).
-- **Pregunta:** *"El sistema dice que no puede procesar la Venta porque el stock está en negativo."*
-  - **Solución:** La política de la empresa sí permite stock en negativo. Si este error ocurre, notifique al equipo de soporte, probablemente el producto esté inhabilitado en catálogo.
-- **Soporte Técnico:** En caso de errores 500 del servidor, contactar al proveedor del desarrollo (Equipo Estudiantil).
+- Cuenta de Gerencia: `lisandro`
+- Cuenta de Asistente: `lucy`
+
+### Flujos de operación
+
+- **Registrar cliente B2B:** ingresar el RUC y usar el autocompletado; el sistema trae razón social y dirección automáticamente.
+- **Convertir cotización en venta:** buscar la cotización por ID, confirmar que esté "Aceptada", elegir contado/crédito y presionar "Convertir" — el sistema descuenta stock y genera el comprobante.
+- **Consultar reportes financieros:** `/api/admin/reportes/ventas-resumen` (acepta `?desde=&hasta=`), `/api/admin/reportes/cobranza` (separa pendientes de atrasadas), `/api/admin/reportes/cotizaciones-pendientes`.
+- **Mantenimientos:** no requiere revisión manual — el sistema envía un correo diario a las 8:00 AM con los clientes a contactar en los próximos 7 días.
+
+### Preguntas frecuentes
+
+- **"El cliente no recibió el correo de la cotización":** verificar el dominio del correo (errores comunes como `.con` en vez de `.com`); confirmar que el servidor tenga salida al puerto 587 (SMTP).
+- **"El sistema permite stock negativo":** es una decisión de política de negocio, no un error — si ocurre de forma inesperada, revisar si el producto está mal configurado en el catálogo.
+- **Soporte técnico:** equipo de desarrollo estudiantil (Yoel Wagner, Aron Rodrigo, Ronald Apaza).
 
 ---
 
 ## 4. ESTADO Y TRAZABILIDAD DEL PROYECTO (Fases de Ingeniería de Software)
 
-Este documento organiza el proyecto en las 13 fases estándar de un Sistema de Gestión Empresarial, adaptadas a lo que ya se ha construido y lo que falta. Sirve como índice maestro: para cada fase se indica qué artefacto la representa y su estado actual.
-
-### 1. Inicio y planificación
-**Qué se documenta:** Problema, objetivos, alcance y viabilidad.
-**Entregables:**
-- Brief del Proyecto (contexto, objetivo, alcance, stakeholders, cronograma)
-- Planteamiento del problema y propuesta de solución
-**Estado:** ✅ Completo
-
-### 2. Levantamiento de información
-**Qué se documenta:** Cómo trabaja actualmente la empresa.
-**Entregables:**
-- Transcripciones de las 2 reuniones con Lisandro Madrid Laos
-- Contexto consolidado: manejo actual en Excel, dolor principal (doble digitación cotización-SUNAT)
-**Estado:** ✅ Completo - pendiente confirmar formato de envío a SUNAT
-
-### 3. Análisis de requisitos
-**Qué se documenta:** Qué debe hacer el sistema.
-**Entregables:**
-- 16 Requerimientos Funcionales y 9 Requerimientos No Funcionales
-- Reglas de negocio clave (margen, multimoneda, IGV, alertas)
-**Estado:** ✅ Completo
-
-### 4. Modelado de procesos
-**Qué se documenta:** Cómo funcionan los procesos empresariales (AS-IS y TO-BE).
-**Entregables:**
-- AS-IS: cotización en Excel -> manual a SUNAT
-- TO-BE: cotización en sistema -> conversión a venta -> facturación OSE
-**Estado:** ⏳ Pendiente formalizar como diagrama BPMN
-
-### 5. Análisis del sistema
-**Qué se documenta:** Relación entre usuarios, procesos y funcionalidades.
-**Entregables:**
-- Actores: Lisandro (admin), Lucy, Cliente
-- Casos de uso implícitos (Cotizar, Vender, Comprar, Facturar)
-**Estado:** ⏳ Pendiente formalizar diagrama de Casos de Uso UML
-
-### 6. Diseño del sistema
-**Qué se documenta:** Cómo se construirá técnicamente.
-**Entregables:**
-- Vistas arquitectónicas C1, C2, C3, C4
-- Arquitectura monolítica modular (Spring Boot + Oracle)
-- Principios SOLID y Diseño de Base de Datos
-**Estado:** ✅ Completo - pendiente diagrama de clases UML formal
-
-### 7. Desarrollo / implementación
-**Qué se documenta:** Construcción del software.
-**Entregables (Módulos):**
-- Catálogo: ✅
-- Clientes (RUC/DNI): ✅
-- Cotizaciones (+PDF): ✅
-- Ventas (+descuento stock): ✅
-- Compras (+incremento stock): ✅
-- Proveedores: ✅
-- Inventario (alertas): ✅
-- Facturación: 🔄 Backend completo (simulado), falta producción Nubefact
-- Mantenimiento (Cron): ✅
-- Administración (Login): ✅
-- Reportes: ✅
-- Frontend: ❌ No construido
-**Estado:** 🔄 En progreso avanzado (11 de 12 módulos backend completos)
-
-### 8. Pruebas y validación
-**Qué se documenta:** Comprobar que cumple los requisitos.
-**Entregables:**
-- Verificación de compilación (javac)
-- Pruebas de lógica de negocio (margen, IGV, conversión cotización, cobranzas)
-- Hallazgos corregidos (equals, adjuntos, endpoints)
-**Estado:** 🔄 Pruebas unitarias informales realizadas; falta plan formal (PT-001)
-
-### 9. Implementación / despliegue
-**Qué se documenta:** Puesta en funcionamiento.
-**Entregables:**
-- DB local configurada (Oracle/H2). Pendiente hosting nube.
-**Estado:** ⏳ Pendiente despliegue a cliente
-
-### 10. Documentación técnica
-**Qué se documenta:** Info para desarrolladores.
-**Entregables:**
-- Este archivo README y comentarios en código
-**Estado:** 🔄 Parcial - falta manual técnico consolidado
-
-### 11. Manual de usuario
-**Qué se documenta:** Cómo utilizar el sistema visualmente.
-**Estado:** ⏳ Pendiente (depende del Frontend)
-
-### 12. Trazabilidad
-**Qué se documenta:** Relación entre lo solicitado y lo implementado.
-**Estado:** ⏳ Pendiente formalizar como matriz completa (RTM). Entregable crítico para la siguiente unidad.
-
-### 13. Mantenimiento y evolución
-**Qué se documenta:** Control de cambios.
-**Estado:** ⏳ Pendiente formalizar control de versiones real (Git).
-
----
-
-### Resumen visual del avance
-
-| Fase | Título | Estado |
+| # | Fase | Estado |
 |---|---|---|
 | 1 | Inicio y planificación | ✅ Completo |
-| 2 | Levantamiento de información | ✅ Completo |
-| 3 | Análisis de requisitos | ✅ Completo |
-| 4 | Modelado de procesos (BPMN) | ⏳ Pendiente |
-| 5 | Análisis del sistema (UML) | ⏳ Pendiente |
-| 6 | Diseño del sistema | ✅ Completo |
-| 7 | Desarrollo | 🔄 Avanzado |
-| 8 | Pruebas y validación | 🔄 Parcial |
-| 9 | Implementación/despliegue | ⏳ Pendiente |
-| 10 | Documentación técnica | 🔄 Parcial |
-| 11 | Manual de usuario | ⏳ Pendiente |
-| 12 | Trazabilidad (RTM) | ⏳ Pendiente |
-| 13 | Mantenimiento y evolución | ⏳ Pendiente |
+| 2 | Levantamiento de información | ✅ Completo (pendiente confirmar formato exacto de envío a SUNAT con Lucy) |
+| 3 | Análisis de requisitos | ✅ Completo (16 RF originales, consolidados en 8 en esta versión) |
+| 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
+| 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
+| 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
+| 7 | Desarrollo | 🔄 11 de 12 módulos backend completos; frontend no iniciado |
+| 8 | Pruebas y validación | 🔄 Pruebas de lógica realizadas de forma informal; falta plan de pruebas formal (PT-001, PT-002...) |
+| 9 | Implementación/despliegue | ⏳ Pendiente — sin ambiente accesible para el cliente aún |
+| 10 | Documentación técnica | 🔄 Este documento; falta manual técnico consolidado independiente |
+| 11 | Manual de usuario | ⏳ Pendiente (depende del frontend) |
+| 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
+| 13 | Mantenimiento y evolución | ⏳ Pendiente control de versiones real (Git) |
 
-> **Prioridad sugerida:** Cerrar el módulo de Frontend (Fase 7) y construir la Matriz de Trazabilidad (Fase 12), fundamentales para la evaluación del curso.
+> **Prioridad sugerida:** (1) resolver la alerta de seguridad de la contraseña expuesta, (2) construir la Matriz de Trazabilidad de Requisitos (Fase 12) mapeando los 16 RF originales → módulo → clase → prueba, (3) iniciar el Frontend del portal público.
