@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.jdrefrigeracion</groupId>
-    <artifactId>sistema-jd-refrigeracion</artifactId>
+    <groupId>com.bomerp</groupId>
+    <artifactId>bomerp-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>sistema-jd-refrigeracion</name>
-    <description>Sistema de gestion web para JD Refrigeracion S.A.C.</description>
+    <name>bomerp-backend</name>
+    <description>Backend ERP - BOMERP</description>
 
     <properties>
         <java.version>21</java.version>

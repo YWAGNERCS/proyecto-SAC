@@ -1,0 +1,10 @@
+INSERT INTO CLIENTES (tipo, nombreorazon_social, ruc, direccion) VALUES ('EMPRESA', 'ALICORP S.A.A.', '20100055237', 'AV. ARGENTINA 4793, CALLAO');
+INSERT INTO CLIENTES (tipo, nombreorazon_social, ruc, direccion) VALUES ('EMPRESA', 'GLORIA S.A.', '20100190797', 'AV. REPUBLICA DE PANAMA 2461, LA VICTORIA');
+INSERT INTO VENTAS (cliente_id, fecha_venta, tipo_pago, estado_pago, moneda) VALUES ((SELECT MAX(id)-1 FROM CLIENTES), SYSDATE, 'CONTADO', 'PAGADO', 'SOLES');
+INSERT INTO VENTAS (cliente_id, fecha_venta, tipo_pago, estado_pago, moneda) VALUES ((SELECT MAX(id) FROM CLIENTES), SYSDATE, 'CONTADO', 'PAGADO', 'SOLES');
+INSERT INTO DETALLE_VENTA (venta_id, producto_id, cantidad, precio_unitario) VALUES ((SELECT MAX(id)-1 FROM VENTAS), 2, 1, 1500);
+INSERT INTO DETALLE_VENTA (venta_id, producto_id, cantidad, precio_unitario) VALUES ((SELECT MAX(id) FROM VENTAS), 2, 2, 1500);
+INSERT INTO MANTENIMIENTOS (venta_id, fecha_programada, estado, alerta_enviada) VALUES ((SELECT MAX(id)-1 FROM VENTAS), SYSDATE + 1, 'PENDIENTE', 0);
+INSERT INTO MANTENIMIENTOS (venta_id, fecha_programada, estado, alerta_enviada) VALUES ((SELECT MAX(id) FROM VENTAS), SYSDATE + 1, 'PENDIENTE', 0);
+COMMIT;
+EXIT;

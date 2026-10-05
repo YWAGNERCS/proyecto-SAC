@@ -33,7 +33,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - Módulo de planillas y recursos humanos.
 - Pasarelas de pago online con tarjeta de crédito (las ventas se registran como pagadas o a crédito, sin procesar pagos reales).
 - Control de GPS de los técnicos de mantenimiento.
-- Frontend del portal público (**pendiente de construir** — hoy solo existe como API REST, sin interfaz visual).
+- Frontend del portal público (**en desarrollo activo** con Angular en `/bomerp-frontend`).
 
 ### Módulos desarrollados (backend)
 
@@ -50,7 +50,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | 9 | Notificaciones (SMTP + WhatsApp) | ✅ |
 | 10 | Reportes (ventas por periodo, cobranza, cotizaciones pendientes) | ✅ |
 | 11 | Administración (login y roles) | ✅ |
-| — | **Frontend del portal público** | ❌ No construido |
+| — | **Frontend del portal público** | 🔄 En desarrollo (`bomerp-frontend`) |
 
 ### Requerimientos Funcionales (RF)
 
@@ -144,12 +144,15 @@ src/main/java/com/jdrefrigeracion/
 ### Guía de instalación
 
 1. Instalar **JDK 21** (confirmar que coincide con lo que declara `pom.xml` antes de instalar otra versión) y configurar `JAVA_HOME`.
-2. Instalar **Oracle Database XE** (o usar el perfil H2 en memoria ya configurado para desarrollo).
-3. Configurar credenciales de base de datos **como variables de entorno**, no directamente en `application.properties`:
+2. Iniciar el contenedor Docker **SGE-DJ** (Oracle 23ai Free en puerto 1522 para no colisionar con el puerto 1521 universitario):
+   ```bash
+   docker run -d --name SGE-DJ -p 1522:1521 -e ORACLE_PASSWORD=jd123 -e APP_USER=jdrefrigeracion -e APP_USER_PASSWORD=jd123 -v sge-jd-oracle-data:/opt/oracle/oradata --restart unless-stopped gvenzl/oracle-free:23-slim
+   ```
+3. Configurar credenciales de base de datos **como variables de entorno**, o usar los valores por defecto de `application.properties`:
    ```properties
-   spring.datasource.url=jdbc:oracle:thin:@localhost:1521:xe
-   spring.datasource.username=${DB_USERNAME}
-   spring.datasource.password=${DB_PASSWORD}
+   spring.datasource.url=jdbc:oracle:thin:@localhost:1522/FREEPDB1
+   spring.datasource.username=${DB_USERNAME:jdrefrigeracion}
+   spring.datasource.password=${DB_PASSWORD:jd123}
    spring.mail.password=${MAIL_PASSWORD}
    ```
 4. Ejecutar `mvn clean install`.
