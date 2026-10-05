@@ -1,0 +1,14 @@
+
+<nav style="background: white; padding: 15px 30px; box-shadow: var(--shadow); margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <h1 style="margin: 0; color: var(--primary); font-weight: 700; font-size: 1.5rem;">BomERP</h1>
+  </div>
+  <div style="display: flex; gap: 20px;">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" style="color: var(--text-main); font-weight: 500; text-decoration: none; padding: 8px 12px; border-radius: 6px; transition: all 0.2s;">Inicio</a>
+    <a routerLink="/categorias" routerLinkActive="active" style="color: var(--text-main); font-weight: 500; text-decoration: none; padding: 8px 12px; border-radius: 6px; transition: all 0.2s;">Categorías</a>
+    <a routerLink="/cotizaciones" routerLinkActive="active" style="color: var(--text-main); font-weight: 500; text-decoration: none; padding: 8px 12px; border-radius: 6px; transition: all 0.2s;">Cotizaciones</a>
+  </div>
+</nav>
+<main style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
+  <router-outlet></router-outlet>
+</main>

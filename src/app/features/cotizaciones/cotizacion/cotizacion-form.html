@@ -1,0 +1,86 @@
+<div class="card">
+    <div class="card-header">
+        <h2>Nueva Cotización</h2>
+    </div>
+    <div class="card-body">
+        <div *ngIf="errorMessage()" class="alert alert-danger">
+            {{ errorMessage() }}
+        </div>
+
+        <form (ngSubmit)="guardar()">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Cliente</label>
+                    <select class="form-select" [(ngModel)]="cotizacion.clienteId" name="clienteId" required>
+                        <option [ngValue]="null">Seleccione un cliente...</option>
+                        <option *ngFor="let c of clientes()" [value]="c.id">
+                            {{ c.nombreRazonSocial }}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Moneda</label>
+                    <select class="form-select" [(ngModel)]="cotizacion.moneda" name="moneda">
+                        <option value="PEN">Soles (PEN)</option>
+                        <option value="USD">Dólares (USD)</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Días de Vigencia</label>
+                    <input type="number" class="form-control" [(ngModel)]="cotizacion.diasVigencia" name="diasVigencia" required>
+                </div>
+            </div>
+
+            <hr>
+            <h4>Detalle de Ítems</h4>
+            <div class="row mb-3 align-items-end bg-light p-3 border rounded">
+                <div class="col-md-6">
+                    <label class="form-label">Producto</label>
+                    <select class="form-select" [(ngModel)]="productoSeleccionadoId" name="productoSeleccionadoId">
+                        <option [ngValue]="null">Seleccione un producto...</option>
+                        <option *ngFor="let p of productos()" [value]="p.id">
+                            {{ p.nombre }}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" class="form-control" [(ngModel)]="cantidadSeleccionada" name="cantidadSeleccionada" min="1">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-secondary w-100" (click)="agregarItem()">
+                        Agregar Ítem
+                    </button>
+                </div>
+            </div>
+
+            <table class="table table-striped" *ngIf="cotizacion.items.length > 0">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let item of cotizacion.items; let i = index">
+                        <td>{{ getNombreProducto(item.productoId) }}</td>
+                        <td class="text-center">{{ item.cantidad }}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-danger" (click)="eliminarItem(i)">X</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div *ngIf="cotizacion.items.length === 0" class="text-center text-muted mb-3">
+                No hay ítems agregados a la cotización.
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a routerLink="/cotizaciones" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary" [disabled]="!cotizacion.clienteId || cotizacion.items.length === 0">Guardar Cotización</button>
+            </div>
+        </form>
+    </div>
+</div>

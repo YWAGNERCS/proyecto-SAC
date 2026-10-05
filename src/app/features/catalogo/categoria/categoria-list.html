@@ -1,0 +1,28 @@
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+  <h2 style="margin:0;">Categorías</h2>
+  <a routerLink="nuevo" class="btn btn-primary">+ Nueva Categoría</a>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (cat of categorias(); track cat.id) {
+        <tr>
+          <td>{{ cat.nombre }}</td>
+          <td>{{ cat.descripcion }}</td>
+          <td style="text-align: right;">
+            <a class="btn btn-outline-secondary btn-sm" [routerLink]="[cat.id, 'editar']">Editar</a>
+            <button class="btn btn-danger btn-sm" style="margin-left:8px;" (click)="eliminar(cat.id!)">Eliminar</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

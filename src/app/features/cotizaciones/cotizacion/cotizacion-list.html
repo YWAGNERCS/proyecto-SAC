@@ -1,0 +1,39 @@
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+  <h2 style="margin:0;">Cotizaciones</h2>
+  <a routerLink="nuevo" class="btn btn-primary">+ Nueva Cotización</a>
+</div>
+
+<div class="card" style="padding:15px; margin-bottom:20px; max-width:400px;">
+  <label class="form-label" for="clienteFilter">Filtrar por Cliente:</label>
+  <select class="form-select" id="clienteFilter" (change)="filtrarPorCliente($event)">
+    <option value="">-- Todos --</option>
+    @for (cliente of clientes(); track cliente.id) {
+      <option [value]="cliente.id">{{ cliente.nombreRazonSocial }}</option>
+    }
+  </select>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Cliente</th>
+        <th>Total</th>
+        <th>Moneda</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (c of cotizaciones(); track c.id) {
+        <tr>
+          <td>{{ c.id }}</td>
+          <td>{{ c.cliente?.nombreRazonSocial }}</td>
+          <td>{{ c.total }}</td>
+          <td>{{ c.moneda }}</td>
+          <td>{{ c.estado }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
