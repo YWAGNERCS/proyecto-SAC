@@ -1,7 +1,7 @@
 <div class="card" style="max-width: 850px; margin: 2rem auto;">
     <div class="card-header">
-        <h2>Nueva Cotización</h2>
-        <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 0.88rem;">Complete la información de cabecera y agregue los ítems correspondientes</p>
+        <h2>Nueva Venta Directa</h2>
+        <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 0.88rem;">Registre una venta sin cotización previa — seleccione cliente, productos y condición de pago</p>
     </div>
     <div class="card-body">
         <div *ngIf="errorMessage()" class="alert alert-danger">
@@ -14,7 +14,7 @@
                     <label class="form-label" for="clienteSelect">
                         Cliente <span style="color: var(--danger);">*</span>
                     </label>
-                    <select id="clienteSelect" class="form-select" [(ngModel)]="cotizacion.clienteId" name="clienteId">
+                    <select id="clienteSelect" class="form-select" [(ngModel)]="clienteIdSeleccionado" name="clienteId">
                         <option [ngValue]="null">-- Seleccione un cliente --</option>
                         <option *ngFor="let c of clientes()" [ngValue]="c.id">
                             {{ c.nombreORazonSocial }}
@@ -22,20 +22,20 @@
                     </select>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <label class="form-label" for="monedaSelect">Moneda</label>
-                    <select id="monedaSelect" class="form-select" [(ngModel)]="cotizacion.moneda" name="moneda">
-                        <option value="SOLES">Soles</option>
-                        <option value="DOLARES">Dólares (USD)</option>
+                    <label class="form-label" for="tipoPagoSelect">Tipo de Pago</label>
+                    <select id="tipoPagoSelect" class="form-select" [(ngModel)]="venta.tipoPago" name="tipoPago" (change)="onTipoPagoChange()">
+                        <option value="CONTADO">Contado</option>
+                        <option value="CREDITO">Crédito</option>
                     </select>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label" for="diasVigenciaInput">Días de Vigencia</label>
-                    <input id="diasVigenciaInput" type="number" class="form-control" [(ngModel)]="cotizacion.diasVigencia" name="diasVigencia" min="1">
+                <div class="col-md-3 mb-3" *ngIf="venta.tipoPago === 'CREDITO'">
+                    <label class="form-label" for="diasCreditoInput">Días de Crédito</label>
+                    <input id="diasCreditoInput" type="number" class="form-control" [(ngModel)]="venta.diasCredito" name="diasCredito" min="1" placeholder="30">
                 </div>
             </div>
 
             <hr>
-            <h4 style="font-weight: 700; margin-bottom: 12px;">Detalle de Ítems</h4>
+            <h4 style="font-weight: 700; margin-bottom: 12px;">Detalle de Productos</h4>
             <div class="row mb-3 align-items-end" style="background-color: #F8FAFC; padding: 1.25rem; border: 1px solid var(--border-color); border-radius: 8px;">
                 <div class="col-md-6">
                     <label class="form-label">Producto del Catálogo</label>
@@ -52,12 +52,12 @@
                 </div>
                 <div class="col-md-3">
                     <button type="button" class="btn btn-secondary w-100" (click)="agregarItem()">
-                        + Agregar Ítem
+                        + Agregar Producto
                     </button>
                 </div>
             </div>
 
-            <table class="table" *ngIf="cotizacion.items.length > 0" style="margin-top: 15px;">
+            <table class="table" *ngIf="venta.items.length > 0" style="margin-top: 15px;">
                 <thead>
                     <tr>
                         <th>Producto</th>
@@ -66,7 +66,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let item of cotizacion.items; let i = index">
+                    <tr *ngFor="let item of venta.items; let i = index">
                         <td>
                             <strong>{{ getNombreProducto(item.productoId) }}</strong>
                         </td>
@@ -79,15 +79,15 @@
                     </tr>
                 </tbody>
             </table>
-            
-            <div *ngIf="cotizacion.items.length === 0" class="text-center text-muted mb-3" style="padding: 20px; background: #F8FAFC; border-radius: 8px; border: 1px dashed var(--border-color);">
-                No hay ítems agregados a la cotización todavía. Seleccione un producto y presione '+ Agregar Ítem'.
+
+            <div *ngIf="venta.items.length === 0" class="text-center text-muted mb-3" style="padding: 20px; background: #F8FAFC; border-radius: 8px; border: 1px dashed var(--border-color);">
+                No hay productos agregados a la venta todavía. Seleccione un producto y presione '+ Agregar Producto'.
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a routerLink="/cotizaciones" class="btn btn-outline-secondary">Cancelar</a>
+                <a routerLink="/ventas" class="btn btn-outline-secondary">Cancelar</a>
                 <button type="submit" class="btn btn-primary" [disabled]="loading()">
-                    {{ loading() ? 'Guardando...' : 'Guardar Cotización' }}
+                    {{ loading() ? 'Registrando...' : 'Registrar Venta' }}
                 </button>
             </div>
         </form>

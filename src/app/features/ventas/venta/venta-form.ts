@@ -2,37 +2,38 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { CotizacionService } from './cotizacion-service';
+import { VentaService } from './venta-service';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { ProductoService } from '../../catalogo/producto/producto-service';
-import { CotizacionRequest } from './cotizacion.model';
+import { VentaDirectaRequest } from './venta.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { Producto } from '../../catalogo/producto/producto.model';
 
 @Component({
-  selector: 'app-cotizacion-form',
+  selector: 'app-venta-form',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './cotizacion-form.html'
+  templateUrl: './venta-form.html'
 })
-export class CotizacionFormComponent implements OnInit {
-  private cotizacionService = inject(CotizacionService);
+export class VentaFormComponent implements OnInit {
+  private ventaService = inject(VentaService);
   private clienteService = inject(ClienteService);
   private productoService = inject(ProductoService);
   private router = inject(Router);
 
   clientes = signal<Cliente[]>([]);
   productos = signal<Producto[]>([]);
-  errorMessage = signal<string>('');
-  loading = signal<boolean>(false);
+  errorMessage = signal('');
+  loading = signal(false);
 
-  cotizacion: CotizacionRequest = {
-    clienteId: null,
-    moneda: 'SOLES',
-    diasVigencia: 15,
-    items: []
+  venta: VentaDirectaRequest = {
+    clienteId: 0,
+    items: [],
+    tipoPago: 'CONTADO',
+    diasCredito: undefined
   };
 
+  clienteIdSeleccionado: number | null = null;
   productoSeleccionadoId: number | null = null;
   cantidadSeleccionada: number = 1;
 
@@ -48,21 +49,16 @@ export class CotizacionFormComponent implements OnInit {
   }
 
   agregarItem() {
-    if (!this.productoSeleccionadoId || this.cantidadSeleccionada <= 0) {
-      return;
-    }
-    
+    if (!this.productoSeleccionadoId || this.cantidadSeleccionada <= 0) return;
+
     const prodId = Number(this.productoSeleccionadoId);
     const cant = Number(this.cantidadSeleccionada);
-    const itemExistente = this.cotizacion.items.find(i => i.productoId === prodId);
-    
-    if (itemExistente) {
-      itemExistente.cantidad += cant;
+    const existente = this.venta.items.find(i => i.productoId === prodId);
+
+    if (existente) {
+      existente.cantidad += cant;
     } else {
-      this.cotizacion.items.push({
-        productoId: prodId,
-        cantidad: cant
-      });
+      this.venta.items.push({ productoId: prodId, cantidad: cant });
     }
 
     this.productoSeleccionadoId = null;
@@ -70,7 +66,7 @@ export class CotizacionFormComponent implements OnInit {
   }
 
   eliminarItem(index: number) {
-    this.cotizacion.items.splice(index, 1);
+    this.venta.items.splice(index, 1);
   }
 
   getNombreProducto(id: number): string {
@@ -78,38 +74,45 @@ export class CotizacionFormComponent implements OnInit {
     return prod ? prod.nombre : 'Producto #' + id;
   }
 
+  onTipoPagoChange() {
+    if (this.venta.tipoPago === 'CONTADO') {
+      this.venta.diasCredito = undefined;
+    } else {
+      this.venta.diasCredito = 30;
+    }
+  }
+
   guardar() {
     this.errorMessage.set('');
 
-    if (!this.cotizacion.clienteId) {
+    if (!this.clienteIdSeleccionado) {
       this.errorMessage.set('Debe seleccionar un cliente.');
       return;
     }
-    if (!this.cotizacion.items || this.cotizacion.items.length === 0) {
-      this.errorMessage.set('Debe agregar al menos un ítem a la cotización.');
+    if (!this.venta.items || this.venta.items.length === 0) {
+      this.errorMessage.set('Debe agregar al menos un producto a la venta.');
       return;
     }
 
-    const payload = {
-      clienteId: Number(this.cotizacion.clienteId),
-      moneda: this.cotizacion.moneda,
-      diasVigencia: Number(this.cotizacion.diasVigencia || 15),
-      items: this.cotizacion.items.map(i => ({
+    const payload: VentaDirectaRequest = {
+      clienteId: Number(this.clienteIdSeleccionado),
+      items: this.venta.items.map(i => ({
         productoId: Number(i.productoId),
         cantidad: Number(i.cantidad)
-      }))
+      })),
+      tipoPago: this.venta.tipoPago,
+      diasCredito: this.venta.tipoPago === 'CREDITO' ? Number(this.venta.diasCredito || 30) : undefined
     };
 
     this.loading.set(true);
-    this.cotizacionService.crear(payload as any).subscribe({
+    this.ventaService.registrarVentaDirecta(payload).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigate(['/cotizaciones']);
+        this.router.navigate(['/ventas']);
       },
       error: (err: any) => {
         this.loading.set(false);
-        console.error('Error al guardar cotización:', err);
-        const msg = err.error?.message || err.message || 'Error al procesar la cotización en el servidor.';
+        const msg = err.error?.message || err.message || 'Error al registrar la venta.';
         this.errorMessage.set(msg);
       }
     });

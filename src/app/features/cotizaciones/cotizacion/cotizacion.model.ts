@@ -1,12 +1,20 @@
 import { Cliente } from '../../clientes/cliente/cliente.model';
 
+export interface CotizacionItemDTO {
+  productoId: number;
+  cantidad: number;
+}
+
 // Modelo que devuelve el Backend (para la Lista)
 export interface CotizacionResponse {
   id: number;
-  cliente: Cliente;
+  clienteNombre?: string;
+  cliente?: Cliente;
   moneda: string;
-  diasVigencia: number;
+  diasVigencia?: number;
   estado: string;
+  subtotal?: number;
+  igv?: number;
   total: number;
   fechaEmision: string;
 }
@@ -16,5 +24,5 @@ export interface CotizacionRequest {
   clienteId: number | null;
   moneda: string;
   diasVigencia: number;
-  items: any[]; // Hardcoded for this simple CRUD demo
+  items: CotizacionItemDTO[];
 }

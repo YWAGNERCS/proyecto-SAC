@@ -24,6 +24,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/catalogo/categoria/categoria-form').then((m) => m.CategoriaForm),
       },
+      // ── Cotizaciones ──────────────────────────────
       {
         path: 'cotizaciones',
         loadComponent: () =>
@@ -33,6 +34,28 @@ export const routes: Routes = [
         path: 'cotizaciones/nuevo',
         loadComponent: () =>
           import('./features/cotizaciones/cotizacion/cotizacion-form').then((m) => m.CotizacionFormComponent),
+      },
+      // ── Ventas ─────────────────────────────────────
+      {
+        path: 'ventas',
+        loadComponent: () =>
+          import('./features/ventas/venta/venta-list').then((m) => m.VentaListComponent),
+      },
+      {
+        path: 'ventas/nueva',
+        loadComponent: () =>
+          import('./features/ventas/venta/venta-form').then((m) => m.VentaFormComponent),
+      },
+      // ── Compras ────────────────────────────────────
+      {
+        path: 'compras',
+        loadComponent: () =>
+          import('./features/compras/compra/compra-list').then((m) => m.CompraListComponent),
+      },
+      {
+        path: 'compras/nueva',
+        loadComponent: () =>
+          import('./features/compras/compra/compra-form').then((m) => m.CompraFormComponent),
       },
     ],
   },

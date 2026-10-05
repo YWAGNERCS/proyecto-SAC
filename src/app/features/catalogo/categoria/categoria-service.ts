@@ -8,7 +8,7 @@ import { Categoria } from './categoria.model';
 export class CategoriaService {
   private readonly http = inject(HttpClient);
   private readonly api = inject(ApiService);
-  private readonly resource = '/api/v1/categorias';
+  private readonly resource = '/v1/categorias';
 
   listar(): Observable<Categoria[]> {
     return this.http.get<Categoria[]>(this.api.buildUrl(this.resource));

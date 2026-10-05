@@ -1,0 +1,93 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0" style="font-weight: 700;">Ventas</h2>
+    <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
+      Registro de ventas realizadas — directas o convertidas desde cotización
+    </p>
+  </div>
+  <a routerLink="/ventas/nueva" class="btn btn-primary">+ Nueva Venta</a>
+</div>
+
+<div class="card" style="padding: 16px; margin-bottom: 20px;">
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm" [class.btn-primary]="filtro() === 'TODAS'" [class.btn-secondary]="filtro() !== 'TODAS'" (click)="mostrarTodas()">
+      Todas las Ventas
+    </button>
+    <button class="btn btn-sm" [class.btn-danger]="filtro() === 'ATRASADAS'" [class.btn-secondary]="filtro() !== 'ATRASADAS'" (click)="filtrarAtrasadas()">
+      ⚠️ Pagos Atrasados
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 80px;">ID</th>
+          <th>Cliente</th>
+          <th class="text-center" style="width: 120px;">Fecha</th>
+          <th class="text-center" style="width: 100px;">Origen</th>
+          <th class="text-center" style="width: 100px;">Pago</th>
+          <th class="text-center" style="width: 120px;">Estado</th>
+          <th style="text-align: right; width: 140px;">Total</th>
+          <th class="text-center" style="width: 120px;">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (v of ventas(); track v.id) {
+          <tr>
+            <td>
+              <span class="badge">#{{ v.id }}</span>
+            </td>
+            <td>
+              <strong>{{ v.clienteNombre }}</strong>
+            </td>
+            <td class="text-center" style="color: var(--text-muted); font-size: 0.88rem;">
+              {{ v.fechaVenta }}
+            </td>
+            <td class="text-center">
+              @if (v.cotizacionOrigenId) {
+                <span class="badge" style="background-color: var(--primary-light); color: var(--primary);">
+                  Cot #{{ v.cotizacionOrigenId }}
+                </span>
+              } @else {
+                <span class="badge" style="background-color: #F1F5F9; color: var(--text-muted);">
+                  Directa
+                </span>
+              }
+            </td>
+            <td class="text-center">
+              <span class="badge" style="background-color: #F1F5F9; color: var(--text-main);">
+                {{ getTipoPagoLabel(v.tipoPago) }}
+              </span>
+            </td>
+            <td class="text-center">
+              <span class="badge" [class]="getEstadoClass(v.estadoPago)">
+                {{ v.estadoPago }}
+              </span>
+            </td>
+            <td style="text-align: right; font-weight: 700; color: var(--text-main);">
+              {{ v.total | currency: (v.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}
+            </td>
+            <td class="text-center">
+              @if (v.estadoPago !== 'PAGADO') {
+                <button class="btn btn-sm btn-primary" (click)="marcarPagada(v.id)" title="Marcar como pagada">
+                  ✓ Pagada
+                </button>
+              } @else {
+                <span style="color: var(--success); font-size: 0.85rem; font-weight: 600;">✓</span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              No se encontraron ventas registradas.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

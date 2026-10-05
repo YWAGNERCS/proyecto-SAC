@@ -1,5 +1,5 @@
 export interface Cliente {
   id?: number;
-  nombreRazonSocial: string;
+  nombreORazonSocial: string;
   nroDocumento: string;
 }

@@ -1,39 +1,91 @@
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-  <h2 style="margin:0;">Cotizaciones</h2>
-  <a routerLink="nuevo" class="btn btn-primary">+ Nueva Cotización</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0" style="font-weight: 700;">Cotizaciones</h2>
+    <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
+      Registro de cotizaciones comerciales emitidas a clientes
+    </p>
+  </div>
+  <a routerLink="/cotizaciones/nuevo" class="btn btn-primary">+ Nueva Cotización</a>
 </div>
 
-<div class="card" style="padding:15px; margin-bottom:20px; max-width:400px;">
-  <label class="form-label" for="clienteFilter">Filtrar por Cliente:</label>
+<div class="card" style="padding: 16px; margin-bottom: 20px; max-width: 420px;">
+  <label class="form-label" for="clienteFilter" style="margin-bottom: 6px;">Filtrar por Cliente:</label>
   <select class="form-select" id="clienteFilter" (change)="filtrarPorCliente($event)">
-    <option value="">-- Todos --</option>
+    <option value="">-- Todos los Clientes --</option>
     @for (cliente of clientes(); track cliente.id) {
-      <option [value]="cliente.id">{{ cliente.nombreRazonSocial }}</option>
+      <option [value]="cliente.id">{{ cliente.nombreORazonSocial }}</option>
     }
   </select>
 </div>
 
 <div class="card">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Cliente</th>
-        <th>Total</th>
-        <th>Moneda</th>
-        <th>Estado</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (c of cotizaciones(); track c.id) {
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
         <tr>
-          <td>{{ c.id }}</td>
-          <td>{{ c.cliente?.nombreRazonSocial }}</td>
-          <td>{{ c.total }}</td>
-          <td>{{ c.moneda }}</td>
-          <td>{{ c.estado }}</td>
+          <th style="width: 80px;">ID</th>
+          <th>Cliente</th>
+          <th class="text-center" style="width: 130px;">Fecha Emisión</th>
+          <th class="text-center" style="width: 110px;">Moneda</th>
+          <th class="text-center" style="width: 130px;">Estado</th>
+          <th style="text-align: right; width: 140px;">Total</th>
+          <th class="text-center" style="width: 220px;">Acciones</th>
         </tr>
-      }
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        @for (c of cotizaciones(); track c.id) {
+          <tr>
+            <td>
+              <span class="badge">#{{ c.id }}</span>
+            </td>
+            <td>
+              <strong>{{ c.clienteNombre || c.cliente?.nombreORazonSocial || 'Cliente #' + c.id }}</strong>
+            </td>
+            <td class="text-center" style="color: var(--text-muted); font-size: 0.88rem;">
+              {{ c.fechaEmision }}
+            </td>
+            <td class="text-center">
+              <span class="badge" style="background-color: #F1F5F9; color: var(--text-main);">
+                {{ c.moneda }}
+              </span>
+            </td>
+            <td class="text-center">
+              <span class="badge" [class]="getEstadoClass(c.estado)">
+                {{ c.estado }}
+              </span>
+            </td>
+            <td style="text-align: right; font-weight: 700; color: var(--text-main);">
+              {{ c.total | currency: (c.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}
+            </td>
+            <td class="text-center">
+              <div class="d-flex justify-content-center gap-1" style="flex-wrap: wrap; gap: 4px;">
+                @if (c.estado === 'PENDIENTE') {
+                  <button class="btn btn-sm btn-secondary" (click)="enviar(c.id)" [disabled]="accionEnCurso() === c.id" title="Enviar por WhatsApp y correo">
+                    📤 Enviar
+                  </button>
+                  <button class="btn btn-sm badge-success-btn" (click)="aceptar(c.id)" [disabled]="accionEnCurso() === c.id" title="Marcar como aceptada">
+                    ✓
+                  </button>
+                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c.id)" [disabled]="accionEnCurso() === c.id" title="Marcar como rechazada">
+                    ✗
+                  </button>
+                }
+                @if (c.estado === 'ACEPTADA') {
+                  <button class="btn btn-sm btn-primary" (click)="convertirEnVenta(c.id)" [disabled]="accionEnCurso() === c.id" title="Convertir en venta">
+                    🛒 → Venta
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              No se encontraron cotizaciones registradas.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 </div>

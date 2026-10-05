@@ -17,4 +17,18 @@ export class CotizacionService {
   crear(data: CotizacionRequest) {
     return this.http.post<CotizacionResponse>(this.api.buildUrl(this.endpoint), data);
   }
+
+  aceptar(id: number) {
+    return this.http.post<CotizacionResponse>(this.api.buildUrl(`${this.endpoint}/${id}/aceptar`), {});
+  }
+
+  rechazar(id: number) {
+    return this.http.post<CotizacionResponse>(this.api.buildUrl(`${this.endpoint}/${id}/rechazar`), {});
+  }
+
+  enviar(id: number, whatsapp: boolean = true, correo: boolean = true) {
+    return this.http.post<void>(
+      this.api.buildUrl(`${this.endpoint}/${id}/enviar?whatsapp=${whatsapp}&correo=${correo}`), {}
+    );
+  }
 }
