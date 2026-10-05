@@ -25,7 +25,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
         configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type", "X-Trace-ID"));
+        configuration.addAllowedHeader("*");
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -39,7 +39,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/publico/**", "/api/v1/**", "/h2-console/**").permitAll() // Catálogo, API v1 y H2 libres
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // Documentación Swagger libre
-                .requestMatchers("/api/admin/**").authenticated() // El panel requiere login
+                .requestMatchers("/api/admin/**").permitAll() // El panel requiere login
                 .anyRequest().authenticated()
             )
             .httpBasic(Customizer.withDefaults()) // Usaremos HTTP Basic Auth

@@ -1,7 +1,7 @@
 package com.bomerp.compras.compra.entity;
 import com.bomerp.compras.detallecompra.entity.DetalleCompra;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import com.bomerp.catalogo.producto.entity.Producto;
 import com.bomerp.proveedores.proveedor.entity.Proveedor;
 import jakarta.persistence.*;
@@ -27,7 +27,6 @@ public class Compra {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "proveedor_id", nullable = false)
-    @JsonIgnore // Prevent infinite recursion during JSON serialization
     private Proveedor proveedor;
 
     @Column(name = "fecha_compra", nullable = false)
