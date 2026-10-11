@@ -7,7 +7,7 @@ import { CompraRequest, CompraResponse } from './compra.model';
 export class CompraService {
   private api = inject(ApiService);
   private http = inject(HttpClient);
-  private endpoint = '/admin/compras';
+  private endpoint = '/v1/admin/compras';
 
   listar() {
     return this.http.get<CompraResponse[]>(this.api.buildUrl(this.endpoint));

@@ -1,0 +1,87 @@
+/* Reutiliza los estilos base de cliente-list, con variantes para proveedor */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-title { margin: 0; font-size: 1.4rem; font-weight: 700; }
+.page-sub   { margin: 0.15rem 0 0; font-size: 0.85rem; opacity: 0.5; }
+
+.search-input {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  min-width: 260px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input:focus {
+  border-color: rgba(99,102,241,0.6);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table thead th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.5;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.15s;
+}
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+.data-table td { padding: 0.8rem 1rem; }
+.id-cell { opacity: 0.4; font-size: 0.82rem; width: 60px; }
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6ee7b7;
+}
+
+.badge-empresa {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+}
+
+.loading-state, .error-state, .empty-state {
+  padding: 3rem;
+  text-align: center;
+  opacity: 0.5;
+  font-size: 0.95rem;
+}
+.error-state { color: #fca5a5; opacity: 1; }

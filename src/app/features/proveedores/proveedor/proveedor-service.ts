@@ -7,7 +7,7 @@ import { Proveedor } from './proveedor.model';
 export class ProveedorService {
   private api = inject(ApiService);
   private http = inject(HttpClient);
-  private endpoint = '/admin/proveedores';
+  private endpoint = '/v1/admin/proveedores';
 
   listarTodos() {
     return this.http.get<Proveedor[]>(this.api.buildUrl(this.endpoint));

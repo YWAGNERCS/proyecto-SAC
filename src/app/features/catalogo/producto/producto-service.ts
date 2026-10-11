@@ -9,7 +9,7 @@ import { environment } from '../../../../environments/environment';
 })
 export class ProductoService {
   private http = inject(HttpClient);
-  private url = `${environment.apiBaseUrl}/admin/productos`;
+  private url = `${environment.apiBaseUrl}/v1/admin/productos`;
 
   listarTodos(): Observable<Producto[]> {
     return this.http.get<Producto[]>(this.url);

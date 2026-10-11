@@ -1,0 +1,52 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Proveedores</h1>
+    <p class="page-sub">Directorio de proveedores registrados</p>
+  </div>
+  <input
+    id="buscar-proveedor"
+    type="search"
+    class="search-input"
+    placeholder="Buscar por nombre, RUC o correo..."
+    (input)="onBuscar($event)"
+  />
+</div>
+
+@if (cargando()) {
+  <div class="loading-state">Cargando proveedores…</div>
+} @else if (error()) {
+  <div class="error-state">{{ error() }}</div>
+} @else if (proveedoresFiltrados.length === 0) {
+  <div class="empty-state">No se encontraron proveedores.</div>
+} @else {
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nombre / Razón Social</th>
+          <th>Tipo</th>
+          <th>RUC</th>
+          <th>Teléfono</th>
+          <th>Correo</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (prov of proveedoresFiltrados; track prov.id) {
+          <tr>
+            <td class="id-cell">{{ prov.id }}</td>
+            <td><strong>{{ prov.nombreORazonSocial }}</strong></td>
+            <td>
+              <span class="badge" [class.badge-empresa]="prov.tipo === 'EMPRESA'">
+                {{ prov.tipo === 'EMPRESA' ? 'Empresa' : 'Persona natural' }}
+              </span>
+            </td>
+            <td>{{ prov.ruc ?? '—' }}</td>
+            <td>{{ prov.telefono ?? '—' }}</td>
+            <td>{{ prov.correo ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

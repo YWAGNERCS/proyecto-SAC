@@ -7,7 +7,7 @@ import { CotizacionResponse, CotizacionRequest } from './cotizacion.model';
 export class CotizacionService {
   private api = inject(ApiService);
   private http = inject(HttpClient);
-  private endpoint = '/admin/cotizaciones';
+  private endpoint = '/v1/admin/cotizaciones';
 
   listar(clienteId?: number) {
     const params = clienteId ? { clienteId } : undefined;

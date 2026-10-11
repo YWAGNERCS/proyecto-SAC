@@ -11,6 +11,26 @@
     <a routerLink="/cotizaciones" routerLinkActive="active" class="nav-link">Cotizaciones</a>
     <a routerLink="/ventas" routerLinkActive="active" class="nav-link">Ventas</a>
     <a routerLink="/compras" routerLinkActive="active" class="nav-link">Compras</a>
+    <a routerLink="/clientes" routerLinkActive="active" class="nav-link">Clientes</a>
+    <a routerLink="/proveedores" routerLinkActive="active" class="nav-link">Proveedores</a>
+  </div>
+
+  <!-- Usuario + Cerrar sesión -->
+  <div class="nav-user">
+    @if (auth.usuario(); as u) {
+      <span class="nav-username">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15" style="opacity:0.6">
+          <path d="M10 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4.42 0-8 1.79-8 4v1h16v-1c0-2.21-3.58-4-8-4z"/>
+        </svg>
+        {{ u.username }}
+      </span>
+      <button id="btn-logout" class="btn-logout" (click)="logout()" title="Cerrar sesión">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+          <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 000-2H4V5h7a1 1 0 000-2H3zm11.293 4.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L15.586 12H9a1 1 0 010-2h6.586l-1.293-1.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+        Salir
+      </button>
+    }
   </div>
 </nav>
 

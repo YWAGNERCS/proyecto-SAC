@@ -1,0 +1,42 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Clientes</h1>
+    <p class="page-sub">Directorio de clientes registrados</p>
+  </div>
+  <input
+    id="buscar-cliente"
+    type="search"
+    class="search-input"
+    placeholder="Buscar por nombre o documento..."
+    (input)="onBuscar($event)"
+  />
+</div>
+
+@if (cargando()) {
+  <div class="loading-state">Cargando clientes…</div>
+} @else if (error()) {
+  <div class="error-state">{{ error() }}</div>
+} @else if (clientesFiltrados.length === 0) {
+  <div class="empty-state">No se encontraron clientes.</div>
+} @else {
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nombre / Razón Social</th>
+          <th>N° Documento</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (cliente of clientesFiltrados; track cliente.id) {
+          <tr>
+            <td class="id-cell">{{ cliente.id }}</td>
+            <td>{{ cliente.nombreORazonSocial }}</td>
+            <td><span class="badge">{{ cliente.nroDocumento }}</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

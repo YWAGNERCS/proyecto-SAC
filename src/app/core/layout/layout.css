@@ -20,3 +20,43 @@
   align-items: center;
   vertical-align: middle;
 }
+
+/* ── Usuario y logout en navbar ── */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.nav-username {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border-radius: 7px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}

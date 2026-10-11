@@ -7,7 +7,7 @@ import { Cliente } from './cliente.model';
 export class ClienteService {
   private api = inject(ApiService);
   private http = inject(HttpClient);
-  private endpoint = '/admin/clientes';
+  private endpoint = '/v1/admin/clientes';
 
   listarTodos() {
     return this.http.get<Cliente[]>(this.api.buildUrl(this.endpoint));

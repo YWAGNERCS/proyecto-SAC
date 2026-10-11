@@ -7,7 +7,7 @@ import { VentaResponse, VentaDirectaRequest } from './venta.model';
 export class VentaService {
   private api = inject(ApiService);
   private http = inject(HttpClient);
-  private endpoint = '/admin/ventas';
+  private endpoint = '/v1/admin/ventas';
 
   listar() {
     return this.http.get<VentaResponse[]>(this.api.buildUrl(this.endpoint));
