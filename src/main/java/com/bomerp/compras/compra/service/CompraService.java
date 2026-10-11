@@ -5,9 +5,9 @@ import com.bomerp.compras.compra.entity.Compra;
 import com.bomerp.compras.compra.repository.CompraRepository;
 
 import com.bomerp.catalogo.producto.entity.Producto;
-import com.bomerp.catalogo.producto.repository.ProductoRepository;
+import com.bomerp.catalogo.producto.service.ProductoService;
 import com.bomerp.proveedores.proveedor.entity.Proveedor;
-import com.bomerp.proveedores.proveedor.repository.ProveedorRepository;
+import com.bomerp.proveedores.proveedor.service.ProveedorService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,13 +19,13 @@ import java.util.Optional;
 public class CompraService {
 
     private final CompraRepository compraRepository;
-    private final ProveedorRepository proveedorRepository;
-    private final ProductoRepository productoRepository;
+    private final ProveedorService proveedorService;
+    private final ProductoService productoService;
 
-    public CompraService(CompraRepository compraRepository, ProveedorRepository proveedorRepository, ProductoRepository productoRepository) {
+    public CompraService(CompraRepository compraRepository, ProveedorService proveedorService, ProductoService productoService) {
         this.compraRepository = compraRepository;
-        this.proveedorRepository = proveedorRepository;
-        this.productoRepository = productoRepository;
+        this.proveedorService = proveedorService;
+        this.productoService = productoService;
     }
 
     public List<Compra> listarTodas() {
@@ -40,8 +40,7 @@ public class CompraService {
      * Registra una compra y ACTUALIZA EL STOCK de los productos comprados.
      */
     public Compra registrarCompra(CompraRequestDTO dto) {
-        Proveedor proveedor = proveedorRepository.findById(dto.proveedorId())
-                .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado con ID: " + dto.proveedorId()));
+        Proveedor proveedor = proveedorService.obtenerPorId(dto.proveedorId());
 
         Compra compra = new Compra();
         compra.setProveedor(proveedor);
@@ -51,8 +50,7 @@ public class CompraService {
         compra.setTotal(dto.total());
 
         for (CompraRequestDTO.DetalleCompraRequestDTO detDto : dto.detalles()) {
-            Producto producto = productoRepository.findById(detDto.productoId())
-                    .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado con ID: " + detDto.productoId()));
+            Producto producto = productoService.obtenerPorId(detDto.productoId());
 
             DetalleCompra detalle = new DetalleCompra();
             detalle.setProducto(producto);
@@ -66,7 +64,7 @@ public class CompraService {
             producto.setStockActual(stockActual + detDto.cantidad());
             
             // Guardamos la actualización del stock
-            productoRepository.save(producto);
+            productoService.guardar(producto);
         }
 
         return compraRepository.save(compra);

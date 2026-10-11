@@ -1,2 +1,2 @@
-INSERT INTO USUARIOS (username, password, rol) VALUES ('admin', '\\\/.688ZJc.F7F/Fj/OWr/E879x8l1O1jYg7t8Q9tXG.D2xKk.', 'ADMIN');
+INSERT INTO USUARIOS (username, password, rol) VALUES ('admin', '{bcrypt}$2a$10$x3bKLenLoyPJr/0061bZZugyP.pKw0jk2GJj5gduVQx6S0IyTWBTm', 'ADMIN');
 COMMIT;

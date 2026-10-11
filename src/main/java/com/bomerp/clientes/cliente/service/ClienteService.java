@@ -1,5 +1,6 @@
 package com.bomerp.clientes.cliente.service;
 import com.bomerp.clientes.consultaruc.integration.ConsultaRucClient;
+import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.clientes.cliente.repository.ClienteRepository;
 
@@ -65,5 +66,11 @@ public class ClienteService {
         nuevo.setDni(datos.dni());
         nuevo.setNombreORazonSocial(datos.nombres() + " " + datos.apellidoPaterno() + " " + datos.apellidoMaterno());
         return nuevo;
+    }
+
+    /** Fachada pública para otros módulos: evita que accedan a ClienteRepository. */
+    public Cliente obtenerPorId(Long id) {
+        return clienteRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cliente no encontrado con ID: " + id));
     }
 }

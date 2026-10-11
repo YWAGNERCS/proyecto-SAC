@@ -14,4 +14,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             Venta.EstadoPago estadoPago, LocalDate fecha);
 
     List<Venta> findByFechaVentaBetween(LocalDate desde, LocalDate hasta);
+
+    // Evita convertir dos veces la misma cotización en venta
+    boolean existsByCotizacionOrigenId(Long cotizacionId);
 }

@@ -1,15 +1,22 @@
 package com.bomerp.ventas.venta.service;
+
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.repository.VentaRepository;
 
 import com.bomerp.catalogo.producto.entity.Producto;
-import com.bomerp.catalogo.producto.repository.ProductoRepository;
+import com.bomerp.catalogo.producto.service.ProductoService;
 import com.bomerp.clientes.general.integration.Cliente;
-import com.bomerp.clientes.cliente.repository.ClienteRepository;
+import com.bomerp.clientes.cliente.service.ClienteService;
 import com.bomerp.cotizaciones.cotizacion.entity.Cotizacion;
-import com.bomerp.cotizaciones.cotizacion.repository.CotizacionRepository;
+import com.bomerp.cotizaciones.cotizacion.service.CotizacionService;
 import com.bomerp.cotizaciones.itemcotizacion.entity.ItemCotizacion;
+import com.bomerp.config.RecursoNoEncontradoException;
+import com.bomerp.config.ReglaNegocioException;
+import com.bomerp.config.StockInsuficienteException;
+import com.bomerp.mantenimiento.mantenimiento.service.MantenimientoService;
+import com.bomerp.facturacion.facturacion.service.FacturacionService;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,23 +31,23 @@ import lombok.extern.slf4j.Slf4j;
 public class VentaService {
 
     private final VentaRepository ventaRepository;
-    private final CotizacionRepository cotizacionRepository;
-    private final ClienteRepository clienteRepository;
-    private final ProductoRepository productoRepository;
-    private final com.bomerp.mantenimiento.mantenimiento.repository.MantenimientoRepository mantenimientoRepository;
-    private final com.bomerp.facturacion.facturacion.service.FacturacionService facturacionService;
+    private final CotizacionService cotizacionService;
+    private final ClienteService clienteService;
+    private final ProductoService productoService;
+    private final MantenimientoService mantenimientoService;
+    private final FacturacionService facturacionService;
 
     public VentaService(VentaRepository ventaRepository,
-                         CotizacionRepository cotizacionRepository,
-                         ClienteRepository clienteRepository,
-                         ProductoRepository productoRepository,
-                         com.bomerp.mantenimiento.mantenimiento.repository.MantenimientoRepository mantenimientoRepository,
-                         com.bomerp.facturacion.facturacion.service.FacturacionService facturacionService) {
+                        CotizacionService cotizacionService,
+                        ClienteService clienteService,
+                        ProductoService productoService,
+                        MantenimientoService mantenimientoService,
+                        FacturacionService facturacionService) {
         this.ventaRepository = ventaRepository;
-        this.cotizacionRepository = cotizacionRepository;
-        this.clienteRepository = clienteRepository;
-        this.productoRepository = productoRepository;
-        this.mantenimientoRepository = mantenimientoRepository;
+        this.cotizacionService = cotizacionService;
+        this.clienteService = clienteService;
+        this.productoService = productoService;
+        this.mantenimientoService = mantenimientoService;
         this.facturacionService = facturacionService;
     }
 
@@ -55,17 +62,40 @@ public class VentaService {
      * Toma una Cotizacion ya ACEPTADA y genera la Venta correspondiente,
      * copiando cliente, items y montos — el usuario no vuelve a digitar
      * nada de lo que ya estaba en la cotización.
+     *
+     * Reglas de negocio:
+     *  - La cotización debe estar ACEPTADA (409 si no).
+     *  - La cotización no debe haberse convertido ya en venta (409 si ya existe).
+     *  - Para productos con controlaStock() = true, el stock debe ser suficiente (409 si no).
      */
     public Venta convertirCotizacionEnVenta(Long cotizacionId, Venta.TipoPago tipoPago, Integer diasCredito) {
         log.info("Iniciando transaccion: Convertir Cotizacion {} en Venta", cotizacionId);
-        Cotizacion cotizacion = cotizacionRepository.findById(cotizacionId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Cotización no encontrada: " + cotizacionId));
 
+        Cotizacion cotizacion = cotizacionService.obtenerPorId(cotizacionId);
+
+        // ── Regla 1: Solo ACEPTADA se puede convertir ──────────────────────
         if (cotizacion.getEstado() != Cotizacion.EstadoCotizacion.ACEPTADA) {
-            throw new IllegalStateException(
-                    "Solo se puede convertir en venta una cotización ACEPTADA. Estado actual: "
+            throw new ReglaNegocioException(
+                    "Solo se puede convertir una cotización ACEPTADA. Estado actual: "
                             + cotizacion.getEstado());
+        }
+
+        // ── Regla 2: Evitar doble conversión ────────────────────────────────
+        if (ventaRepository.existsByCotizacionOrigenId(cotizacionId)) {
+            throw new ReglaNegocioException(
+                    "La cotización #" + cotizacionId + " ya fue convertida en venta anteriormente.");
+        }
+
+        // ── Regla 3: Verificar stock suficiente (solo MATERIAL_SERVICIO) ────
+        for (ItemCotizacion item : cotizacion.getItems()) {
+            Producto producto = item.getProducto();
+            if (producto.controlaStock()) {
+                int stockDisponible = producto.getStockActual() != null ? producto.getStockActual() : 0;
+                if (stockDisponible < item.getCantidad()) {
+                    throw new StockInsuficienteException(
+                            producto.getNombre(), stockDisponible, item.getCantidad());
+                }
+            }
         }
 
         Venta venta = new Venta();
@@ -76,47 +106,61 @@ public class VentaService {
         venta.setMoneda(Venta.Moneda.valueOf(cotizacion.getMoneda().name()));
 
         if (tipoPago == Venta.TipoPago.CREDITO) {
-            int dias = diasCredito != null ? diasCredito : 30; // 30 días por defecto
+            int dias = diasCredito != null ? diasCredito : 30;
             venta.setDiasCredito(dias);
             venta.setFechaLimitePago(LocalDate.now().plusDays(dias));
         } else {
-            venta.setEstadoPago(Venta.EstadoPago.PAGADO); // al contado, se paga en el momento
+            venta.setEstadoPago(Venta.EstadoPago.PAGADO);
         }
 
-        // Copia cada item de la cotización como detalle de venta,
-        // reutilizando el mismo precio que ya se había cotizado
         for (ItemCotizacion item : cotizacion.getItems()) {
             Producto producto = item.getProducto();
-            
-            // Descuento de inventario (Permite stock negativo según política)
-            int nuevoStock = (producto.getStockActual() != null ? producto.getStockActual() : 0) - item.getCantidad();
-            producto.setStockActual(nuevoStock);
-            productoRepository.save(producto);
+
+            // Descuento de inventario (solo para productos que controlan stock)
+            if (producto.controlaStock()) {
+                int nuevoStock = (producto.getStockActual() != null ? producto.getStockActual() : 0)
+                        - item.getCantidad();
+                producto.setStockActual(nuevoStock);
+                productoService.guardar(producto);
+            }
 
             venta.agregarDetalle(new DetalleVenta(
                     producto, item.getCantidad(), item.getPrecioUnitario()));
         }
 
         Venta ventaGuardada = ventaRepository.save(venta);
-        programarMantenimientosSiAplica(ventaGuardada);
-        
-        try {
-            com.bomerp.facturacion.comprobante.entity.Comprobante comp = facturacionService.emitirComprobanteParaVenta(ventaGuardada.getId());
-            facturacionService.enviarFacturaCorreo(comp.getId());
-        } catch (Exception e) {
-            log.error("Error al emitir/enviar factura: {}", e.getMessage());
-        }
+        mantenimientoService.programarParaVenta(ventaGuardada);
+
+        emitirFactura(ventaGuardada);
 
         log.info("Transaccion exitosa: Venta registrada con ID {}", ventaGuardada.getId());
         return ventaGuardada;
     }
 
-    /** Venta directa, sin cotización previa (RF: la empresa también vende sin cotizar antes) */
+    /**
+     * Venta directa, sin cotización previa
+     * (RF: la empresa también vende sin cotizar antes).
+     *
+     * Reglas de negocio:
+     *  - Para productos con controlaStock() = true, el stock debe ser suficiente (409 si no).
+     */
     public Venta registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
-                                        Venta.TipoPago tipoPago, Integer diasCredito) {
+                                       Venta.TipoPago tipoPago, Integer diasCredito) {
         log.info("Iniciando transaccion: Registrar Venta directa para Cliente ID {}", clienteId);
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + clienteId));
+
+        Cliente cliente = clienteService.obtenerPorId(clienteId);
+
+        // ── Regla: Verificar stock suficiente antes de mutar nada ───────────
+        for (ItemVentaDTO itemDTO : items) {
+            Producto producto = productoService.obtenerPorId(itemDTO.productoId());
+            if (producto.controlaStock()) {
+                int stockDisponible = producto.getStockActual() != null ? producto.getStockActual() : 0;
+                if (stockDisponible < itemDTO.cantidad()) {
+                    throw new StockInsuficienteException(
+                            producto.getNombre(), stockDisponible, itemDTO.cantidad());
+                }
+            }
+        }
 
         Venta venta = new Venta();
         venta.setCliente(cliente);
@@ -133,15 +177,15 @@ public class VentaService {
 
         Producto.Moneda monedaDetectada = null;
         for (ItemVentaDTO itemDTO : items) {
-            Producto producto = productoRepository.findById(itemDTO.productoId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Producto no encontrado: " + itemDTO.productoId()));
-            monedaDetectada = producto.getMoneda(); // asumimos 1 sola moneda por venta
-            
-            // Descuento de inventario (Permite stock negativo según política)
-            int nuevoStock = (producto.getStockActual() != null ? producto.getStockActual() : 0) - itemDTO.cantidad();
-            producto.setStockActual(nuevoStock);
-            productoRepository.save(producto);
+            Producto producto = productoService.obtenerPorId(itemDTO.productoId());
+            monedaDetectada = producto.getMoneda();
+
+            if (producto.controlaStock()) {
+                int nuevoStock = (producto.getStockActual() != null ? producto.getStockActual() : 0)
+                        - itemDTO.cantidad();
+                producto.setStockActual(nuevoStock);
+                productoService.guardar(producto);
+            }
 
             venta.agregarDetalle(new DetalleVenta(
                     producto, itemDTO.cantidad(), producto.calcularPrecioVenta()));
@@ -151,14 +195,9 @@ public class VentaService {
                 : Venta.Moneda.SOLES);
 
         Venta ventaGuardada = ventaRepository.save(venta);
-        programarMantenimientosSiAplica(ventaGuardada);
-        
-        try {
-            com.bomerp.facturacion.comprobante.entity.Comprobante comp = facturacionService.emitirComprobanteParaVenta(ventaGuardada.getId());
-            facturacionService.enviarFacturaCorreo(comp.getId());
-        } catch (Exception e) {
-            log.error("Error al emitir/enviar factura: {}", e.getMessage());
-        }
+        mantenimientoService.programarParaVenta(ventaGuardada);
+
+        emitirFactura(ventaGuardada);
 
         log.info("Transaccion exitosa: Venta registrada con ID {}", ventaGuardada.getId());
         return ventaGuardada;
@@ -172,25 +211,21 @@ public class VentaService {
 
     public Venta marcarComoPagada(Long ventaId) {
         Venta venta = ventaRepository.findById(ventaId)
-                .orElseThrow(() -> new IllegalArgumentException("Venta no encontrada: " + ventaId));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada: " + ventaId));
         venta.setEstadoPago(Venta.EstadoPago.PAGADO);
         return ventaRepository.save(venta);
     }
 
     public record ItemVentaDTO(Long productoId, Integer cantidad) {}
 
-    private void programarMantenimientosSiAplica(Venta venta) {
-        boolean requiereMantenimiento = venta.getDetalles().stream()
-                .anyMatch(d -> d.getProducto().getSector() == Producto.Sector.CLIMATIZACION ||
-                               d.getProducto().getSector() == Producto.Sector.REFRIGERACION);
-        
-        if (requiereMantenimiento) {
-            for (int i = 1; i <= 4; i++) {
-                com.bomerp.mantenimiento.mantenimiento.entity.Mantenimiento mant = new com.bomerp.mantenimiento.mantenimiento.entity.Mantenimiento();
-                mant.setVenta(venta);
-                mant.setFechaProgramada(venta.getFechaVenta().plusMonths(3L * i));
-                mantenimientoRepository.save(mant);
-            }
+    /** Emite y envía la factura electrónica; los errores no abortan la venta. */
+    private void emitirFactura(Venta venta) {
+        try {
+            com.bomerp.facturacion.comprobante.entity.Comprobante comp =
+                    facturacionService.emitirComprobanteParaVenta(venta.getId());
+            facturacionService.enviarFacturaCorreo(comp.getId());
+        } catch (Exception e) {
+            log.error("Error al emitir/enviar factura para Venta {}: {}", venta.getId(), e.getMessage());
         }
     }
 }

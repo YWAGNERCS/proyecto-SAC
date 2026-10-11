@@ -1,16 +1,16 @@
 package com.bomerp.cotizaciones.cotizacion.service;
 import com.bomerp.cotizaciones.cotizacionrequest.entity.CotizacionRequest;
 import com.bomerp.cotizaciones.pdf.service.GeneradorPdfService;
-import com.bomerp.ventas.venta.service.VentaService;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.cotizaciones.cotizacion.repository.CotizacionRepository;
 import com.bomerp.cotizaciones.cotizacion.entity.Cotizacion;
 import com.bomerp.cotizaciones.itemcotizacion.entity.ItemCotizacion;
 
 import com.bomerp.catalogo.producto.entity.Producto;
-import com.bomerp.catalogo.producto.repository.ProductoRepository;
+import com.bomerp.catalogo.producto.service.ProductoService;
 import com.bomerp.clientes.general.integration.Cliente;
-import com.bomerp.clientes.cliente.repository.ClienteRepository;
+import com.bomerp.clientes.cliente.service.ClienteService;
+import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.notificaciones.notificacion.service.NotificadorCorreo;
 import com.bomerp.notificaciones.notificacion.service.NotificadorWhatsApp;
 import org.springframework.stereotype.Service;
@@ -22,21 +22,21 @@ import java.util.List;
 public class CotizacionService {
 
     private final CotizacionRepository cotizacionRepository;
-    private final ClienteRepository clienteRepository;
-    private final ProductoRepository productoRepository;
+    private final ClienteService clienteService;
+    private final ProductoService productoService;
     private final NotificadorWhatsApp notificadorWhatsApp;
     private final NotificadorCorreo notificadorCorreo;
     private final GeneradorPdfService generadorPdfService;
 
     public CotizacionService(CotizacionRepository cotizacionRepository,
-                              ClienteRepository clienteRepository,
-                              ProductoRepository productoRepository,
+                              ClienteService clienteService,
+                              ProductoService productoService,
                               NotificadorWhatsApp notificadorWhatsApp,
                               NotificadorCorreo notificadorCorreo,
                               GeneradorPdfService generadorPdfService) {
         this.cotizacionRepository = cotizacionRepository;
-        this.clienteRepository = clienteRepository;
-        this.productoRepository = productoRepository;
+        this.clienteService = clienteService;
+        this.productoService = productoService;
         this.notificadorWhatsApp = notificadorWhatsApp;
         this.notificadorCorreo = notificadorCorreo;
         this.generadorPdfService = generadorPdfService;
@@ -56,9 +56,7 @@ public class CotizacionService {
      * producto en este momento (ver ItemCotizacion).
      */
     public Cotizacion crear(CotizacionRequest.CrearCotizacionDTO request) {
-        Cliente cliente = clienteRepository.findById(request.clienteId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Cliente no encontrado: " + request.clienteId()));
+        Cliente cliente = clienteService.obtenerPorId(request.clienteId());
 
         Cotizacion cotizacion = new Cotizacion();
         cotizacion.setCliente(cliente);
@@ -69,9 +67,7 @@ public class CotizacionService {
         cotizacion.setFechaVencimiento(LocalDate.now().plusDays(dias));
 
         for (CotizacionRequest.ItemDTO itemDTO : request.items()) {
-            Producto producto = productoRepository.findById(itemDTO.productoId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Producto no encontrado: " + itemDTO.productoId()));
+            Producto producto = productoService.obtenerPorId(itemDTO.productoId());
             cotizacion.agregarItem(new ItemCotizacion(producto, itemDTO.cantidad()));
         }
 
@@ -202,8 +198,13 @@ public class CotizacionService {
         }
     }
 
+    /** Fachada pública para otros módulos (ventas, reportes). */
+    public Cotizacion obtenerPorId(Long id) {
+        return obtenerOFallar(id);
+    }
+
     private Cotizacion obtenerOFallar(Long id) {
         return cotizacionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Cotización no encontrada: " + id));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cotización no encontrada: " + id));
     }
 }

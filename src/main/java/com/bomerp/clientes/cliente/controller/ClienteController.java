@@ -9,12 +9,12 @@ import java.util.List;
 
 /**
  * Endpoints del PANEL ADMINISTRADOR — en el proyecto final, esta ruta
- * ("/api/admin/...") quedará protegida con Spring Security, exigiendo
+ * ("/api/v1/admin/...") quedará protegida con Spring Security, exigiendo
  * login (Lisandro o Lucy). Por ahora, mientras se construye el resto
  * del sistema, queda abierta para poder probarla desde Postman/Insomnia.
  */
 @RestController
-@RequestMapping("/api/admin/clientes")
+@RequestMapping("/api/v1/admin/clientes")
 public class ClienteController {
 
     private final ClienteService clienteService;

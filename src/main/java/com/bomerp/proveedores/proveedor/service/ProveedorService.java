@@ -2,6 +2,7 @@ package com.bomerp.proveedores.proveedor.service;
 import com.bomerp.proveedores.proveedor.entity.Proveedor;
 import com.bomerp.proveedores.proveedor.repository.ProveedorRepository;
 import com.bomerp.clientes.consultaruc.integration.ConsultaRucClient;
+import com.bomerp.config.RecursoNoEncontradoException;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,5 +68,11 @@ public class ProveedorService {
         nuevo.setDni(datos.dni());
         nuevo.setNombreORazonSocial(datos.nombres() + " " + datos.apellidoPaterno() + " " + datos.apellidoMaterno());
         return nuevo;
+    }
+
+    /** Fachada pública para otros módulos: evita que accedan a ProveedorRepository. */
+    public Proveedor obtenerPorId(Long id) {
+        return proveedorRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Proveedor no encontrado con ID: " + id));
     }
 }

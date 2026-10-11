@@ -1,0 +1,6 @@
+# Copia este archivo como application-local.properties (queda ignorado por git) y completa tus valores.
+spring.datasource.password=
+spring.mail.username=
+spring.mail.password=
+decolecta.token=
+app.notificaciones.correo-oficina=

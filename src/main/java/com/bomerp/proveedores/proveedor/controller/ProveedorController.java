@@ -9,7 +9,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/proveedores")
+@RequestMapping("/api/v1/admin/proveedores")
 public class ProveedorController {
 
     private final ProveedorService proveedorService;

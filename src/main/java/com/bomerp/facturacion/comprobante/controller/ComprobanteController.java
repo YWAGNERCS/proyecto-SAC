@@ -5,7 +5,7 @@ import com.bomerp.facturacion.facturacion.service.FacturacionService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/admin/facturacion")
+@RequestMapping("/api/v1/admin/facturacion")
 public class ComprobanteController {
 
     private final FacturacionService facturacionService;

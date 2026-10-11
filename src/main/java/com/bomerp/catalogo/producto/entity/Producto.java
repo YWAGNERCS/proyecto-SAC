@@ -80,4 +80,13 @@ public class Producto {
         BigDecimal incremento = costoBase.multiply(margenDecimal);
         return costoBase.add(incremento);
     }
+
+    /**
+     * Solo los materiales de servicio llevan control estricto de stock: los equipos
+     * se compran y venden por proyecto y no se almacenan (acuerdo con el cliente).
+     * No es un getter (sin prefijo get/is), así que no se serializa ni se persiste.
+     */
+    public boolean controlaStock() {
+        return sector == Sector.MATERIAL_SERVICIO;
+    }
 }

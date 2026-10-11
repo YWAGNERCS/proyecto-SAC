@@ -1,7 +1,7 @@
 package com.bomerp.inventario.inventario.service;
 
 import com.bomerp.catalogo.producto.entity.Producto;
-import com.bomerp.catalogo.producto.repository.ProductoRepository;
+import com.bomerp.catalogo.producto.service.ProductoService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -9,10 +9,10 @@ import java.util.List;
 @Service
 public class InventarioService {
 
-    private final ProductoRepository productoRepository;
+    private final ProductoService productoService;
 
-    public InventarioService(ProductoRepository productoRepository) {
-        this.productoRepository = productoRepository;
+    public InventarioService(ProductoService productoService) {
+        this.productoService = productoService;
     }
 
     /**
@@ -20,6 +20,6 @@ public class InventarioService {
      * @return Lista de productos en estado crítico de inventario.
      */
     public List<Producto> obtenerProductosEnAlerta() {
-        return productoRepository.findProductosEnAlerta();
+        return productoService.listarEnAlerta();
     }
 }

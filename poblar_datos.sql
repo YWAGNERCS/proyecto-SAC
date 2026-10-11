@@ -19,9 +19,9 @@ VALUES ('EMPRESA', 'RefriPeru S.A.', '20987654321', NULL, 'Calle Los Mirtos 120,
 -- NOTA: Las contraseas estan encriptadas con BCrypt. 
 -- El texto plano de la contrasea para ambos usuarios es: 123456
 INSERT INTO USUARIOS (username, password, rol) 
-VALUES ('admin', '\\/.688ZJc.F7F/Fj/OWr/E879x8l1O1jYg7t8Q9tXG.D2xKk.', 'ADMINISTRADOR');
+VALUES ('admin', '{bcrypt}$2a$10$x3bKLenLoyPJr/0061bZZugyP.pKw0jk2GJj5gduVQx6S0IyTWBTm', 'ADMIN');
 
 INSERT INTO USUARIOS (username, password, rol) 
-VALUES ('asistente', '\\/.688ZJc.F7F/Fj/OWr/E879x8l1O1jYg7t8Q9tXG.D2xKk.', 'ASISTENTE');
+VALUES ('asistente', '{bcrypt}$2a$10$x3bKLenLoyPJr/0061bZZugyP.pKw0jk2GJj5gduVQx6S0IyTWBTm', 'ASISTENTE');
 
 COMMIT;

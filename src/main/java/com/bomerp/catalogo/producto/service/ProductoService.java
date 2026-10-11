@@ -2,6 +2,7 @@ package com.bomerp.catalogo.producto.service;
 import com.bomerp.catalogo.producto.repository.ProductoRepository;
 import com.bomerp.catalogo.producto.entity.Producto;
 import com.bomerp.catalogo.productocatalogo.dto.ProductoCatalogoDTO;
+import com.bomerp.config.RecursoNoEncontradoException;
 
 import org.springframework.stereotype.Service;
 
@@ -40,5 +41,16 @@ public class ProductoService {
                         && p.getStockMinimo() != null
                         && p.getStockActual() <= p.getStockMinimo())
                 .toList();
+    }
+
+    /** Fachada pública para otros módulos: evita que accedan a ProductoRepository. */
+    public Producto obtenerPorId(Long id) {
+        return productoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado con ID: " + id));
+    }
+
+    /** Productos cuyo stock actual llegó o bajó del stock mínimo. */
+    public List<Producto> listarEnAlerta() {
+        return productoRepository.findProductosEnAlerta();
     }
 }

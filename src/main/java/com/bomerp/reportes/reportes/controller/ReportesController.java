@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/admin/reportes")
+@RequestMapping("/api/v1/admin/reportes")
 public class ReportesController {
 
     private final ReportesService reportesService;
@@ -23,7 +23,7 @@ public class ReportesController {
 
     /**
      * RF: "Ventas por periodo". Sin parámetros, devuelve el mes actual.
-     * Ejemplo: /api/admin/reportes/ventas-resumen?desde=2026-09-01&hasta=2026-09-30
+     * Ejemplo: /api/v1/admin/reportes/ventas-resumen?desde=2026-09-01&hasta=2026-09-30
      */
     @GetMapping("/ventas-resumen")
     public ResponseEntity<Map<String, Object>> getResumenVentas(

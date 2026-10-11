@@ -13,7 +13,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/compras")
+@RequestMapping("/api/v1/admin/compras")
 public class CompraController {
 
     private final CompraService compraService;
