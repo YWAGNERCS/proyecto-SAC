@@ -4,8 +4,10 @@ import com.bomerp.ventas.venta.service.VentaService;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 
 import jakarta.validation.constraints.NotNull;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -18,9 +20,19 @@ public class VentaController {
         this.ventaService = ventaService;
     }
 
+    /** Reporte de ventas con su detalle. Filtros opcionales: estado y rango de fechas (yyyy-MM-dd). */
     @GetMapping
-    public List<VentaResponseDTO> listar() {
-        return ventaService.listarTodas().stream().map(VentaResponseDTO::desdeEntidad).toList();
+    public List<VentaResponseDTO> listar(
+            @RequestParam(required = false) Venta.EstadoVenta estado,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ventaService.buscar(estado, desde, hasta).stream().map(VentaResponseDTO::desdeEntidad).toList();
+    }
+
+    /** Transición REGISTRADA -> ANULADA; restaura el stock. 409 si ya estaba anulada. */
+    @PatchMapping("/{id}/anular")
+    public VentaResponseDTO anular(@PathVariable Long id) {
+        return VentaResponseDTO.desdeEntidad(ventaService.anular(id));
     }
 
     /** Endpoint estrella: conversión de cotización aceptada en venta */

@@ -64,6 +64,15 @@ public class Venta {
     @Column(nullable = false, length = 10)
     private Moneda moneda;
 
+    /**
+     * Ciclo de vida de la venta (independiente del estado de cobro).
+     * El DEFAULT permite que ddl-auto=update agregue la columna en Oracle
+     * aunque la tabla ya tenga filas: las ventas existentes quedan REGISTRADA.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", nullable = false, columnDefinition = "VARCHAR2(20) DEFAULT 'REGISTRADA'")
+    private EstadoVenta estado = EstadoVenta.REGISTRADA;
+
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleVenta> detalles = new ArrayList<>();
 
@@ -81,6 +90,10 @@ public class Venta {
 
     public enum Moneda {
         SOLES, DOLARES
+    }
+
+    public enum EstadoVenta {
+        REGISTRADA, ANULADA
     }
 
     public BigDecimal calcularSubtotal() {

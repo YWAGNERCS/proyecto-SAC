@@ -148,6 +148,15 @@ public class VentaService {
                                        Venta.TipoPago tipoPago, Integer diasCredito) {
         log.info("Iniciando transaccion: Registrar Venta directa para Cliente ID {}", clienteId);
 
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("La venta debe tener al menos un producto.");
+        }
+        for (ItemVentaDTO itemDTO : items) {
+            if (itemDTO.productoId() == null || itemDTO.cantidad() == null || itemDTO.cantidad() <= 0) {
+                throw new IllegalArgumentException("Cada línea debe tener un producto y una cantidad mayor que cero.");
+            }
+        }
+
         Cliente cliente = clienteService.obtenerPorId(clienteId);
 
         // ── Regla: Verificar stock suficiente antes de mutar nada ───────────
@@ -209,11 +218,58 @@ public class VentaService {
                 Venta.EstadoPago.PENDIENTE, LocalDate.now());
     }
 
+    @Transactional(readOnly = true)
+    public List<Venta> buscar(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
+        }
+        return ventaRepository.buscar(estado, desde, hasta);
+    }
+
     public Venta marcarComoPagada(Long ventaId) {
-        Venta venta = ventaRepository.findById(ventaId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada: " + ventaId));
+        Venta venta = obtenerPorId(ventaId);
+        if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
+            throw new ReglaNegocioException("No se puede cobrar la venta #" + ventaId + ": está ANULADA.");
+        }
+        if (venta.getEstadoPago() == Venta.EstadoPago.PAGADO) {
+            throw new ReglaNegocioException("La venta #" + ventaId + " ya está PAGADA.");
+        }
         venta.setEstadoPago(Venta.EstadoPago.PAGADO);
         return ventaRepository.save(venta);
+    }
+
+    /**
+     * Transición REGISTRADA -> ANULADA.
+     *
+     * Reglas de negocio:
+     *  - Solo se anula una venta REGISTRADA (409 si ya está ANULADA): sin esta regla,
+     *    anular dos veces devolvería el stock dos veces.
+     *  - Efecto colateral: se devuelve al inventario lo vendido de los productos con
+     *    controlaStock() = true (los equipos no se almacenan, no se restauran).
+     */
+    public Venta anular(Long ventaId) {
+        Venta venta = obtenerPorId(ventaId);
+        if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
+            throw new ReglaNegocioException("La venta #" + ventaId + " ya está ANULADA.");
+        }
+
+        for (DetalleVenta detalle : venta.getDetalles()) {
+            Producto producto = detalle.getProducto();
+            if (producto.controlaStock()) {
+                int stockActual = producto.getStockActual() != null ? producto.getStockActual() : 0;
+                producto.setStockActual(stockActual + detalle.getCantidad());
+                productoService.guardar(producto);
+            }
+        }
+        venta.setEstado(Venta.EstadoVenta.ANULADA);
+
+        log.info("Venta {} anulada: stock restaurado", ventaId);
+        return ventaRepository.save(venta);
+    }
+
+    private Venta obtenerPorId(Long ventaId) {
+        return ventaRepository.findById(ventaId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada: " + ventaId));
     }
 
     public record ItemVentaDTO(Long productoId, Integer cantidad) {}
