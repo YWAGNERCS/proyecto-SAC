@@ -1,6 +1,8 @@
-# DOCUMENTACIÓN DEL SISTEMA WEB "JD REFRIGERACIÓN"
+# DOCUMENTACIÓN DEL SISTEMA WEB "JD REFRIGERACIÓN" (SGE-JD / BomERP)
 
-> ⚠️ **Alerta de seguridad activa** — `application.properties` contiene una contraseña real de aplicación de Gmail en texto plano (`spring.mail.password`). Debe revocarse en la cuenta de Google y reemplazarse por una variable de entorno antes de compartir este repositorio con nadie más o subirlo a GitHub. Este aviso se mantiene aquí hasta confirmar que fue resuelto.
+> Última revisión contra el código: **11/10/2026** (sesión S09 de LP2).
+> Repositorio: `https://github.com/YWAGNERCS/proyecto-SAC` — backend en la rama `master`, frontend en la rama `frontend`.
+> Lo que no coincide entre el código, esta documentación o la guía del curso está listado en **[5. Por verificar](#5-por-verificar)**.
 
 ---
 
@@ -8,201 +10,293 @@
 1. [Documentación funcional](#1-documentación-funcional-qué-hace-el-sistema)
 2. [Documentación técnica](#2-documentación-técnica-cómo-está-construido)
 3. [Manual de usuario](#3-manual-de-usuario-cómo-se-opera)
-4. [Estado y trazabilidad del proyecto](#4-estado-y-trazabilidad-del-proyecto-fases-de-ingeniería-de-software)
+4. [Estado y trazabilidad del proyecto](#4-estado-y-trazabilidad-del-proyecto)
+5. [Por verificar](#5-por-verificar)
 
 ---
 
 ## 1. DOCUMENTACIÓN FUNCIONAL (¿Qué hace el sistema?)
 
 ### Objetivo general
-Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeración S.A.C., que centralice y automatice el catálogo de productos, el registro inteligente de clientes/proveedores, el flujo completo de cotizaciones y ventas, y la gestión proactiva de mantenimientos técnicos, mejorando la eficiencia operativa y la atención al cliente.
+Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeración S.A.C., que centralice y automatice el catálogo de productos, el registro de clientes/proveedores, el flujo completo de cotizaciones y ventas, y la gestión proactiva de mantenimientos técnicos, mejorando la eficiencia operativa y la atención al cliente.
 
 ### Alcance del proyecto
 
 **Incluye:**
-- Catálogo de productos con soporte multimoneda (soles/dólares) y cálculo de rentabilidad por margen porcentual.
-- Clientes y Proveedores con autocompletado en tiempo real vía API de RUC/DNI.
-- Cotizaciones con exportación a PDF y envío automático por correo (SMTP).
-- Ventas con control de crédito/contado y conversión directa desde cotización aceptada.
+- Catálogo de productos con soporte multimoneda (soles/dólares) y precio de venta calculado por margen porcentual sobre el costo.
+- Clientes y Proveedores con autocompletado por RUC/DNI (hoy con un cliente **simulado**, ver 5).
+- Cotizaciones con exportación a PDF y envío por correo (SMTP).
+- Ventas al contado o a crédito: venta directa (cabecera-detalle) y conversión desde una cotización aceptada; anulación con restauración de stock.
 - Facturación electrónica (simulada, a la espera de credenciales productivas de un OSE).
-- Mantenimientos y Garantías con alertas automáticas (Cron Job diario).
-- Inventario con incremento automático tras compras y alertas de stock mínimo.
-- Reportes: ventas por periodo, cobranza (separando pendientes de atrasadas), y cotizaciones pendientes.
+- Mantenimientos preventivos con alertas automáticas (tarea programada diaria).
+- Inventario: descuento al vender, incremento al comprar y alertas de stock mínimo.
+- Reportes: ventas por periodo, cobranza (pendientes vs. atrasadas) y cotizaciones pendientes.
+- Panel administrativo web (SPA Angular, en `bomerp-frontend`) con inicio de sesión.
 
 **Queda explícitamente fuera del alcance:**
 - Módulo de planillas y recursos humanos.
-- Pasarelas de pago online con tarjeta de crédito (las ventas se registran como pagadas o a crédito, sin procesar pagos reales).
+- Pasarelas de pago online (las ventas se registran como pagadas o a crédito, sin procesar pagos reales).
 - Control de GPS de los técnicos de mantenimiento.
-- Frontend del portal público (**pendiente de construir** — hoy solo existe como API REST, sin interfaz visual).
 
-### Módulos desarrollados (backend)
+### Módulos (backend)
 
 | # | Módulo | Estado |
 |---|---|---|
-| 1 | Catálogo | ✅ |
-| 2 | Clientes (autocompletado RUC/DNI) | ✅ |
-| 3 | Proveedores y Compras | ✅ |
-| 4 | Cotizaciones (+ PDF, + envío por correo) | ✅ |
-| 5 | Ventas (+ conversión desde cotización, + control de crédito) | ✅ |
-| 6 | Facturación (Comprobante, XML UBL 2.1) | ⚠️ Simulado — falta integración productiva con OSE (Nubefact) |
-| 7 | Inventario (alertas de stock mínimo) | ✅ |
-| 8 | Mantenimientos (cronogramas preventivos automáticos) | ✅ |
-| 9 | Notificaciones (SMTP + WhatsApp) | ✅ |
-| 10 | Reportes (ventas por periodo, cobranza, cotizaciones pendientes) | ✅ |
-| 11 | Administración (login y roles) | ✅ |
-| — | **Frontend del portal público** | ❌ No construido |
+| 1 | Catálogo (productos, categorías, catálogo público) | ✅ (ver 5: falta CRUD completo de producto y relación con categoría) |
+| 2 | Clientes (autocompletado RUC/DNI) | ⚠️ Autocompletado simulado |
+| 3 | Proveedores | ✅ |
+| 4 | Compras (incrementa stock) | ✅ |
+| 5 | Cotizaciones (+ PDF, + envío por correo) | ✅ |
+| 6 | Ventas (directa, desde cotización, crédito, anulación) | ✅ |
+| 7 | Facturación (Comprobante, XML UBL 2.1) | ⚠️ Simulado — falta OSE real (Nubefact) y correlativo real |
+| 8 | Inventario (alertas de stock mínimo) | ✅ |
+| 9 | Mantenimiento (cronograma preventivo automático) | ✅ |
+| 10 | Notificaciones (SMTP real + WhatsApp) | ⚠️ WhatsApp simulado |
+| 11 | Reportes | ⚠️ Ver 5: el resumen cuenta ventas anuladas |
+| 12 | Seguridad (usuarios, roles, login) | ⚠️ Login HTTP Basic; protección **desactivada** por configuración y roles sin uso (ver 5) |
+| — | Frontend (SPA Angular 22) | 🔄 En desarrollo (`bomerp-frontend`, rama `frontend`) |
 
 ### Requerimientos Funcionales (RF)
 
-> Nota: A continuación se detallan los **16 Requerimientos Funcionales (RF)** originales del proyecto.
-
-- **RF-01 (Autenticación):** El sistema debe permitir el inicio de sesión con credenciales seguras.
-- **RF-02 (Roles y Permisos):** El sistema debe restringir módulos según el rol del usuario (Administrador, Asistente).
-- **RF-03 (Catálogo de Productos):** El sistema debe gestionar productos soportando moneda dual (soles/dólares) y calcular rentabilidad según margen porcentual.
-- **RF-04 (Autocompletado de Clientes/Proveedores):** El sistema debe consultar una API externa (apis.net.pe) para extraer Razón Social y Dirección a partir del RUC o DNI.
-- **RF-05 (Gestión de Cotizaciones):** El sistema debe permitir la creación de cotizaciones calculando IGV y subtotales automáticamente.
-- **RF-06 (Exportación a PDF):** El sistema debe generar un documento PDF formal y con diseño corporativo al guardar una cotización.
-- **RF-07 (Envío de Cotizaciones por Correo):** El sistema debe despachar la cotización en formato PDF directamente al correo del cliente vía SMTP.
-- **RF-08 (Conversión a Venta):** El sistema debe permitir convertir una Cotización (en estado Aceptada) en una Venta sin tener que redigitar los datos.
-- **RF-09 (Control de Créditos):** El sistema debe registrar si una venta es al contado o al crédito, llevando un control de deudas pendientes.
-- **RF-10 (Facturación Electrónica):** El sistema debe generar la estructura para la emisión de comprobantes (simulación UBL 2.1).
-- **RF-11 (Actualización de Stock - Salidas):** El sistema debe descontar atómicamente el inventario al procesar una venta.
-- **RF-12 (Actualización de Stock - Entradas):** El sistema debe incrementar el inventario automáticamente al registrar compras a proveedores.
-- **RF-13 (Alertas de Stock Mínimo):** El sistema debe evaluar diariamente los productos bajo el stock crítico y generar alertas.
-- **RF-14 (Programación de Mantenimientos):** El sistema debe programar automáticamente 4 mantenimientos preventivos tras vender equipos de refrigeración/climatización.
-- **RF-15 (Alertas de Mantenimiento Asíncronas):** Un proceso en segundo plano (Cron Job) debe buscar a las 8:00 AM los mantenimientos próximos a 7 días y enviar un correo a la oficina.
-- **RF-16 (Reportes y Analítica Financiera):** El sistema debe consolidar en tiempo real los ingresos y las cuentas por cobrar, aplicando segmentación por moneda.
+| RF | Descripción | Estado real en el código |
+|---|---|---|
+| RF-01 | **Autenticación:** inicio de sesión con credenciales seguras. | ✅ HTTP Basic + BCrypt; pantalla de login en la SPA. |
+| RF-02 | **Roles y permisos:** restringir módulos según el rol (Administrador, Asistente). | ❌ Los roles `ADMIN`/`ASISTENTE` existen, pero ningún endpoint ni pantalla los usa. Planificado para S10–S11 (JWT). |
+| RF-03 | **Catálogo de productos:** moneda dual y precio por margen porcentual. | ✅ Precio = costo base × (1 + margen %). Solo hay listado de productos (sin crear/editar/eliminar por API). |
+| RF-04 | **Autocompletado de clientes/proveedores** por RUC/DNI vía API externa. | ⚠️ Existen clientes para apis.net.pe y Decolecta, pero el que se inyecta es el **simulado** (`@Primary`). |
+| RF-05 | **Cotizaciones** con cálculo automático de IGV y subtotales. | ✅ |
+| RF-06 | **PDF** formal y corporativo de la cotización. | ✅ Se genera al **enviar** la cotización (no al guardar). |
+| RF-07 | **Envío de cotizaciones por correo** (SMTP). | ✅ `POST /cotizaciones/{id}/enviar`; requiere credenciales SMTP configuradas. |
+| RF-08 | **Conversión de cotización aceptada en venta** sin redigitar. | ✅ Valida que esté ACEPTADA y que no se haya convertido antes (409). |
+| RF-09 | **Control de créditos** (contado/crédito, deudas pendientes y atrasadas). | ✅ |
+| RF-10 | **Facturación electrónica** (estructura UBL 2.1). | ⚠️ Simulada; el número del comprobante es aleatorio. |
+| RF-11 | **Descuento de stock** atómico al vender. | ✅ Solo materiales (`MATERIAL_SERVICIO`); si no alcanza → 409 y no se guarda nada. Los equipos no controlan stock. |
+| RF-12 | **Incremento de stock** al registrar compras. | ✅ |
+| RF-13 | **Alertas de stock mínimo** diarias. | ✅ 8:00 a. m., por correo a `app.notificaciones.correo-oficina` (si está vacío, no se envía). |
+| RF-14 | **Programación de 4 mantenimientos** tras vender equipos. | ✅ A los 3, 6, 9 y 12 meses, para equipos de CLIMATIZACIÓN y REFRIGERACIÓN. |
+| RF-15 | **Alertas de mantenimiento** (8:00 a. m., próximos 7 días, correo a la oficina). | ✅ |
+| RF-16 | **Reportes** de ingresos y cuentas por cobrar, segmentados por moneda. | ⚠️ Segmenta soles/dólares, pero incluye ventas anuladas (ver 5). |
+| RF-17 | **Anulación de venta** (nuevo, S09): REGISTRADA → ANULADA con restauración de stock. | ✅ `PATCH /ventas/{id}/anular`; 409 si ya estaba anulada. |
 
 ### Requerimientos No Funcionales (RNF)
 
-- **RNF-01 (Arquitectura):** Patrón en capas (Controladores, Servicios, Repositorios) sobre un monolito modular, con alta cohesión y bajo acoplamiento.
-- **RNF-02 (Rendimiento):** Tiempo de respuesta de endpoints transaccionales y analíticos no debe superar 1000 ms bajo carga estándar. *(pendiente de medición formal — hoy es un objetivo, no un dato verificado)*
-- **RNF-03 (Interoperabilidad):** Backend desacoplado del frontend, exponiendo únicamente APIs RESTful en JSON.
-- **RNF-04 (Mantenibilidad e IoC):** Inyección de dependencias vía Spring; **toda credencial sensible debe externalizarse** en variables de entorno (ver alerta de seguridad al inicio de este documento — actualmente incumplido en `application.properties`).
-- **RNF-05 (Seguridad):** Endpoints `/api/admin/**` protegidos con HTTP Basic Auth; contraseñas de usuario almacenadas con BCrypt.
+- **RNF-01 (Arquitectura):** monolito modular en capas (controladores, servicios, repositorios), un módulo por paquete. *Hoy hay 2 módulos que usan repositorios de otros (ver 5).*
+- **RNF-02 (Rendimiento):** endpoints por debajo de 1000 ms con carga estándar. *Objetivo, aún sin medición formal.*
+- **RNF-03 (Interoperabilidad):** backend desacoplado del frontend, solo API REST en JSON, versionada en `/api/v1/...`.
+- **RNF-04 (Mantenibilidad e IoC):** inyección de dependencias de Spring; credenciales externalizadas en variables de entorno o `application-local.properties` (ignorado por git). ✅ Cumplido en el archivo; ver 5 sobre el historial de git.
+- **RNF-05 (Seguridad):** `/api/v1/admin/**` protegido con HTTP Basic y contraseñas con BCrypt. *El código lo soporta, pero hoy está desactivado (`app.security.admin-requiere-login=false`).*
 
 ### Casos de uso / Historias de usuario
 
-- **CU-01 (Cotizar):** El Vendedor selecciona cliente y productos; el sistema calcula IGV y totales; al guardar, envía el PDF al cliente automáticamente.
-- **CU-02 (Alertas de garantía):** El sistema, de forma autónoma, revisa diariamente a las 8:00 AM los mantenimientos próximos a 7 días y envía un correo a la oficina con la lista de clientes a contactar.
+- **CU-01 (Cotizar):** el vendedor selecciona cliente y productos; el sistema calcula IGV y totales; luego envía el PDF al cliente por correo.
+- **CU-02 (Alertas de garantía):** el sistema revisa a diario, a las 8:00 a. m., los mantenimientos de los próximos 7 días y envía un correo a la oficina con los clientes a contactar.
+- **CU-03 (Vender):** el vendedor registra una venta directa con varias líneas de producto, revisa el total y confirma; el sistema descuenta stock, programa mantenimientos y emite el comprobante.
+- **CU-04 (Anular venta):** el usuario anula una venta registrada; el sistema devuelve al inventario lo vendido y la venta deja de contar en el reporte de la SPA.
 
 ---
 
 ## 2. DOCUMENTACIÓN TÉCNICA (¿Cómo está construido?)
 
-### Stack tecnológico
+### Stack tecnológico (según `pom.xml` y `package.json`)
 
-- **Backend:** Java 21 (JDK 21) — *ver nota de versión más abajo*
-- **Framework:** Spring Boot 3.5.16
-- **ORM/Persistencia:** Spring Data JPA / Hibernate
-- **Seguridad:** Spring Security (HTTP Basic Auth + BCrypt)
-- **Base de datos:** Oracle Database Express Edition (desarrollo local también soporta H2 en memoria)
-- **Librerías adicionales:** `openpdf` 1.3.32 (PDFs), `spring-boot-starter-mail` (SMTP), `springdoc-openapi-starter-webmvc-ui` 2.6.0 (Swagger)
-
-> **Nota sobre la versión de Java:** existe un registro de una herramienta automatizada de modernización que intentó actualizar el proyecto a Java 25 (con Spring Boot 3.5.16) y reportó éxito en compilación y pruebas. Sin embargo, el `pom.xml` actual todavía declara `<java.version>21</java.version>`. **Antes de asumir que el proyecto corre en Java 25, hay que confirmar con quien ejecutó esa herramienta si el cambio se revirtió intencionalmente o quedó a medias.**
+| Capa | Tecnología |
+|---|---|
+| Lenguaje | Java 21 |
+| Framework | Spring Boot **3.3.4** (Spring Web, Data JPA, Validation, Security, Mail) |
+| ORM | Hibernate 6.5 (`ddl-auto=update`) |
+| Base de datos | Oracle Database 23 Free (Docker `gvenzl/oracle-free:23-slim`, servicio `FREEPDB1`, puerto **1522**) |
+| Seguridad | Spring Security: HTTP Basic + BCrypt (`DelegatingPasswordEncoder`, hashes con prefijo `{bcrypt}`) |
+| Documentación API | springdoc-openapi 2.6.0 (Swagger UI en `/swagger-ui.html`) |
+| Otras | OpenPDF 1.3.32, Lombok, driver `ojdbc11`; H2 incluido como dependencia (sin perfil configurado) |
+| Frontend | Angular 22 (standalone, signals, zoneless), en `bomerp-frontend` |
 
 ### Arquitectura de software
 
-Monolito modular con patrón en capas (estilo MVC para las APIs REST):
+Monolito modular: **un solo proyecto Maven y un solo ejecutable Spring Boot**. Cada módulo es un paquete bajo `com.bomerp` con capas internas:
 
-1. **Controllers** — exponen los endpoints REST (`/api/admin/...`, `/api/publico/...`).
-2. **Services** — contienen las reglas de negocio (cálculo de subtotales, validaciones de estado, etc.).
-3. **Repositories** — interfaces JPA que se comunican con Oracle/H2 sin SQL manual.
-4. **Integrations** — clientes REST hacia servicios externos (`ConsultaRucClient`, `OseClient`/`NubefactClientSimulado`).
+1. **Controllers**: endpoints REST (`/api/v1/admin/...`, `/api/v1/publico/...`).
+2. **Services**: reglas de negocio y transacciones (`@Transactional`).
+3. **Repositories**: interfaces Spring Data JPA.
+4. **Integrations**: clientes hacia servicios externos detrás de interfaces (`ConsultaRucClient`, `OseClient`, `NotificadorCorreo`, `NotificadorWhatsApp`).
 
-### Modelo de datos (resumen)
-
-| Tabla | Campos clave |
-|---|---|
-| `PRODUCTOS` | id (PK), nombre, sector, costo_base, moneda, stock_actual, stock_minimo |
-| `CLIENTES` / `PROVEEDORES` | id (PK), tipo (Empresa/Natural), ruc, dni, correo |
-| `VENTAS` | id (PK), cliente_id (FK), cotizacion_id (FK), tipo_pago, estado_pago |
-| `DETALLE_VENTAS` | id (PK), venta_id (FK), producto_id (FK), cantidad, precio_unitario |
-| `MANTENIMIENTOS` | id (PK), venta_id (FK), fecha_programada, estado, alerta_enviada |
-
-*El modelo apunta a 3FN; pendiente de verificación formal con diagrama entidad-relación completo.*
+Errores: `GlobalExceptionHandler` traduce excepciones a 400 (validación), 404 (`RecursoNoEncontradoException`), 409 (`ReglaNegocioException`, `StockInsuficienteException`) y 500 sin filtrar detalles.
 
 ### Estructura del código
 
 ```text
-src/main/java/com/jdrefrigeracion/
-├── catalogo/        (productos, precios, stock)
-├── clientes/         (clientes + integración RUC/DNI)
-├── compras/          (registro de compras, incremento de stock)
-├── proveedores/      (datos maestros de proveedores)
-├── config/           (Spring Security)
-├── cotizaciones/     (cotizaciones, generación de PDF)
-├── facturacion/      (comprobantes electrónicos, integración OSE)
-├── inventario/       (alertas de stock mínimo)
-├── mantenimiento/    (cron jobs, alertas de garantía)
-├── notificaciones/   (envío por SMTP y WhatsApp)
-├── reportes/         (ventas por periodo, cobranza, cotizaciones pendientes)
-├── seguridad/        (usuarios, roles, autenticación)
-└── ventas/           (procesamiento de ventas y créditos)
+src/main/java/com/bomerp/
+├── BomerpApplication.java
+├── catalogo/        categoria/, producto/, productocatalogo/ (catálogo público, DTO sin costo ni margen)
+├── clientes/        cliente/, consultaruc/ (RUC/DNI), general/ (entidad Cliente)
+├── compras/         compra/, detallecompra/
+├── config/          SecurityConfig (seguridad + CORS), GlobalExceptionHandler, excepciones
+├── cotizaciones/    cotizacion/, itemcotizacion/, cotizacionrequest/, pdf/
+├── facturacion/     comprobante/, facturacion/, nubefact/, ose/, pdf/
+├── inventario/      alertas y tarea programada de stock mínimo
+├── mantenimiento/   programación y tarea programada de alertas
+├── notificaciones/  correo (real) y WhatsApp (simulado)
+├── proveedores/     proveedor/
+├── reportes/        consultas agregadas
+├── seguridad/       Usuario, UsuarioRepository, UserDetailsServiceImpl, AuthController
+└── ventas/          venta/, detalleventa/
 ```
+
+### Modelo de datos (tablas reales, esquema `JDREFRIGERACION`)
+
+| Tabla | Campos clave |
+|---|---|
+| `PRODUCTOS` | id, nombre, sector, costo_base, margen_porcentaje, moneda, stock_actual, stock_minimo, visible_en_catalogo |
+| `CATEGORIAS` | id, nombre (sin relación con `PRODUCTOS`, ver 5) |
+| `CLIENTES` / `PROVEEDORES` | id, tipo (empresa/natural), ruc, dni, correo, teléfono |
+| `COTIZACIONES` / `ITEMS_COTIZACION` | cabecera-detalle de cotización |
+| `VENTAS` | id, cliente_id, cotizacion_id, fecha_venta, tipo_pago, dias_credito, fecha_limite_pago, **estado** (REGISTRADA/ANULADA), estado_pago, moneda, comprobante_id |
+| `DETALLE_VENTA` | id, venta_id, producto_id, cantidad, precio_unitario |
+| `COMPRAS` / `DETALLE_COMPRA` | cabecera-detalle de compra |
+| `COMPROBANTES` | comprobante electrónico simulado |
+| `MANTENIMIENTOS` | id, venta_id, fecha_programada, estado, alerta_enviada |
+| `USUARIOS` | id, username, password (BCrypt), rol (`ADMIN` / `ASISTENTE`) |
+
+### API REST (v1)
+
+| Recurso | Endpoints |
+|---|---|
+| Autenticación | `GET /api/v1/admin/auth/me` (valida credenciales y devuelve usuario y roles) |
+| Catálogo público | `GET /api/v1/publico/catalogo` (sin login, sin costo ni margen) |
+| Categorías | `GET`, `POST /categorias` · `GET`, `PUT`, `DELETE /categorias/{id}` |
+| Productos | `GET /productos` |
+| Clientes | `GET`, `POST /clientes` · `GET /clientes/autocompletar/ruc/{ruc}` · `GET /clientes/autocompletar/dni/{dni}` |
+| Proveedores | `GET`, `POST /proveedores` · `GET`, `PUT`, `DELETE /proveedores/{id}` · autocompletar RUC/DNI |
+| Cotizaciones | `GET`, `POST /cotizaciones` · `POST /cotizaciones/{id}/aceptar` · `/rechazar` · `/enviar` |
+| Ventas | `GET /ventas?estado=&desde=&hasta=` · `POST /ventas/directa` · `POST /ventas/desde-cotizacion/{id}` · `GET /ventas/pagos-atrasados` · `POST /ventas/{id}/marcar-pagada` · `PATCH /ventas/{id}/anular` |
+| Compras | `GET`, `POST /compras` · `GET /compras/{id}` |
+| Inventario | `GET /inventario/alertas` |
+| Mantenimientos | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` · `POST /mantenimientos/simular-alerta` |
+| Facturación | `POST /facturacion/emitir/{ventaId}` · `POST /facturacion/{id}/enviar` |
+| Reportes | `GET /reportes/ventas-resumen?desde=&hasta=` · `GET /reportes/cobranza` · `GET /reportes/cotizaciones-pendientes` |
+
+*(Todas las rutas sin prefijo van bajo `/api/v1/admin`.)*
 
 ### Guía de instalación
 
-1. Instalar **JDK 21** (confirmar que coincide con lo que declara `pom.xml` antes de instalar otra versión) y configurar `JAVA_HOME`.
-2. Instalar **Oracle Database XE** (o usar el perfil H2 en memoria ya configurado para desarrollo).
-3. Configurar credenciales de base de datos **como variables de entorno**, no directamente en `application.properties`:
+1. Instalar **JDK 21**, Maven y Docker Desktop.
+2. Base de datos Oracle en Docker (desde la carpeta que contiene `docker-compose.yml`):
+   - Primera vez: `docker volume create sge-jd-oracle-data` y luego `docker compose up -d`.
+   - Si el contenedor ya existe: `docker start SGE-JD`.
+   - Esperar a que `docker logs SGE-JD` muestre `DATABASE IS READY TO USE!`.
+3. Credenciales locales: copiar `src/main/resources/application-local.properties.example` como `application-local.properties` (está en `.gitignore`) y completar al menos:
    ```properties
-   spring.datasource.url=jdbc:oracle:thin:@localhost:1521:xe
-   spring.datasource.username=${DB_USERNAME}
-   spring.datasource.password=${DB_PASSWORD}
-   spring.mail.password=${MAIL_PASSWORD}
+   spring.datasource.password=<APP_USER_PASSWORD del docker-compose>
    ```
-4. Ejecutar `mvn clean install`.
-5. Ejecutar `mvn spring-boot:run`.
-
-> **Control de versiones:** el workspace no está inicializado como repositorio Git (confirmado también por la herramienta de modernización automática). Se recomienda crear un repositorio compartido (GitHub) cuanto antes — ya se ha perdido trabajo entre integrantes por depender de compartir ZIPs manualmente.
+   También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`.
+4. Ejecutar `mvn spring-boot:run` (puerto 8080). Swagger: `http://localhost:8080/swagger-ui.html`.
+5. Frontend: en `bomerp-frontend`, `npm install` y `npm start` (puerto 4200).
 
 ---
 
 ## 3. MANUAL DE USUARIO (¿Cómo se opera?)
 
 ### Requisitos de entorno
-- Navegador web actualizado (Chrome, Firefox o Edge).
-- Conexión a internet obligatoria (consulta de RUC/DNI, envío de correos, facturación electrónica).
+- Navegador actualizado (Chrome, Firefox o Edge).
+- Internet para la consulta de RUC/DNI real, el envío de correos y la facturación electrónica real (hoy simuladas, salvo el correo).
 
 ### Acceso al sistema
 
-> ⚠️ Las credenciales de ejemplo de esta sección son solo para el entorno de desarrollo/pruebas. **No deben quedar documentadas en texto plano en un repositorio una vez el sistema pase a un ambiente real** — reemplazar por contraseñas generadas y gestionadas de forma segura.
+> ⚠️ Credenciales solo de desarrollo. No deben usarse ni documentarse así en un ambiente real.
 
-- Cuenta de Gerencia: `lisandro`
-- Cuenta de Asistente: `lucy`
+- Usuarios existentes hoy en la base local: `admin` (rol ADMIN) y `asistente` (rol ASISTENTE), contraseña `123456`.
+- `data.sql` define además `lisandro` y `lucy`, pero ese archivo **no se ejecuta** (`spring.sql.init.mode=never`).
 
 ### Flujos de operación
 
-- **Registrar cliente B2B:** ingresar el RUC y usar el autocompletado; el sistema trae razón social y dirección automáticamente.
-- **Convertir cotización en venta:** buscar la cotización por ID, confirmar que esté "Aceptada", elegir contado/crédito y presionar "Convertir" — el sistema descuenta stock y genera el comprobante.
-- **Consultar reportes financieros:** `/api/admin/reportes/ventas-resumen` (acepta `?desde=&hasta=`), `/api/admin/reportes/cobranza` (separa pendientes de atrasadas), `/api/admin/reportes/cotizaciones-pendientes`.
-- **Mantenimientos:** no requiere revisión manual — el sistema envía un correo diario a las 8:00 AM con los clientes a contactar en los próximos 7 días.
+- **Iniciar sesión:** en la SPA (`http://localhost:4200`) con usuario y contraseña; "Salir" cierra la sesión.
+- **Registrar cliente B2B:** ingresar el RUC y usar el autocompletado (hoy devuelve datos simulados).
+- **Venta directa:** Ventas → Nueva venta → elegir cliente y forma de pago → agregar líneas buscando el producto por nombre (muestra precio y stock) → revisar subtotal, IGV y total → Registrar y confirmar el resumen.
+- **Convertir cotización en venta:** la cotización debe estar ACEPTADA; se elige contado o crédito y el sistema descuenta stock, programa mantenimientos y genera el comprobante.
+- **Reporte de ventas:** Ventas → filtros por estado y rango de fechas (botón "Buscar"); muestra totales por moneda, ticket promedio y el detalle de cada venta.
+- **Anular una venta:** en el reporte, botón "Anular" (solo en ventas REGISTRADAS) → confirmar; el stock de los materiales se restaura.
+- **Reportes financieros (API):** `/api/v1/admin/reportes/ventas-resumen`, `/cobranza` y `/cotizaciones-pendientes`.
+- **Mantenimientos:** el sistema envía a diario, a las 8:00 a. m., un correo con los clientes a contactar en los próximos 7 días (requiere `CORREO_OFICINA`).
 
 ### Preguntas frecuentes
 
-- **"El cliente no recibió el correo de la cotización":** verificar el dominio del correo (errores comunes como `.con` en vez de `.com`); confirmar que el servidor tenga salida al puerto 587 (SMTP).
-- **"El sistema permite stock negativo":** es una decisión de política de negocio, no un error — si ocurre de forma inesperada, revisar si el producto está mal configurado en el catálogo.
+- **"El cliente no recibió el correo":** verificar el correo del cliente (errores como `.con`), las credenciales SMTP (`MAIL_USERNAME`/`MAIL_PASSWORD`) y la salida al puerto 587.
+- **"No me deja vender por stock":** los materiales no admiten stock negativo (409 "Stock insuficiente"); registre una compra o ajuste la cantidad. Los equipos no controlan stock.
+- **"El backend no arranca: Network Adapter could not establish the connection":** Oracle no está encendido; inicie Docker Desktop y `docker start SGE-JD`.
 - **Soporte técnico:** equipo de desarrollo estudiantil (Yoel Wagner, Aron Rodrigo, Ronald Apaza).
 
 ---
 
-## 4. ESTADO Y TRAZABILIDAD DEL PROYECTO (Fases de Ingeniería de Software)
+## 4. ESTADO Y TRAZABILIDAD DEL PROYECTO
+
+### Fases de ingeniería de software
 
 | # | Fase | Estado |
 |---|---|---|
 | 1 | Inicio y planificación | ✅ Completo |
-| 2 | Levantamiento de información | ✅ Completo (pendiente confirmar formato exacto de envío a SUNAT con Lucy) |
-| 3 | Análisis de requisitos | ✅ Completo (16 RF originales, consolidados en 8 en esta versión) |
+| 2 | Levantamiento de información | ✅ Completo (pendiente confirmar con Lucy el formato exacto de envío a SUNAT) |
+| 3 | Análisis de requisitos | ✅ 16 RF originales + RF-17 (anulación, S09) |
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
 | 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
-| 7 | Desarrollo | 🔄 11 de 12 módulos backend completos; frontend no iniciado |
-| 8 | Pruebas y validación | 🔄 Pruebas de lógica realizadas de forma informal; falta plan de pruebas formal (PT-001, PT-002...) |
-| 9 | Implementación/despliegue | ⏳ Pendiente — sin ambiente accesible para el cliente aún |
-| 10 | Documentación técnica | 🔄 Este documento; falta manual técnico consolidado independiente |
-| 11 | Manual de usuario | ⏳ Pendiente (depende del frontend) |
+| 7 | Desarrollo | 🔄 12 módulos backend operativos (3 con integraciones simuladas); SPA en desarrollo |
+| 8 | Pruebas y validación | 🔄 Pruebas manuales de API; pruebas automatizadas mínimas (ver 5) |
+| 9 | Implementación/despliegue | ⏳ Pendiente — sin ambiente accesible para el cliente |
+| 10 | Documentación técnica | 🔄 Este documento y `CONTEXTO.md` |
+| 11 | Manual de usuario | 🔄 Sección 3 (se completará con la SPA) |
 | 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
-| 13 | Mantenimiento y evolución | ⏳ Pendiente control de versiones real (Git) |
+| 13 | Mantenimiento y evolución | ✅ Git/GitHub en uso (`YWAGNERCS/proyecto-SAC`) |
 
-> **Prioridad sugerida:** (1) resolver la alerta de seguridad de la contraseña expuesta, (2) construir la Matriz de Trazabilidad de Requisitos (Fase 12) mapeando los 16 RF originales → módulo → clase → prueba, (3) iniciar el Frontend del portal público.
+### Avance según las sesiones de LP2
+
+| Sesión | Tema | Estado en el proyecto |
+|---|---|---|
+| S1–S5 | Backend REST, CRUD, relaciones, cabecera-detalle, reportes, CORS | ✅ con observaciones (ver 5: CRUD de producto y Categoría–Producto) |
+| S7 | SPA Angular: layout, rutas, servicios HTTP | ✅ |
+| S8 | CRUD de tablas dependientes | ✅ Categorías, clientes, proveedores, compras |
+| S9 | Formulario transaccional cabecera-detalle | ✅ Venta directa con FormArray, reporte filtrable y anulación |
+| S10 | Seguridad backend JWT y roles | ⏳ Próxima (hoy HTTP Basic, que será reemplazado) |
+| S11 | Seguridad frontend (guards, interceptores, 401/403) | 🔄 Login, guard e interceptor Basic ya existen |
+
+---
+
+## 5. Por verificar
+
+Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el código y la guía del curso. Ordenadas por importancia.
+
+### Seguridad
+1. **La API está abierta sin login.** `application.properties` tiene `app.security.admin-requiere-login=false`, así que cualquiera puede llamar a `/api/v1/admin/**`. La SPA ya tiene login: hay que pasarlo a `true` (o resolverlo con JWT en S10).
+2. **Credenciales en el historial de git.** La contraseña de aplicación de Gmail y el token de Decolecta ya no están en `application.properties`, pero siguen en commits anteriores. **Confirmar** que la contraseña se revocó en Google y que el token se regeneró.
+3. **Roles sin efecto (RF-02).** `ADMIN` y `ASISTENTE` pueden hacer exactamente lo mismo. Definir con el cliente qué puede hacer la asistente.
+4. **Usuarios de prueba.** La documentación anterior hablaba de `lisandro`/`lucy`, pero en la base solo existen `admin`/`asistente` (los de `data.sql` nunca se insertan). Decidir cuáles son los oficiales.
+5. **La SPA guarda el token Basic en `localStorage`**, que equivale a guardar la contraseña. Se resuelve al migrar a JWT (S10–S11).
+6. **`/docs` quedará bloqueado al activar el login:** `SecurityConfig` no hace `permitAll()` para `/docs/**` ni `/images/**`.
+
+### Funcionalidad
+7. **El reporte `ventas-resumen` cuenta ventas anuladas.** `ReportesService` suma toda venta PAGADA del periodo, incluidas las ANULADAS (agregadas en S09). Revisar también `/reportes/cobranza`.
+8. **Al anular una venta** no se cancelan sus mantenimientos programados ni se genera nota de crédito por el comprobante ya emitido.
+9. **Producto sin categoría.** `Producto` no tiene relación con `Categoria`, aunque la S3 del curso pide Categoría–Producto.
+10. **CRUD de producto incompleto.** Solo existe `GET /productos`; faltan crear, editar y eliminar (S2 del curso). Clientes tampoco tiene editar ni eliminar.
+11. **Autocompletado RUC/DNI simulado.** `ConsultaRucClientSimulado` tiene `@Primary`; el comentario de `ConsultaRucClientDecolecta` dice lo contrario. Definir qué proveedor usar.
+12. **Correlativo de comprobantes aleatorio** (`Math.random()` en `FacturacionService`). SUNAT exige numeración secuencial por serie.
+13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
+14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.
+15. **Alerta de stock mínimo** sobre todos los productos (`stockActual <= stockMinimo`), incluidos los equipos, que no controlan stock. Confirmar si solo debería aplicar a materiales.
+16. **Cotizaciones vencidas:** existe `marcarVencidas()`, pero no está programada (`@Scheduled`).
+17. **Moneda mixta:** el backend acepta una venta con productos en soles y en dólares y toma la moneda del último. La SPA ya lo bloquea; falta validarlo en el backend.
+18. **`ProductoController` usa el repositorio directamente**, sin pasar por `ProductoService`.
+
+### Arquitectura y alineamiento con el curso
+19. **Versión de Spring Boot.** Esta documentación decía 3.5.16; el `pom.xml` usa **3.3.4**. La guía del curso (ADR-003) fija **Spring Boot 4.0.7**. Confirmar con el docente si es obligatorio migrar.
+20. **Spring Modulith no está implementado** (ADR-002) ni hay `ModularityTests`. La regla de módulos solo está documentada.
+21. **Límites entre módulos incumplidos:** `FacturacionService` usa `VentaRepository`, y `ReportesService` usa `VentaRepository` y `CotizacionRepository`.
+22. **Esquemas Oracle por módulo.** El curso propone esquemas `BOM_CATALOGO`, `BOM_VENTAS`, etc.; aquí todo está en un solo esquema (`JDREFRIGERACION`), y `CONTEXTO.md` mencionaba un prefijo `JD_<MODULO>` que no se usa.
+23. **Paquete raíz.** Documentaciones anteriores decían `com.jdrefrigeracion` o `pe.edu.upeu.sgejd`; el real es `com.bomerp`.
+24. **Seguridad:** el curso pide JWT en S10. El HTTP Basic actual es transitorio.
+25. **Herramienta de modernización:** `.github/modernize/` registra un intento de migrar a Java 25 / Boot 3.5.16 que no se aplicó. Confirmar y borrar esa carpeta si ya no sirve.
+
+### Pruebas y configuración
+26. **Pruebas automatizadas casi inexistentes.** `ProductoCrudTest` necesita Oracle encendido, y `HashGenTest` solo imprime un hash. No hay pruebas de ventas, de rollback ni de módulos.
+27. **H2 incluido pero sin perfil.** La dependencia está en el `pom.xml`, pero no hay configuración H2 activa. Además, `application-test.properties` está en `src/main/resources` y solo cambia el puerto.
+28. **Paquete de arreglos 2 sin aplicar.** `Claude/arreglos2` (pruebas de ventas, correlativo secuencial, límites entre módulos) no está en el código. Decidir si se aplica.
+29. **Contenedor Docker:** la documentación anterior lo llamaba `SGE-DJ`; el real es **`SGE-JD`**. El volumen `sge-jd-oracle-data` está marcado como `external` en `docker-compose.yml`, así que debe existir antes de `docker compose up`.
+30. **Requisitos "16 RF consolidados en 8":** la documentación anterior lo decía, pero no existe esa versión consolidada. Confirmar si hay otro documento con los 8 RF.
