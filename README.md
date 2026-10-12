@@ -31,17 +31,23 @@ Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), co
 
 ## ✨ Funcionalidades
 
-| Módulo | Qué hace |
-|---|---|
-| 🛒 **Ventas** | Venta directa cabecera-detalle o desde una cotización aceptada; contado o crédito; **anulación con restauración de stock** |
-| 📄 **Cotizaciones** | Cálculo de IGV y totales, PDF corporativo y envío por correo; aceptar o rechazar |
-| 📦 **Catálogo** | Productos multimoneda (S/ y US$) con precio por margen; categorías; catálogo público sin costos internos |
-| 🏭 **Compras e inventario** | Compras a proveedor que suben el stock; alertas diarias de stock mínimo |
-| 🧾 **Facturación** | Comprobante electrónico UBL 2.1 *(OSE simulado)* |
-| 🔧 **Mantenimiento** | 4 mantenimientos preventivos automáticos (3/6/9/12 meses) y alertas a la oficina |
-| 👥 **Clientes y proveedores** | Datos maestros con autocompletado por RUC/DNI *(simulado)* |
-| 📊 **Reportes** | Ventas por periodo, cobranza (pendiente/atrasada), cotizaciones pendientes |
-| 🔐 **Seguridad** | Login HTTP Basic + BCrypt, roles `ADMIN` / `ASISTENTE` *(JWT en camino)* |
+**11 módulos**, agrupados por tipo:
+
+| Tipo | Módulo | Qué hace |
+|---|---|---|
+| Maestro | 📦 **Catálogo** | Productos multimoneda (S/ y US$) con precio por margen; categorías; catálogo público sin costos internos |
+| Maestro | 👥 **Clientes** | Datos maestros con autocompletado por RUC/DNI *(simulado)* |
+| Maestro | 🚚 **Proveedores** | Datos maestros de proveedores con autocompletado por RUC/DNI |
+| Transaccional | 📄 **Cotizaciones** | Cálculo de IGV y totales, PDF corporativo y envío por correo; aceptar o rechazar |
+| Transaccional | 🛒 **Ventas** | Venta directa cabecera-detalle o desde una cotización aceptada; contado o crédito; **anulación con restauración de stock** |
+| Transaccional | 🏭 **Compras** | Compras a proveedor que suben el stock automáticamente |
+| Soporte | 📉 **Inventario** | Alertas diarias de stock mínimo |
+| Operativo | 🔧 **Posventa** | 4 mantenimientos preventivos automáticos (3/6/9/12 meses) tras vender equipos, y alertas a la oficina *(paquete `mantenimiento`)* |
+| Integración | 🧾 **Facturación** | Comprobante electrónico UBL 2.1 *(OSE simulado)* |
+| Integración | ✉️ **Notificaciones** | Correo SMTP real y WhatsApp *(simulado)* |
+| Transversal | 🔐 **Seguridad** | Usuarios, roles `ADMIN` / `ASISTENTE`, login HTTP Basic + BCrypt *(JWT en S10)* |
+
+📊 **Reportes:** no son un módulo aparte. **Cada módulo expone sus propias consultas**: ventas (reporte filtrable por estado y fechas, resumen por periodo, cobranza) y cotizaciones (pendientes). *Hoy el resumen, la cobranza y las cotizaciones pendientes siguen en el paquete `reportes`; falta moverlos a su módulo.*
 
 **Reglas de negocio destacadas**
 - El servidor calcula precios, IGV y totales: el cliente solo envía producto y cantidad.
@@ -60,10 +66,10 @@ flowchart LR
     PUB["🌐 Catálogo público"] -->|/api/v1/publico| API
     subgraph API["⚙️ Spring Boot · com.bomerp"]
         direction TB
-        V[ventas] --- C[cotizaciones] --- F[facturacion]
+        C[cotizaciones] --- V[ventas] --- P[posventa]
         CAT[catalogo] --- INV[inventario] --- COM[compras]
-        CLI[clientes] --- PRO[proveedores] --- M[mantenimiento]
-        R[reportes] --- N[notificaciones] --- S[seguridad]
+        CLI[clientes] --- PRO[proveedores] --- F[facturacion]
+        N[notificaciones] --- S[seguridad]
     end
     API --> DB[("🗄️ Oracle 23 Free<br/>Docker · puerto 1522")]
     API -.-> EXT["📧 SMTP · OSE · RUC/DNI"]
@@ -135,7 +141,8 @@ Base: `/api/v1/admin` (panel) · `/api/v1/publico` (sin login). Contrato complet
 | Compras | `GET` `POST /compras` · `GET /compras/{id}` |
 | Clientes | `GET` `POST /clientes` · `/clientes/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
 | Proveedores | CRUD `/proveedores` · `/proveedores/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
-| Reportes | `/reportes/ventas-resumen` · `/reportes/cobranza` · `/reportes/cotizaciones-pendientes` |
+| Posventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` |
+| Consultas *(por mover a su módulo)* | `/reportes/ventas-resumen` · `/reportes/cobranza` · `/reportes/cotizaciones-pendientes` |
 | Auth | `GET /auth/me` |
 
 Errores uniformes: `400` datos inválidos · `404` no encontrado · `409` regla de negocio o stock insuficiente.
@@ -153,10 +160,10 @@ src/main/java/com/bomerp/
 ├── cotizaciones/    cotizaciones + PDF
 ├── facturacion/     comprobantes electrónicos (OSE)
 ├── inventario/      alertas de stock mínimo
-├── mantenimiento/   postventa y alertas programadas
+├── mantenimiento/   módulo Posventa (renombrar paquete a posventa/: pendiente)
 ├── notificaciones/  correo y WhatsApp
 ├── proveedores/     proveedores
-├── reportes/        consultas agregadas
+├── reportes/        consultas por repartir a ventas/ y cotizaciones/ (pendiente)
 ├── seguridad/       usuarios, roles, autenticación
 └── ventas/          ventas cabecera-detalle + anulación
 ```
@@ -173,7 +180,7 @@ src/main/java/com/bomerp/
 - [ ] **S11** · Seguridad frontend (guards, interceptores, 401/403)
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, el reporte de ventas aún cuenta las anuladas, y las integraciones RUC/OSE/WhatsApp son simuladas. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#5-por-verificar)**.
+> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, el reporte de ventas aún cuenta las anuladas, las integraciones RUC/OSE/WhatsApp son simuladas, y falta renombrar el paquete `mantenimiento` a `posventa` y repartir `reportes` entre sus módulos. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 
@@ -189,11 +196,11 @@ src/main/java/com/bomerp/
 
 ## 👥 Equipo
 
-| Integrante | Módulos |
-|---|---|
-| **Yoel Wagner Chambi Sirena** | Cotizaciones · coordinación con el cliente |
-| **Aron Rodrigo** | Ventas · Facturación |
-| **Ronald Apaza** | Compras · Proveedores · Inventario |
+| Integrante | Módulos a cargo | Enfoque |
+|---|---|---|
+| **Yoel Wagner Chambi Sirena** | Proveedores · Cotizaciones · Ventas · Posventa | Flujo comercial · coordinación con el cliente |
+| **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras | Abastecimiento y stock |
+| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Seguridad | Integraciones y transversales |
 
 <div align="center">
 <sub>Proyecto Integrador ADS · BD2 · LP2 — Universidad Peruana Unión · Cliente: JD Refrigeración S.A.C.</sub>

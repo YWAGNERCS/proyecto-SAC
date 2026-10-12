@@ -49,10 +49,10 @@ bomerp-backend/                     # proyecto Maven único
     ├── compras/                    # cabecera-detalle: Compra-DetalleCompra
     ├── inventario/                 # alertas de stock mínimo
     ├── facturacion/                # comprobantes electrónicos (OSE/SUNAT, simulado)
-    ├── mantenimiento/              # postventa, alertas automáticas
+    ├── mantenimiento/              # módulo POSVENTA: mantenimientos y alertas (renombrar a posventa/: pendiente)
     ├── notificaciones/             # correo (real) y WhatsApp (simulado)
-    ├── reportes/                   # consultas agregadas, sin lógica de negocio propia
-    ├── seguridad/                  # usuarios, roles, autenticación
+    ├── reportes/                   # TRANSITORIO: consultas que deben pasar a ventas/ y cotizaciones/
+    ├── seguridad/                  # usuarios, roles, autenticación (transversal)
     └── config/                     # SecurityConfig (seguridad + CORS), manejo global de errores
 
 bomerp-frontend/                    # SPA Angular 22 (rama frontend)
@@ -62,7 +62,7 @@ bomerp-frontend/                    # SPA Angular 22 (rama frontend)
 ```
 
 **Reglas de módulo:**
-- Cada paquete administra sus propios repositorios y entidades; ningún módulo accede directamente al repositorio de otro. *Hoy se incumple en `facturacion` y `reportes` (ver README, sección 5).*
+- Cada paquete administra sus propios repositorios y entidades; ningún módulo accede directamente al repositorio de otro. *Hoy se incumple en `facturacion` y `reportes` (ver "Por verificar" en la documentación completa).*
 - Un solo `DataSource` y un solo esquema Oracle (`JDREFRIGERACION`). El curso propone un esquema por módulo (`BOM_CATALOGO`, `BOM_VENTAS`…), pendiente de decidir.
 - La comunicación entre módulos es por servicios Java inyectados (`@Service`), nunca por llamadas HTTP internas ni Feign.
 - API versionada: el panel administrativo usa `/api/v1/admin/**` y el catálogo público `/api/v1/publico/**` (sin login).
@@ -72,7 +72,7 @@ bomerp-frontend/                    # SPA Angular 22 (rama frontend)
 
 ## 4. Módulos: qué hace cada uno y por qué existe
 
-Los 12 módulos de dominio se agrupan en 4 tipos:
+El sistema tiene **11 módulos**, agrupados en 4 tipos:
 
 1. **Maestros (catálogos base):** guardan la información central que alimenta al resto del sistema.
 2. **Transaccionales (cabecera-detalle):** manejan las operaciones comerciales atómicas (el núcleo).
@@ -89,10 +89,14 @@ Los 12 módulos de dominio se agrupan en 4 tipos:
 | **compras** | Transaccional | Compras a proveedor, con incremento automático de stock | `Compra` – `DetalleCompra` |
 | **inventario** | Soporte | Alertas de stock mínimo (tarea diaria 8:00 a. m.) | — (transversal a `catalogo`) |
 | **facturacion** | Integración | Comprobante electrónico (XML UBL 2.1) e integración con un OSE (hoy simulado) | `Comprobante` |
-| **mantenimiento** | Operativo | 4 mantenimientos preventivos (3/6/9/12 meses) tras vender equipos de climatización o refrigeración; alertas diarias | `Mantenimiento` |
+| **posventa** *(paquete `mantenimiento`)* | Operativo | 4 mantenimientos preventivos (3/6/9/12 meses) tras vender equipos de climatización o refrigeración; alertas diarias a la oficina | `Mantenimiento` |
 | **notificaciones** | Integración | Interfaces segregadas por canal: `NotificadorCorreo` (SMTP real) y `NotificadorWhatsApp` (simulado) | — |
-| **reportes** | Soporte | Ventas por periodo, cobranza (pendiente vs. atrasada), cotizaciones pendientes | — (solo lectura agregada) |
-| **seguridad** | Transversal | Usuarios, roles (`ADMIN`, `ASISTENTE`), autenticación HTTP Basic + BCrypt (JWT previsto en S10) | `Usuario` |
+| **seguridad** | Transversal | Usuarios, roles (`ADMIN`, `ASISTENTE`), login, protección de endpoints. Spring Security aporta el mecanismo; los usuarios, roles, permisos y el JWT (S10) son código propio de este módulo | `Usuario` |
+
+**Reportes por módulo (decisión del equipo):** no existe un módulo `reportes`; cada módulo expone sus propias consultas y reportes, como propone el curso (p. ej. `GET /api/v1/ventas/resumen` en la S09). Así ningún módulo necesita leer los repositorios de otro.
+- **ventas:** reporte filtrable por estado y fechas (ya en `GET /ventas`), resumen por periodo y cobranza.
+- **cotizaciones:** cotizaciones pendientes.
+- *Transitorio:* `ventas-resumen`, `cobranza` y `cotizaciones-pendientes` siguen en el paquete `reportes` y usan repositorios ajenos; falta moverlos.
 
 **Reglas de negocio clave de ventas:**
 - El servidor fija el precio unitario y calcula subtotal, IGV (18%) y total; el cliente solo envía producto y cantidad.
@@ -100,7 +104,7 @@ Los 12 módulos de dominio se agrupan en 4 tipos:
 - Una cotización solo se convierte si está ACEPTADA, y una sola vez (409).
 - Ciclo de vida de la venta: `REGISTRADA → ANULADA` (`PATCH /ventas/{id}/anular`), separado del estado de cobro (`PENDIENTE/PAGADO/ATRASADO`). Anular dos veces → 409; al anular se devuelve el stock de los materiales.
 
-**Nota de alineamiento con el curso:** el corte base exigido es `catalogo` + `ventas` funcionales, con `inventario`, `compras` y `seguridad` delimitados. Este proyecto va más allá (cotizaciones, facturación, mantenimiento y reportes), porque son requerimientos reales confirmados por el cliente.
+**Nota de alineamiento con el curso:** el corte base exigido es `catalogo` + `ventas` funcionales, con `inventario`, `compras` y `seguridad` delimitados. Este proyecto va más allá (cotizaciones, facturación, posventa y notificaciones), porque son requerimientos reales confirmados por el cliente.
 
 ---
 
@@ -112,6 +116,8 @@ Los 12 módulos de dominio se agrupan en 4 tipos:
 - **Cabecera-detalle como patrón transversal:** `Cotizacion/ItemCotizacion`, `Venta/DetalleVenta` y `Compra/DetalleCompra` siguen la misma forma, con atomicidad (commit/rollback) en cada operación.
 - **Secretos fuera del código:** se leen de variables de entorno o de `application-local.properties` (ignorado por git).
 - **Seguridad en dos etapas:** HTTP Basic como solución transitoria; JWT con roles en S10 (backend) y S11 (frontend), según el ADR-004 del curso.
+- **Reportes dentro de cada módulo:** evita un módulo "de lectura" que dependa de los repositorios de todos los demás y respeta los límites entre módulos.
+- **"Posventa" en lugar de "mantenimiento":** el módulo cubre todo lo que pasa después de la venta (mantenimientos preventivos, garantías y seguimiento del cliente), no solo el mantenimiento técnico.
 
 ---
 
@@ -119,7 +125,8 @@ Los 12 módulos de dominio se agrupan en 4 tipos:
 
 | Área | Estado |
 |---|---|
-| Módulos backend (los 12) | ✅ Operativos; integraciones RUC/DNI, OSE y WhatsApp **simuladas** |
+| Módulos backend (los 11) | ✅ Operativos; integraciones RUC/DNI, OSE y WhatsApp **simuladas** |
+| Reorganización acordada | ⏳ Renombrar el paquete `mantenimiento` → `posventa`; repartir el paquete `reportes` entre `ventas` y `cotizaciones` |
 | Facturación electrónica | ⚠️ OSE real pendiente; correlativo aleatorio (SUNAT exige secuencial) |
 | Frontend / SPA | 🔄 Angular 22 en desarrollo: login, layout, categorías, clientes, proveedores, cotizaciones, compras y ventas (S09: formulario cabecera-detalle, reporte filtrable y anulación) |
 | Seguridad | ⚠️ Login implementado, pero la protección de `/api/v1/admin/**` está **desactivada** (`app.security.admin-requiere-login=false`); roles sin uso; JWT pendiente (S10) |
@@ -128,7 +135,7 @@ Los 12 módulos de dominio se agrupan en 4 tipos:
 | Control de versiones | ✅ GitHub compartido (`YWAGNERCS/proyecto-SAC`) |
 | Pruebas automatizadas | ⚠️ Mínimas (sin pruebas de ventas ni de módulos) |
 
-La lista completa de inconsistencias y pendientes está en `README.md`, sección **5. Por verificar**.
+La lista completa de inconsistencias y pendientes está en la documentación completa (`src/main/resources/static/docs/README.md`), sección **5. Por verificar**.
 
 ---
 
@@ -147,8 +154,10 @@ Usuarios de desarrollo: `admin` / `asistente`, contraseña `123456`.
 
 ## 8. Equipo
 
-| Integrante | Módulos a cargo |
-|---|---|
-| Yoel Wagner Chambi Sirena | Cotizaciones, coordinación con el cliente |
-| Aron Rodrigo | Ventas, Facturación |
-| Ronald Apaza | Compras, Proveedores, Inventario |
+| Integrante | Módulos a cargo | Enfoque |
+|---|---|---|
+| Yoel Wagner Chambi Sirena | Proveedores, Cotizaciones, Ventas, Posventa | Flujo comercial (cotización → venta → posventa); coordinación con el cliente |
+| Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras | Abastecimiento y stock |
+| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Seguridad | Integraciones externas y módulos transversales |
+
+Cada integrante es responsable de su módulo en backend y frontend, y lo evidencia con sus propios commits (el curso evalúa y sustenta el aporte individual).

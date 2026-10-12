@@ -2,23 +2,25 @@
 
 > Última revisión contra el código: **11/10/2026** (sesión S09 de LP2).
 > Repositorio: `https://github.com/YWAGNERCS/proyecto-SAC` — backend en la rama `master`, frontend en la rama `frontend`.
-> Lo que no coincide entre el código, esta documentación o la guía del curso está listado en **[5. Por verificar](#5-por-verificar)**.
+> Lo que no coincide entre el código, esta documentación o la guía del curso está listado en **[5. Por verificar](#por-verificar)**.
 
 ---
 
 ## Índice
-1. [Documentación funcional](#1-documentación-funcional-qué-hace-el-sistema)
-2. [Documentación técnica](#2-documentación-técnica-cómo-está-construido)
-3. [Manual de usuario](#3-manual-de-usuario-cómo-se-opera)
-4. [Estado y trazabilidad del proyecto](#4-estado-y-trazabilidad-del-proyecto)
-5. [Por verificar](#5-por-verificar)
+1. [Documentación funcional](#doc-funcional)
+2. [Documentación técnica](#doc-tecnica)
+3. [Manual de usuario](#manual-usuario)
+4. [Estado y trazabilidad del proyecto](#estado-trazabilidad)
+5. [Por verificar](#por-verificar)
 
 ---
+
+<a id="doc-funcional"></a>
 
 ## 1. DOCUMENTACIÓN FUNCIONAL (¿Qué hace el sistema?)
 
 ### Objetivo general
-Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeración S.A.C., que centralice y automatice el catálogo de productos, el registro de clientes/proveedores, el flujo completo de cotizaciones y ventas, y la gestión proactiva de mantenimientos técnicos, mejorando la eficiencia operativa y la atención al cliente.
+Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeración S.A.C., que centralice y automatice el catálogo de productos, el registro de clientes/proveedores, el flujo completo de cotizaciones y ventas, y la posventa (mantenimientos preventivos), mejorando la eficiencia operativa y la atención al cliente.
 
 ### Alcance del proyecto
 
@@ -28,9 +30,9 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - Cotizaciones con exportación a PDF y envío por correo (SMTP).
 - Ventas al contado o a crédito: venta directa (cabecera-detalle) y conversión desde una cotización aceptada; anulación con restauración de stock.
 - Facturación electrónica (simulada, a la espera de credenciales productivas de un OSE).
-- Mantenimientos preventivos con alertas automáticas (tarea programada diaria).
+- Posventa: mantenimientos preventivos con alertas automáticas (tarea programada diaria).
 - Inventario: descuento al vender, incremento al comprar y alertas de stock mínimo.
-- Reportes: ventas por periodo, cobranza (pendientes vs. atrasadas) y cotizaciones pendientes.
+- Consultas y reportes dentro de cada módulo: ventas (reporte filtrable, resumen por periodo, cobranza) y cotizaciones (pendientes).
 - Panel administrativo web (SPA Angular, en `bomerp-frontend`) con inicio de sesión.
 
 **Queda explícitamente fuera del alcance:**
@@ -40,21 +42,22 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 
 ### Módulos (backend)
 
-| # | Módulo | Estado |
-|---|---|---|
-| 1 | Catálogo (productos, categorías, catálogo público) | ✅ (ver 5: falta CRUD completo de producto y relación con categoría) |
-| 2 | Clientes (autocompletado RUC/DNI) | ⚠️ Autocompletado simulado |
-| 3 | Proveedores | ✅ |
-| 4 | Compras (incrementa stock) | ✅ |
-| 5 | Cotizaciones (+ PDF, + envío por correo) | ✅ |
-| 6 | Ventas (directa, desde cotización, crédito, anulación) | ✅ |
-| 7 | Facturación (Comprobante, XML UBL 2.1) | ⚠️ Simulado — falta OSE real (Nubefact) y correlativo real |
-| 8 | Inventario (alertas de stock mínimo) | ✅ |
-| 9 | Mantenimiento (cronograma preventivo automático) | ✅ |
-| 10 | Notificaciones (SMTP real + WhatsApp) | ⚠️ WhatsApp simulado |
-| 11 | Reportes | ⚠️ Ver 5: el resumen cuenta ventas anuladas |
-| 12 | Seguridad (usuarios, roles, login) | ⚠️ Login HTTP Basic; protección **desactivada** por configuración y roles sin uso (ver 5) |
-| — | Frontend (SPA Angular 22) | 🔄 En desarrollo (`bomerp-frontend`, rama `frontend`) |
+| # | Módulo | Tipo | Responsable | Estado |
+|---|---|---|---|---|
+| 1 | Catálogo (productos, categorías, catálogo público) | Maestro | Ronald | ✅ (ver 5: falta CRUD completo de producto y relación con categoría) |
+| 2 | Clientes (autocompletado RUC/DNI) | Maestro | Aron | ⚠️ Autocompletado simulado |
+| 3 | Proveedores | Maestro | Yoel | ✅ |
+| 4 | Cotizaciones (+ PDF, + envío por correo) | Transaccional | Yoel | ✅ |
+| 5 | Ventas (directa, desde cotización, crédito, anulación) | Transaccional | Yoel | ✅ |
+| 6 | Compras (incrementa stock) | Transaccional | Ronald | ✅ |
+| 7 | Inventario (alertas de stock mínimo) | Soporte | Ronald | ✅ |
+| 8 | Posventa (cronograma preventivo automático; paquete `mantenimiento`) | Operativo | Yoel | ✅ (renombrar paquete pendiente) |
+| 9 | Facturación (Comprobante, XML UBL 2.1) | Integración | Aron | ⚠️ Simulado — falta OSE real (Nubefact) y correlativo real |
+| 10 | Notificaciones (SMTP real + WhatsApp) | Integración | Aron | ⚠️ WhatsApp simulado |
+| 11 | Seguridad (usuarios, roles, login) | Transversal | Aron | ⚠️ Login HTTP Basic; protección **desactivada** por configuración y roles sin uso (ver 5) |
+| — | Frontend (SPA Angular 22) | — | Cada responsable en su módulo | 🔄 En desarrollo (`bomerp-frontend`, rama `frontend`) |
+
+> **Reportes:** no son un módulo. Cada módulo expone sus consultas (decisión del equipo, alineada con el curso). Hoy `ventas-resumen`, `cobranza` y `cotizaciones-pendientes` siguen en el paquete transitorio `reportes` (ver 5).
 
 ### Requerimientos Funcionales (RF)
 
@@ -73,9 +76,9 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | RF-11 | **Descuento de stock** atómico al vender. | ✅ Solo materiales (`MATERIAL_SERVICIO`); si no alcanza → 409 y no se guarda nada. Los equipos no controlan stock. |
 | RF-12 | **Incremento de stock** al registrar compras. | ✅ |
 | RF-13 | **Alertas de stock mínimo** diarias. | ✅ 8:00 a. m., por correo a `app.notificaciones.correo-oficina` (si está vacío, no se envía). |
-| RF-14 | **Programación de 4 mantenimientos** tras vender equipos. | ✅ A los 3, 6, 9 y 12 meses, para equipos de CLIMATIZACIÓN y REFRIGERACIÓN. |
-| RF-15 | **Alertas de mantenimiento** (8:00 a. m., próximos 7 días, correo a la oficina). | ✅ |
-| RF-16 | **Reportes** de ingresos y cuentas por cobrar, segmentados por moneda. | ⚠️ Segmenta soles/dólares, pero incluye ventas anuladas (ver 5). |
+| RF-14 | **Posventa: programación de 4 mantenimientos** tras vender equipos. | ✅ A los 3, 6, 9 y 12 meses, para equipos de CLIMATIZACIÓN y REFRIGERACIÓN. |
+| RF-15 | **Posventa: alertas de mantenimiento** (8:00 a. m., próximos 7 días, correo a la oficina). | ✅ |
+| RF-16 | **Reportes** de ingresos y cuentas por cobrar, segmentados por moneda (dentro del módulo ventas). | ⚠️ Segmenta soles/dólares, pero incluye ventas anuladas (ver 5). |
 | RF-17 | **Anulación de venta** (nuevo, S09): REGISTRADA → ANULADA con restauración de stock. | ✅ `PATCH /ventas/{id}/anular`; 409 si ya estaba anulada. |
 
 ### Requerimientos No Funcionales (RNF)
@@ -89,11 +92,13 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 ### Casos de uso / Historias de usuario
 
 - **CU-01 (Cotizar):** el vendedor selecciona cliente y productos; el sistema calcula IGV y totales; luego envía el PDF al cliente por correo.
-- **CU-02 (Alertas de garantía):** el sistema revisa a diario, a las 8:00 a. m., los mantenimientos de los próximos 7 días y envía un correo a la oficina con los clientes a contactar.
+- **CU-02 (Posventa: alertas de mantenimiento):** el sistema revisa a diario, a las 8:00 a. m., los mantenimientos de los próximos 7 días y envía un correo a la oficina con los clientes a contactar.
 - **CU-03 (Vender):** el vendedor registra una venta directa con varias líneas de producto, revisa el total y confirma; el sistema descuenta stock, programa mantenimientos y emite el comprobante.
 - **CU-04 (Anular venta):** el usuario anula una venta registrada; el sistema devuelve al inventario lo vendido y la venta deja de contar en el reporte de la SPA.
 
 ---
+
+<a id="doc-tecnica"></a>
 
 ## 2. DOCUMENTACIÓN TÉCNICA (¿Cómo está construido?)
 
@@ -133,11 +138,11 @@ src/main/java/com/bomerp/
 ├── cotizaciones/    cotizacion/, itemcotizacion/, cotizacionrequest/, pdf/
 ├── facturacion/     comprobante/, facturacion/, nubefact/, ose/, pdf/
 ├── inventario/      alertas y tarea programada de stock mínimo
-├── mantenimiento/   programación y tarea programada de alertas
+├── mantenimiento/   módulo POSVENTA: programación y alertas (renombrar a posventa/: pendiente)
 ├── notificaciones/  correo (real) y WhatsApp (simulado)
 ├── proveedores/     proveedor/
-├── reportes/        consultas agregadas
-├── seguridad/       Usuario, UsuarioRepository, UserDetailsServiceImpl, AuthController
+├── reportes/        TRANSITORIO: consultas por repartir a ventas/ y cotizaciones/
+├── seguridad/       (transversal) Usuario, UsuarioRepository, UserDetailsServiceImpl, AuthController
 └── ventas/          venta/, detalleventa/
 ```
 
@@ -170,9 +175,9 @@ src/main/java/com/bomerp/
 | Ventas | `GET /ventas?estado=&desde=&hasta=` · `POST /ventas/directa` · `POST /ventas/desde-cotizacion/{id}` · `GET /ventas/pagos-atrasados` · `POST /ventas/{id}/marcar-pagada` · `PATCH /ventas/{id}/anular` |
 | Compras | `GET`, `POST /compras` · `GET /compras/{id}` |
 | Inventario | `GET /inventario/alertas` |
-| Mantenimientos | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` · `POST /mantenimientos/simular-alerta` |
+| Posventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` · `POST /mantenimientos/simular-alerta` |
 | Facturación | `POST /facturacion/emitir/{ventaId}` · `POST /facturacion/{id}/enviar` |
-| Reportes | `GET /reportes/ventas-resumen?desde=&hasta=` · `GET /reportes/cobranza` · `GET /reportes/cotizaciones-pendientes` |
+| Consultas *(transitorio, por mover a ventas y cotizaciones)* | `GET /reportes/ventas-resumen?desde=&hasta=` · `GET /reportes/cobranza` · `GET /reportes/cotizaciones-pendientes` |
 
 *(Todas las rutas sin prefijo van bajo `/api/v1/admin`.)*
 
@@ -192,6 +197,8 @@ src/main/java/com/bomerp/
 5. Frontend: en `bomerp-frontend`, `npm install` y `npm start` (puerto 4200).
 
 ---
+
+<a id="manual-usuario"></a>
 
 ## 3. MANUAL DE USUARIO (¿Cómo se opera?)
 
@@ -215,16 +222,18 @@ src/main/java/com/bomerp/
 - **Reporte de ventas:** Ventas → filtros por estado y rango de fechas (botón "Buscar"); muestra totales por moneda, ticket promedio y el detalle de cada venta.
 - **Anular una venta:** en el reporte, botón "Anular" (solo en ventas REGISTRADAS) → confirmar; el stock de los materiales se restaura.
 - **Reportes financieros (API):** `/api/v1/admin/reportes/ventas-resumen`, `/cobranza` y `/cotizaciones-pendientes`.
-- **Mantenimientos:** el sistema envía a diario, a las 8:00 a. m., un correo con los clientes a contactar en los próximos 7 días (requiere `CORREO_OFICINA`).
+- **Posventa:** el sistema envía a diario, a las 8:00 a. m., un correo con los clientes a contactar en los próximos 7 días (requiere `CORREO_OFICINA`).
 
 ### Preguntas frecuentes
 
 - **"El cliente no recibió el correo":** verificar el correo del cliente (errores como `.con`), las credenciales SMTP (`MAIL_USERNAME`/`MAIL_PASSWORD`) y la salida al puerto 587.
 - **"No me deja vender por stock":** los materiales no admiten stock negativo (409 "Stock insuficiente"); registre una compra o ajuste la cantidad. Los equipos no controlan stock.
 - **"El backend no arranca: Network Adapter could not establish the connection":** Oracle no está encendido; inicie Docker Desktop y `docker start SGE-JD`.
-- **Soporte técnico:** equipo de desarrollo estudiantil (Yoel Wagner, Aron Rodrigo, Ronald Apaza).
+- **Soporte técnico:** equipo de desarrollo estudiantil (ver 4. Equipo y responsables).
 
 ---
+
+<a id="estado-trazabilidad"></a>
 
 ## 4. ESTADO Y TRAZABILIDAD DEL PROYECTO
 
@@ -238,13 +247,21 @@ src/main/java/com/bomerp/
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
 | 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
-| 7 | Desarrollo | 🔄 12 módulos backend operativos (3 con integraciones simuladas); SPA en desarrollo |
+| 7 | Desarrollo | 🔄 11 módulos backend operativos (3 con integraciones simuladas); reorganización posventa/reportes pendiente; SPA en desarrollo |
 | 8 | Pruebas y validación | 🔄 Pruebas manuales de API; pruebas automatizadas mínimas (ver 5) |
 | 9 | Implementación/despliegue | ⏳ Pendiente — sin ambiente accesible para el cliente |
-| 10 | Documentación técnica | 🔄 Este documento y `CONTEXTO.md` |
+| 10 | Documentación técnica | 🔄 Este documento, `CONTEXTO.md` y los `README.md` del backend y del frontend |
 | 11 | Manual de usuario | 🔄 Sección 3 (se completará con la SPA) |
 | 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
 | 13 | Mantenimiento y evolución | ✅ Git/GitHub en uso (`YWAGNERCS/proyecto-SAC`) |
+
+### Equipo y responsables
+
+| Integrante | Módulos a cargo | Enfoque |
+|---|---|---|
+| Yoel Wagner Chambi Sirena | Proveedores, Cotizaciones, Ventas, Posventa | Flujo comercial; coordinación con el cliente |
+| Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras | Abastecimiento y stock |
+| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Seguridad | Integraciones y transversales |
 
 ### Avance según las sesiones de LP2
 
@@ -252,12 +269,14 @@ src/main/java/com/bomerp/
 |---|---|---|
 | S1–S5 | Backend REST, CRUD, relaciones, cabecera-detalle, reportes, CORS | ✅ con observaciones (ver 5: CRUD de producto y Categoría–Producto) |
 | S7 | SPA Angular: layout, rutas, servicios HTTP | ✅ |
-| S8 | CRUD de tablas dependientes | ✅ Categorías, clientes, proveedores, compras |
+| S8 | CRUD de tablas dependientes | ✅ CRUD de categorías y registro de compras · ⚠️ clientes y proveedores solo con listado en la SPA |
 | S9 | Formulario transaccional cabecera-detalle | ✅ Venta directa con FormArray, reporte filtrable y anulación |
 | S10 | Seguridad backend JWT y roles | ⏳ Próxima (hoy HTTP Basic, que será reemplazado) |
 | S11 | Seguridad frontend (guards, interceptores, 401/403) | 🔄 Login, guard e interceptor Basic ya existen |
 
 ---
+
+<a id="por-verificar"></a>
 
 ## 5. Por verificar
 
@@ -288,15 +307,17 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 ### Arquitectura y alineamiento con el curso
 19. **Versión de Spring Boot.** Esta documentación decía 3.5.16; el `pom.xml` usa **3.3.4**. La guía del curso (ADR-003) fija **Spring Boot 4.0.7**. Confirmar con el docente si es obligatorio migrar.
 20. **Spring Modulith no está implementado** (ADR-002) ni hay `ModularityTests`. La regla de módulos solo está documentada.
-21. **Límites entre módulos incumplidos:** `FacturacionService` usa `VentaRepository`, y `ReportesService` usa `VentaRepository` y `CotizacionRepository`.
+21. **Límites entre módulos incumplidos:** `FacturacionService` usa `VentaRepository`, y `ReportesService` usa `VentaRepository` y `CotizacionRepository`. Se resuelve en parte con la decisión de **reportes por módulo**: mover `ventas-resumen` y `cobranza` a `ventas`, y `cotizaciones-pendientes` a `cotizaciones`.
 22. **Esquemas Oracle por módulo.** El curso propone esquemas `BOM_CATALOGO`, `BOM_VENTAS`, etc.; aquí todo está en un solo esquema (`JDREFRIGERACION`), y `CONTEXTO.md` mencionaba un prefijo `JD_<MODULO>` que no se usa.
 23. **Paquete raíz.** Documentaciones anteriores decían `com.jdrefrigeracion` o `pe.edu.upeu.sgejd`; el real es `com.bomerp`.
 24. **Seguridad:** el curso pide JWT en S10. El HTTP Basic actual es transitorio.
-25. **Herramienta de modernización:** `.github/modernize/` registra un intento de migrar a Java 25 / Boot 3.5.16 que no se aplicó. Confirmar y borrar esa carpeta si ya no sirve.
+25. **Renombrar el módulo Mantenimiento a Posventa en el código.** El equipo lo llama Posventa, pero el paquete sigue siendo `com.bomerp.mantenimiento` y el endpoint `/mantenimientos`. Decidir si se renombra el paquete (y la ruta) o si se deja documentado así.
+26. **Seguridad sí es un módulo.** Spring Security aporta el mecanismo, pero usuarios, roles, permisos y JWT son código propio y el curso lo exige como módulo (S10–S11, esquema `BOM_SEGURIDAD`). Se mantiene como módulo transversal.
+27. **Herramienta de modernización:** `.github/modernize/` registra un intento de migrar a Java 25 / Boot 3.5.16 que no se aplicó. Confirmar y borrar esa carpeta si ya no sirve.
 
 ### Pruebas y configuración
-26. **Pruebas automatizadas casi inexistentes.** `ProductoCrudTest` necesita Oracle encendido, y `HashGenTest` solo imprime un hash. No hay pruebas de ventas, de rollback ni de módulos.
-27. **H2 incluido pero sin perfil.** La dependencia está en el `pom.xml`, pero no hay configuración H2 activa. Además, `application-test.properties` está en `src/main/resources` y solo cambia el puerto.
-28. **Paquete de arreglos 2 sin aplicar.** `Claude/arreglos2` (pruebas de ventas, correlativo secuencial, límites entre módulos) no está en el código. Decidir si se aplica.
-29. **Contenedor Docker:** la documentación anterior lo llamaba `SGE-DJ`; el real es **`SGE-JD`**. El volumen `sge-jd-oracle-data` está marcado como `external` en `docker-compose.yml`, así que debe existir antes de `docker compose up`.
-30. **Requisitos "16 RF consolidados en 8":** la documentación anterior lo decía, pero no existe esa versión consolidada. Confirmar si hay otro documento con los 8 RF.
+28. **Pruebas automatizadas casi inexistentes.** `ProductoCrudTest` necesita Oracle encendido, y `HashGenTest` solo imprime un hash. No hay pruebas de ventas, de rollback ni de módulos.
+29. **H2 incluido pero sin perfil.** La dependencia está en el `pom.xml`, pero no hay configuración H2 activa. Además, `application-test.properties` está en `src/main/resources` y solo cambia el puerto.
+30. **Paquete de arreglos 2 sin aplicar.** `Claude/arreglos2` (pruebas de ventas, correlativo secuencial, límites entre módulos) no está en el código. **No aplicar el `.patch` tal cual:** chocaría con los cambios de la S09 en ventas; portar a mano lo que se quiera.
+31. **Contenedor Docker:** la documentación anterior lo llamaba `SGE-DJ`; el real es **`SGE-JD`**. El volumen `sge-jd-oracle-data` está marcado como `external` en `docker-compose.yml`, así que debe existir antes de `docker compose up`.
+32. **Requisitos "16 RF consolidados en 8":** la documentación anterior lo decía, pero no existe esa versión consolidada. Confirmar si hay otro documento con los 8 RF.
