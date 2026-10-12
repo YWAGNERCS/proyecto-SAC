@@ -1,0 +1,71 @@
+.detalle-table td {
+  vertical-align: top;
+}
+
+.producto-cell {
+  position: relative;
+}
+
+.sugerencias {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  margin: 2px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.sugerencias li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.sugerencias li:hover {
+  background: var(--primary-light);
+}
+
+.sug-precio {
+  white-space: nowrap;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.sug-precio small {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.totales {
+  margin-left: auto;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.totales div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.totales .total {
+  border-top: 1px solid var(--border-color);
+  padding-top: 6px;
+  font-size: 1.15rem;
+  color: var(--primary);
+}

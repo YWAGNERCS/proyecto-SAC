@@ -1,0 +1,104 @@
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.filtros > div {
+  min-width: 160px;
+}
+
+.filtros-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.agregados {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.kpi strong {
+  font-size: 1.3rem;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.vacio {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+.acciones {
+  white-space: nowrap;
+}
+
+.acciones .btn + .btn {
+  margin-left: 6px;
+}
+
+.venta-row td {
+  border-bottom: none;
+}
+
+.detalle-row td {
+  padding-top: 0;
+}
+
+.detalle {
+  width: 100%;
+  font-size: 0.84rem;
+  background: var(--bg-color);
+  border-radius: var(--radius-sm);
+  border-collapse: collapse;
+}
+
+.detalle th,
+.detalle td {
+  padding: 4px 10px;
+  border: none;
+}
+
+.detalle th {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: left;
+}
+
+.detalle .num {
+  text-align: right;
+}
+
+.detalle .pie td {
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
+}
+
+.anulada {
+  opacity: 0.55;
+}
+
+.anulada td strong {
+  text-decoration: line-through;
+}

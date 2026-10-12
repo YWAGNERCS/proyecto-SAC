@@ -1,67 +1,146 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
-import { VentaResponse } from './venta.model';
+import { EstadoVenta, VentaResponse } from './venta.model';
+
+interface Agregado {
+  moneda: 'SOLES' | 'DOLARES';
+  cantidad: number;
+  montoTotal: number;
+  ticketPromedio: number;
+}
 
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [CommonModule, RouterLink],
-  templateUrl: './venta-list.html'
+  imports: [CommonModule, FormsModule, RouterLink],
+  templateUrl: './venta-list.html',
+  styleUrl: './venta-list.css',
 })
 export class VentaListComponent implements OnInit {
   private ventaService = inject(VentaService);
 
   ventas = signal<VentaResponse[]>([]);
-  filtro = signal<'TODAS' | 'ATRASADAS'>('TODAS');
+  vista = signal<'REPORTE' | 'ATRASADAS'>('REPORTE');
   loading = signal(false);
+  error = signal('');
+  mensaje = signal('');
+
+  // Filtros: se aplican solo al pulsar "Buscar" (no en cada cambio de fecha)
+  estado: EstadoVenta | '' = '';
+  desde = '';
+  hasta = '';
+
+  /**
+   * Agregados calculados en el navegador a partir de los totales que ya calculó el servidor.
+   * Solo cuentan las ventas REGISTRADAS (una anulada no es ingreso) y se separan por moneda.
+   */
+  readonly agregados = computed<Agregado[]>(() => {
+    const vigentes = this.ventas().filter((v) => v.estado === 'REGISTRADA');
+    return (['SOLES', 'DOLARES'] as const)
+      .map((moneda) => {
+        const ventas = vigentes.filter((v) => v.moneda === moneda);
+        const montoTotal = ventas.reduce((suma, v) => suma + Number(v.total), 0);
+        return {
+          moneda,
+          cantidad: ventas.length,
+          montoTotal,
+          ticketPromedio: ventas.length ? montoTotal / ventas.length : 0,
+        };
+      })
+      .filter((a) => a.cantidad > 0);
+  });
+
+  readonly cantidadAnuladas = computed(() => this.ventas().filter((v) => v.estado === 'ANULADA').length);
 
   ngOnInit() {
-    this.cargarVentas();
+    this.buscar();
   }
 
-  cargarVentas() {
+  buscar() {
+    this.error.set('');
+    if (this.desde && this.hasta && this.desde > this.hasta) {
+      this.error.set('La fecha "desde" no puede ser posterior a "hasta".');
+      return;
+    }
+    this.vista.set('REPORTE');
+    this.cargar(this.ventaService.listar({ estado: this.estado, desde: this.desde, hasta: this.hasta }));
+  }
+
+  limpiar() {
+    this.estado = '';
+    this.desde = '';
+    this.hasta = '';
+    this.buscar();
+  }
+
+  verAtrasadas() {
+    this.vista.set('ATRASADAS');
+    this.cargar(this.ventaService.listarPagosAtrasados());
+  }
+
+  private recargar() {
+    if (this.vista() === 'ATRASADAS') this.verAtrasadas();
+    else this.buscar();
+  }
+
+  private cargar(peticion: ReturnType<VentaService['listar']>) {
     this.loading.set(true);
-    this.ventaService.listar().subscribe({
+    peticion.subscribe({
       next: (data) => {
         this.ventas.set(data);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false)
-    });
-  }
-
-  filtrarAtrasadas() {
-    this.filtro.set('ATRASADAS');
-    this.loading.set(true);
-    this.ventaService.listarPagosAtrasados().subscribe({
-      next: (data) => {
-        this.ventas.set(data);
+      error: (err: HttpErrorResponse) => {
         this.loading.set(false);
+        this.error.set(err.error?.message ?? 'No se pudo cargar el reporte de ventas.');
       },
-      error: () => this.loading.set(false)
     });
   }
 
-  mostrarTodas() {
-    this.filtro.set('TODAS');
-    this.cargarVentas();
+  anular(v: VentaResponse) {
+    const ok = confirm(
+      `¿Anular la venta #${v.id} de ${v.clienteNombre} por ${this.simbolo(v.moneda)} ${Number(v.total).toFixed(2)}?\n\n` +
+        `El stock de sus materiales se restaurará. Esta acción no se puede deshacer.`,
+    );
+    if (!ok) return;
+    this.ejecutar(this.ventaService.anular(v.id), `Venta #${v.id} anulada; stock restaurado.`);
   }
 
-  marcarPagada(id: number) {
-    this.ventaService.marcarComoPagada(id).subscribe({
+  marcarPagada(v: VentaResponse) {
+    this.ejecutar(this.ventaService.marcarComoPagada(v.id), `Venta #${v.id} marcada como pagada.`);
+  }
+
+  private ejecutar(peticion: ReturnType<VentaService['anular']>, exito: string) {
+    this.error.set('');
+    this.mensaje.set('');
+    peticion.subscribe({
       next: () => {
-        if (this.filtro() === 'ATRASADAS') {
-          this.filtrarAtrasadas();
-        } else {
-          this.cargarVentas();
-        }
-      }
+        this.mensaje.set(exito);
+        this.recargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        // 409: la transición ya no es válida (p. ej. otra persona la anuló antes)
+        this.error.set(
+          err.status === 409
+            ? `No se puede realizar la operación: ${err.error?.message}`
+            : err.status === 404
+              ? 'La venta ya no existe.'
+              : 'Error inesperado. Inténtalo de nuevo.',
+        );
+        this.recargar();
+      },
     });
   }
 
-  getEstadoClass(estado: string): string {
+  simbolo(moneda: string): string {
+    return moneda === 'DOLARES' ? 'US$' : 'S/';
+  }
+
+  getEstadoPagoClass(estado: string): string {
     switch (estado) {
       case 'PAGADO': return 'badge-success';
       case 'ATRASADO': return 'badge-danger';

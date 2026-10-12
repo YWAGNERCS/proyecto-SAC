@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../../../core/services/api-service';
-import { HttpClient } from '@angular/common/http';
-import { VentaResponse, VentaDirectaRequest } from './venta.model';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { VentaResponse, VentaDirectaRequest, FiltroVentas } from './venta.model';
 
 @Injectable({ providedIn: 'root' })
 export class VentaService {
@@ -9,8 +9,13 @@ export class VentaService {
   private http = inject(HttpClient);
   private endpoint = '/v1/admin/ventas';
 
-  listar() {
-    return this.http.get<VentaResponse[]>(this.api.buildUrl(this.endpoint));
+  /** Reporte de ventas con su detalle; solo se envían los filtros que tienen valor. */
+  listar(filtro: FiltroVentas = {}) {
+    let params = new HttpParams();
+    if (filtro.estado) params = params.set('estado', filtro.estado);
+    if (filtro.desde) params = params.set('desde', filtro.desde);
+    if (filtro.hasta) params = params.set('hasta', filtro.hasta);
+    return this.http.get<VentaResponse[]>(this.api.buildUrl(this.endpoint), { params });
   }
 
   convertirDesdeCotizacion(cotizacionId: number, tipoPago: string, diasCredito?: number) {
@@ -31,5 +36,10 @@ export class VentaService {
 
   marcarComoPagada(id: number) {
     return this.http.post<VentaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/marcar-pagada`), {});
+  }
+
+  /** REGISTRADA -> ANULADA. Body vacío: el backend ya sabe qué stock devolver. */
+  anular(id: number) {
+    return this.http.patch<VentaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/anular`), {});
   }
 }
