@@ -1,59 +1,111 @@
-# BomerpFrontend
+<div align="center">
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.0.
+# 🖥️ SGE-JD · Panel administrativo (SPA)
 
-## Development server
+**Frontend Angular de SGE-JD, el sistema de gestión de JD Refrigeración S.A.C.**
 
-To start a local development server, run:
+![Angular](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)
+![Vitest](https://img.shields.io/badge/tests-Vitest-6E9F18?logo=vitest&logoColor=white)
+![Estado](https://img.shields.io/badge/estado-en%20desarrollo-yellow)
 
-```bash
-ng serve
-```
+</div>
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+> Backend: rama `master` del mismo repositorio (`bomerp-backend`, Spring Boot + Oracle). La documentación funcional completa vive allí (`README.md`, `CONTEXTO.md` y `src/main/resources/static/docs/README.md`).
 
-## Code scaffolding
+---
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## ✨ Pantallas
 
-```bash
-ng generate component component-name
-```
+| Módulo | Ruta | Qué permite |
+|---|---|---|
+| 🔐 Seguridad | `/login` | Inicio de sesión contra el backend; las demás rutas están protegidas por un guard |
+| 🏠 Inicio | `/` | Panel de bienvenida |
+| 📦 Catálogo | `/catalogo/categorias` | CRUD de categorías |
+| 📄 Cotizaciones | `/cotizaciones`, `/cotizaciones/nuevo` | Listado, nueva cotización, aceptar/rechazar/enviar |
+| 🛒 Ventas | `/ventas`, `/ventas/nueva` | **Venta directa cabecera-detalle** (FormArray, búsqueda de producto con precio, totales en vivo, confirmación) y **reporte** con filtros por estado y fechas, totales, detalle y **anulación** |
+| 🏭 Compras | `/compras`, `/compras/nueva` | Registro de compras a proveedor |
+| 👥 Clientes | `/clientes` | Listado de clientes |
+| 🚚 Proveedores | `/proveedores` | Listado de proveedores |
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+*Pendientes en la SPA:* registro y edición de clientes y proveedores; pantallas de posventa (mantenimientos), inventario y facturación.
 
-```bash
-ng generate --help
-```
+---
 
-## Building
+## 🚀 Ejecutar
 
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+**Requisitos:** Node.js y el backend corriendo en `http://localhost:8080` (ver la rama `master`).
 
 ```bash
-ng test
+npm install
 ```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
 
 ```bash
-ng e2e
+npm start
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+➡️ `http://localhost:4200` · Usuarios de desarrollo: `admin` / `asistente`, contraseña `123456`.
 
-## Additional Resources
+| Comando | Uso |
+|---|---|
+| `npm start` | Servidor de desarrollo con recarga automática |
+| `npm run build` | Compilación de producción en `dist/` |
+| `npm test` | Pruebas unitarias con Vitest |
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+La URL del backend se configura en `src/environments/environment.ts` (`apiBaseUrl`).
+
+---
+
+## 🏗️ Arquitectura
+
+SPA **standalone** (sin NgModules), con **signals**, detección de cambios **zoneless** y carga diferida por ruta (`loadComponent`).
+
+```text
+src/app/
+├── core/
+│   ├── auth/            AuthService (sesión con signals), authGuard
+│   ├── interceptors/    basic-auth (credenciales en /admin/), trace-id (X-Trace-ID)
+│   ├── layout/          barra de navegación, usuario y "Salir"
+│   ├── inicio/          página de inicio
+│   └── services/        ApiService (construye las URLs del backend)
+├── features/            un directorio por módulo de negocio
+│   ├── auth/            login
+│   ├── catalogo/        categoria/, producto/
+│   ├── clientes/        cliente/
+│   ├── compras/         compra/
+│   ├── cotizaciones/    cotizacion/
+│   ├── proveedores/     proveedor/
+│   └── ventas/          venta/ (formulario cabecera-detalle y reporte)
+└── shared/              componentes reutilizables (spinner)
+```
+
+**Convenciones**
+- Cada funcionalidad tiene su `*.model.ts` (refleja exactamente los DTO del backend), `*-service.ts` (HTTP) y sus componentes.
+- Los montos que calcula el formulario son una **vista previa**: el backend calcula los definitivos y la SPA solo envía ids y cantidades.
+- Los errores del backend se muestran por código: `400` datos inválidos · `404` no existe · `409` regla de negocio o stock insuficiente.
+
+**Seguridad (transitoria):** el login valida las credenciales con `GET /api/v1/admin/auth/me` y el interceptor adjunta `Authorization: Basic` a las rutas `/admin/`. En **S10–S11** se reemplaza por JWT, con expiración, menú según permisos y manejo de 401/403.
+
+---
+
+## 🗺️ Avance (LP2)
+
+- [x] **S7** · Proyecto Angular, layout, rutas, servicios HTTP
+- [x] **S8** · CRUD de tablas dependientes
+- [x] **S9** · Formulario transaccional de venta, reporte filtrable y anulación
+- [ ] **S11** · Seguridad frontend: JWT, expiración, menú por permisos, 401/403
+- [ ] **S12** · Integración de la SPA segura (Producto U2)
+
+---
+
+## 👥 Equipo
+
+| Integrante | Módulos a cargo (backend y SPA) |
+|---|---|
+| **Yoel Wagner Chambi Sirena** | Proveedores · Cotizaciones · Ventas · Posventa |
+| **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras |
+| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Seguridad |
+
+<div align="center">
+<sub>Proyecto Integrador ADS · BD2 · LP2 — Universidad Peruana Unión · Generado con Angular CLI 22.2</sub>
+</div>
