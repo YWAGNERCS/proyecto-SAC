@@ -53,7 +53,8 @@ Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), co
 **Reglas de negocio destacadas**
 - El servidor calcula precios, IGV y totales: el cliente solo envía producto y cantidad.
 - Los materiales no admiten stock negativo: si falta stock → `409` y se revierte toda la venta.
-- Una venta va de `REGISTRADA` a `ANULADA` una sola vez; si se intenta anular de nuevo → `409`.
+- Una venta va de `REGISTRADA` a `ANULADA` una sola vez (si se repite → `409`). Al anular se restaura el stock, se cancelan los mantenimientos pendientes y se emite una **nota de crédito**.
+- Cada producto pertenece a una **categoría**; una categoría con productos no se puede eliminar (`409`).
 
 ---
 
@@ -138,7 +139,7 @@ Base: `/api/v1/admin` (panel) · `/api/v1/publico` (sin login). Contrato complet
 |---|---|
 | Ventas | `GET /ventas?estado=&desde=&hasta=` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `PATCH /ventas/{id}/anular` · `POST /ventas/{id}/marcar-pagada` |
 | Proformas | `GET` `POST /proformas` · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` |
-| Catálogo | `GET /productos` · CRUD `/categorias` · `GET /api/v1/publico/catalogo` |
+| Catálogo | CRUD `/productos` (con `?categoriaId=`) · CRUD `/categorias` · `GET /api/v1/publico/catalogo` |
 | Compras | `GET` `POST /compras` · `GET /compras/{id}` |
 | Clientes | `GET` `POST /clientes` · `/clientes/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
 | Proveedores | CRUD `/proveedores` · `/proveedores/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
@@ -181,7 +182,7 @@ src/main/java/com/bomerp/
 - [ ] **S11** · Seguridad frontend con Keycloak (guards, interceptores, 401/403)
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, el reporte de ventas aún cuenta las anuladas, las integraciones RUC/OSE/WhatsApp son simuladas, falta separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones RUC/OSE/WhatsApp son simuladas, falta la pantalla de productos en la SPA, separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 

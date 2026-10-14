@@ -7,6 +7,8 @@ import com.bomerp.ventas.venta.entity.Venta;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * Programa el mantenimiento preventivo posterior a una venta.
  * Fachada pública del módulo: Ventas ya no toca MantenimientoRepository.
@@ -38,5 +40,20 @@ public class MantenimientoService {
                 mantenimientoRepository.save(mant);
             }
         }
+    }
+
+    /**
+     * Al anular una venta, sus mantenimientos aún PENDIENTES ya no se harán: pasan a CANCELADO.
+     * Los REALIZADOS se conservan como historial.
+     *
+     * @return cuántos mantenimientos se cancelaron
+     */
+    @Transactional
+    public int cancelarPendientesDeVenta(Long ventaId) {
+        List<Mantenimiento> pendientes = mantenimientoRepository.findByVenta_IdAndEstado(
+                ventaId, Mantenimiento.EstadoMantenimiento.PENDIENTE);
+        pendientes.forEach(m -> m.setEstado(Mantenimiento.EstadoMantenimiento.CANCELADO));
+        mantenimientoRepository.saveAll(pendientes);
+        return pendientes.size();
     }
 }

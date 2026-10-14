@@ -45,7 +45,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 
 | # | Módulo | Tipo | Responsable | Estado |
 |---|---|---|---|---|
-| 1 | Catálogo (productos, categorías, catálogo público) | Maestro | Wilson | ✅ (ver 5: falta CRUD completo de producto y relación con categoría) |
+| 1 | Catálogo (productos con categoría, categorías, catálogo público) | Maestro | Wilson | ✅ CRUD de producto con categoría en la API · ⚠️ falta la pantalla de productos en la SPA |
 | 2 | Clientes (autocompletado RUC/DNI) | Maestro | Aron | ⚠️ Autocompletado simulado |
 | 3 | Proveedores | Maestro | Yoel | ✅ |
 | 4 | Proformas (+ PDF, + envío por correo) | Transaccional | Yoel | ✅ |
@@ -67,7 +67,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 |---|---|---|
 | RF-01 | **Autenticación:** inicio de sesión con credenciales seguras. | ✅ HTTP Basic + BCrypt; pantalla de login en la SPA. |
 | RF-02 | **Roles y permisos:** restringir módulos según el rol (Administrador, Asistente). | ❌ Los roles `ADMIN`/`ASISTENTE` existen, pero ningún endpoint ni pantalla los usa. Se resolverá con roles de Keycloak. |
-| RF-03 | **Catálogo de productos:** moneda dual y precio por margen porcentual. | ✅ Precio = costo base × (1 + margen %). Solo hay listado de productos (sin crear/editar/eliminar por API). |
+| RF-03 | **Catálogo de productos:** moneda dual y precio por margen porcentual. | ✅ Precio = costo base × (1 + margen %). CRUD completo de productos, cada uno con su categoría. |
 | RF-04 | **Autocompletado de clientes/proveedores** por RUC/DNI vía API externa. | ⚠️ Existen clientes para apis.net.pe y Decolecta, pero el que se inyecta es el **simulado** (`@Primary`). |
 | RF-05 | **Proformas** con cálculo automático de IGV y subtotales. | ✅ |
 | RF-06 | **PDF** formal y corporativo de la proforma. | ✅ Se genera al **enviar** la proforma (no al guardar). |
@@ -80,8 +80,8 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | RF-13 | **Alertas de stock mínimo** diarias. | ✅ 8:00 a. m., por correo a `app.notificaciones.correo-oficina` (si está vacío, no se envía). |
 | RF-14 | **Postventa: programación de 4 mantenimientos** tras vender equipos. | ✅ A los 3, 6, 9 y 12 meses, para equipos de CLIMATIZACIÓN y REFRIGERACIÓN. |
 | RF-15 | **Postventa: alertas de mantenimiento** (8:00 a. m., próximos 7 días, correo a la oficina). | ✅ |
-| RF-16 | **Reportes** de ingresos y cuentas por cobrar, segmentados por moneda (dentro del módulo ventas). | ⚠️ Segmenta soles/dólares, pero incluye ventas anuladas (ver 5). |
-| RF-17 | **Anulación de venta** (nuevo, S09): REGISTRADA → ANULADA con restauración de stock. | ✅ `PATCH /ventas/{id}/anular`; 409 si ya estaba anulada. |
+| RF-16 | **Reportes** de ingresos y cuentas por cobrar, segmentados por moneda. | ✅ Segmenta soles/dólares y excluye las ventas anuladas. |
+| RF-17 | **Anulación de venta** (nuevo, S09): REGISTRADA → ANULADA. | ✅ `PATCH /ventas/{id}/anular`: restaura stock, cancela los mantenimientos pendientes y emite nota de crédito; 409 si ya estaba anulada. |
 
 ### Requerimientos No Funcionales (RNF)
 
@@ -96,7 +96,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - **CU-01 (Elaborar proforma):** el vendedor selecciona cliente y productos; el sistema calcula IGV y totales; luego envía el PDF de la proforma al cliente por correo.
 - **CU-02 (Postventa: alertas de mantenimiento):** el sistema revisa a diario, a las 8:00 a. m., los mantenimientos de los próximos 7 días y envía un correo a la oficina con los clientes a contactar.
 - **CU-03 (Vender):** el vendedor registra una venta directa con varias líneas de producto, revisa el total y confirma; el sistema descuenta stock, programa mantenimientos y emite el comprobante.
-- **CU-04 (Anular venta):** el usuario anula una venta registrada; el sistema devuelve al inventario lo vendido y la venta deja de contar en el reporte de la SPA.
+- **CU-04 (Anular venta):** el usuario anula una venta registrada; el sistema devuelve al inventario lo vendido, cancela los mantenimientos pendientes, emite la nota de crédito del comprobante y la venta deja de contar en los reportes.
 
 ---
 
@@ -152,14 +152,15 @@ src/main/java/com/bomerp/
 
 | Tabla | Campos clave |
 |---|---|
-| `PRODUCTOS` | id, nombre, sector, costo_base, margen_porcentaje, moneda, stock_actual, stock_minimo, visible_en_catalogo |
-| `CATEGORIAS` | id, nombre (sin relación con `PRODUCTOS`, ver 5) |
+| `PRODUCTOS` | id, nombre, **categoria_id** (FK → `CATEGORIAS`), sector, costo_base, margen_porcentaje, moneda, stock_actual, stock_minimo, visible_en_catalogo |
+| `CATEGORIAS` | id, nombre, descripcion (una categoría con productos no se puede eliminar: 409) |
 | `CLIENTES` / `PROVEEDORES` | id, tipo (empresa/natural), ruc, dni, correo, teléfono |
 | `PROFORMAS` / `ITEMS_PROFORMA` | cabecera-detalle de proforma |
 | `VENTAS` | id, cliente_id, proforma_id, fecha_venta, tipo_pago, dias_credito, fecha_limite_pago, **estado** (REGISTRADA/ANULADA), estado_pago, moneda, comprobante_id |
 | `DETALLE_VENTA` | id, venta_id, producto_id, cantidad, precio_unitario |
 | `COMPRAS` / `DETALLE_COMPRA` | cabecera-detalle de compra |
-| `COMPROBANTES` | comprobante electrónico simulado |
+| `COMPROBANTES` | comprobante electrónico simulado (factura o boleta, uno por venta) |
+| `NOTAS_CREDITO` | id, serie (FC01/BC01), numero (correlativo por serie), motivo, total, estado_sunat, comprobante_id (FK único → `COMPROBANTES`) |
 | `MANTENIMIENTOS` | id, venta_id, fecha_programada, estado, alerta_enviada |
 | `USUARIOS` | id, username, password (BCrypt), rol (`ADMIN` / `ASISTENTE`) |
 
@@ -170,7 +171,7 @@ src/main/java/com/bomerp/
 | Autenticación | `GET /api/v1/admin/auth/me` (valida credenciales y devuelve usuario y roles) |
 | Catálogo público | `GET /api/v1/publico/catalogo` (sin login, sin costo ni margen) |
 | Categorías | `GET`, `POST /categorias` · `GET`, `PUT`, `DELETE /categorias/{id}` |
-| Productos | `GET /productos` |
+| Productos | `GET /productos?categoriaId=` · `GET /productos/{id}` · `POST /productos` · `PUT /productos/{id}` · `DELETE /productos/{id}` (409 si ya se usó en ventas, proformas o compras) |
 | Clientes | `GET`, `POST /clientes` · `GET /clientes/autocompletar/ruc/{ruc}` · `GET /clientes/autocompletar/dni/{dni}` |
 | Proveedores | `GET`, `POST /proveedores` · `GET`, `PUT`, `DELETE /proveedores/{id}` · autocompletar RUC/DNI |
 | Proformas | `GET`, `POST /proformas` · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` |
@@ -178,7 +179,7 @@ src/main/java/com/bomerp/
 | Compras | `GET`, `POST /compras` · `GET /compras/{id}` |
 | Inventario | `GET /inventario/alertas` |
 | Postventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` · `POST /mantenimientos/simular-alerta` |
-| Facturación | `POST /facturacion/emitir/{ventaId}` · `POST /facturacion/{id}/enviar` |
+| Facturación | `POST /facturacion/emitir/{ventaId}` · `POST /facturacion/{id}/enviar` · `GET /facturacion/notas-credito` |
 | Consultas *(transitorio, por mover a ventas, cobranza y proformas)* | `GET /reportes/ventas-resumen?desde=&hasta=` · `GET /reportes/cobranza` · `GET /reportes/proformas-pendientes` |
 
 *(Todas las rutas sin prefijo van bajo `/api/v1/admin`.)*
@@ -271,7 +272,7 @@ Seguridad: sin responsable, se resolverá con Keycloak.
 
 | Sesión | Tema | Estado en el proyecto |
 |---|---|---|
-| S1–S5 | Backend REST, CRUD, relaciones, cabecera-detalle, reportes, CORS | ✅ con observaciones (ver 5: CRUD de producto y Categoría–Producto) |
+| S1–S5 | Backend REST, CRUD, relaciones, cabecera-detalle, reportes, CORS | ✅ CRUD de producto y relación Categoría–Producto completos (13/10/2026) |
 | S7 | SPA Angular: layout, rutas, servicios HTTP | ✅ |
 | S8 | CRUD de tablas dependientes | ✅ CRUD de categorías y registro de compras · ⚠️ clientes y proveedores solo con listado en la SPA |
 | S9 | Formulario transaccional cabecera-detalle | ✅ Venta directa con FormArray, reporte filtrable y anulación |
@@ -295,10 +296,10 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 6. **`/docs` quedará bloqueado al activar el login:** `SecurityConfig` no hace `permitAll()` para `/docs/**` ni `/images/**`.
 
 ### Funcionalidad
-7. **El reporte `ventas-resumen` cuenta ventas anuladas.** `ReportesService` suma toda venta PAGADA del periodo, incluidas las ANULADAS (agregadas en S09). Revisar también `/reportes/cobranza`.
-8. **Al anular una venta** no se cancelan sus mantenimientos programados ni se genera nota de crédito por el comprobante ya emitido.
-9. **Producto sin categoría.** `Producto` no tiene relación con `Categoria`, aunque la S3 del curso pide Categoría–Producto.
-10. **CRUD de producto incompleto.** Solo existe `GET /productos`; faltan crear, editar y eliminar (S2 del curso). Clientes tampoco tiene editar ni eliminar.
+7. ~~**El reporte `ventas-resumen` cuenta ventas anuladas.**~~ ✅ **Resuelto (13/10/2026):** `ventas-resumen`, `cobranza` y `/ventas/pagos-atrasados` solo consideran ventas REGISTRADAS.
+8. ~~**Al anular una venta no se cancelan sus mantenimientos ni se genera nota de crédito.**~~ ✅ **Resuelto (13/10/2026):** Postventa cancela los mantenimientos PENDIENTES y Facturación emite la nota de crédito (serie FC01/BC01, correlativo por serie) si el comprobante fue aceptado.
+9. ~~**Producto sin categoría.**~~ ✅ **Resuelto (13/10/2026):** `Producto` tiene `@ManyToOne Categoria`; la API exige la categoría al crear/editar (404 si no existe) y no deja borrar una categoría con productos (409). ⚠️ Los productos anteriores quedaron **sin categoría**: hay que asignársela (PUT).
+10. **Pantalla de productos en la SPA.** El CRUD ya existe en la API (S2), pero la SPA no tiene "Productos" en el menú: falta la lista con filtro por categoría y el formulario con lista desplegable de categorías (S8). Clientes tampoco tiene editar ni eliminar.
 11. **Autocompletado RUC/DNI simulado.** `ConsultaRucClientSimulado` tiene `@Primary`; el comentario de `ConsultaRucClientDecolecta` dice lo contrario. Definir qué proveedor usar.
 12. **Correlativo de comprobantes aleatorio** (`Math.random()` en `FacturacionService`). SUNAT exige numeración secuencial por serie.
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
@@ -306,7 +307,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 15. **Alerta de stock mínimo** sobre todos los productos (`stockActual <= stockMinimo`), incluidos los equipos, que no controlan stock. Confirmar si solo debería aplicar a materiales.
 16. **Proformas vencidas:** existe `marcarVencidas()`, pero no está programada (`@Scheduled`).
 17. **Moneda mixta:** el backend acepta una venta con productos en soles y en dólares y toma la moneda del último. La SPA ya lo bloquea; falta validarlo en el backend.
-18. **`ProductoController` usa el repositorio directamente**, sin pasar por `ProductoService`.
+18. ~~**`ProductoController` usa el repositorio directamente.**~~ ✅ **Resuelto (13/10/2026):** ahora pasa por `ProductoService` y responde con `ProductoResponseDTO`.
 
 ### Arquitectura y alineamiento con el curso
 19. **Versión de Spring Boot.** Esta documentación decía 3.5.16; el `pom.xml` usa **3.3.4**. La guía del curso (ADR-003) fija **Spring Boot 4.0.7**. Confirmar con el docente si es obligatorio migrar.

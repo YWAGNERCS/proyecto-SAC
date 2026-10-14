@@ -13,4 +13,6 @@ public interface MantenimientoRepository extends JpaRepository<Mantenimiento, Lo
     // Busca los mantenimientos que están pendientes, no se han enviado alertas, y faltan 7 días o menos.
     List<Mantenimiento> findByEstadoAndAlertaEnviadaFalseAndFechaProgramadaBetween(
             Mantenimiento.EstadoMantenimiento estado, LocalDate startDate, LocalDate endDate);
+
+    List<Mantenimiento> findByVenta_IdAndEstado(Long ventaId, Mantenimiento.EstadoMantenimiento estado);
 }

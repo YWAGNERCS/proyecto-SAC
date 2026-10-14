@@ -9,13 +9,14 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface VentaRepository extends JpaRepository<Venta, Long> {
-    List<Venta> findByEstadoPago(Venta.EstadoPago estadoPago);
+    // Las consultas de cobranza y reportes reciben el estado de la venta para excluir las ANULADAS
+    List<Venta> findByEstadoAndEstadoPago(Venta.EstadoVenta estado, Venta.EstadoPago estadoPago);
 
     // Para el reporte de cobranza: ventas a crédito con pago vencido
-    List<Venta> findByEstadoPagoAndFechaLimitePagoBefore(
-            Venta.EstadoPago estadoPago, LocalDate fecha);
+    List<Venta> findByEstadoAndEstadoPagoAndFechaLimitePagoBefore(
+            Venta.EstadoVenta estado, Venta.EstadoPago estadoPago, LocalDate fecha);
 
-    List<Venta> findByFechaVentaBetween(LocalDate desde, LocalDate hasta);
+    List<Venta> findByEstadoAndFechaVentaBetween(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta);
 
     // Reporte de ventas: cada filtro es opcional (null = no filtra por ese campo)
     @Query("""

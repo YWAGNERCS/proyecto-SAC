@@ -15,6 +15,7 @@ public record ProductoCatalogoDTO(
         String nombre,
         String descripcion,
         String sector,
+        String categoria,
         BigDecimal precioVenta,
         String moneda
 ) {
@@ -24,6 +25,7 @@ public record ProductoCatalogoDTO(
                 producto.getNombre(),
                 producto.getDescripcion(),
                 producto.getSector().name(),
+                producto.getCategoria() != null ? producto.getCategoria().getNombre() : null,
                 producto.calcularPrecioVenta(),
                 producto.getMoneda().name()
         );

@@ -104,7 +104,8 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 - El servidor fija el precio unitario y calcula subtotal, IGV (18%) y total; el cliente solo envía producto y cantidad.
 - Solo los materiales (`MATERIAL_SERVICIO`) controlan stock: si no alcanza → 409 y se revierte toda la venta. Los equipos no controlan stock.
 - Una proforma solo se convierte si está ACEPTADA, y una sola vez (409).
-- Ciclo de vida de la venta: `REGISTRADA → ANULADA` (`PATCH /ventas/{id}/anular`), separado del estado de cobro (`PENDIENTE/PAGADO/ATRASADO`). Anular dos veces → 409; al anular se devuelve el stock de los materiales.
+- Ciclo de vida de la venta: `REGISTRADA → ANULADA` (`PATCH /ventas/{id}/anular`), separado del estado de cobro (`PENDIENTE/PAGADO/ATRASADO`). Anular dos veces → 409. Al anular, en una sola transacción: se devuelve el stock de los materiales, **Postventa** cancela los mantenimientos pendientes y **Facturación** emite la nota de crédito del comprobante aceptado.
+- Las ventas anuladas no cuentan en los reportes de ventas ni en la cobranza.
 
 **Nota de alineamiento con el curso:** el corte base exigido es `catalogo` + `ventas` funcionales, con `inventario`, `compras` y `seguridad` delimitados. Este proyecto va más allá (proformas, facturación, postventa y notificaciones), porque son requerimientos reales confirmados por el cliente.
 
@@ -134,7 +135,7 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 | Facturación electrónica | ⚠️ OSE real pendiente; correlativo aleatorio (SUNAT exige secuencial) |
 | Frontend / SPA | 🔄 Angular 22 en desarrollo: login, layout, categorías, clientes, proveedores, proformas, compras y ventas (S09: formulario cabecera-detalle, reporte filtrable y anulación) |
 | Seguridad | ⚠️ Login HTTP Basic transitorio con la protección de `/api/v1/admin/**` **desactivada** (`app.security.admin-requiere-login=false`); se reemplazará por **Keycloak** (sin responsable asignado) |
-| Modelo relacional Oracle | ✅ Corregido (relaciones cabecera-detalle con dirección de FK validada). ⚠️ `Producto` aún sin relación con `Categoria` |
+| Modelo relacional Oracle | ✅ Corregido (relaciones cabecera-detalle con dirección de FK validada). ✅ `Producto` → `Categoria` (13/10/2026; los productos anteriores quedaron sin categoría hasta asignarla). Nueva tabla `NOTAS_CREDITO` |
 | Credenciales | ✅ Externalizadas. ⚠️ Confirmar que se revocaron las que quedaron en el historial de git |
 | Control de versiones | ✅ GitHub compartido (`YWAGNERCS/proyecto-SAC`) |
 | Pruebas automatizadas | ⚠️ Mínimas (sin pruebas de ventas ni de módulos) |

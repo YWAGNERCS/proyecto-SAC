@@ -1,5 +1,8 @@
 package com.bomerp.catalogo.categoria.service;
 
+import com.bomerp.catalogo.producto.repository.ProductoRepository;
+import com.bomerp.config.RecursoNoEncontradoException;
+import com.bomerp.config.ReglaNegocioException;
 import com.bomerp.catalogo.categoria.entity.Categoria;
 import com.bomerp.catalogo.categoria.repository.CategoriaRepository;
 import org.springframework.stereotype.Service;
@@ -11,9 +14,12 @@ import java.util.List;
 public class CategoriaService {
 
     private final CategoriaRepository categoriaRepository;
+    // Mismo módulo (catalogo): se usa el repositorio, no ProductoService, para evitar una dependencia circular
+    private final ProductoRepository productoRepository;
 
-    public CategoriaService(CategoriaRepository categoriaRepository) {
+    public CategoriaService(CategoriaRepository categoriaRepository, ProductoRepository productoRepository) {
         this.categoriaRepository = categoriaRepository;
+        this.productoRepository = productoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -24,7 +30,7 @@ public class CategoriaService {
     @Transactional(readOnly = true)
     public Categoria obtenerPorId(Long id) {
         return categoriaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("No se encontró la categoría con ID: " + id));
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la categoría con ID: " + id));
     }
 
     @Transactional
@@ -43,9 +49,11 @@ public class CategoriaService {
 
     @Transactional
     public void eliminar(Long id) {
-        if (!categoriaRepository.existsById(id)) {
-            throw new IllegalArgumentException("No se encontró la categoría con ID: " + id);
+        Categoria categoria = obtenerPorId(id);
+        if (productoRepository.existsByCategoriaId(id)) {
+            throw new ReglaNegocioException("No se puede eliminar la categoría '" + categoria.getNombre()
+                    + "': tiene productos asociados. Reasígnelos a otra categoría primero.");
         }
-        categoriaRepository.deleteById(id);
+        categoriaRepository.delete(categoria);
     }
 }

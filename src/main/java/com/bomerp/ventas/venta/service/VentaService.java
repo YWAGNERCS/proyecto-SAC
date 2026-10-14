@@ -214,8 +214,8 @@ public class VentaService {
 
     /** RNF: seguimiento de cobranza — ventas a crédito vencidas */
     public List<Venta> listarVentasConPagoAtrasado() {
-        return ventaRepository.findByEstadoPagoAndFechaLimitePagoBefore(
-                Venta.EstadoPago.PENDIENTE, LocalDate.now());
+        return ventaRepository.findByEstadoAndEstadoPagoAndFechaLimitePagoBefore(
+                Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE, LocalDate.now());
     }
 
     @Transactional(readOnly = true)
@@ -244,8 +244,11 @@ public class VentaService {
      * Reglas de negocio:
      *  - Solo se anula una venta REGISTRADA (409 si ya está ANULADA): sin esta regla,
      *    anular dos veces devolvería el stock dos veces.
-     *  - Efecto colateral: se devuelve al inventario lo vendido de los productos con
-     *    controlaStock() = true (los equipos no se almacenan, no se restauran).
+     *  - Efectos colaterales, en la misma transacción:
+     *    1) se devuelve al inventario lo vendido de los productos con controlaStock() = true
+     *       (los equipos no se almacenan, no se restauran);
+     *    2) Postventa cancela los mantenimientos aún pendientes de esa venta;
+     *    3) Facturación emite la nota de crédito que anula el comprobante aceptado.
      */
     public Venta anular(Long ventaId) {
         Venta venta = obtenerPorId(ventaId);
@@ -263,7 +266,14 @@ public class VentaService {
         }
         venta.setEstado(Venta.EstadoVenta.ANULADA);
 
-        log.info("Venta {} anulada: stock restaurado", ventaId);
+        int mantenimientosCancelados = mantenimientoService.cancelarPendientesDeVenta(ventaId);
+        String notaCredito = facturacionService
+                .emitirNotaCreditoPorAnulacion(ventaId, "Anulación de la operación (venta #" + ventaId + ")")
+                .map(nc -> nc.getSerie() + "-" + nc.getNumero())
+                .orElse("no requerida");
+
+        log.info("Venta {} anulada: stock restaurado, {} mantenimientos cancelados, nota de crédito {}",
+                ventaId, mantenimientosCancelados, notaCredito);
         return ventaRepository.save(venta);
     }
 

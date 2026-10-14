@@ -3,6 +3,12 @@ import com.bomerp.facturacion.pdf.service.GeneradorPdfFacturacionService;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.facturacion.comprobante.repository.ComprobanteRepository;
+import com.bomerp.facturacion.notacredito.entity.NotaCredito;
+import com.bomerp.facturacion.notacredito.repository.NotaCreditoRepository;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.Optional;
 
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.ventas.venta.entity.Venta;
@@ -13,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
+@Slf4j
 public class FacturacionService {
 
     private final ComprobanteRepository comprobanteRepository;
@@ -20,13 +27,15 @@ public class FacturacionService {
     private final OseClient oseClient;
     private final com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo;
     private final GeneradorPdfFacturacionService generadorPdfFacturacionService;
+    private final NotaCreditoRepository notaCreditoRepository;
 
-    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaRepository ventaRepository, OseClient oseClient, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService) {
+    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaRepository ventaRepository, OseClient oseClient, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository) {
         this.comprobanteRepository = comprobanteRepository;
         this.ventaRepository = ventaRepository;
         this.oseClient = oseClient;
         this.notificadorCorreo = notificadorCorreo;
         this.generadorPdfFacturacionService = generadorPdfFacturacionService;
+        this.notaCreditoRepository = notaCreditoRepository;
     }
 
     @Transactional
@@ -77,6 +86,56 @@ public class FacturacionService {
         return comprobanteRepository.save(comprobanteGuardado);
     }
     
+    /**
+     * Emite la nota de crédito que anula el comprobante de una venta.
+     * Solo aplica si el comprobante fue ACEPTADO por SUNAT: uno pendiente o rechazado
+     * no tiene validez tributaria y no necesita anularse.
+     * Es idempotente: si el comprobante ya tiene nota de crédito, devuelve esa misma.
+     *
+     * @return la nota emitida, o vacío si la venta no tiene comprobante aceptado
+     */
+    @Transactional
+    public Optional<NotaCredito> emitirNotaCreditoPorAnulacion(Long ventaId, String motivo) {
+        Optional<Comprobante> comprobante = comprobanteRepository.findByVentaId(ventaId);
+        if (comprobante.isEmpty() || comprobante.get().getEstadoSunat() != Comprobante.EstadoSunat.ACEPTADO) {
+            log.info("Venta {} sin comprobante aceptado: no requiere nota de crédito", ventaId);
+            return Optional.empty();
+        }
+        Comprobante original = comprobante.get();
+
+        Optional<NotaCredito> existente = notaCreditoRepository.findByComprobanteReferencia_Id(original.getId());
+        if (existente.isPresent()) {
+            return existente;
+        }
+
+        NotaCredito nota = new NotaCredito();
+        nota.setComprobanteReferencia(original);
+        nota.setMotivo(motivo);
+        nota.setTotal(original.getTotal());
+        nota.setSerie(original.getTipo() == Comprobante.TipoComprobante.FACTURA ? "FC01" : "BC01");
+        nota.setNumero(String.format("%08d", notaCreditoRepository.countBySerie(nota.getSerie()) + 1));
+        NotaCredito guardada = notaCreditoRepository.save(nota);
+
+        OseClient.RespuestaOse respuesta = oseClient.emitirNotaCredito(guardada);
+        if (respuesta.exito()) {
+            guardada.setEstadoSunat(Comprobante.EstadoSunat.ACEPTADO);
+            guardada.setEnlacePdf(respuesta.enlacePdf());
+            guardada.setEnlaceXml(respuesta.enlaceXml());
+        } else {
+            guardada.setEstadoSunat(Comprobante.EstadoSunat.RECHAZADO);
+            log.warn("OSE rechazó la nota de crédito {}-{}: {}",
+                    guardada.getSerie(), guardada.getNumero(), respuesta.mensajeError());
+        }
+        log.info("Nota de crédito {}-{} emitida: anula {}", guardada.getSerie(), guardada.getNumero(),
+                guardada.getNumeroComprobanteReferencia());
+        return Optional.of(notaCreditoRepository.save(guardada));
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotaCredito> listarNotasCredito() {
+        return notaCreditoRepository.findAllByOrderByIdDesc();
+    }
+
     public void enviarFacturaCorreo(Long comprobanteId) {
         Comprobante comprobante = comprobanteRepository.findById(comprobanteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));

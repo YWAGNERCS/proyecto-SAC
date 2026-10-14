@@ -31,7 +31,9 @@ public class ReportesService {
         LocalDate inicio = desde != null ? desde : LocalDate.now().withDayOfMonth(1);
         LocalDate fin = hasta != null ? hasta : LocalDate.now();
 
-        List<Venta> ventasDelPeriodo = ventaRepository.findByFechaVentaBetween(inicio, fin);
+        // Una venta ANULADA no es ingreso ni cuenta como venta del periodo
+        List<Venta> ventasDelPeriodo = ventaRepository.findByEstadoAndFechaVentaBetween(
+                Venta.EstadoVenta.REGISTRADA, inicio, fin);
 
         long cantidadVentas = ventasDelPeriodo.size();
         BigDecimal totalIngresosSoles = BigDecimal.ZERO;
@@ -66,9 +68,11 @@ public class ReportesService {
     public Map<String, Object> obtenerReporteCobranza() {
         LocalDate hoy = LocalDate.now();
 
-        List<Venta> ventasPendientesGeneral = ventaRepository.findByEstadoPago(Venta.EstadoPago.PENDIENTE);
-        List<Venta> ventasAtrasadas = ventaRepository
-                .findByEstadoPagoAndFechaLimitePagoBefore(Venta.EstadoPago.PENDIENTE, hoy);
+        // Una venta ANULADA ya no se cobra: se excluye de pendientes y atrasadas
+        List<Venta> ventasPendientesGeneral = ventaRepository.findByEstadoAndEstadoPago(
+                Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE);
+        List<Venta> ventasAtrasadas = ventaRepository.findByEstadoAndEstadoPagoAndFechaLimitePagoBefore(
+                Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE, hoy);
 
         // Comparamos por ID, no por igualdad de objeto: dos consultas separadas
         // pueden devolver instancias distintas de Java para la misma fila,

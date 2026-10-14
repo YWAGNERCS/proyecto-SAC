@@ -12,6 +12,13 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     List<Producto> findBySectorAndVisibleEnCatalogoTrue(Producto.Sector sector);
 
+    List<Producto> findByCategoriaIdOrderByNombre(Long categoriaId);
+
+    List<Producto> findAllByOrderByNombre();
+
+    // Control de referencias: una categoría con productos no se puede eliminar
+    boolean existsByCategoriaId(Long categoriaId);
+
     // Para las alertas de stock mínimo (materiales de servicio)
     @org.springframework.data.jpa.repository.Query("SELECT p FROM Producto p WHERE p.stockActual <= p.stockMinimo")
     List<Producto> findProductosEnAlerta();

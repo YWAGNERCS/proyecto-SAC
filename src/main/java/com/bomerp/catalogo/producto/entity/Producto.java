@@ -1,5 +1,6 @@
 package com.bomerp.catalogo.producto.entity;
 
+import com.bomerp.catalogo.categoria.entity.Categoria;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -61,6 +62,15 @@ public class Producto {
 
     @Column(name = "visible_en_catalogo", nullable = false)
     private boolean visibleEnCatalogo = true;
+
+    /**
+     * Categoría del catálogo (relación Categoría–Producto, S3).
+     * Admite nulo solo por los productos registrados antes de esta relación;
+     * al crear o editar por la API la categoría es obligatoria.
+     */
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
+    private Categoria categoria;
 
     public enum Sector {
         CLIMATIZACION, REFRIGERACION, VENTILACION_FORZADA, MATERIAL_SERVICIO
