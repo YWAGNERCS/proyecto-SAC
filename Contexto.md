@@ -130,7 +130,7 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 
 | Área | Estado |
 |---|---|
-| Módulos backend (los 11) | ✅ Operativos; integraciones RUC/DNI, OSE y WhatsApp **simuladas** |
+| Módulos backend (los 11) | ✅ Operativos; integraciones OSE y WhatsApp **simuladas**; RUC/DNI real vía apis.net.pe v1 (respaldo opcional: Decolecta) |
 | Reorganización | ✅ Cotizaciones → **Proformas** y Mantenimiento → **Postventa** (código, BD y SPA; migración en `migracion_proforma.sql`). ⏳ Separar **Cobranza** de ventas; repartir el paquete `reportes` |
 | Facturación electrónica | ⚠️ OSE real pendiente; correlativo aleatorio (SUNAT exige secuencial) |
 | Frontend / SPA | 🔄 Angular 22 en desarrollo: login, layout, categorías, clientes, proveedores, proformas, compras y ventas (S09: formulario cabecera-detalle, reporte filtrable y anulación) |

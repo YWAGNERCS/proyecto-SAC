@@ -26,7 +26,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 
 **Incluye:**
 - Catálogo de productos con soporte multimoneda (soles/dólares) y precio de venta calculado por margen porcentual sobre el costo.
-- Clientes y Proveedores con autocompletado por RUC/DNI (hoy con un cliente **simulado**, ver 5).
+- Clientes y Proveedores con autocompletado por RUC (SUNAT) y DNI (RENIEC) vía apis.net.pe v1; Decolecta como respaldo opcional.
 - Proformas con exportación a PDF y envío por correo (SMTP).
 - Ventas al contado o a crédito: venta directa (cabecera-detalle) y conversión desde una proforma aceptada; anulación con restauración de stock.
 - Facturación electrónica (simulada, a la espera de credenciales productivas de un OSE).
@@ -45,9 +45,9 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 
 | # | Módulo | Tipo | Responsable | Estado |
 |---|---|---|---|---|
-| 1 | Catálogo (productos con categoría, categorías, catálogo público) | Maestro | Wilson | ✅ CRUD de producto con categoría en la API · ⚠️ falta la pantalla de productos en la SPA |
-| 2 | Clientes (autocompletado RUC/DNI) | Maestro | Aron | ⚠️ Autocompletado simulado |
-| 3 | Proveedores | Maestro | Yoel | ✅ |
+| 1 | Catálogo (productos con categoría, categorías, catálogo público) | Maestro | Wilson | ✅ CRUD de productos con categoría (API y SPA) |
+| 2 | Clientes (autocompletado RUC/DNI) | Maestro | Aron | ✅ Autocompletado real (apis.net.pe v1) |
+| 3 | Proveedores | Maestro | Yoel | ✅ CRUD con validación de RUC/DNI, duplicados (409) y correo; pantalla con búsqueda en SUNAT/RENIEC |
 | 4 | Proformas (+ PDF, + envío por correo) | Transaccional | Yoel | ✅ |
 | 5 | Ventas (directa, desde proforma, crédito, anulación) | Transaccional | Yoel | ✅ |
 | 6 | Compras (incrementa stock) | Transaccional | Wilson | ✅ |
@@ -68,7 +68,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | RF-01 | **Autenticación:** inicio de sesión con credenciales seguras. | ✅ HTTP Basic + BCrypt; pantalla de login en la SPA. |
 | RF-02 | **Roles y permisos:** restringir módulos según el rol (Administrador, Asistente). | ❌ Los roles `ADMIN`/`ASISTENTE` existen, pero ningún endpoint ni pantalla los usa. Se resolverá con roles de Keycloak. |
 | RF-03 | **Catálogo de productos:** moneda dual y precio por margen porcentual. | ✅ Precio = costo base × (1 + margen %). CRUD completo de productos, cada uno con su categoría. |
-| RF-04 | **Autocompletado de clientes/proveedores** por RUC/DNI vía API externa. | ⚠️ Existen clientes para apis.net.pe y Decolecta, pero el que se inyecta es el **simulado** (`@Primary`). |
+| RF-04 | **Autocompletado de clientes/proveedores** por RUC/DNI vía API externa. | ✅ apis.net.pe v1 sin token (RUC → SUNAT, DNI → RENIEC), con respaldo en Decolecta si se configura `DECOLECTA_TOKEN`. Valida el formato (400), distingue "no existe" (404) de "servicio ocupado" (503) y guarda las consultas exitosas en memoria. |
 | RF-05 | **Proformas** con cálculo automático de IGV y subtotales. | ✅ |
 | RF-06 | **PDF** formal y corporativo de la proforma. | ✅ Se genera al **enviar** la proforma (no al guardar). |
 | RF-07 | **Envío de proformas por correo** (SMTP). | ✅ `POST /proformas/{id}/enviar`; requiere credenciales SMTP configuradas. |
@@ -207,7 +207,7 @@ src/main/java/com/bomerp/
 
 ### Requisitos de entorno
 - Navegador actualizado (Chrome, Firefox o Edge).
-- Internet para la consulta de RUC/DNI real, el envío de correos y la facturación electrónica real (hoy simuladas, salvo el correo).
+- Internet para la consulta de RUC/DNI, el envío de correos y la facturación electrónica real (hoy simulada). Sin internet se puede activar `CONSULTA_DOCUMENTOS_SIMULADO=true`.
 
 ### Acceso al sistema
 
@@ -219,7 +219,8 @@ src/main/java/com/bomerp/
 ### Flujos de operación
 
 - **Iniciar sesión:** en la SPA (`http://localhost:4200`) con usuario y contraseña; "Salir" cierra la sesión.
-- **Registrar cliente B2B:** ingresar el RUC y usar el autocompletado (hoy devuelve datos simulados).
+- **Registrar proveedor:** Proveedores → "+ Nuevo Proveedor" → elegir empresa o persona natural → escribir el RUC o DNI → "Buscar en SUNAT/RENIEC" (llena nombre y dirección; avisa si ya está registrado) → completar teléfono, correo y contacto → Guardar.
+- **Registrar cliente B2B:** ingresar el RUC y usar el autocompletado; trae razón social y dirección desde SUNAT. Si aparece "servicio ocupado", esperar unos segundos (apis.net.pe limita las consultas seguidas).
 - **Venta directa:** Ventas → Nueva venta → elegir cliente y forma de pago → agregar líneas buscando el producto por nombre (muestra precio y stock) → revisar subtotal, IGV y total → Registrar y confirmar el resumen.
 - **Convertir proforma en venta:** la proforma debe estar ACEPTADA; se elige contado o crédito y el sistema descuenta stock, programa mantenimientos y genera el comprobante.
 - **Reporte de ventas:** Ventas → filtros por estado y rango de fechas (botón "Buscar"); muestra totales por moneda, ticket promedio y el detalle de cada venta.
@@ -250,7 +251,7 @@ src/main/java/com/bomerp/
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
 | 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
-| 7 | Desarrollo | 🔄 Backend operativo (3 integraciones simuladas); Proformas y Postventa ya renombrados; pendiente separar Cobranza y repartir reportes; SPA en desarrollo |
+| 7 | Desarrollo | 🔄 Backend operativo (OSE y WhatsApp simulados; RUC/DNI real); Proformas y Postventa ya renombrados; pendiente separar Cobranza y repartir reportes; SPA en desarrollo |
 | 8 | Pruebas y validación | 🔄 Pruebas manuales de API; pruebas automatizadas mínimas (ver 5) |
 | 9 | Implementación/despliegue | ⏳ Pendiente — sin ambiente accesible para el cliente |
 | 10 | Documentación técnica | 🔄 Este documento, `CONTEXTO.md` y los `README.md` del backend y del frontend |
@@ -274,7 +275,7 @@ Seguridad: sin responsable, se resolverá con Keycloak.
 |---|---|---|
 | S1–S5 | Backend REST, CRUD, relaciones, cabecera-detalle, reportes, CORS | ✅ CRUD de producto y relación Categoría–Producto completos (13/10/2026) |
 | S7 | SPA Angular: layout, rutas, servicios HTTP | ✅ |
-| S8 | CRUD de tablas dependientes | ✅ CRUD de categorías y registro de compras · ⚠️ clientes y proveedores solo con listado en la SPA |
+| S8 | CRUD de tablas dependientes | ✅ Productos con categoría, categorías, proveedores (con búsqueda RUC/DNI) y compras · ⚠️ clientes solo con listado en la SPA |
 | S9 | Formulario transaccional cabecera-detalle | ✅ Venta directa con FormArray, reporte filtrable y anulación |
 | S10 | Seguridad backend con roles | ⏳ Próxima: se hará con **Keycloak** (la guía lo trata como referencia: "Reemplazo de seguridad por Keycloak") |
 | S11 | Seguridad frontend (guards, interceptores, 401/403) | 🔄 Login, guard e interceptor Basic ya existen; se adaptarán a Keycloak |
@@ -299,8 +300,8 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 7. ~~**El reporte `ventas-resumen` cuenta ventas anuladas.**~~ ✅ **Resuelto (13/10/2026):** `ventas-resumen`, `cobranza` y `/ventas/pagos-atrasados` solo consideran ventas REGISTRADAS.
 8. ~~**Al anular una venta no se cancelan sus mantenimientos ni se genera nota de crédito.**~~ ✅ **Resuelto (13/10/2026):** Postventa cancela los mantenimientos PENDIENTES y Facturación emite la nota de crédito (serie FC01/BC01, correlativo por serie) si el comprobante fue aceptado.
 9. ~~**Producto sin categoría.**~~ ✅ **Resuelto (13/10/2026):** `Producto` tiene `@ManyToOne Categoria`; la API exige la categoría al crear/editar (404 si no existe) y no deja borrar una categoría con productos (409). ⚠️ Los productos anteriores quedaron **sin categoría**: hay que asignársela (PUT).
-10. **Pantalla de productos en la SPA.** El CRUD ya existe en la API (S2), pero la SPA no tiene "Productos" en el menú: falta la lista con filtro por categoría y el formulario con lista desplegable de categorías (S8). Clientes tampoco tiene editar ni eliminar.
-11. **Autocompletado RUC/DNI simulado.** `ConsultaRucClientSimulado` tiene `@Primary`; el comentario de `ConsultaRucClientDecolecta` dice lo contrario. Definir qué proveedor usar.
+10. ~~**Pantalla de productos en la SPA.**~~ ✅ **Resuelto (13/10/2026):** lista con filtro por categoría y formulario con lista desplegable de categorías. Sigue pendiente: registro y edición de **clientes** en la SPA (con la misma búsqueda RUC/DNI que proveedores).
+11. ~~**Autocompletado RUC/DNI simulado.**~~ ✅ **Resuelto (13/10/2026):** proveedor principal apis.net.pe v1 (sin token), respaldo Decolecta con `DECOLECTA_TOKEN` (RUC por SUNAT, DNI por RENIEC) y modo simulado solo con `CONSULTA_DOCUMENTOS_SIMULADO=true`. ⚠️ La v1 limita las consultas seguidas (429): se responde 503 "intente en unos segundos" y se recomienda registrar un token gratuito de Decolecta como respaldo. La API oficial de RENIEC (PIDE) requiere convenio institucional y no está disponible para el proyecto.
 12. **Correlativo de comprobantes aleatorio** (`Math.random()` en `FacturacionService`). SUNAT exige numeración secuencial por serie.
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
 14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.

@@ -36,7 +36,7 @@ Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), co
 | Tipo | Módulo | Qué hace |
 |---|---|---|
 | Maestro | 📦 **Catálogo** | Productos multimoneda (S/ y US$) con precio por margen; categorías; catálogo público sin costos internos |
-| Maestro | 👥 **Clientes** | Datos maestros con autocompletado por RUC/DNI *(simulado)* |
+| Maestro | 👥 **Clientes** | Datos maestros con autocompletado por RUC (SUNAT) y DNI (RENIEC) vía apis.net.pe |
 | Maestro | 🚚 **Proveedores** | Datos maestros de proveedores con autocompletado por RUC/DNI |
 | Transaccional | 📄 **Proformas** | Cálculo de IGV y totales, PDF corporativo y envío por correo; aceptar o rechazar |
 | Transaccional | 🛒 **Ventas** | Venta directa cabecera-detalle o desde una proforma aceptada; contado o crédito; **anulación con restauración de stock** |
@@ -123,7 +123,8 @@ npm start
 |---|---|
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexión a Oracle |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | Envío de correos (SMTP Gmail) |
-| `DECOLECTA_TOKEN` | Consulta real de RUC/DNI |
+| `DECOLECTA_TOKEN` | Respaldo para RUC/DNI si apis.net.pe no responde (token gratuito en decolecta.com) |
+| `CONSULTA_DOCUMENTOS_SIMULADO` | `true` = RUC/DNI con datos de prueba, sin internet |
 | `CORREO_OFICINA` | Destino de las alertas automáticas |
 | `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (por defecto `http://localhost:4200`) |
 
@@ -182,7 +183,7 @@ src/main/java/com/bomerp/
 - [ ] **S11** · Seguridad frontend con Keycloak (guards, interceptores, 401/403)
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones RUC/OSE/WhatsApp son simuladas, falta la pantalla de productos en la SPA, separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones OSE y WhatsApp son simuladas, falta el registro de clientes en la SPA, separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 

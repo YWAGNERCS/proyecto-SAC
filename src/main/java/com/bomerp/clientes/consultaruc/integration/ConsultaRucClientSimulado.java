@@ -1,25 +1,17 @@
 package com.bomerp.clientes.consultaruc.integration;
-import com.bomerp.clientes.cliente.service.ClienteService;
+
+import org.springframework.stereotype.Component;
 
 /**
- * Implementación TEMPORAL/simulada, solo para poder correr y probar
- * el sistema mientras se decide y conecta un proveedor real de
- * consulta de RUC (ej. APIs Perú, Factiliza, SUNAT).
- *
- * Al ser una implementación de la interfaz ConsultaRucClient, el día
- * que se reemplace por la real, NO hay que tocar ClienteService
- * (ver Principio D - Inversión de Dependencias).
+ * Datos de prueba para trabajar SIN internet. Solo se usa si se activa
+ * app.consulta-documentos.simulado=true (variable CONSULTA_DOCUMENTOS_SIMULADO).
+ * Ver ConsultaRucClientConRespaldo.
  */
-import org.springframework.stereotype.Component;
-import org.springframework.context.annotation.Primary;
-
 @Component
-@Primary
 public class ConsultaRucClientSimulado implements ConsultaRucClient {
 
     @Override
     public DatosRuc consultar(String ruc) {
-        // Datos de ejemplo, para pruebas
         return new DatosRuc(ruc, "EMPRESA DE PRUEBA S.A.C.", "AV. EJEMPLO 123, LIMA");
     }
 

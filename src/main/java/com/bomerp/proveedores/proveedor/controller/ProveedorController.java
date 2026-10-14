@@ -2,6 +2,7 @@ package com.bomerp.proveedores.proveedor.controller;
 import com.bomerp.proveedores.proveedor.entity.Proveedor;
 import com.bomerp.proveedores.proveedor.service.ProveedorService;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,9 +32,10 @@ public class ProveedorController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public Proveedor crear(@Valid @RequestBody Proveedor proveedor) {
-        // En una app real, aquí se validarían duplicados por RUC, etc.
-        return proveedorService.guardar(proveedor);
+        proveedor.setId(null);   // siempre es un registro nuevo
+        return proveedorService.guardar(proveedor);   // valida RUC/DNI, duplicados (409) y correo
     }
 
     @PutMapping("/{id}")
