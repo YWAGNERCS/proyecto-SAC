@@ -41,8 +41,9 @@ export class CategoriaList implements OnInit {
     this.categoriaService.eliminar(id).subscribe({
       next: () => this.cargar(),
       error: (err: HttpErrorResponse) => {
-        if (err.status === 500) {
-          this.error.set('No se puede eliminar: la categoría tiene productos asociados.');
+        if (err.status === 409) {
+          // El backend explica el motivo (p. ej. la categoría tiene productos asociados)
+          this.error.set(err.error?.message ?? 'No se puede eliminar: la categoría tiene productos asociados.');
         } else {
           this.error.set('No se pudo eliminar la categoría.');
         }

@@ -1,0 +1,97 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0" style="font-weight: 700;">Productos</h2>
+    <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
+      Equipos y materiales del catálogo, cada uno con su categoría
+    </p>
+  </div>
+  <a routerLink="/catalogo/productos/nuevo" class="btn btn-primary">+ Nuevo Producto</a>
+</div>
+
+<div class="card d-flex align-items-center gap-3" style="padding: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+  <label class="form-label mb-0" for="filtroCategoria">Categoría</label>
+  <select id="filtroCategoria" class="form-select" style="max-width: 280px;" [(ngModel)]="filtro" (ngModelChange)="cargar()">
+    <option [ngValue]="'TODAS'">Todas</option>
+    @for (c of categorias(); track c.id) {
+      <option [ngValue]="c.id">{{ c.nombre }}</option>
+    }
+    <option [ngValue]="'SIN_CATEGORIA'">Sin categoría (por asignar)</option>
+  </select>
+  <span style="color: var(--text-muted); font-size: 0.88rem;">{{ visibles().length }} producto(s)</span>
+</div>
+
+@if (sinCategoria() > 0 && filtro !== 'SIN_CATEGORIA') {
+  <div class="alert alert-info" role="status">
+    <span>ℹ️</span> Hay {{ sinCategoria() }} producto(s) sin categoría.
+    <button class="btn btn-sm btn-secondary" style="margin-left: 8px;" (click)="verSinCategoria()">Ver y asignar</button>
+  </div>
+}
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th style="width: 150px;">Categoría</th>
+          <th style="width: 150px;">Sector</th>
+          <th style="width: 130px; text-align: right;">Precio (sin IGV)</th>
+          <th class="text-center" style="width: 110px;">Stock</th>
+          <th style="width: 170px; text-align: right;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Cargando…</td></tr>
+        }
+        @for (p of visibles(); track p.id) {
+          <tr>
+            <td>
+              <strong style="color: var(--text-main);">{{ p.nombre }}</strong>
+              @if (!p.visibleEnCatalogo) {
+                <span class="badge" style="margin-left: 6px; background-color: #F1F5F9; color: var(--text-muted);">Oculto</span>
+              }
+            </td>
+            <td>
+              @if (p.categoriaNombre) {
+                <span class="badge" style="background-color: var(--primary-light); color: var(--primary);">{{ p.categoriaNombre }}</span>
+              } @else {
+                <span class="badge badge-warning">Sin categoría</span>
+              }
+            </td>
+            <td style="color: var(--text-muted); font-size: 0.9rem;">{{ etiquetaSector(p.sector) }}</td>
+            <td style="text-align: right; font-weight: 600;">{{ simbolo(p.moneda) }} {{ p.precioVenta | number: '1.2-2' }}</td>
+            <td class="text-center">
+              @if (controlaStock(p.sector)) {
+                <span [style.color]="(p.stockActual ?? 0) <= (p.stockMinimo ?? 0) ? 'var(--danger)' : 'inherit'"
+                      [title]="'Mínimo: ' + (p.stockMinimo ?? 0)">
+                  {{ p.stockActual ?? 0 }}
+                </span>
+              } @else {
+                <span style="color: var(--text-muted);" title="Los equipos no controlan stock">—</span>
+              }
+            </td>
+            <td style="text-align: right; white-space: nowrap;">
+              <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/catalogo/productos', p.id, 'editar']">Editar</a>
+              <button class="btn btn-danger btn-sm" style="margin-left: 8px;" (click)="eliminar(p)">Eliminar</button>
+            </td>
+          </tr>
+        } @empty {
+          @if (!loading()) {
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                No hay productos con ese filtro.
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

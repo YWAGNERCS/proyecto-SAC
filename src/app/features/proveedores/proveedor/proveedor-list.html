@@ -3,14 +3,21 @@
     <h1 class="page-title">Proveedores</h1>
     <p class="page-sub">Directorio de proveedores registrados</p>
   </div>
-  <input
-    id="buscar-proveedor"
-    type="search"
-    class="search-input"
-    placeholder="Buscar por nombre, RUC o correo..."
-    (input)="onBuscar($event)"
-  />
+  <div class="d-flex gap-2 align-items-center">
+    <input
+      id="buscar-proveedor"
+      type="search"
+      class="search-input"
+      placeholder="Buscar por nombre, RUC, DNI o correo..."
+      (input)="onBuscar($event)"
+    />
+    <a routerLink="/proveedores/nuevo" class="btn btn-primary" style="white-space: nowrap;">+ Nuevo Proveedor</a>
+  </div>
 </div>
+
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
 
 @if (cargando()) {
   <div class="loading-state">Cargando proveedores…</div>
@@ -26,9 +33,10 @@
           <th>#</th>
           <th>Nombre / Razón Social</th>
           <th>Tipo</th>
-          <th>RUC</th>
+          <th>RUC / DNI</th>
           <th>Teléfono</th>
           <th>Correo</th>
+          <th style="text-align: right;">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -41,9 +49,13 @@
                 {{ prov.tipo === 'EMPRESA' ? 'Empresa' : 'Persona natural' }}
               </span>
             </td>
-            <td>{{ prov.ruc ?? '—' }}</td>
+            <td>{{ prov.ruc ?? prov.dni ?? '—' }}</td>
             <td>{{ prov.telefono ?? '—' }}</td>
             <td>{{ prov.correo ?? '—' }}</td>
+            <td style="text-align: right; white-space: nowrap;">
+              <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/proveedores', prov.id, 'editar']">Editar</a>
+              <button class="btn btn-danger btn-sm" style="margin-left: 6px;" (click)="eliminar(prov)">Eliminar</button>
+            </td>
           </tr>
         }
       </tbody>

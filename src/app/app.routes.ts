@@ -39,6 +39,24 @@ export const routes: Routes = [
           import('./features/catalogo/categoria/categoria-form').then((m) => m.CategoriaForm),
         title: 'Editar categoría — BomERP',
       },
+      {
+        path: 'catalogo/productos',
+        loadComponent: () =>
+          import('./features/catalogo/producto/producto-list').then((m) => m.ProductoList),
+        title: 'Productos — BomERP',
+      },
+      {
+        path: 'catalogo/productos/nuevo',
+        loadComponent: () =>
+          import('./features/catalogo/producto/producto-form').then((m) => m.ProductoForm),
+        title: 'Nuevo producto — BomERP',
+      },
+      {
+        path: 'catalogo/productos/:id/editar',
+        loadComponent: () =>
+          import('./features/catalogo/producto/producto-form').then((m) => m.ProductoForm),
+        title: 'Editar producto — BomERP',
+      },
       // ── Proformas ──────────────────────────────────
       {
         path: 'proformas',
@@ -91,6 +109,18 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/proveedores/proveedor/proveedor-list').then((m) => m.ProveedorListComponent),
         title: 'Proveedores — BomERP',
+      },
+      {
+        path: 'proveedores/nuevo',
+        loadComponent: () =>
+          import('./features/proveedores/proveedor/proveedor-form').then((m) => m.ProveedorFormComponent),
+        title: 'Nuevo proveedor — BomERP',
+      },
+      {
+        path: 'proveedores/:id/editar',
+        loadComponent: () =>
+          import('./features/proveedores/proveedor/proveedor-form').then((m) => m.ProveedorFormComponent),
+        title: 'Editar proveedor — BomERP',
       },
     ],
   },
