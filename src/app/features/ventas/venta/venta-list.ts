@@ -104,10 +104,15 @@ export class VentaListComponent implements OnInit {
   anular(v: VentaResponse) {
     const ok = confirm(
       `¿Anular la venta #${v.id} de ${v.clienteNombre} por ${this.simbolo(v.moneda)} ${Number(v.total).toFixed(2)}?\n\n` +
-        `El stock de sus materiales se restaurará. Esta acción no se puede deshacer.`,
+        `Se restaurará el stock de sus materiales, se cancelarán sus mantenimientos pendientes
+` +
+        `y se emitirá una nota de crédito por su comprobante. Esta acción no se puede deshacer.`,
     );
     if (!ok) return;
-    this.ejecutar(this.ventaService.anular(v.id), `Venta #${v.id} anulada; stock restaurado.`);
+    this.ejecutar(
+      this.ventaService.anular(v.id),
+      `Venta #${v.id} anulada: stock restaurado, mantenimientos cancelados y nota de crédito emitida.`,
+    );
   }
 
   marcarPagada(v: VentaResponse) {

@@ -2,11 +2,18 @@ export interface Producto {
   id: number;
   nombre: string;
   descripcion: string;
+  /** Categoría del catálogo (relación Categoría–Producto); null en productos antiguos sin asignar. */
+  categoriaId?: number | null;
+  categoriaNombre?: string | null;
   sector?: 'CLIMATIZACION' | 'REFRIGERACION' | 'VENTILACION_FORZADA' | 'MATERIAL_SERVICIO';
   costoBase: number;
   margenPorcentaje: number;
+  /** Precio sin IGV calculado por el backend. */
+  precioVenta?: number;
   moneda?: 'SOLES' | 'DOLARES';
   stockActual?: number | null;
+  stockMinimo?: number | null;
+  visibleEnCatalogo?: boolean;
 }
 
 /** Precio de venta sin IGV: misma fórmula que Producto.calcularPrecioVenta() del backend. */

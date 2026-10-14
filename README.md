@@ -28,7 +28,7 @@
 | 👥 Clientes | `/clientes` | Listado de clientes |
 | 🚚 Proveedores | `/proveedores` | Listado de proveedores |
 
-*Pendientes en la SPA:* productos (CRUD con categoría); registro y edición de clientes y proveedores; pantallas de postventa (mantenimientos), cobranza, inventario y facturación.
+*Pendientes en la SPA:* pantalla de productos (el CRUD con categoría ya existe en la API); registro y edición de clientes y proveedores; pantallas de postventa (mantenimientos), cobranza, inventario y facturación.
 
 ---
 
