@@ -2,7 +2,7 @@ package com.bomerp.ventas.venta.entity;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 
 import com.bomerp.clientes.general.integration.Cliente;
-import com.bomerp.cotizaciones.cotizacion.entity.Cotizacion;
+import com.bomerp.proformas.proforma.entity.Proforma;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -16,8 +16,8 @@ import java.util.List;
 
 /**
  * Cabecera de una venta. Puede originarse de dos formas:
- *   1) A partir de una Cotizacion aceptada (RF: conversión sin doble digitación)
- *   2) De forma directa, sin pasar por cotización previa
+ *   1) A partir de una Proforma aceptada (RF: conversión sin doble digitación)
+ *   2) De forma directa, sin pasar por proforma previa
  *
  * El detalle (productos vendidos) vive en DetalleVenta.
  */
@@ -37,10 +37,10 @@ public class Venta {
     @NotNull
     private Cliente cliente;
 
-    /** Nula si la venta se registró directamente, sin cotización previa */
+    /** Nula si la venta se registró directamente, sin proforma previa */
     @ManyToOne
-    @JoinColumn(name = "cotizacion_id")
-    private Cotizacion cotizacionOrigen;
+    @JoinColumn(name = "proforma_id")
+    private Proforma proformaOrigen;
 
     @Column(name = "fecha_venta", nullable = false)
     private LocalDate fechaVenta = LocalDate.now();

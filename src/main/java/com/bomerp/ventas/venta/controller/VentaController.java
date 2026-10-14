@@ -35,13 +35,13 @@ public class VentaController {
         return VentaResponseDTO.desdeEntidad(ventaService.anular(id));
     }
 
-    /** Endpoint estrella: conversión de cotización aceptada en venta */
-    @PostMapping("/desde-cotizacion/{cotizacionId}")
-    public VentaResponseDTO convertirDesdeCotizacion(
-            @PathVariable Long cotizacionId,
+    /** Endpoint estrella: conversión de proforma aceptada en venta */
+    @PostMapping("/desde-proforma/{proformaId}")
+    public VentaResponseDTO convertirDesdeProforma(
+            @PathVariable Long proformaId,
             @RequestParam Venta.TipoPago tipoPago,
             @RequestParam(required = false) Integer diasCredito) {
-        Venta venta = ventaService.convertirCotizacionEnVenta(cotizacionId, tipoPago, diasCredito);
+        Venta venta = ventaService.convertirProformaEnVenta(proformaId, tipoPago, diasCredito);
         return VentaResponseDTO.desdeEntidad(venta);
     }
 

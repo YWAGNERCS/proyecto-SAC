@@ -2,7 +2,7 @@
 
 # ❄️ SGE-JD · Sistema de Gestión Empresarial
 
-**Backend modular para JD Refrigeración S.A.C.: cotizaciones, ventas, compras, inventario, facturación y postventa en un solo sistema.**
+**Backend modular para JD Refrigeración S.A.C.: proformas, ventas, compras, inventario, facturación y postventa en un solo sistema.**
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?logo=springboot&logoColor=white)
@@ -22,7 +22,7 @@
 JD Refrigeración S.A.C. lleva 20 años en climatización, refrigeración y ventilación forzada, y gestionaba todo en hojas de cálculo desconectadas. **SGE-JD** centraliza el flujo comercial real del negocio:
 
 ```
-Cotización  →  Venta  →  Facturación  →  Mantenimiento postventa
+Proforma  →  Venta  →  Facturación  →  Mantenimiento postventa
 ```
 
 Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), construido sobre la base académica **BomERP**: un solo backend Spring Boot modular, una SPA Angular y una base Oracle.
@@ -31,23 +31,24 @@ Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), co
 
 ## ✨ Funcionalidades
 
-**11 módulos**, agrupados por tipo:
+**12 módulos**, agrupados por tipo (*Proformas* antes se llamaba *Cotizaciones*):
 
 | Tipo | Módulo | Qué hace |
 |---|---|---|
 | Maestro | 📦 **Catálogo** | Productos multimoneda (S/ y US$) con precio por margen; categorías; catálogo público sin costos internos |
 | Maestro | 👥 **Clientes** | Datos maestros con autocompletado por RUC/DNI *(simulado)* |
 | Maestro | 🚚 **Proveedores** | Datos maestros de proveedores con autocompletado por RUC/DNI |
-| Transaccional | 📄 **Cotizaciones** | Cálculo de IGV y totales, PDF corporativo y envío por correo; aceptar o rechazar |
-| Transaccional | 🛒 **Ventas** | Venta directa cabecera-detalle o desde una cotización aceptada; contado o crédito; **anulación con restauración de stock** |
+| Transaccional | 📄 **Proformas** | Cálculo de IGV y totales, PDF corporativo y envío por correo; aceptar o rechazar |
+| Transaccional | 🛒 **Ventas** | Venta directa cabecera-detalle o desde una proforma aceptada; contado o crédito; **anulación con restauración de stock** |
 | Transaccional | 🏭 **Compras** | Compras a proveedor que suben el stock automáticamente |
 | Soporte | 📉 **Inventario** | Alertas diarias de stock mínimo |
-| Operativo | 🔧 **Posventa** | 4 mantenimientos preventivos automáticos (3/6/9/12 meses) tras vender equipos, y alertas a la oficina *(paquete `mantenimiento`)* |
+| Operativo | 🔧 **Postventa** | 4 mantenimientos preventivos automáticos (3/6/9/12 meses) tras vender equipos, y alertas a la oficina |
+| Operativo | 💰 **Cobranza** *(nuevo)* | Cuentas por cobrar: ventas a crédito, pagos pendientes y atrasados, registro de pagos *(hoy dentro de ventas; por separar)* |
 | Integración | 🧾 **Facturación** | Comprobante electrónico UBL 2.1 *(OSE simulado)* |
 | Integración | ✉️ **Notificaciones** | Correo SMTP real y WhatsApp *(simulado)* |
-| Transversal | 🔐 **Seguridad** | Usuarios, roles `ADMIN` / `ASISTENTE`, login HTTP Basic + BCrypt *(JWT en S10)* |
+| Transversal | 🔐 **Seguridad** | Se delegará en **Keycloak** (usuarios, roles, login). Hoy: login HTTP Basic + BCrypt *transitorio* |
 
-📊 **Reportes:** no son un módulo aparte. **Cada módulo expone sus propias consultas**: ventas (reporte filtrable por estado y fechas, resumen por periodo, cobranza) y cotizaciones (pendientes). *Hoy el resumen, la cobranza y las cotizaciones pendientes siguen en el paquete `reportes`; falta moverlos a su módulo.*
+📊 **Reportes:** no son un módulo aparte. **Cada módulo expone sus propias consultas**: ventas (reporte filtrable por estado y fechas, resumen por periodo), cobranza (pendientes y atrasadas) y proformas (pendientes). *Hoy el resumen, la cobranza y las proformas pendientes siguen en el paquete `reportes`; falta moverlos a su módulo.*
 
 **Reglas de negocio destacadas**
 - El servidor calcula precios, IGV y totales: el cliente solo envía producto y cantidad.
@@ -66,10 +67,10 @@ flowchart LR
     PUB["🌐 Catálogo público"] -->|/api/v1/publico| API
     subgraph API["⚙️ Spring Boot · com.bomerp"]
         direction TB
-        C[cotizaciones] --- V[ventas] --- P[posventa]
+        C[proformas] --- V[ventas] --- P[postventa]
         CAT[catalogo] --- INV[inventario] --- COM[compras]
         CLI[clientes] --- PRO[proveedores] --- F[facturacion]
-        N[notificaciones] --- S[seguridad]
+        N[notificaciones] --- CB[cobranza] --- S[seguridad]
     end
     API --> DB[("🗄️ Oracle 23 Free<br/>Docker · puerto 1522")]
     API -.-> EXT["📧 SMTP · OSE · RUC/DNI"]
@@ -135,14 +136,14 @@ Base: `/api/v1/admin` (panel) · `/api/v1/publico` (sin login). Contrato complet
 
 | Recurso | Endpoints principales |
 |---|---|
-| Ventas | `GET /ventas?estado=&desde=&hasta=` · `POST /ventas/directa` · `POST /ventas/desde-cotizacion/{id}` · `PATCH /ventas/{id}/anular` · `POST /ventas/{id}/marcar-pagada` |
-| Cotizaciones | `GET` `POST /cotizaciones` · `POST /cotizaciones/{id}/aceptar` · `/rechazar` · `/enviar` |
+| Ventas | `GET /ventas?estado=&desde=&hasta=` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `PATCH /ventas/{id}/anular` · `POST /ventas/{id}/marcar-pagada` |
+| Proformas | `GET` `POST /proformas` · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` |
 | Catálogo | `GET /productos` · CRUD `/categorias` · `GET /api/v1/publico/catalogo` |
 | Compras | `GET` `POST /compras` · `GET /compras/{id}` |
 | Clientes | `GET` `POST /clientes` · `/clientes/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
 | Proveedores | CRUD `/proveedores` · `/proveedores/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
-| Posventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` |
-| Consultas *(por mover a su módulo)* | `/reportes/ventas-resumen` · `/reportes/cobranza` · `/reportes/cotizaciones-pendientes` |
+| Postventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` |
+| Consultas *(por mover a su módulo)* | `/reportes/ventas-resumen` · `/reportes/cobranza` · `/reportes/proformas-pendientes` |
 | Auth | `GET /auth/me` |
 
 Errores uniformes: `400` datos inválidos · `404` no encontrado · `409` regla de negocio o stock insuficiente.
@@ -157,14 +158,14 @@ src/main/java/com/bomerp/
 ├── clientes/        clientes + integración RUC/DNI
 ├── compras/         compras cabecera-detalle
 ├── config/          seguridad, CORS, manejo global de errores
-├── cotizaciones/    cotizaciones + PDF
 ├── facturacion/     comprobantes electrónicos (OSE)
 ├── inventario/      alertas de stock mínimo
-├── mantenimiento/   módulo Posventa (renombrar paquete a posventa/: pendiente)
 ├── notificaciones/  correo y WhatsApp
+├── postventa/       mantenimientos preventivos y alertas
+├── proformas/       proformas (antes cotizaciones) + PDF
 ├── proveedores/     proveedores
-├── reportes/        consultas por repartir a ventas/ y cotizaciones/ (pendiente)
-├── seguridad/       usuarios, roles, autenticación
+├── reportes/        TRANSITORIO: consultas por repartir a ventas/, proformas/ y cobranza/
+├── seguridad/       login transitorio (se reemplaza por Keycloak)
 └── ventas/          ventas cabecera-detalle + anulación
 ```
 
@@ -176,11 +177,11 @@ src/main/java/com/bomerp/
 - [x] **S7** · SPA Angular: layout, rutas, servicios HTTP
 - [x] **S8** · CRUD de tablas dependientes
 - [x] **S9** · Formulario transaccional de venta (FormArray), reporte filtrable y anulación
-- [ ] **S10** · Seguridad backend con JWT y roles
-- [ ] **S11** · Seguridad frontend (guards, interceptores, 401/403)
+- [ ] **S10** · Seguridad backend con roles (**Keycloak**)
+- [ ] **S11** · Seguridad frontend con Keycloak (guards, interceptores, 401/403)
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, el reporte de ventas aún cuenta las anuladas, las integraciones RUC/OSE/WhatsApp son simuladas, y falta renombrar el paquete `mantenimiento` a `posventa` y repartir `reportes` entre sus módulos. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, el reporte de ventas aún cuenta las anuladas, las integraciones RUC/OSE/WhatsApp son simuladas, falta separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 
@@ -196,11 +197,13 @@ src/main/java/com/bomerp/
 
 ## 👥 Equipo
 
-| Integrante | Módulos a cargo | Enfoque |
+| Integrante | Módulos a cargo | Transaccional (cabecera-detalle) |
 |---|---|---|
-| **Yoel Wagner Chambi Sirena** | Proveedores · Cotizaciones · Ventas · Posventa | Flujo comercial · coordinación con el cliente |
-| **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras | Abastecimiento y stock |
-| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Seguridad | Integraciones y transversales |
+| **Yoel Wagner Chambi Sirena** | Proveedores · Proformas · Ventas | Proforma–ItemProforma · Venta–DetalleVenta |
+| **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras · Postventa | Compra–DetalleCompra |
+| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Cobranza | *Cobranza: Cobro–DetalleCobro (por diseñar)* |
+
+🔐 **Seguridad** no tiene responsable: se resolverá con **Keycloak**.
 
 <div align="center">
 <sub>Proyecto Integrador ADS · BD2 · LP2 — Universidad Peruana Unión · Cliente: JD Refrigeración S.A.C.</sub>

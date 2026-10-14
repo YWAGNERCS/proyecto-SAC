@@ -8,13 +8,13 @@ import com.bomerp.catalogo.producto.entity.Producto;
 import com.bomerp.catalogo.producto.service.ProductoService;
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.clientes.cliente.service.ClienteService;
-import com.bomerp.cotizaciones.cotizacion.entity.Cotizacion;
-import com.bomerp.cotizaciones.cotizacion.service.CotizacionService;
-import com.bomerp.cotizaciones.itemcotizacion.entity.ItemCotizacion;
+import com.bomerp.proformas.proforma.entity.Proforma;
+import com.bomerp.proformas.proforma.service.ProformaService;
+import com.bomerp.proformas.itemproforma.entity.ItemProforma;
 import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
 import com.bomerp.config.StockInsuficienteException;
-import com.bomerp.mantenimiento.mantenimiento.service.MantenimientoService;
+import com.bomerp.postventa.mantenimiento.service.MantenimientoService;
 import com.bomerp.facturacion.facturacion.service.FacturacionService;
 
 import org.springframework.stereotype.Service;
@@ -31,20 +31,20 @@ import lombok.extern.slf4j.Slf4j;
 public class VentaService {
 
     private final VentaRepository ventaRepository;
-    private final CotizacionService cotizacionService;
+    private final ProformaService proformaService;
     private final ClienteService clienteService;
     private final ProductoService productoService;
     private final MantenimientoService mantenimientoService;
     private final FacturacionService facturacionService;
 
     public VentaService(VentaRepository ventaRepository,
-                        CotizacionService cotizacionService,
+                        ProformaService proformaService,
                         ClienteService clienteService,
                         ProductoService productoService,
                         MantenimientoService mantenimientoService,
                         FacturacionService facturacionService) {
         this.ventaRepository = ventaRepository;
-        this.cotizacionService = cotizacionService;
+        this.proformaService = proformaService;
         this.clienteService = clienteService;
         this.productoService = productoService;
         this.mantenimientoService = mantenimientoService;
@@ -57,37 +57,37 @@ public class VentaService {
 
     /**
      * ⭐ RF principal confirmado con Lisandro:
-     * "Convertir una cotización aceptada en venta, sin reescribir los datos"
+     * "Convertir una proforma aceptada en venta, sin reescribir los datos"
      *
-     * Toma una Cotizacion ya ACEPTADA y genera la Venta correspondiente,
+     * Toma una Proforma ya ACEPTADA y genera la Venta correspondiente,
      * copiando cliente, items y montos — el usuario no vuelve a digitar
-     * nada de lo que ya estaba en la cotización.
+     * nada de lo que ya estaba en la proforma.
      *
      * Reglas de negocio:
-     *  - La cotización debe estar ACEPTADA (409 si no).
-     *  - La cotización no debe haberse convertido ya en venta (409 si ya existe).
+     *  - La proforma debe estar ACEPTADA (409 si no).
+     *  - La proforma no debe haberse convertido ya en venta (409 si ya existe).
      *  - Para productos con controlaStock() = true, el stock debe ser suficiente (409 si no).
      */
-    public Venta convertirCotizacionEnVenta(Long cotizacionId, Venta.TipoPago tipoPago, Integer diasCredito) {
-        log.info("Iniciando transaccion: Convertir Cotizacion {} en Venta", cotizacionId);
+    public Venta convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito) {
+        log.info("Iniciando transaccion: Convertir Proforma {} en Venta", proformaId);
 
-        Cotizacion cotizacion = cotizacionService.obtenerPorId(cotizacionId);
+        Proforma proforma = proformaService.obtenerPorId(proformaId);
 
         // ── Regla 1: Solo ACEPTADA se puede convertir ──────────────────────
-        if (cotizacion.getEstado() != Cotizacion.EstadoCotizacion.ACEPTADA) {
+        if (proforma.getEstado() != Proforma.EstadoProforma.ACEPTADA) {
             throw new ReglaNegocioException(
-                    "Solo se puede convertir una cotización ACEPTADA. Estado actual: "
-                            + cotizacion.getEstado());
+                    "Solo se puede convertir una proforma ACEPTADA. Estado actual: "
+                            + proforma.getEstado());
         }
 
         // ── Regla 2: Evitar doble conversión ────────────────────────────────
-        if (ventaRepository.existsByCotizacionOrigenId(cotizacionId)) {
+        if (ventaRepository.existsByProformaOrigenId(proformaId)) {
             throw new ReglaNegocioException(
-                    "La cotización #" + cotizacionId + " ya fue convertida en venta anteriormente.");
+                    "La proforma #" + proformaId + " ya fue convertida en venta anteriormente.");
         }
 
         // ── Regla 3: Verificar stock suficiente (solo MATERIAL_SERVICIO) ────
-        for (ItemCotizacion item : cotizacion.getItems()) {
+        for (ItemProforma item : proforma.getItems()) {
             Producto producto = item.getProducto();
             if (producto.controlaStock()) {
                 int stockDisponible = producto.getStockActual() != null ? producto.getStockActual() : 0;
@@ -99,11 +99,11 @@ public class VentaService {
         }
 
         Venta venta = new Venta();
-        venta.setCliente(cotizacion.getCliente());
-        venta.setCotizacionOrigen(cotizacion);
+        venta.setCliente(proforma.getCliente());
+        venta.setProformaOrigen(proforma);
         venta.setFechaVenta(LocalDate.now());
         venta.setTipoPago(tipoPago);
-        venta.setMoneda(Venta.Moneda.valueOf(cotizacion.getMoneda().name()));
+        venta.setMoneda(Venta.Moneda.valueOf(proforma.getMoneda().name()));
 
         if (tipoPago == Venta.TipoPago.CREDITO) {
             int dias = diasCredito != null ? diasCredito : 30;
@@ -113,7 +113,7 @@ public class VentaService {
             venta.setEstadoPago(Venta.EstadoPago.PAGADO);
         }
 
-        for (ItemCotizacion item : cotizacion.getItems()) {
+        for (ItemProforma item : proforma.getItems()) {
             Producto producto = item.getProducto();
 
             // Descuento de inventario (solo para productos que controlan stock)
@@ -138,7 +138,7 @@ public class VentaService {
     }
 
     /**
-     * Venta directa, sin cotización previa
+     * Venta directa, sin proforma previa
      * (RF: la empresa también vende sin cotizar antes).
      *
      * Reglas de negocio:

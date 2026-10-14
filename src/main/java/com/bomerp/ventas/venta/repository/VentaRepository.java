@@ -29,6 +29,6 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
                        @Param("desde") LocalDate desde,
                        @Param("hasta") LocalDate hasta);
 
-    // Evita convertir dos veces la misma cotización en venta
-    boolean existsByCotizacionOrigenId(Long cotizacionId);
+    // Evita convertir dos veces la misma proforma en venta
+    boolean existsByProformaOrigenId(Long proformaId);
 }

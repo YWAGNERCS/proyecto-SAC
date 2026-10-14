@@ -38,9 +38,9 @@ public class ReportesController {
         return ResponseEntity.ok(reportesService.obtenerReporteCobranza());
     }
 
-    /** RF: "Cotizaciones pendientes" */
-    @GetMapping("/cotizaciones-pendientes")
-    public ResponseEntity<Map<String, Object>> getCotizacionesPendientes() {
-        return ResponseEntity.ok(reportesService.obtenerReporteCotizacionesPendientes());
+    /** RF: "Proformas pendientes" */
+    @GetMapping("/proformas-pendientes")
+    public ResponseEntity<Map<String, Object>> getProformasPendientes() {
+        return ResponseEntity.ok(reportesService.obtenerReporteProformasPendientes());
     }
 }

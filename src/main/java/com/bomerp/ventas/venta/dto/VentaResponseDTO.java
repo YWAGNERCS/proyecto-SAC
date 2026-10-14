@@ -8,7 +8,7 @@ import java.util.List;
 public record VentaResponseDTO(
         Long id,
         String clienteNombre,
-        Long cotizacionOrigenId,
+        Long proformaOrigenId,
         LocalDate fechaVenta,
         String tipoPago,
         String estado,
@@ -39,7 +39,7 @@ public record VentaResponseDTO(
         return new VentaResponseDTO(
                 v.getId(),
                 v.getCliente().getNombreORazonSocial(),
-                v.getCotizacionOrigen() != null ? v.getCotizacionOrigen().getId() : null,
+                v.getProformaOrigen() != null ? v.getProformaOrigen().getId() : null,
                 v.getFechaVenta(),
                 v.getTipoPago().name(),
                 v.getEstado().name(),

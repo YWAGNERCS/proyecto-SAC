@@ -1,7 +1,7 @@
 package com.bomerp.reportes.reportes.service;
 
-import com.bomerp.cotizaciones.cotizacion.entity.Cotizacion;
-import com.bomerp.cotizaciones.cotizacion.repository.CotizacionRepository;
+import com.bomerp.proformas.proforma.entity.Proforma;
+import com.bomerp.proformas.proforma.repository.ProformaRepository;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.repository.VentaRepository;
 import org.springframework.stereotype.Service;
@@ -16,11 +16,11 @@ import java.util.Map;
 public class ReportesService {
 
     private final VentaRepository ventaRepository;
-    private final CotizacionRepository cotizacionRepository;
+    private final ProformaRepository proformaRepository;
 
-    public ReportesService(VentaRepository ventaRepository, CotizacionRepository cotizacionRepository) {
+    public ReportesService(VentaRepository ventaRepository, ProformaRepository proformaRepository) {
         this.ventaRepository = ventaRepository;
-        this.cotizacionRepository = cotizacionRepository;
+        this.proformaRepository = proformaRepository;
     }
 
     /**
@@ -87,13 +87,13 @@ public class ReportesService {
         return reporte;
     }
 
-    /** RF: "Cotizaciones pendientes" — expuesto explícitamente como reporte */
-    public Map<String, Object> obtenerReporteCotizacionesPendientes() {
-        List<Cotizacion> pendientes = cotizacionRepository.findByEstado(Cotizacion.EstadoCotizacion.PENDIENTE);
+    /** RF: "Proformas pendientes" — expuesto explícitamente como reporte */
+    public Map<String, Object> obtenerReporteProformasPendientes() {
+        List<Proforma> pendientes = proformaRepository.findByEstado(Proforma.EstadoProforma.PENDIENTE);
 
         Map<String, Object> reporte = new HashMap<>();
         reporte.put("cantidad", pendientes.size());
-        reporte.put("cotizaciones", pendientes.stream()
+        reporte.put("proformas", pendientes.stream()
                 .map(c -> Map.of(
                         "id", c.getId(),
                         "cliente", c.getCliente().getNombreORazonSocial(),
