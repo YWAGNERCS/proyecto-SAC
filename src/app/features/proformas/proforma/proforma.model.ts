@@ -1,12 +1,12 @@
 import { Cliente } from '../../clientes/cliente/cliente.model';
 
-export interface CotizacionItemDTO {
+export interface ProformaItemDTO {
   productoId: number;
   cantidad: number;
 }
 
 // Modelo que devuelve el Backend (para la Lista)
-export interface CotizacionResponse {
+export interface ProformaResponse {
   id: number;
   clienteNombre?: string;
   cliente?: Cliente;
@@ -20,9 +20,9 @@ export interface CotizacionResponse {
 }
 
 // Modelo que recibe el Backend (para Crear/Editar)
-export interface CotizacionRequest {
+export interface ProformaRequest {
   clienteId: number | null;
   moneda: string;
   diasVigencia: number;
-  items: CotizacionItemDTO[];
+  items: ProformaItemDTO[];
 }

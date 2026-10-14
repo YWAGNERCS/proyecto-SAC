@@ -18,8 +18,8 @@ export class VentaService {
     return this.http.get<VentaResponse[]>(this.api.buildUrl(this.endpoint), { params });
   }
 
-  convertirDesdeCotizacion(cotizacionId: number, tipoPago: string, diasCredito?: number) {
-    let url = `${this.api.buildUrl(this.endpoint)}/desde-cotizacion/${cotizacionId}?tipoPago=${tipoPago}`;
+  convertirDesdeProforma(proformaId: number, tipoPago: string, diasCredito?: number) {
+    let url = `${this.api.buildUrl(this.endpoint)}/desde-proforma/${proformaId}?tipoPago=${tipoPago}`;
     if (diasCredito) {
       url += `&diasCredito=${diasCredito}`;
     }

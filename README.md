@@ -19,16 +19,16 @@
 
 | Módulo | Ruta | Qué permite |
 |---|---|---|
-| 🔐 Seguridad | `/login` | Inicio de sesión contra el backend; las demás rutas están protegidas por un guard |
+| 🔐 Seguridad | `/login` | Inicio de sesión (transitorio, HTTP Basic); las demás rutas están protegidas por un guard. Se reemplazará por **Keycloak** |
 | 🏠 Inicio | `/` | Panel de bienvenida |
 | 📦 Catálogo | `/catalogo/categorias` | CRUD de categorías |
-| 📄 Cotizaciones | `/cotizaciones`, `/cotizaciones/nuevo` | Listado, nueva cotización, aceptar/rechazar/enviar |
+| 📄 Proformas *(antes Cotizaciones)* | `/proformas`, `/proformas/nueva` | Listado, nueva proforma, aceptar/rechazar/enviar |
 | 🛒 Ventas | `/ventas`, `/ventas/nueva` | **Venta directa cabecera-detalle** (FormArray, búsqueda de producto con precio, totales en vivo, confirmación) y **reporte** con filtros por estado y fechas, totales, detalle y **anulación** |
 | 🏭 Compras | `/compras`, `/compras/nueva` | Registro de compras a proveedor |
 | 👥 Clientes | `/clientes` | Listado de clientes |
 | 🚚 Proveedores | `/proveedores` | Listado de proveedores |
 
-*Pendientes en la SPA:* registro y edición de clientes y proveedores; pantallas de posventa (mantenimientos), inventario y facturación.
+*Pendientes en la SPA:* productos (CRUD con categoría); registro y edición de clientes y proveedores; pantallas de postventa (mantenimientos), cobranza, inventario y facturación.
 
 ---
 
@@ -73,7 +73,7 @@ src/app/
 │   ├── catalogo/        categoria/, producto/
 │   ├── clientes/        cliente/
 │   ├── compras/         compra/
-│   ├── cotizaciones/    cotizacion/
+│   ├── proformas/       proforma/ (antes cotizaciones/)
 │   ├── proveedores/     proveedor/
 │   └── ventas/          venta/ (formulario cabecera-detalle y reporte)
 └── shared/              componentes reutilizables (spinner)
@@ -84,7 +84,7 @@ src/app/
 - Los montos que calcula el formulario son una **vista previa**: el backend calcula los definitivos y la SPA solo envía ids y cantidades.
 - Los errores del backend se muestran por código: `400` datos inválidos · `404` no existe · `409` regla de negocio o stock insuficiente.
 
-**Seguridad (transitoria):** el login valida las credenciales con `GET /api/v1/admin/auth/me` y el interceptor adjunta `Authorization: Basic` a las rutas `/admin/`. En **S10–S11** se reemplaza por JWT, con expiración, menú según permisos y manejo de 401/403.
+**Seguridad (transitoria):** el login valida las credenciales con `GET /api/v1/admin/auth/me` y el interceptor adjunta `Authorization: Basic` a las rutas `/admin/`. El equipo decidió reemplazarlo por **Keycloak** (S10–S11): login en Keycloak, token con expiración, menú según roles y manejo de 401/403.
 
 ---
 
@@ -93,7 +93,7 @@ src/app/
 - [x] **S7** · Proyecto Angular, layout, rutas, servicios HTTP
 - [x] **S8** · CRUD de tablas dependientes
 - [x] **S9** · Formulario transaccional de venta, reporte filtrable y anulación
-- [ ] **S11** · Seguridad frontend: JWT, expiración, menú por permisos, 401/403
+- [ ] **S11** · Seguridad frontend con Keycloak: token, expiración, menú por roles, 401/403
 - [ ] **S12** · Integración de la SPA segura (Producto U2)
 
 ---
@@ -102,9 +102,11 @@ src/app/
 
 | Integrante | Módulos a cargo (backend y SPA) |
 |---|---|
-| **Yoel Wagner Chambi Sirena** | Proveedores · Cotizaciones · Ventas · Posventa |
-| **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras |
-| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Seguridad |
+| **Yoel Wagner Chambi Sirena** | Proveedores · Proformas · Ventas |
+| **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras · Postventa |
+| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Cobranza |
+
+Seguridad: sin responsable, se resolverá con Keycloak.
 
 <div align="center">
 <sub>Proyecto Integrador ADS · BD2 · LP2 — Universidad Peruana Unión · Generado con Angular CLI 22.2</sub>

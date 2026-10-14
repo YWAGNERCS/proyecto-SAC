@@ -39,18 +39,18 @@ export const routes: Routes = [
           import('./features/catalogo/categoria/categoria-form').then((m) => m.CategoriaForm),
         title: 'Editar categoría — BomERP',
       },
-      // ── Cotizaciones ──────────────────────────────────
+      // ── Proformas ──────────────────────────────────
       {
-        path: 'cotizaciones',
+        path: 'proformas',
         loadComponent: () =>
-          import('./features/cotizaciones/cotizacion/cotizacion-list').then((m) => m.CotizacionListComponent),
-        title: 'Cotizaciones — BomERP',
+          import('./features/proformas/proforma/proforma-list').then((m) => m.ProformaListComponent),
+        title: 'Proformas — BomERP',
       },
       {
-        path: 'cotizaciones/nuevo',
+        path: 'proformas/nueva',
         loadComponent: () =>
-          import('./features/cotizaciones/cotizacion/cotizacion-form').then((m) => m.CotizacionFormComponent),
-        title: 'Nueva cotización — BomERP',
+          import('./features/proformas/proforma/proforma-form').then((m) => m.ProformaFormComponent),
+        title: 'Nueva proforma — BomERP',
       },
       // ── Ventas ─────────────────────────────────────────
       {

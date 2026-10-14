@@ -1,36 +1,36 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { CotizacionService } from './cotizacion-service';
+import { ProformaService } from './proforma-service';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { VentaService } from '../../ventas/venta/venta-service';
-import { CotizacionResponse } from './cotizacion.model';
+import { ProformaResponse } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 
 @Component({
-  selector: 'app-cotizacion-list',
+  selector: 'app-proforma-list',
   standalone: true,
   imports: [CommonModule, RouterLink],
-  templateUrl: './cotizacion-list.html'
+  templateUrl: './proforma-list.html'
 })
-export class CotizacionListComponent implements OnInit {
-  private cotizacionService = inject(CotizacionService);
+export class ProformaListComponent implements OnInit {
+  private proformaService = inject(ProformaService);
   private clienteService = inject(ClienteService);
   private ventaService = inject(VentaService);
   private router = inject(Router);
 
-  cotizaciones = signal<CotizacionResponse[]>([]);
+  proformas = signal<ProformaResponse[]>([]);
   clientes = signal<Cliente[]>([]);
   accionEnCurso = signal<number | null>(null);
 
   ngOnInit() {
-    this.cargarCotizaciones();
+    this.cargarProformas();
     this.cargarClientes();
   }
 
-  cargarCotizaciones(clienteId?: number) {
-    this.cotizacionService.listar(clienteId).subscribe({
-      next: (data: any) => this.cotizaciones.set(data)
+  cargarProformas(clienteId?: number) {
+    this.proformaService.listar(clienteId).subscribe({
+      next: (data: any) => this.proformas.set(data)
     });
   }
 
@@ -43,15 +43,15 @@ export class CotizacionListComponent implements OnInit {
   filtrarPorCliente(event: Event) {
     const select = event.target as HTMLSelectElement;
     const clienteId = select.value ? Number(select.value) : undefined;
-    this.cargarCotizaciones(clienteId);
+    this.cargarProformas(clienteId);
   }
 
   enviar(id: number) {
     this.accionEnCurso.set(id);
-    this.cotizacionService.enviar(id).subscribe({
+    this.proformaService.enviar(id).subscribe({
       next: () => {
         this.accionEnCurso.set(null);
-        this.cargarCotizaciones();
+        this.cargarProformas();
       },
       error: () => this.accionEnCurso.set(null)
     });
@@ -59,10 +59,10 @@ export class CotizacionListComponent implements OnInit {
 
   aceptar(id: number) {
     this.accionEnCurso.set(id);
-    this.cotizacionService.aceptar(id).subscribe({
+    this.proformaService.aceptar(id).subscribe({
       next: () => {
         this.accionEnCurso.set(null);
-        this.cargarCotizaciones();
+        this.cargarProformas();
       },
       error: () => this.accionEnCurso.set(null)
     });
@@ -70,18 +70,18 @@ export class CotizacionListComponent implements OnInit {
 
   rechazar(id: number) {
     this.accionEnCurso.set(id);
-    this.cotizacionService.rechazar(id).subscribe({
+    this.proformaService.rechazar(id).subscribe({
       next: () => {
         this.accionEnCurso.set(null);
-        this.cargarCotizaciones();
+        this.cargarProformas();
       },
       error: () => this.accionEnCurso.set(null)
     });
   }
 
-  convertirEnVenta(cotizacionId: number) {
-    this.accionEnCurso.set(cotizacionId);
-    this.ventaService.convertirDesdeCotizacion(cotizacionId, 'CONTADO').subscribe({
+  convertirEnVenta(proformaId: number) {
+    this.accionEnCurso.set(proformaId);
+    this.ventaService.convertirDesdeProforma(proformaId, 'CONTADO').subscribe({
       next: () => {
         this.accionEnCurso.set(null);
         this.router.navigate(['/ventas']);

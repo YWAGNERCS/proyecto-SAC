@@ -2,21 +2,21 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { CotizacionService } from './cotizacion-service';
+import { ProformaService } from './proforma-service';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { ProductoService } from '../../catalogo/producto/producto-service';
-import { CotizacionRequest } from './cotizacion.model';
+import { ProformaRequest } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { Producto } from '../../catalogo/producto/producto.model';
 
 @Component({
-  selector: 'app-cotizacion-form',
+  selector: 'app-proforma-form',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './cotizacion-form.html'
+  templateUrl: './proforma-form.html'
 })
-export class CotizacionFormComponent implements OnInit {
-  private cotizacionService = inject(CotizacionService);
+export class ProformaFormComponent implements OnInit {
+  private proformaService = inject(ProformaService);
   private clienteService = inject(ClienteService);
   private productoService = inject(ProductoService);
   private router = inject(Router);
@@ -26,7 +26,7 @@ export class CotizacionFormComponent implements OnInit {
   errorMessage = signal<string>('');
   loading = signal<boolean>(false);
 
-  cotizacion: CotizacionRequest = {
+  proforma: ProformaRequest = {
     clienteId: null,
     moneda: 'SOLES',
     diasVigencia: 15,
@@ -54,12 +54,12 @@ export class CotizacionFormComponent implements OnInit {
     
     const prodId = Number(this.productoSeleccionadoId);
     const cant = Number(this.cantidadSeleccionada);
-    const itemExistente = this.cotizacion.items.find(i => i.productoId === prodId);
+    const itemExistente = this.proforma.items.find(i => i.productoId === prodId);
     
     if (itemExistente) {
       itemExistente.cantidad += cant;
     } else {
-      this.cotizacion.items.push({
+      this.proforma.items.push({
         productoId: prodId,
         cantidad: cant
       });
@@ -70,7 +70,7 @@ export class CotizacionFormComponent implements OnInit {
   }
 
   eliminarItem(index: number) {
-    this.cotizacion.items.splice(index, 1);
+    this.proforma.items.splice(index, 1);
   }
 
   getNombreProducto(id: number): string {
@@ -81,35 +81,35 @@ export class CotizacionFormComponent implements OnInit {
   guardar() {
     this.errorMessage.set('');
 
-    if (!this.cotizacion.clienteId) {
+    if (!this.proforma.clienteId) {
       this.errorMessage.set('Debe seleccionar un cliente.');
       return;
     }
-    if (!this.cotizacion.items || this.cotizacion.items.length === 0) {
-      this.errorMessage.set('Debe agregar al menos un ítem a la cotización.');
+    if (!this.proforma.items || this.proforma.items.length === 0) {
+      this.errorMessage.set('Debe agregar al menos un ítem a la proforma.');
       return;
     }
 
     const payload = {
-      clienteId: Number(this.cotizacion.clienteId),
-      moneda: this.cotizacion.moneda,
-      diasVigencia: Number(this.cotizacion.diasVigencia || 15),
-      items: this.cotizacion.items.map(i => ({
+      clienteId: Number(this.proforma.clienteId),
+      moneda: this.proforma.moneda,
+      diasVigencia: Number(this.proforma.diasVigencia || 15),
+      items: this.proforma.items.map(i => ({
         productoId: Number(i.productoId),
         cantidad: Number(i.cantidad)
       }))
     };
 
     this.loading.set(true);
-    this.cotizacionService.crear(payload as any).subscribe({
+    this.proformaService.crear(payload as any).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigate(['/cotizaciones']);
+        this.router.navigate(['/proformas']);
       },
       error: (err: any) => {
         this.loading.set(false);
-        console.error('Error al guardar cotización:', err);
-        const msg = err.error?.message || err.message || 'Error al procesar la cotización en el servidor.';
+        console.error('Error al guardar proforma:', err);
+        const msg = err.error?.message || err.message || 'Error al procesar la proforma en el servidor.';
         this.errorMessage.set(msg);
       }
     });

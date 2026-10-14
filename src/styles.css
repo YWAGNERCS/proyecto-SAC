@@ -376,7 +376,7 @@ textarea.form-control {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Action button styles for cotización list */
+/* Action button styles for proforma list */
 .badge-success-btn {
   background-color: var(--success);
   color: white;

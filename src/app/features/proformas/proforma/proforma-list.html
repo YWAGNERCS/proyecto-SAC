@@ -1,11 +1,11 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
-    <h2 class="mb-0" style="font-weight: 700;">Cotizaciones</h2>
+    <h2 class="mb-0" style="font-weight: 700;">Proformas</h2>
     <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
-      Registro de cotizaciones comerciales emitidas a clientes
+      Registro de proformas comerciales emitidas a clientes
     </p>
   </div>
-  <a routerLink="/cotizaciones/nuevo" class="btn btn-primary">+ Nueva Cotización</a>
+  <a routerLink="/proformas/nueva" class="btn btn-primary">+ Nueva Proforma</a>
 </div>
 
 <div class="card" style="padding: 16px; margin-bottom: 20px; max-width: 420px;">
@@ -33,7 +33,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (c of cotizaciones(); track c.id) {
+        @for (c of proformas(); track c.id) {
           <tr>
             <td>
               <span class="badge">#{{ c.id }}</span>
@@ -81,7 +81,7 @@
         } @empty {
           <tr>
             <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
-              No se encontraron cotizaciones registradas.
+              No se encontraron proformas registradas.
             </td>
           </tr>
         }

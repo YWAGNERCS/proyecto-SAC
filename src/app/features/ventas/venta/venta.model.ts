@@ -10,7 +10,7 @@ export type EstadoVenta = 'REGISTRADA' | 'ANULADA';
 export interface VentaResponse {
   id: number;
   clienteNombre: string;
-  cotizacionOrigenId: number | null;
+  proformaOrigenId: number | null;
   fechaVenta: string;
   tipoPago: 'CONTADO' | 'CREDITO';
   estado: EstadoVenta;
