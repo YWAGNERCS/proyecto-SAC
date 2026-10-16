@@ -159,9 +159,17 @@ public class VentaService {
 
         Cliente cliente = clienteService.obtenerPorId(clienteId);
 
-        // ── Regla: Verificar stock suficiente antes de mutar nada ───────────
+        // ── Reglas: una sola moneda y stock suficiente, antes de mutar nada ──
+        Producto.Moneda monedaVenta = null;
         for (ItemVentaDTO itemDTO : items) {
             Producto producto = productoService.obtenerPorId(itemDTO.productoId());
+            if (monedaVenta == null) {
+                monedaVenta = producto.getMoneda();
+            } else if (producto.getMoneda() != monedaVenta) {
+                // Sin esta regla la venta tomaba la moneda del último producto y sumaba soles con dólares
+                throw new IllegalArgumentException("Una venta no puede mezclar productos en soles y en dólares: '"
+                        + producto.getNombre() + "' está en " + producto.getMoneda() + " y el resto en " + monedaVenta + ".");
+            }
             if (producto.controlaStock()) {
                 int stockDisponible = producto.getStockActual() != null ? producto.getStockActual() : 0;
                 if (stockDisponible < itemDTO.cantidad()) {
@@ -220,10 +228,25 @@ public class VentaService {
 
     @Transactional(readOnly = true)
     public List<Venta> buscar(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta) {
+        return buscar(estado, desde, hasta, null);
+    }
+
+    /** Igual que el reporte, con filtro opcional por cliente (historial del cliente). */
+    @Transactional(readOnly = true)
+    public List<Venta> buscar(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta, Long clienteId) {
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
         }
-        return ventaRepository.buscar(estado, desde, hasta);
+        if (clienteId != null) {
+            clienteService.obtenerPorId(clienteId);   // 404 si el cliente no existe
+        }
+        return ventaRepository.buscar(estado, desde, hasta, clienteId);
+    }
+
+    /** Fachada para el kardex (Inventario): líneas vendidas de un producto. */
+    @Transactional(readOnly = true)
+    public List<DetalleVenta> detallesDeProducto(Long productoId) {
+        return ventaRepository.detallesDeProducto(productoId);
     }
 
     public Venta marcarComoPagada(Long ventaId) {
@@ -265,6 +288,7 @@ public class VentaService {
             }
         }
         venta.setEstado(Venta.EstadoVenta.ANULADA);
+        venta.setFechaAnulacion(LocalDate.now());
 
         int mantenimientosCancelados = mantenimientoService.cancelarPendientesDeVenta(ventaId);
         String notaCredito = facturacionService

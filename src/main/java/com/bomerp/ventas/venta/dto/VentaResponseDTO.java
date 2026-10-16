@@ -18,6 +18,7 @@ public record VentaResponseDTO(
         BigDecimal subtotal,
         BigDecimal igv,
         BigDecimal total,
+        Long comprobanteId,
         List<DetalleResponseDTO> detalles
 ) {
     public record DetalleResponseDTO(
@@ -49,6 +50,7 @@ public record VentaResponseDTO(
                 v.calcularSubtotal(),
                 v.calcularIgv(),
                 v.calcularTotal(),
+                v.getComprobanteId(),
                 detalles
         );
     }

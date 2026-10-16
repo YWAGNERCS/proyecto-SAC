@@ -1,4 +1,5 @@
 package com.bomerp.compras.compra.service;
+import java.time.LocalDate;
 import com.bomerp.compras.detallecompra.entity.DetalleCompra;
 import com.bomerp.compras.compra.dto.CompraRequestDTO;
 import com.bomerp.compras.compra.entity.Compra;
@@ -36,6 +37,24 @@ public class CompraService {
         return compraRepository.findById(id);
     }
 
+    /** Compras con filtros opcionales (fechas y proveedor), de la más reciente a la más antigua. */
+    @Transactional(readOnly = true)
+    public List<Compra> buscar(LocalDate desde, LocalDate hasta, Long proveedorId) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
+        }
+        if (proveedorId != null) {
+            proveedorService.obtenerPorId(proveedorId);   // 404 si el proveedor no existe
+        }
+        return compraRepository.buscar(desde, hasta, proveedorId);
+    }
+
+    /** Fachada para el kardex (Inventario): líneas compradas de un producto. */
+    @Transactional(readOnly = true)
+    public List<DetalleCompra> detallesDeProducto(Long productoId) {
+        return compraRepository.detallesDeProducto(productoId);
+    }
+
     /**
      * Registra una compra y ACTUALIZA EL STOCK de los productos comprados.
      */
@@ -59,12 +78,13 @@ public class CompraService {
             
             compra.addDetalle(detalle);
 
-            // REGLA DE NEGOCIO AUTÓNOMA: Incrementar el stock del producto
-            int stockActual = producto.getStockActual() == null ? 0 : producto.getStockActual();
-            producto.setStockActual(stockActual + detDto.cantidad());
-            
-            // Guardamos la actualización del stock
-            productoService.guardar(producto);
+            // REGLA DE NEGOCIO: la compra sube el stock solo de los productos que lo controlan
+            // (materiales). Los equipos no se almacenan, igual que en Ventas.
+            if (producto.controlaStock()) {
+                int stockActual = producto.getStockActual() == null ? 0 : producto.getStockActual();
+                producto.setStockActual(stockActual + detDto.cantidad());
+                productoService.guardar(producto);
+            }
         }
 
         return compraRepository.save(compra);

@@ -24,11 +24,21 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             WHERE (:estado IS NULL OR v.estado = :estado)
               AND (CAST(:desde AS LocalDate) IS NULL OR v.fechaVenta >= :desde)
               AND (CAST(:hasta AS LocalDate) IS NULL OR v.fechaVenta <= :hasta)
+              AND (:clienteId IS NULL OR v.cliente.id = :clienteId)
             ORDER BY v.fechaVenta DESC, v.id DESC
             """)
     List<Venta> buscar(@Param("estado") Venta.EstadoVenta estado,
                        @Param("desde") LocalDate desde,
-                       @Param("hasta") LocalDate hasta);
+                       @Param("hasta") LocalDate hasta,
+                       @Param("clienteId") Long clienteId);
+
+    // Kardex: líneas vendidas de un producto, con su venta (para fecha, cliente y anulación)
+    @Query("""
+            SELECT d FROM DetalleVenta d JOIN FETCH d.venta v JOIN FETCH v.cliente
+            WHERE d.producto.id = :productoId
+            ORDER BY v.fechaVenta, v.id
+            """)
+    List<com.bomerp.ventas.detalleventa.entity.DetalleVenta> detallesDeProducto(@Param("productoId") Long productoId);
 
     // Evita convertir dos veces la misma proforma en venta
     boolean existsByProformaOrigenId(Long proformaId);

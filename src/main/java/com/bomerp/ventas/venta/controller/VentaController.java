@@ -2,9 +2,12 @@ package com.bomerp.ventas.venta.controller;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.service.VentaService;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
+import com.bomerp.ventas.reporte.service.VentaReporteService;
+import com.bomerp.config.exportacion.ExcelBuilder;
 
 import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -15,9 +18,11 @@ import java.util.List;
 public class VentaController {
 
     private final VentaService ventaService;
+    private final VentaReporteService ventaReporteService;
 
-    public VentaController(VentaService ventaService) {
+    public VentaController(VentaService ventaService, VentaReporteService ventaReporteService) {
         this.ventaService = ventaService;
+        this.ventaReporteService = ventaReporteService;
     }
 
     /** Reporte de ventas con su detalle. Filtros opcionales: estado y rango de fechas (yyyy-MM-dd). */
@@ -25,8 +30,26 @@ public class VentaController {
     public List<VentaResponseDTO> listar(
             @RequestParam(required = false) Venta.EstadoVenta estado,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return ventaService.buscar(estado, desde, hasta).stream().map(VentaResponseDTO::desdeEntidad).toList();
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long clienteId) {
+        return ventaService.buscar(estado, desde, hasta, clienteId).stream().map(VentaResponseDTO::desdeEntidad).toList();
+    }
+
+    /** Mismo reporte en Excel (.xlsx): hoja "Ventas" y hoja "Detalle". Acepta los mismos filtros. */
+    @GetMapping("/exportar")
+    public ResponseEntity<byte[]> exportarExcel(
+            @RequestParam(required = false) Venta.EstadoVenta estado,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long clienteId) {
+        byte[] excel = ventaReporteService.exportarExcel(estado, desde, hasta, clienteId);
+        return ExcelBuilder.descargar(excel, "ventas_" + LocalDate.now() + ".xlsx");
+    }
+
+    /** Historial de un cliente: sus ventas, totales por moneda y saldo pendiente de pago. */
+    @GetMapping("/historial-cliente/{clienteId}")
+    public VentaReporteService.HistorialCliente historialCliente(@PathVariable Long clienteId) {
+        return ventaReporteService.historialCliente(clienteId);
     }
 
     /** Transición REGISTRADA -> ANULADA; restaura el stock. 409 si ya estaba anulada. */

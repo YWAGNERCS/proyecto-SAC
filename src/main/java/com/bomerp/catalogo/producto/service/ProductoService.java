@@ -95,13 +95,9 @@ public class ProductoService {
         return productoRepository.save(producto);
     }
 
-    /** Para la alerta de stock mínimo (RF02 / RF13 del brief) */
+    /** Para la alerta de stock mínimo (RF02 / RF13 del brief): solo materiales que controlan stock. */
     public List<Producto> listarConStockBajo() {
-        return productoRepository.findAll().stream()
-                .filter(p -> p.getStockActual() != null
-                        && p.getStockMinimo() != null
-                        && p.getStockActual() <= p.getStockMinimo())
-                .toList();
+        return listarEnAlerta();
     }
 
     /** Fachada pública para otros módulos: evita que accedan a ProductoRepository. */
@@ -110,7 +106,7 @@ public class ProductoService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado con ID: " + id));
     }
 
-    /** Productos cuyo stock actual llegó o bajó del stock mínimo. */
+    /** Materiales cuyo stock actual llegó o bajó del stock mínimo (los equipos no controlan stock). */
     public List<Producto> listarEnAlerta() {
         return productoRepository.findProductosEnAlerta();
     }

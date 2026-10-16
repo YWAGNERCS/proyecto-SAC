@@ -48,6 +48,8 @@ Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), co
 | Integración | ✉️ **Notificaciones** | Correo SMTP real y WhatsApp *(simulado)* |
 | Transversal | 🔐 **Seguridad** | Se delegará en **Keycloak** (usuarios, roles, login). Hoy: login HTTP Basic + BCrypt *transitorio* |
 
+📤 **Exportaciones e historial:** Excel de ventas y compras (con detalle línea por línea), PDF del comprobante, historial por cliente y por proveedor, y **kardex** de inventario por producto.
+
 📊 **Reportes:** no son un módulo aparte. **Cada módulo expone sus propias consultas**: ventas (reporte filtrable por estado y fechas, resumen por periodo), cobranza (pendientes y atrasadas) y proformas (pendientes). *Hoy el resumen, la cobranza y las proformas pendientes siguen en el paquete `reportes`; falta moverlos a su módulo.*
 
 **Reglas de negocio destacadas**
@@ -114,6 +116,8 @@ npm start
 
 ➡️ `http://localhost:4200`
 
+**Datos de demostración:** `datos_demo.sql` reinicia la base con 30 productos, 8 categorías, 7 proveedores y 8 clientes reales (verificados en SUNAT). Ver la [guía de instalación](src/main/resources/static/docs/README.md#doc-tecnica).
+
 **Usuarios de desarrollo:** `admin` / `asistente` · contraseña `123456`
 
 <details>
@@ -142,7 +146,7 @@ Base: `/api/v1/admin` (panel) · `/api/v1/publico` (sin login). Contrato complet
 | Proformas | `GET` `POST /proformas` · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` |
 | Catálogo | CRUD `/productos` (con `?categoriaId=`) · CRUD `/categorias` · `GET /api/v1/publico/catalogo` |
 | Compras | `GET` `POST /compras` · `GET /compras/{id}` |
-| Clientes | `GET` `POST /clientes` · `/clientes/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
+| Clientes | CRUD `/clientes` · `/clientes/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
 | Proveedores | CRUD `/proveedores` · `/proveedores/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
 | Postventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` |
 | Consultas *(por mover a su módulo)* | `/reportes/ventas-resumen` · `/reportes/cobranza` · `/reportes/proformas-pendientes` |
@@ -183,7 +187,7 @@ src/main/java/com/bomerp/
 - [ ] **S11** · Seguridad frontend con Keycloak (guards, interceptores, 401/403)
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones OSE y WhatsApp son simuladas, falta el registro de clientes en la SPA, separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones OSE y WhatsApp son simuladas, separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 

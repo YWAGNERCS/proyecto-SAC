@@ -46,7 +46,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | # | Módulo | Tipo | Responsable | Estado |
 |---|---|---|---|---|
 | 1 | Catálogo (productos con categoría, categorías, catálogo público) | Maestro | Wilson | ✅ CRUD de productos con categoría (API y SPA) |
-| 2 | Clientes (autocompletado RUC/DNI) | Maestro | Aron | ✅ Autocompletado real (apis.net.pe v1) |
+| 2 | Clientes (autocompletado RUC/DNI) | Maestro | Aron | ✅ CRUD con validación de RUC/DNI y duplicados; autocompletado real (apis.net.pe v1) en la SPA |
 | 3 | Proveedores | Maestro | Yoel | ✅ CRUD con validación de RUC/DNI, duplicados (409) y correo; pantalla con búsqueda en SUNAT/RENIEC |
 | 4 | Proformas (+ PDF, + envío por correo) | Transaccional | Yoel | ✅ |
 | 5 | Ventas (directa, desde proforma, crédito, anulación) | Transaccional | Yoel | ✅ |
@@ -77,7 +77,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | RF-10 | **Facturación electrónica** (estructura UBL 2.1). | ⚠️ Simulada; el número del comprobante es aleatorio. |
 | RF-11 | **Descuento de stock** atómico al vender. | ✅ Solo materiales (`MATERIAL_SERVICIO`); si no alcanza → 409 y no se guarda nada. Los equipos no controlan stock. |
 | RF-12 | **Incremento de stock** al registrar compras. | ✅ |
-| RF-13 | **Alertas de stock mínimo** diarias. | ✅ 8:00 a. m., por correo a `app.notificaciones.correo-oficina` (si está vacío, no se envía). |
+| RF-13 | **Alertas de stock mínimo** diarias. | ✅ 8:00 a. m., solo materiales, por correo a `app.notificaciones.correo-oficina` (si está vacío, no se envía). |
 | RF-14 | **Postventa: programación de 4 mantenimientos** tras vender equipos. | ✅ A los 3, 6, 9 y 12 meses, para equipos de CLIMATIZACIÓN y REFRIGERACIÓN. |
 | RF-15 | **Postventa: alertas de mantenimiento** (8:00 a. m., próximos 7 días, correo a la oficina). | ✅ |
 | RF-16 | **Reportes** de ingresos y cuentas por cobrar, segmentados por moneda. | ✅ Segmenta soles/dólares y excluye las ventas anuladas. |
@@ -172,14 +172,14 @@ src/main/java/com/bomerp/
 | Catálogo público | `GET /api/v1/publico/catalogo` (sin login, sin costo ni margen) |
 | Categorías | `GET`, `POST /categorias` · `GET`, `PUT`, `DELETE /categorias/{id}` |
 | Productos | `GET /productos?categoriaId=` · `GET /productos/{id}` · `POST /productos` · `PUT /productos/{id}` · `DELETE /productos/{id}` (409 si ya se usó en ventas, proformas o compras) |
-| Clientes | `GET`, `POST /clientes` · `GET /clientes/autocompletar/ruc/{ruc}` · `GET /clientes/autocompletar/dni/{dni}` |
+| Clientes | CRUD `/clientes` (`GET`, `GET /{id}`, `POST`, `PUT`, `DELETE` → 409 si tiene proformas o ventas) · `GET /clientes/autocompletar/ruc/{ruc}` · `GET /clientes/autocompletar/dni/{dni}` |
 | Proveedores | `GET`, `POST /proveedores` · `GET`, `PUT`, `DELETE /proveedores/{id}` · autocompletar RUC/DNI |
-| Proformas | `GET`, `POST /proformas` · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` |
-| Ventas | `GET /ventas?estado=&desde=&hasta=` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `GET /ventas/pagos-atrasados` · `POST /ventas/{id}/marcar-pagada` · `PATCH /ventas/{id}/anular` |
-| Compras | `GET`, `POST /compras` · `GET /compras/{id}` |
-| Inventario | `GET /inventario/alertas` |
+| Proformas | `GET`, `POST /proformas` · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` · `POST /proformas/marcar-vencidas` (vencimiento manual; corre solo cada día) |
+| Ventas | `GET /ventas?estado=&desde=&hasta=&clienteId=` · `GET /ventas/exportar` (Excel, mismos filtros) · `GET /ventas/historial-cliente/{clienteId}` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `GET /ventas/pagos-atrasados` · `POST /ventas/{id}/marcar-pagada` · `PATCH /ventas/{id}/anular` |
+| Compras | `GET /compras?desde=&hasta=&proveedorId=` · `GET /compras/exportar` (Excel) · `GET /compras/historial-proveedor/{proveedorId}` · `GET /compras/{id}` · `POST /compras` (sube el stock solo de materiales) |
+| Inventario | `GET /inventario/alertas` · `GET /inventario/kardex/{productoId}?desde=&hasta=` · `GET /inventario/kardex/{productoId}/exportar` (Excel) |
 | Postventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` · `POST /mantenimientos/simular-alerta` |
-| Facturación | `POST /facturacion/emitir/{ventaId}` · `POST /facturacion/{id}/enviar` · `GET /facturacion/notas-credito` |
+| Facturación | `POST /facturacion/emitir/{ventaId}` · `POST /facturacion/{id}/enviar` · `GET /facturacion/ventas/{ventaId}/pdf` (descarga el comprobante) · `GET /facturacion/notas-credito` |
 | Consultas *(transitorio, por mover a ventas, cobranza y proformas)* | `GET /reportes/ventas-resumen?desde=&hasta=` · `GET /reportes/cobranza` · `GET /reportes/proformas-pendientes` |
 
 *(Todas las rutas sin prefijo van bajo `/api/v1/admin`.)*
@@ -197,6 +197,10 @@ src/main/java/com/bomerp/
    ```
    También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`.
 4. Ejecutar `mvn spring-boot:run` (puerto 8080). Swagger: `http://localhost:8080/swagger-ui.html`.
+   - **Datos de demostración (opcional):** `datos_demo.sql` borra los datos de negocio, reinicia los ID y carga 8 categorías, 30 productos, 7 proveedores y 8 clientes (empresas reales verificadas en SUNAT; relación comercial ficticia). No toca los usuarios. Con el backend ya iniciado al menos una vez (para que existan las tablas):
+     ```powershell
+     Get-Content -Encoding UTF8 datos_demo.sql | docker exec -i -e NLS_LANG=AMERICAN_AMERICA.AL32UTF8 SGE-JD sqlplus -s jdrefrigeracion/<password>@FREEPDB1
+     ```
 5. Frontend: en `bomerp-frontend`, `npm install` y `npm start` (puerto 4200).
 
 ---
@@ -220,12 +224,16 @@ src/main/java/com/bomerp/
 
 - **Iniciar sesión:** en la SPA (`http://localhost:4200`) con usuario y contraseña; "Salir" cierra la sesión.
 - **Registrar proveedor:** Proveedores → "+ Nuevo Proveedor" → elegir empresa o persona natural → escribir el RUC o DNI → "Buscar en SUNAT/RENIEC" (llena nombre y dirección; avisa si ya está registrado) → completar teléfono, correo y contacto → Guardar.
-- **Registrar cliente B2B:** ingresar el RUC y usar el autocompletado; trae razón social y dirección desde SUNAT. Si aparece "servicio ocupado", esperar unos segundos (apis.net.pe limita las consultas seguidas).
+- **Registrar cliente:** Clientes → "+ Nuevo Cliente" → empresa (RUC) o persona natural (DNI) → "Buscar en SUNAT/RENIEC" (llena nombre y dirección; avisa si ya está registrado) → completar teléfono y correo → Guardar. Si aparece "servicio ocupado", esperar unos segundos (apis.net.pe limita las consultas seguidas).
 - **Venta directa:** Ventas → Nueva venta → elegir cliente y forma de pago → agregar líneas buscando el producto por nombre (muestra precio y stock) → revisar subtotal, IGV y total → Registrar y confirmar el resumen.
 - **Convertir proforma en venta:** la proforma debe estar ACEPTADA; se elige contado o crédito y el sistema descuenta stock, programa mantenimientos y genera el comprobante.
 - **Reporte de ventas:** Ventas → filtros por estado y rango de fechas (botón "Buscar"); muestra totales por moneda, ticket promedio y el detalle de cada venta.
 - **Anular una venta:** en el reporte, botón "Anular" (solo en ventas REGISTRADAS) → confirmar; el stock de los materiales se restaura.
 - **Reportes financieros (API):** `/api/v1/admin/reportes/ventas-resumen`, `/cobranza` y `/proformas-pendientes`.
+- **Exportar a Excel:** Ventas y Compras tienen "⬇ Exportar a Excel": descarga un .xlsx con los filtros de la pantalla, con una hoja de cabeceras (cliente/proveedor con RUC, pago, estado, comprobante, totales por moneda) y otra con el detalle línea por línea.
+- **Descargar comprobante:** en el reporte de ventas, el botón "PDF" descarga la factura o boleta de esa venta.
+- **Historial:** en Clientes y Proveedores, el botón "Historial" muestra todas sus ventas o compras, los totales por moneda y lo pendiente de pago, exportable a Excel.
+- **Kardex:** en Productos, el botón "Kardex" lista las entradas (compras), salidas (ventas) y devoluciones (anulaciones) con el saldo de stock después de cada movimiento, con filtro por fechas y exportable a Excel.
 - **Postventa:** el sistema envía a diario, a las 8:00 a. m., un correo con los clientes a contactar en los próximos 7 días (requiere `CORREO_OFICINA`).
 
 ### Preguntas frecuentes
@@ -275,7 +283,7 @@ Seguridad: sin responsable, se resolverá con Keycloak.
 |---|---|---|
 | S1–S5 | Backend REST, CRUD, relaciones, cabecera-detalle, reportes, CORS | ✅ CRUD de producto y relación Categoría–Producto completos (13/10/2026) |
 | S7 | SPA Angular: layout, rutas, servicios HTTP | ✅ |
-| S8 | CRUD de tablas dependientes | ✅ Productos con categoría, categorías, proveedores (con búsqueda RUC/DNI) y compras · ⚠️ clientes solo con listado en la SPA |
+| S8 | CRUD de tablas dependientes | ✅ Productos con categoría, categorías, clientes y proveedores (con búsqueda RUC/DNI) y compras |
 | S9 | Formulario transaccional cabecera-detalle | ✅ Venta directa con FormArray, reporte filtrable y anulación |
 | S10 | Seguridad backend con roles | ⏳ Próxima: se hará con **Keycloak** (la guía lo trata como referencia: "Reemplazo de seguridad por Keycloak") |
 | S11 | Seguridad frontend (guards, interceptores, 401/403) | 🔄 Login, guard e interceptor Basic ya existen; se adaptarán a Keycloak |
@@ -300,14 +308,14 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 7. ~~**El reporte `ventas-resumen` cuenta ventas anuladas.**~~ ✅ **Resuelto (13/10/2026):** `ventas-resumen`, `cobranza` y `/ventas/pagos-atrasados` solo consideran ventas REGISTRADAS.
 8. ~~**Al anular una venta no se cancelan sus mantenimientos ni se genera nota de crédito.**~~ ✅ **Resuelto (13/10/2026):** Postventa cancela los mantenimientos PENDIENTES y Facturación emite la nota de crédito (serie FC01/BC01, correlativo por serie) si el comprobante fue aceptado.
 9. ~~**Producto sin categoría.**~~ ✅ **Resuelto (13/10/2026):** `Producto` tiene `@ManyToOne Categoria`; la API exige la categoría al crear/editar (404 si no existe) y no deja borrar una categoría con productos (409). ⚠️ Los productos anteriores quedaron **sin categoría**: hay que asignársela (PUT).
-10. ~~**Pantalla de productos en la SPA.**~~ ✅ **Resuelto (13/10/2026):** lista con filtro por categoría y formulario con lista desplegable de categorías. Sigue pendiente: registro y edición de **clientes** en la SPA (con la misma búsqueda RUC/DNI que proveedores).
+10. ~~**Pantalla de productos en la SPA.**~~ ✅ **Resuelto (13/10/2026):** productos con filtro por categoría, y clientes y proveedores con formulario y búsqueda RUC/DNI en la SPA.
 11. ~~**Autocompletado RUC/DNI simulado.**~~ ✅ **Resuelto (13/10/2026):** proveedor principal apis.net.pe v1 (sin token), respaldo Decolecta con `DECOLECTA_TOKEN` (RUC por SUNAT, DNI por RENIEC) y modo simulado solo con `CONSULTA_DOCUMENTOS_SIMULADO=true`. ⚠️ La v1 limita las consultas seguidas (429): se responde 503 "intente en unos segundos" y se recomienda registrar un token gratuito de Decolecta como respaldo. La API oficial de RENIEC (PIDE) requiere convenio institucional y no está disponible para el proyecto.
 12. **Correlativo de comprobantes aleatorio** (`Math.random()` en `FacturacionService`). SUNAT exige numeración secuencial por serie.
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
 14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.
-15. **Alerta de stock mínimo** sobre todos los productos (`stockActual <= stockMinimo`), incluidos los equipos, que no controlan stock. Confirmar si solo debería aplicar a materiales.
-16. **Proformas vencidas:** existe `marcarVencidas()`, pero no está programada (`@Scheduled`).
-17. **Moneda mixta:** el backend acepta una venta con productos en soles y en dólares y toma la moneda del último. La SPA ya lo bloquea; falta validarlo en el backend.
+15. ~~**Alerta de stock mínimo sobre todos los productos.**~~ ✅ **Resuelto (15/10/2026):** las alertas (pantalla y correo diario) consideran solo materiales (`MATERIAL_SERVICIO`); los equipos no controlan stock y ya no generan alertas falsas.
+16. ~~**Proformas vencidas sin programar.**~~ ✅ **Resuelto (15/10/2026):** `ProformaScheduledService` vence las proformas PENDIENTES todos los días a las 00:05 y también al iniciar el backend (por si estuvo apagado). Ejecución manual: `POST /proformas/marcar-vencidas`.
+17. ~~**Moneda mixta.**~~ ✅ **Resuelto (15/10/2026):** el backend rechaza con 400 una venta que mezcla productos en soles y dólares, y una proforma con productos en una moneda distinta a la suya.
 18. ~~**`ProductoController` usa el repositorio directamente.**~~ ✅ **Resuelto (13/10/2026):** ahora pasa por `ProductoService` y responde con `ProductoResponseDTO`.
 
 ### Arquitectura y alineamiento con el curso
@@ -320,6 +328,9 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 25. **Cobranza por separar.** El módulo nuevo existe solo en la documentación: hoy su lógica está en `VentaService` (`estadoPago`, `marcarComoPagada`, `listarVentasConPagoAtrasado`) y en `ReportesService` (`/reportes/cobranza`). Falta crear el paquete `cobranza`, moverla y decidir si tendrá su propio cabecera-detalle (`Cobro`–`DetalleCobro`).
 26. **Migración de base de datos para Proformas.** Cada integrante debe ejecutar `migracion_proforma.sql` en su Oracle local antes de arrancar el backend nuevo; si no, Hibernate crea tablas `PROFORMAS` vacías.
 27. **Herramienta de modernización:** `.github/modernize/` registra un intento de migrar a Java 25 / Boot 3.5.16 que no se aplicó. Confirmar y borrar esa carpeta si ya no sirve.
+
+- **Datos de JD en el PDF del comprobante.** `GeneradorPdfFacturacionService` imprime un RUC (20123456789), dirección y teléfono de ejemplo. Reemplazarlos por los datos reales de JD Refrigeración S.A.C. (idealmente en `application.properties`).
+- **Compras y stock de equipos (corregido 13/10/2026).** Las compras subían el stock de todos los productos, incluidos los equipos, mientras las ventas solo descontaban materiales. Ahora las compras también suben solo el stock de materiales.
 
 ### Pruebas y configuración
 28. **Pruebas automatizadas casi inexistentes.** `ProductoCrudTest` necesita Oracle encendido, y `HashGenTest` solo imprime un hash. No hay pruebas de ventas, de rollback ni de módulos.

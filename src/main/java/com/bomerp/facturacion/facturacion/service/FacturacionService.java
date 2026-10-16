@@ -131,6 +131,40 @@ public class FacturacionService {
         return Optional.of(notaCreditoRepository.save(guardada));
     }
 
+    /** Fachada para Ventas (reportes y Excel): número "SERIE-NUMERO" del comprobante de una venta. */
+    @Transactional(readOnly = true)
+    public Optional<String> numeroComprobanteDeVenta(Long ventaId) {
+        return comprobanteRepository.findByVentaId(ventaId).map(c -> c.getSerie() + "-" + c.getNumero());
+    }
+
+    /** Número de la nota de crédito que anuló el comprobante de una venta, si existe. */
+    @Transactional(readOnly = true)
+    public Optional<String> numeroNotaCreditoDeVenta(Long ventaId) {
+        return comprobanteRepository.findByVentaId(ventaId)
+                .flatMap(c -> notaCreditoRepository.findByComprobanteReferencia_Id(c.getId()))
+                .map(nc -> nc.getSerie() + "-" + nc.getNumero());
+    }
+
+    /** PDF del comprobante (factura o boleta) de una venta, para descargarlo. 404 si la venta no tiene comprobante. */
+    @Transactional(readOnly = true)
+    public PdfComprobante pdfDeVenta(Long ventaId) {
+        Comprobante comprobante = comprobanteRepository.findByVentaId(ventaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "La venta #" + ventaId + " no tiene comprobante emitido."));
+        java.io.File archivo = null;
+        try {
+            archivo = generadorPdfFacturacionService.generarFacturaPdf(comprobante);
+            String nombre = comprobante.getTipo().name() + "_" + comprobante.getSerie() + "-" + comprobante.getNumero() + ".pdf";
+            return new PdfComprobante(nombre, java.nio.file.Files.readAllBytes(archivo.toPath()));
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo generar el PDF del comprobante: " + e.getMessage(), e);
+        } finally {
+            if (archivo != null) archivo.delete();   // archivo temporal
+        }
+    }
+
+    public record PdfComprobante(String nombreArchivo, byte[] contenido) {}
+
     @Transactional(readOnly = true)
     public List<NotaCredito> listarNotasCredito() {
         return notaCreditoRepository.findAllByOrderByIdDesc();

@@ -73,6 +73,10 @@ public class Venta {
     @Column(name = "estado", nullable = false, columnDefinition = "VARCHAR2(20) DEFAULT 'REGISTRADA'")
     private EstadoVenta estado = EstadoVenta.REGISTRADA;
 
+    /** Fecha en que se anuló (null si está REGISTRADA). La usa el kardex para la devolución de stock. */
+    @Column(name = "fecha_anulacion")
+    private LocalDate fechaAnulacion;
+
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleVenta> detalles = new ArrayList<>();
 

@@ -46,6 +46,12 @@ public class ProformaController {
         return ProformaResponseDTO.desdeEntidad(proformaService.aceptar(id));
     }
 
+    /** Ejecuta a mano el vencimiento diario (normalmente corre solo a las 00:05 y al iniciar). */
+    @PostMapping("/marcar-vencidas")
+    public java.util.Map<String, Integer> marcarVencidas() {
+        return java.util.Map.of("proformasVencidas", proformaService.marcarVencidas());
+    }
+
     @PostMapping("/{id}/rechazar")
     public ProformaResponseDTO rechazar(@PathVariable Long id) {
         return ProformaResponseDTO.desdeEntidad(proformaService.rechazar(id));

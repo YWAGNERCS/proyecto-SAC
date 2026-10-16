@@ -68,6 +68,11 @@ public class ProformaService {
 
         for (ProformaRequest.ItemDTO itemDTO : request.items()) {
             Producto producto = productoService.obtenerPorId(itemDTO.productoId());
+            // Los precios se copian del producto: si su moneda no es la de la proforma, el total sumaría soles con dólares
+            if (producto.getMoneda() == null || !producto.getMoneda().name().equals(request.moneda().name())) {
+                throw new IllegalArgumentException("La proforma es en " + request.moneda() + " pero '"
+                        + producto.getNombre() + "' está en " + producto.getMoneda() + ". Use una proforma por moneda.");
+            }
             proforma.agregarItem(new ItemProforma(producto, itemDTO.cantidad()));
         }
 
@@ -176,11 +181,13 @@ public class ProformaService {
     }
 
     /**
-     * Job de mantenimiento: marca como VENCIDA cualquier proforma
-     * pendiente cuya fecha de vencimiento ya pasó. Se puede invocar
-     * desde un @Scheduled diario en el proyecto final.
+     * Marca como VENCIDA toda proforma PENDIENTE cuya fecha de vencimiento ya pasó.
+     * La ejecuta ProformaScheduledService todos los días.
+     *
+     * @return cuántas proformas se vencieron
      */
-    public void marcarVencidas() {
+    @org.springframework.transaction.annotation.Transactional
+    public int marcarVencidas() {
         List<Proforma> vencidas = proformaRepository
                 .findByEstadoAndFechaVencimientoBefore(
                         Proforma.EstadoProforma.PENDIENTE, LocalDate.now());
@@ -188,6 +195,7 @@ public class ProformaService {
             c.setEstado(Proforma.EstadoProforma.VENCIDA);
         }
         proformaRepository.saveAll(vencidas);
+        return vencidas.size();
     }
 
     private void validarNoVencida(Proforma proforma) {

@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
     Optional<Proveedor> findByRuc(String ruc);
 
+    Optional<Proveedor> findFirstByDni(String dni);
+
     // Control de duplicados (al editar se excluye el propio registro)
     boolean existsByRuc(String ruc);
     boolean existsByRucAndIdNot(String ruc, Long id);

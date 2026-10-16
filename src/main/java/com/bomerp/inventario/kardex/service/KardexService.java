@@ -1,0 +1,141 @@
+package com.bomerp.inventario.kardex.service;
+
+import com.bomerp.catalogo.producto.entity.Producto;
+import com.bomerp.catalogo.producto.service.ProductoService;
+import com.bomerp.compras.compra.entity.Compra;
+import com.bomerp.compras.compra.service.CompraService;
+import com.bomerp.compras.detallecompra.entity.DetalleCompra;
+import com.bomerp.config.exportacion.ExcelBuilder;
+import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
+import com.bomerp.ventas.venta.entity.Venta;
+import com.bomerp.ventas.venta.service.VentaService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * Kardex (historial de movimientos de inventario) de un producto:
+ *   ENTRADA    → compra a proveedor (suma stock)
+ *   SALIDA     → venta (resta stock)
+ *   DEVOLUCIÓN → anulación de una venta (devuelve el stock)
+ *
+ * El saldo solo aplica a productos que controlan stock (materiales). Para los equipos
+ * se listan los movimientos sin saldo, porque no se almacenan.
+ * El saldo inicial se reconstruye desde el stock actual: inicial = actual − entradas + salidas − devoluciones.
+ */
+@Service
+@Transactional(readOnly = true)
+public class KardexService {
+
+    public enum TipoMovimiento { ENTRADA, SALIDA, DEVOLUCION }
+
+    private final ProductoService productoService;
+    private final CompraService compraService;
+    private final VentaService ventaService;
+
+    public KardexService(ProductoService productoService, CompraService compraService, VentaService ventaService) {
+        this.productoService = productoService;
+        this.compraService = compraService;
+        this.ventaService = ventaService;
+    }
+
+    public Kardex kardex(Long productoId, LocalDate desde, LocalDate hasta) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
+        }
+        Producto producto = productoService.obtenerPorId(productoId);   // 404 si no existe
+        boolean controlaStock = producto.controlaStock();
+
+        List<Movimiento> todos = new ArrayList<>();
+        for (DetalleCompra d : compraService.detallesDeProducto(productoId)) {
+            Compra c = d.getCompra();
+            todos.add(new Movimiento(c.getFechaCompra(), TipoMovimiento.ENTRADA,
+                    "Compra #" + c.getId() + (c.getNumeroFactura() != null ? " · Fact. " + c.getNumeroFactura() : ""),
+                    c.getProveedor().getNombreORazonSocial(), d.getCantidad(), d.getPrecioUnitarioCompra(),
+                    c.getMoneda().name(), null));
+        }
+        for (DetalleVenta d : ventaService.detallesDeProducto(productoId)) {
+            Venta v = d.getVenta();
+            todos.add(new Movimiento(v.getFechaVenta(), TipoMovimiento.SALIDA, "Venta #" + v.getId(),
+                    v.getCliente().getNombreORazonSocial(), d.getCantidad(), d.getPrecioUnitario(), v.getMoneda().name(), null));
+            if (v.getEstado() == Venta.EstadoVenta.ANULADA) {
+                todos.add(new Movimiento(v.getFechaAnulacion() != null ? v.getFechaAnulacion() : v.getFechaVenta(),
+                        TipoMovimiento.DEVOLUCION, "Anulación de venta #" + v.getId(),
+                        v.getCliente().getNombreORazonSocial(), d.getCantidad(), d.getPrecioUnitario(), v.getMoneda().name(), null));
+            }
+        }
+        // Orden cronológico; el mismo día: entradas, luego salidas, luego devoluciones
+        todos.sort(Comparator.comparing(Movimiento::fecha).thenComparing(Movimiento::tipo));
+
+        Integer stockActual = producto.getStockActual() != null ? producto.getStockActual() : 0;
+        Integer saldo = null;
+        if (controlaStock) {
+            int neto = todos.stream().mapToInt(m -> m.tipo() == TipoMovimiento.SALIDA ? -m.cantidad() : m.cantidad()).sum();
+            saldo = stockActual - neto;
+        }
+
+        Integer saldoInicialPeriodo = saldo;
+        List<Movimiento> delPeriodo = new ArrayList<>();
+        int entradas = 0, salidas = 0, devoluciones = 0;
+        for (Movimiento m : todos) {
+            if (saldo != null) {
+                saldo += m.tipo() == TipoMovimiento.SALIDA ? -m.cantidad() : m.cantidad();
+            }
+            boolean antes = desde != null && m.fecha().isBefore(desde);
+            boolean despues = hasta != null && m.fecha().isAfter(hasta);
+            if (antes) {
+                saldoInicialPeriodo = saldo;
+                continue;
+            }
+            if (despues) continue;
+            delPeriodo.add(new Movimiento(m.fecha(), m.tipo(), m.documento(), m.tercero(), m.cantidad(),
+                    m.precioUnitario(), m.moneda(), saldo));
+            switch (m.tipo()) {
+                case ENTRADA -> entradas += m.cantidad();
+                case SALIDA -> salidas += m.cantidad();
+                case DEVOLUCION -> devoluciones += m.cantidad();
+            }
+        }
+
+        return new Kardex(producto.getId(), producto.getNombre(),
+                producto.getCategoria() != null ? producto.getCategoria().getNombre() : null,
+                producto.getSector().name(), controlaStock, controlaStock ? stockActual : null,
+                producto.getStockMinimo(), saldoInicialPeriodo, entradas, salidas, devoluciones, delPeriodo);
+    }
+
+    public byte[] exportarExcel(Long productoId, LocalDate desde, LocalDate hasta) {
+        Kardex k = kardex(productoId, desde, hasta);
+        ExcelBuilder excel = new ExcelBuilder();
+        ExcelBuilder.Hoja hoja = excel.hoja("Kardex", "Kardex: " + k.producto(),
+                ExcelBuilder.describirPeriodo(desde, hasta)
+                        + (k.categoria() != null ? " · " + k.categoria() : "")
+                        + (k.controlaStock() ? " · saldo inicial " + k.saldoInicial() : " · equipo: no controla stock"),
+                ExcelBuilder.fecha("Fecha"), ExcelBuilder.texto("Movimiento"), ExcelBuilder.texto("Documento"),
+                ExcelBuilder.texto("Proveedor / Cliente"), ExcelBuilder.entero("Entrada"), ExcelBuilder.entero("Salida"),
+                ExcelBuilder.entero("Saldo"), ExcelBuilder.moneda("Precio unitario"), ExcelBuilder.texto("Moneda"));
+        for (Movimiento m : k.movimientos()) {
+            boolean sale = m.tipo() == TipoMovimiento.SALIDA;
+            hoja.fila(m.fecha(), m.tipo() == TipoMovimiento.DEVOLUCION ? "DEVOLUCIÓN" : m.tipo().name(), m.documento(),
+                    m.tercero(), sale ? null : m.cantidad(), sale ? m.cantidad() : null, m.saldo(),
+                    m.precioUnitario(), m.moneda());
+        }
+        Integer saldoFinal = k.movimientos().isEmpty() ? k.saldoInicial()
+                : k.movimientos().get(k.movimientos().size() - 1).saldo();
+        hoja.filaTotal("Totales del periodo", null, null, null, k.totalEntradas() + k.totalDevoluciones(),
+                k.totalSalidas(), saldoFinal);
+        return excel.generar();
+    }
+
+    public record Movimiento(LocalDate fecha, TipoMovimiento tipo, String documento, String tercero,
+                             int cantidad, BigDecimal precioUnitario, String moneda, Integer saldo) {}
+
+    public record Kardex(Long productoId, String producto, String categoria, String sector, boolean controlaStock,
+                         Integer stockActual, Integer stockMinimo, Integer saldoInicial,
+                         int totalEntradas, int totalSalidas, int totalDevoluciones,
+                         List<Movimiento> movimientos) {}
+}

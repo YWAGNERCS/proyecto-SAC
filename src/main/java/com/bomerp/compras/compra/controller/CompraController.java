@@ -1,5 +1,9 @@
 package com.bomerp.compras.compra.controller;
 
+import com.bomerp.compras.reporte.service.CompraReporteService;
+import com.bomerp.config.exportacion.ExcelBuilder;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 import com.bomerp.compras.compra.service.CompraService;
 import com.bomerp.compras.compra.dto.CompraRequestDTO;
 import com.bomerp.compras.compra.dto.CompraResponseDTO;
@@ -17,16 +21,38 @@ import java.util.List;
 public class CompraController {
 
     private final CompraService compraService;
+    private final CompraReporteService compraReporteService;
 
-    public CompraController(CompraService compraService) {
+    public CompraController(CompraService compraService, CompraReporteService compraReporteService) {
         this.compraService = compraService;
+        this.compraReporteService = compraReporteService;
     }
 
+    /** Compras con filtros opcionales: rango de fechas (yyyy-MM-dd) y proveedor. */
     @GetMapping
-    public List<CompraResponseDTO> listar() {
-        return compraService.listarTodas().stream()
+    public List<CompraResponseDTO> listar(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long proveedorId) {
+        return compraService.buscar(desde, hasta, proveedorId).stream()
                 .map(CompraResponseDTO::desdeEntidad)
                 .toList();
+    }
+
+    /** Mismo listado en Excel (.xlsx): hoja "Compras" y hoja "Detalle". */
+    @GetMapping("/exportar")
+    public ResponseEntity<byte[]> exportarExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long proveedorId) {
+        byte[] excel = compraReporteService.exportarExcel(desde, hasta, proveedorId);
+        return ExcelBuilder.descargar(excel, "compras_" + LocalDate.now() + ".xlsx");
+    }
+
+    /** Historial de un proveedor: sus compras y montos por moneda. */
+    @GetMapping("/historial-proveedor/{proveedorId}")
+    public CompraReporteService.HistorialProveedor historialProveedor(@PathVariable Long proveedorId) {
+        return compraReporteService.historialProveedor(proveedorId);
     }
 
     @GetMapping("/{id}")

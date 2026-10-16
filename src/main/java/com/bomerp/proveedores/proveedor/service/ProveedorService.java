@@ -111,6 +111,11 @@ public class ProveedorService {
     }
 
     public Proveedor autocompletarPorDni(String dni) {
+        Optional<Proveedor> existente = proveedorRepository.findFirstByDni(dni);
+        if (existente.isPresent()) {
+            return existente.get();
+        }
+
         ConsultaRucClient.DatosDni datos = consultaRucClient.consultarDni(dni);
         if (datos == null) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "No se encontraron datos para el DNI: " + dni);

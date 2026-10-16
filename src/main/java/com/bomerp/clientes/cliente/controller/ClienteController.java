@@ -3,6 +3,7 @@ import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.clientes.cliente.service.ClienteService;
 
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,9 +29,28 @@ public class ClienteController {
         return clienteService.listarTodos();
     }
 
+    @GetMapping("/{id}")
+    public Cliente obtener(@PathVariable Long id) {
+        return clienteService.obtenerPorId(id);   // 404 si no existe
+    }
+
+    /** Valida RUC/DNI según el tipo, duplicados (409) y correo. */
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public Cliente crear(@Valid @RequestBody Cliente cliente) {
         return clienteService.guardar(cliente);
+    }
+
+    @PutMapping("/{id}")
+    public Cliente actualizar(@PathVariable Long id, @Valid @RequestBody Cliente cliente) {
+        return clienteService.actualizar(id, cliente);
+    }
+
+    /** 409 si el cliente ya tiene proformas o ventas. */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminar(@PathVariable Long id) {
+        clienteService.eliminar(id);
     }
 
     @GetMapping("/autocompletar/ruc/{ruc}")
