@@ -57,6 +57,12 @@ export const routes: Routes = [
           import('./features/catalogo/producto/producto-form').then((m) => m.ProductoForm),
         title: 'Editar producto — BomERP',
       },
+      {
+        path: 'catalogo/productos/:id/kardex',
+        loadComponent: () =>
+          import('./features/catalogo/producto/producto-kardex').then((m) => m.ProductoKardexComponent),
+        title: 'Kardex — BomERP',
+      },
       // ── Proformas ──────────────────────────────────
       {
         path: 'proformas',
@@ -103,6 +109,24 @@ export const routes: Routes = [
           import('./features/clientes/cliente/cliente-list').then((m) => m.ClienteListComponent),
         title: 'Clientes — BomERP',
       },
+      {
+        path: 'clientes/nuevo',
+        loadComponent: () =>
+          import('./features/clientes/cliente/cliente-form').then((m) => m.ClienteFormComponent),
+        title: 'Nuevo cliente — BomERP',
+      },
+      {
+        path: 'clientes/:id/editar',
+        loadComponent: () =>
+          import('./features/clientes/cliente/cliente-form').then((m) => m.ClienteFormComponent),
+        title: 'Editar cliente — BomERP',
+      },
+      {
+        path: 'clientes/:id/historial',
+        loadComponent: () =>
+          import('./features/clientes/cliente/cliente-historial').then((m) => m.ClienteHistorialComponent),
+        title: 'Historial del cliente — BomERP',
+      },
       // ── Proveedores ────────────────────────────────────
       {
         path: 'proveedores',
@@ -121,6 +145,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/proveedores/proveedor/proveedor-form').then((m) => m.ProveedorFormComponent),
         title: 'Editar proveedor — BomERP',
+      },
+      {
+        path: 'proveedores/:id/historial',
+        loadComponent: () =>
+          import('./features/proveedores/proveedor/proveedor-historial').then((m) => m.ProveedorHistorialComponent),
+        title: 'Historial del proveedor — BomERP',
       },
     ],
   },

@@ -5,7 +5,12 @@
       Ventas directas o convertidas desde proforma, con su detalle
     </p>
   </div>
-  <a routerLink="/ventas/nueva" class="btn btn-primary">+ Nueva Venta</a>
+  <div class="d-flex gap-2">
+    <button class="btn btn-secondary" (click)="exportarExcel()" [disabled]="exportando()">
+      {{ exportando() ? 'Generando…' : '⬇ Exportar a Excel' }}
+    </button>
+    <a routerLink="/ventas/nueva" class="btn btn-primary">+ Nueva Venta</a>
+  </div>
 </div>
 
 <!-- ── Filtros ──────────────────────────────────────────── -->
@@ -67,7 +72,7 @@
           <th class="text-center" style="width: 110px;">Estado</th>
           <th class="text-center" style="width: 110px;">Cobro</th>
           <th style="text-align: right; width: 130px;">Total</th>
-          <th class="text-center" style="width: 170px;">Acciones</th>
+          <th class="text-center" style="width: 220px;">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -95,13 +100,16 @@
             </td>
             <td style="text-align: right; font-weight: 700;">{{ simbolo(v.moneda) }} {{ v.total | number: '1.2-2' }}</td>
             <td class="text-center acciones">
+              @if (v.comprobanteId) {
+                <button class="btn btn-sm btn-outline-secondary" (click)="descargarComprobante(v)" title="Descargar factura o boleta en PDF">PDF</button>
+              }
               @if (v.estado === 'REGISTRADA') {
                 @if (v.estadoPago !== 'PAGADO') {
                   <button class="btn btn-sm btn-primary" (click)="marcarPagada(v)" title="Marcar como pagada">✓ Pagada</button>
                 }
                 <button class="btn btn-sm btn-danger" (click)="anular(v)" title="Anular venta">Anular</button>
               } @else {
-                <span class="muted">—</span>
+                @if (!v.comprobanteId) { <span class="muted">—</span> }
               }
             </td>
           </tr>

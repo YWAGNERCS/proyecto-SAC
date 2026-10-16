@@ -3,14 +3,21 @@
     <h1 class="page-title">Clientes</h1>
     <p class="page-sub">Directorio de clientes registrados</p>
   </div>
-  <input
-    id="buscar-cliente"
-    type="search"
-    class="search-input"
-    placeholder="Buscar por nombre o documento..."
-    (input)="onBuscar($event)"
-  />
+  <div class="d-flex gap-2 align-items-center">
+    <input
+      id="buscar-cliente"
+      type="search"
+      class="search-input"
+      placeholder="Buscar por nombre, RUC, DNI o correo..."
+      (input)="onBuscar($event)"
+    />
+    <a routerLink="/clientes/nuevo" class="btn btn-primary" style="white-space: nowrap;">+ Nuevo Cliente</a>
+  </div>
 </div>
+
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
 
 @if (cargando()) {
   <div class="loading-state">Cargando clientes…</div>
@@ -25,15 +32,27 @@
         <tr>
           <th>#</th>
           <th>Nombre / Razón Social</th>
-          <th>N° Documento</th>
+          <th>Tipo</th>
+          <th>RUC / DNI</th>
+          <th>Teléfono</th>
+          <th>Correo</th>
+          <th style="text-align: right;">Acciones</th>
         </tr>
       </thead>
       <tbody>
         @for (cliente of clientesFiltrados; track cliente.id) {
           <tr>
             <td class="id-cell">{{ cliente.id }}</td>
-            <td>{{ cliente.nombreORazonSocial }}</td>
-            <td><span class="badge">{{ cliente.nroDocumento }}</span></td>
+            <td><strong>{{ cliente.nombreORazonSocial }}</strong></td>
+            <td>{{ cliente.tipo === 'EMPRESA' ? 'Empresa' : 'Persona natural' }}</td>
+            <td><span class="badge">{{ documento(cliente) }}</span></td>
+            <td>{{ cliente.telefono ?? '—' }}</td>
+            <td>{{ cliente.correo ?? '—' }}</td>
+            <td style="text-align: right; white-space: nowrap;">
+              <a class="btn btn-secondary btn-sm" [routerLink]="['/clientes', cliente.id, 'historial']">Historial</a>
+              <a class="btn btn-outline-secondary btn-sm" style="margin-left: 6px;" [routerLink]="['/clientes', cliente.id, 'editar']">Editar</a>
+              <button class="btn btn-danger btn-sm" style="margin-left: 6px;" (click)="eliminar(cliente)">Eliminar</button>
+            </td>
           </tr>
         }
       </tbody>

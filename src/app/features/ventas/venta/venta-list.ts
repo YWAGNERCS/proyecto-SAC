@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
 import { EstadoVenta, VentaResponse } from './venta.model';
+import { DescargaService } from '../../../core/services/descarga-service';
 
 interface Agregado {
   moneda: 'SOLES' | 'DOLARES';
@@ -22,6 +23,8 @@ interface Agregado {
 })
 export class VentaListComponent implements OnInit {
   private ventaService = inject(VentaService);
+  private descargaService = inject(DescargaService);
+  exportando = signal(false);
 
   ventas = signal<VentaResponse[]>([]);
   vista = signal<'REPORTE' | 'ATRASADAS'>('REPORTE');
@@ -138,6 +141,28 @@ export class VentaListComponent implements OnInit {
         );
         this.recargar();
       },
+    });
+  }
+
+  /** Excel con los mismos filtros del reporte (hojas "Ventas" y "Detalle"). */
+  exportarExcel() {
+    this.exportando.set(true);
+    this.descargaService
+      .descargar('/v1/admin/ventas/exportar', `ventas_${this.descargaService.hoy()}.xlsx`,
+        { estado: this.estado, desde: this.desde, hasta: this.hasta })
+      .subscribe({
+        next: () => this.exportando.set(false),
+        error: () => {
+          this.exportando.set(false);
+          this.error.set('No se pudo generar el Excel de ventas.');
+        },
+      });
+  }
+
+  /** PDF de la factura o boleta de la venta. */
+  descargarComprobante(v: VentaResponse) {
+    this.descargaService.descargar(`/v1/admin/facturacion/ventas/${v.id}/pdf`, `comprobante_venta_${v.id}.pdf`).subscribe({
+      error: () => this.error.set(`No se pudo descargar el comprobante de la venta #${v.id}.`),
     });
   }
 

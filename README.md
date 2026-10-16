@@ -21,14 +21,14 @@
 |---|---|---|
 | 🔐 Seguridad | `/login` | Inicio de sesión (transitorio, HTTP Basic); las demás rutas están protegidas por un guard. Se reemplazará por **Keycloak** |
 | 🏠 Inicio | `/` | Panel de bienvenida |
-| 📦 Catálogo | `/catalogo/productos`, `/catalogo/categorias` | Productos con categoría (lista con filtro, nuevo/editar con precio calculado) y CRUD de categorías |
+| 📦 Catálogo | `/catalogo/productos`, `/catalogo/productos/:id/kardex`, `/catalogo/categorias` | Productos con categoría, **kardex** por producto (Excel) y CRUD de categorías |
 | 📄 Proformas *(antes Cotizaciones)* | `/proformas`, `/proformas/nueva` | Listado, nueva proforma, aceptar/rechazar/enviar |
-| 🛒 Ventas | `/ventas`, `/ventas/nueva` | **Venta directa cabecera-detalle** (FormArray, búsqueda de producto con precio, totales en vivo, confirmación) y **reporte** con filtros por estado y fechas, totales, detalle y **anulación** |
-| 🏭 Compras | `/compras`, `/compras/nueva` | Registro de compras a proveedor |
-| 👥 Clientes | `/clientes` | Listado de clientes |
-| 🚚 Proveedores | `/proveedores`, `/proveedores/nuevo` | Listado con búsqueda, **nuevo/editar con búsqueda por RUC (SUNAT) o DNI (RENIEC)** que llena nombre y dirección, eliminar |
+| 🛒 Ventas | `/ventas`, `/ventas/nueva` | Venta directa cabecera-detalle y **reporte** con filtros, totales, detalle, anulación, **Excel** y **PDF del comprobante** |
+| 🏭 Compras | `/compras`, `/compras/nueva` | Registro de compras; listado con filtros por fecha y proveedor y **Excel** |
+| 👥 Clientes | `/clientes`, `/clientes/nuevo`, `/clientes/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** (ventas, total comprado, pendiente de pago, Excel) |
+| 🚚 Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** de compras (Excel) |
 
-*Pendientes en la SPA:* registro y edición de clientes; pantallas de postventa (mantenimientos), cobranza, inventario y facturación.
+*Pendientes en la SPA:* pantallas de postventa (mantenimientos), cobranza, inventario y facturación.
 
 ---
 

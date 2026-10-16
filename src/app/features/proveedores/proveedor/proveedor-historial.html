@@ -1,0 +1,63 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <a routerLink="/proveedores" class="texto-muted" style="font-size: 0.85rem;">← Proveedores</a>
+    <h2 class="mb-0" style="font-weight: 700;">Historial del proveedor</h2>
+    @if (historial(); as h) {
+      <p class="texto-muted" style="margin: 4px 0 0 0;">{{ h.nombre }} · {{ h.tipo === 'EMPRESA' ? 'RUC' : 'DNI' }} {{ h.documento }}</p>
+    }
+  </div>
+  <button class="btn btn-secondary" (click)="exportarExcel()" [disabled]="exportando() || !historial()">
+    {{ exportando() ? 'Generando…' : '⬇ Exportar a Excel' }}
+  </button>
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+
+@if (historial(); as h) {
+  <div class="kpis">
+    <div class="kpi"><span>Compras</span><strong>{{ h.cantidadCompras }}</strong></div>
+    <div class="kpi"><span>Total comprado en soles</span><strong>S/ {{ h.totalSoles | number: '1.2-2' }}</strong></div>
+    <div class="kpi"><span>Total comprado en dólares</span><strong>US$ {{ h.totalDolares | number: '1.2-2' }}</strong></div>
+    <div class="kpi"><span>Última compra</span><strong>{{ h.ultimaCompra ?? '—' }}</strong>
+      @if (h.primeraCompra) { <span>proveedor desde {{ h.primeraCompra }}</span> }</div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 70px;">N°</th>
+            <th style="width: 110px;">Fecha</th>
+            <th style="width: 140px;">Factura</th>
+            <th>Productos</th>
+            <th class="text-center" style="width: 90px;">Unidades</th>
+            <th style="text-align: right; width: 130px;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of h.compras; track c.id) {
+            <tr>
+              <td><span class="badge">#{{ c.id }}</span></td>
+              <td class="texto-muted">{{ c.fechaCompra }}</td>
+              <td style="font-family: monospace; font-size: 0.85rem;">{{ c.numeroFactura || '—' }}</td>
+              <td style="font-size: 0.88rem;">
+                @for (d of c.detalles; track d.id) {
+                  <div>{{ d.cantidad }} × {{ d.producto.nombre }} <span class="texto-muted">({{ simbolo(c.moneda) }} {{ d.precioUnitarioCompra | number: '1.2-2' }} c/u)</span></div>
+                }
+              </td>
+              <td class="text-center">{{ unidades(c) }}</td>
+              <td style="text-align: right; font-weight: 700;">{{ simbolo(c.moneda) }} {{ c.total | number: '1.2-2' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" style="text-align: center; padding: 40px;" class="texto-muted">Aún no hay compras a este proveedor.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else if (!error()) {
+  <p class="texto-muted">Cargando historial…</p>
+}

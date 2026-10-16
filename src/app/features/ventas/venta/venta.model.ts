@@ -20,6 +20,8 @@ export interface VentaResponse {
   subtotal: number;
   igv: number;
   total: number;
+  /** null si la venta aún no tiene factura/boleta emitida. */
+  comprobanteId: number | null;
   detalles: DetalleVentaResponse[];
 }
 

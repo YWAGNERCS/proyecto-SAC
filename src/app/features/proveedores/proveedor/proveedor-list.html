@@ -53,7 +53,8 @@
             <td>{{ prov.telefono ?? '—' }}</td>
             <td>{{ prov.correo ?? '—' }}</td>
             <td style="text-align: right; white-space: nowrap;">
-              <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/proveedores', prov.id, 'editar']">Editar</a>
+              <a class="btn btn-secondary btn-sm" [routerLink]="['/proveedores', prov.id, 'historial']">Historial</a>
+              <a class="btn btn-outline-secondary btn-sm" style="margin-left: 6px;" [routerLink]="['/proveedores', prov.id, 'editar']">Editar</a>
               <button class="btn btn-danger btn-sm" style="margin-left: 6px;" (click)="eliminar(prov)">Eliminar</button>
             </td>
           </tr>

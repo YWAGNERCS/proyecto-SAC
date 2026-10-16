@@ -43,7 +43,7 @@
           <th style="width: 150px;">Sector</th>
           <th style="width: 130px; text-align: right;">Precio (sin IGV)</th>
           <th class="text-center" style="width: 110px;">Stock</th>
-          <th style="width: 170px; text-align: right;">Acciones</th>
+          <th style="width: 240px; text-align: right;">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -78,7 +78,8 @@
               }
             </td>
             <td style="text-align: right; white-space: nowrap;">
-              <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/catalogo/productos', p.id, 'editar']">Editar</a>
+              <a class="btn btn-secondary btn-sm" [routerLink]="['/catalogo/productos', p.id, 'kardex']">Kardex</a>
+              <a class="btn btn-outline-secondary btn-sm" style="margin-left: 6px;" [routerLink]="['/catalogo/productos', p.id, 'editar']">Editar</a>
               <button class="btn btn-danger btn-sm" style="margin-left: 8px;" (click)="eliminar(p)">Eliminar</button>
             </td>
           </tr>

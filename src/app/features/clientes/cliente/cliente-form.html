@@ -1,0 +1,82 @@
+<div class="card" style="max-width: 760px; margin: 2rem auto;">
+  <div class="card-header">
+    <h2>{{ id() ? 'Editar Cliente' : 'Nuevo Cliente' }}</h2>
+    <p>Busque el RUC o DNI para traer los datos de SUNAT o RENIEC, revíselos y complete el contacto</p>
+  </div>
+
+  <div class="card-body">
+    @if (error()) {
+      <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+    }
+    @if (yaRegistrado(); as p) {
+      <div class="alert alert-info" role="status">
+        <span>ℹ️</span> Este {{ etiquetaDocumento() }} ya está registrado como <strong>{{ p.nombreORazonSocial }}</strong>.
+        <a [routerLink]="['/clientes', p.id, 'editar']" style="margin-left: 6px;">Ver / editar ese cliente</a>
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+      <div class="form-group">
+        <span class="form-label">Tipo de cliente</span>
+        <div class="d-flex gap-3">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="radio" formControlName="tipo" value="EMPRESA" /> Empresa (RUC)
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="radio" formControlName="tipo" value="PERSONA_NATURAL" /> Persona natural (DNI)
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="documento">{{ etiquetaDocumento() }} <span style="color: var(--danger);">*</span></label>
+        <div class="d-flex gap-2">
+          <input id="documento" type="text" inputmode="numeric" class="form-control" formControlName="documento"
+                 [attr.maxlength]="digitos()" [placeholder]="digitos() + ' dígitos'"
+                 [class.is-invalid]="mensajeValidacion('documento')"
+                 (keydown.enter)="$event.preventDefault(); buscarDocumento()" />
+          <button type="button" class="btn btn-secondary" style="white-space: nowrap;"
+                  (click)="buscarDocumento()" [disabled]="buscando()">
+            {{ buscando() ? 'Buscando…' : '🔍 Buscar en ' + (esEmpresa() ? 'SUNAT' : 'RENIEC') }}
+          </button>
+        </div>
+        @if (mensajeValidacion('documento'); as m) { <span class="error-text">{{ m }}</span> }
+        @if (avisoBusqueda()) {
+          <small style="color: var(--success); display: block; margin-top: 4px;">✓ {{ avisoBusqueda() }}</small>
+        }
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="nombre">{{ esEmpresa() ? 'Razón social' : 'Nombres y apellidos' }} <span style="color: var(--danger);">*</span></label>
+        <input id="nombre" type="text" class="form-control" formControlName="nombreORazonSocial"
+               [class.is-invalid]="mensajeValidacion('nombreORazonSocial')" />
+        @if (mensajeValidacion('nombreORazonSocial'); as m) { <span class="error-text">{{ m }}</span> }
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="direccion">Dirección</label>
+        <input id="direccion" type="text" class="form-control" formControlName="direccion" />
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="telefono">Teléfono</label>
+          <input id="telefono" type="tel" class="form-control" formControlName="telefono" />
+        </div>
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="correo">Correo</label>
+          <input id="correo" type="email" class="form-control" formControlName="correo"
+                 [class.is-invalid]="mensajeValidacion('correo')" />
+          @if (mensajeValidacion('correo'); as m) { <span class="error-text">{{ m }}</span> }
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <a routerLink="/clientes" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary" [disabled]="loading()">
+          {{ id() ? 'Actualizar Cliente' : 'Guardar Cliente' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

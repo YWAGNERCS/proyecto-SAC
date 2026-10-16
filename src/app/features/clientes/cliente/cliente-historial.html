@@ -1,0 +1,79 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <a routerLink="/clientes" class="texto-muted" style="font-size: 0.85rem;">← Clientes</a>
+    <h2 class="mb-0" style="font-weight: 700;">Historial del cliente</h2>
+    @if (historial(); as h) {
+      <p class="texto-muted" style="margin: 4px 0 0 0;">{{ h.nombre }} · {{ h.tipo === 'EMPRESA' ? 'RUC' : 'DNI' }} {{ h.documento }}</p>
+    }
+  </div>
+  <button class="btn btn-secondary" (click)="exportarExcel()" [disabled]="exportando() || !historial()">
+    {{ exportando() ? 'Generando…' : '⬇ Exportar a Excel' }}
+  </button>
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+
+@if (historial(); as h) {
+  <div class="kpis">
+    <div class="kpi"><span>Ventas vigentes</span><strong>{{ h.cantidadVentas }}</strong></div>
+    <div class="kpi"><span>Anuladas</span><strong>{{ h.cantidadAnuladas }}</strong></div>
+    <div class="kpi"><span>Total comprado</span><strong>S/ {{ h.totalSoles | number: '1.2-2' }}</strong>
+      @if (h.totalDolares > 0) { <span>+ US$ {{ h.totalDolares | number: '1.2-2' }}</span> }</div>
+    <div class="kpi"><span>Pendiente de pago</span>
+      <strong [style.color]="h.pendienteSoles > 0 || h.pendienteDolares > 0 ? 'var(--danger)' : 'inherit'">S/ {{ h.pendienteSoles | number: '1.2-2' }}</strong>
+      @if (h.pendienteDolares > 0) { <span>+ US$ {{ h.pendienteDolares | number: '1.2-2' }}</span> }</div>
+    <div class="kpi"><span>Última compra</span><strong>{{ h.ultimaCompra ?? '—' }}</strong>
+      @if (h.primeraCompra) { <span>cliente desde {{ h.primeraCompra }}</span> }</div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 70px;">N°</th>
+            <th style="width: 110px;">Fecha</th>
+            <th>Productos</th>
+            <th class="text-center" style="width: 90px;">Pago</th>
+            <th class="text-center" style="width: 110px;">Estado</th>
+            <th class="text-center" style="width: 110px;">Cobro</th>
+            <th style="text-align: right; width: 130px;">Total</th>
+            <th class="text-center" style="width: 80px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (v of h.ventas; track v.id) {
+            <tr [style.opacity]="v.estado === 'ANULADA' ? 0.55 : 1">
+              <td><span class="badge">#{{ v.id }}</span></td>
+              <td class="texto-muted">{{ v.fechaVenta }}</td>
+              <td style="font-size: 0.88rem;">
+                @for (d of v.detalles; track $index) {
+                  <div>{{ d.cantidad }} × {{ d.productoNombre }}</div>
+                }
+              </td>
+              <td class="text-center">{{ v.tipoPago === 'CONTADO' ? 'Contado' : 'Crédito' }}</td>
+              <td class="text-center">
+                <span class="badge" [class.badge-success]="v.estado === 'REGISTRADA'" [class.badge-danger]="v.estado === 'ANULADA'">{{ v.estado }}</span>
+              </td>
+              <td class="text-center">
+                <span class="badge" [class.badge-success]="v.estadoPago === 'PAGADO'" [class.badge-warning]="v.estadoPago !== 'PAGADO'">{{ v.estadoPago }}</span>
+              </td>
+              <td style="text-align: right; font-weight: 700;">{{ simbolo(v.moneda) }} {{ v.total | number: '1.2-2' }}</td>
+              <td class="text-center">
+                @if (v.comprobanteId) {
+                  <button class="btn btn-sm btn-outline-secondary" (click)="descargarComprobante(v)">PDF</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" style="text-align: center; padding: 40px;" class="texto-muted">Este cliente aún no tiene ventas.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else if (!error()) {
+  <p class="texto-muted">Cargando historial…</p>
+}
