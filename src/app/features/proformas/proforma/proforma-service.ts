@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../../../core/services/api-service';
 import { HttpClient } from '@angular/common/http';
-import { ProformaResponse, ProformaRequest } from './proforma.model';
+import { ProformaResponse, ProformaRequest, ResultadoEnvio } from './proforma.model';
 
 @Injectable({ providedIn: 'root' })
 export class ProformaService {
@@ -26,8 +26,9 @@ export class ProformaService {
     return this.http.post<ProformaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/rechazar`), {});
   }
 
+  /** Devuelve qué canal salió y cuál no, con un mensaje para mostrar. */
   enviar(id: number, whatsapp: boolean = true, correo: boolean = true) {
-    return this.http.post<void>(
+    return this.http.post<ResultadoEnvio>(
       this.api.buildUrl(`${this.endpoint}/${id}/enviar?whatsapp=${whatsapp}&correo=${correo}`), {}
     );
   }

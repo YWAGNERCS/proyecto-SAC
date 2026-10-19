@@ -27,7 +27,12 @@ export class CompraFormComponent implements OnInit {
   loading = signal(false);
 
   proveedorIdSeleccionado: number | null = null;
-  fechaCompra: string = new Date().toISOString().split('T')[0];
+  /** Hoy en hora local (toISOString usaría UTC y de noche daría el día siguiente). */
+  readonly hoy = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  fechaCompra: string = this.hoy;
   numeroFactura: string = '';
   moneda: 'SOLES' | 'DOLARES' = 'SOLES';
   detalles: DetalleCompraRequest[] = [];
@@ -86,22 +91,36 @@ export class CompraFormComponent implements OnInit {
     return this.detalles.reduce((sum, d) => sum + (d.cantidad * d.precioUnitarioCompra), 0);
   }
 
+  /** El aviso de error está arriba del formulario: se sube para que se vea. */
+  private mostrarError(msg: string) {
+    this.errorMessage.set(msg);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   guardar() {
     this.errorMessage.set('');
 
     if (!this.proveedorIdSeleccionado) {
-      this.errorMessage.set('Debe seleccionar un proveedor.');
+      this.mostrarError('Debe seleccionar un proveedor.');
       return;
     }
     if (!this.detalles || this.detalles.length === 0) {
-      this.errorMessage.set('Debe agregar al menos un producto a la compra.');
+      this.mostrarError('Debe agregar al menos un producto a la compra.');
+      return;
+    }
+    if (!/^[A-Za-z0-9]{4}-\d{1,8}$/.test(this.numeroFactura.trim())) {
+      this.mostrarError('Ingrese el N° de factura del proveedor con el formato SERIE-NÚMERO, por ejemplo F001-123.');
+      return;
+    }
+    if (this.fechaCompra > this.hoy) {
+      this.mostrarError('La fecha de compra no puede ser futura.');
       return;
     }
 
     const payload: CompraRequest = {
       proveedorId: Number(this.proveedorIdSeleccionado),
       fechaCompra: this.fechaCompra,
-      numeroFactura: this.numeroFactura || undefined,
+      numeroFactura: this.numeroFactura.trim(),
       moneda: this.moneda,
       total: this.calcularTotal(),
       detalles: this.detalles.map(d => ({
@@ -119,8 +138,12 @@ export class CompraFormComponent implements OnInit {
       },
       error: (err: any) => {
         this.loading.set(false);
-        const msg = err.error?.message || err.message || 'Error al registrar la compra.';
-        this.errorMessage.set(msg);
+        // 400 con detalle por campo, 409 si la factura ya estaba registrada
+        const errores = err.error?.errores as Record<string, string> | undefined;
+        const msg = errores ? Object.values(errores).join(' · ')
+          : err.status === 0 ? 'No hay conexión con el servidor.'
+          : err.error?.message || 'Error al registrar la compra.';
+        this.mostrarError(msg);
       }
     });
   }

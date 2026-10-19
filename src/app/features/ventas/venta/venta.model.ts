@@ -2,6 +2,8 @@ export interface DetalleVentaResponse {
   productoNombre: string;
   cantidad: number;
   precioUnitario: number;
+  /** % de descuento de la línea (0 si no hay). */
+  descuentoPorcentaje: number;
   subtotalDetalle: number;
 }
 
@@ -9,6 +11,7 @@ export type EstadoVenta = 'REGISTRADA' | 'ANULADA';
 
 export interface VentaResponse {
   id: number;
+  clienteId: number;
   clienteNombre: string;
   proformaOrigenId: number | null;
   fechaVenta: string;
@@ -17,6 +20,8 @@ export interface VentaResponse {
   estadoPago: 'PENDIENTE' | 'PAGADO' | 'ATRASADO';
   fechaLimitePago: string | null;
   moneda: 'SOLES' | 'DOLARES';
+  /** Soles por dólar usado en la venta (null si no se registró). */
+  tipoCambio: number | null;
   subtotal: number;
   igv: number;
   total: number;
@@ -35,6 +40,8 @@ export interface FiltroVentas {
 export interface ItemVentaDTO {
   productoId: number;
   cantidad: number;
+  /** % negociado de la línea (0 a tope del usuario). */
+  descuentoPorcentaje?: number;
 }
 
 /** Lo único que viaja al backend: subtotales, IGV y total los calcula el servidor. */
@@ -43,4 +50,8 @@ export interface VentaDirectaRequest {
   items: ItemVentaDTO[];
   tipoPago: 'CONTADO' | 'CREDITO';
   diasCredito?: number;
+  /** Moneda en la que se cobra; los precios se convierten con el tipo de cambio. */
+  moneda: 'SOLES' | 'DOLARES';
+  /** Soles por dólar (el de SUNAT del día o el negociado). */
+  tipoCambio?: number | null;
 }

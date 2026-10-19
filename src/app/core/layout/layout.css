@@ -34,7 +34,7 @@
   align-items: center;
   gap: 5px;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-main, #1E293B);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -59,4 +59,13 @@
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.5);
   color: #f87171;
+}
+
+.nav-rol {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4F46E5;
 }

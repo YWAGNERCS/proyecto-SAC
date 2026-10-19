@@ -19,7 +19,7 @@
 
 | Módulo | Ruta | Qué permite |
 |---|---|---|
-| 🔐 Seguridad | `/login` | Inicio de sesión (transitorio, HTTP Basic); las demás rutas están protegidas por un guard. Se reemplazará por **Keycloak** |
+| 🔐 Seguridad | `/login` | Inicio de sesión con usuarios de Keycloak (realm `bomerp`); las demás rutas están protegidas por un guard. S11: redirección a Keycloak con PKCE |
 | 🏠 Inicio | `/` | Panel de bienvenida |
 | 📦 Catálogo | `/catalogo/productos`, `/catalogo/productos/:id/kardex`, `/catalogo/categorias` | Productos con categoría, **kardex** por producto (Excel) y CRUD de categorías |
 | 📄 Proformas *(antes Cotizaciones)* | `/proformas`, `/proformas/nueva` | Listado, nueva proforma, aceptar/rechazar/enviar |
@@ -28,7 +28,9 @@
 | 👥 Clientes | `/clientes`, `/clientes/nuevo`, `/clientes/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** (ventas, total comprado, pendiente de pago, Excel) |
 | 🚚 Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** de compras (Excel) |
 
-*Pendientes en la SPA:* pantallas de postventa (mantenimientos), cobranza, inventario y facturación.
+*Pantallas nuevas (15/10/2026):* **Postventa** (agenda de mantenimientos: vencidos, próximos, realizado, reprogramar) y **Cobranza** (saldos, abonos e historial). Proformas y ventas aceptan **descuento por línea**.
+
+*Pendientes en la SPA:* pantallas de inventario (alertas) y facturación (comprobantes y notas de crédito).
 
 ---
 
@@ -84,7 +86,7 @@ src/app/
 - Los montos que calcula el formulario son una **vista previa**: el backend calcula los definitivos y la SPA solo envía ids y cantidades.
 - Los errores del backend se muestran por código: `400` datos inválidos · `404` no existe · `409` regla de negocio o stock insuficiente.
 
-**Seguridad (transitoria):** el login valida las credenciales con `GET /api/v1/admin/auth/me` y el interceptor adjunta `Authorization: Basic` a las rutas `/admin/`. El equipo decidió reemplazarlo por **Keycloak** (S10–S11): login en Keycloak, token con expiración, menú según roles y manejo de 401/403.
+**Seguridad (Keycloak, S10b):** el login pide el token a Keycloak (`environment.keycloak`), lee nombre y roles de `GET /api/v1/auth/perfil` y guarda la sesión en `sessionStorage`; `jwt-auth.interceptor` adjunta `Authorization: Bearer` y renueva el token con el refresh token. Los botones de modificar el catálogo, anular ventas y eliminar clientes o proveedores solo aparecen para ADMIN (el backend responde 403 de todas formas).
 
 ---
 

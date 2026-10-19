@@ -33,6 +33,15 @@
                     <input id="diasVigenciaInput" type="number" class="form-control" [(ngModel)]="proforma.diasVigencia" name="diasVigencia" min="1">
                 </div>
             </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label" for="tcInput">Tipo de cambio (S/ por US$)</label>
+                    <input id="tcInput" type="number" step="0.001" min="1" class="form-control" [(ngModel)]="proforma.tipoCambio" name="tipoCambio">
+                </div>
+                <div class="col-md-9 mb-3" style="display: flex; align-items: flex-end;">
+                    <small style="color: var(--text-muted);">{{ avisoTipoCambio() }} · Los productos en otra moneda se convierten a la moneda de la proforma con este valor, que queda fijo: al convertirla en venta se respeta el monto cotizado.</small>
+                </div>
+            </div>
 
             <hr>
             <h4 style="font-weight: 700; margin-bottom: 12px;">Detalle de Ítems</h4>
@@ -62,6 +71,7 @@
                     <tr>
                         <th>Producto</th>
                         <th class="text-center" style="width: 120px;">Cantidad</th>
+                        <th class="text-center" style="width: 140px;">Dscto. % <small style="font-weight: 400;">(máx. {{ topeDescuento() }})</small></th>
                         <th class="text-center" style="width: 100px;">Acción</th>
                     </tr>
                 </thead>
@@ -71,6 +81,12 @@
                             <strong>{{ getNombreProducto(item.productoId) }}</strong>
                         </td>
                         <td class="text-center">{{ item.cantidad }}</td>
+                        <td class="text-center">
+                            <input type="number" class="form-control text-center" min="0" [max]="topeDescuento()" step="0.5"
+                                   [(ngModel)]="item.descuentoPorcentaje" [name]="'descuento' + i"
+                                   [attr.aria-label]="'Descuento de ' + getNombreProducto(item.productoId)"
+                                   [class.is-invalid]="(item.descuentoPorcentaje ?? 0) > topeDescuento() || (item.descuentoPorcentaje ?? 0) < 0">
+                        </td>
                         <td class="text-center">
                             <button type="button" class="btn btn-sm btn-danger" (click)="eliminarItem(i)">
                                 Quitar

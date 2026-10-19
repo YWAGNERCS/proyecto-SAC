@@ -1,4 +1,5 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
@@ -13,6 +14,9 @@ import { Cliente } from './cliente.model';
   styleUrl: './cliente-list.css',
 })
 export class ClienteListComponent implements OnInit {
+  /** Solo ADMIN modifica/elimina/anula (el backend lo vuelve a exigir con 403). */
+  readonly esAdmin = inject(AuthService).esAdmin;
+
   clientes = signal<Cliente[]>([]);
   cargando = signal(true);
   error = signal<string | null>(null);

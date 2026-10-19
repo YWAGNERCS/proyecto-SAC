@@ -22,7 +22,11 @@ export class LoginComponent {
     private auth: AuthService,
     private router: Router,
     private route: ActivatedRoute,
-  ) {}
+  ) {
+    if (this.route.snapshot.queryParamMap.get('motivo') === 'expirada') {
+      this.error.set('Su sesión venció. Ingrese de nuevo.');
+    }
+  }
 
   togglePassword(): void {
     this.mostrarPassword.update((v) => !v);
@@ -41,10 +45,13 @@ export class LoginComponent {
       },
       error: (err) => {
         this.cargando.set(false);
-        if (err?.status === 401 || err?.status === 403) {
+        // Keycloak responde 401 (invalid_grant) si el usuario o la contraseña no coinciden
+        if (err?.status === 401 || err?.status === 400) {
           this.error.set('Usuario o contraseña incorrectos.');
+        } else if (err?.status === 403) {
+          this.error.set('Su usuario no tiene un rol del sistema (ADMIN o ASISTENTE).');
         } else if (err?.status === 0) {
-          this.error.set('No se pudo conectar con el servidor. ¿Está el backend encendido?');
+          this.error.set('No se pudo conectar con Keycloak o con el backend. ¿Están encendidos?');
         } else {
           this.error.set('Error inesperado. Intenta de nuevo.');
         }

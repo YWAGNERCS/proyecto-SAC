@@ -23,7 +23,7 @@
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label" for="fechaCompraInput">Fecha de Compra</label>
-                    <input id="fechaCompraInput" type="date" class="form-control" [(ngModel)]="fechaCompra" name="fechaCompra">
+                    <input id="fechaCompraInput" type="date" class="form-control" [(ngModel)]="fechaCompra" name="fechaCompra" [max]="hoy">
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label" for="monedaSelect">Moneda</label>
@@ -36,7 +36,7 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="facturaInput">N° Factura del Proveedor</label>
-                    <input id="facturaInput" type="text" class="form-control" [(ngModel)]="numeroFactura" name="numeroFactura" placeholder="Ej: F001-00123">
+                    <input id="facturaInput" type="text" class="form-control" [(ngModel)]="numeroFactura" name="numeroFactura" placeholder="Ej: F001-00123" required maxlength="13">
                 </div>
             </div>
 

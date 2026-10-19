@@ -5,7 +5,9 @@
       Equipos y materiales del catálogo, cada uno con su categoría
     </p>
   </div>
-  <a routerLink="/catalogo/productos/nuevo" class="btn btn-primary">+ Nuevo Producto</a>
+  @if (esAdmin()) {
+    <a routerLink="/catalogo/productos/nuevo" class="btn btn-primary">+ Nuevo Producto</a>
+  }
 </div>
 
 <div class="card d-flex align-items-center gap-3" style="padding: 16px; margin-bottom: 20px; flex-wrap: wrap;">
@@ -79,8 +81,10 @@
             </td>
             <td style="text-align: right; white-space: nowrap;">
               <a class="btn btn-secondary btn-sm" [routerLink]="['/catalogo/productos', p.id, 'kardex']">Kardex</a>
-              <a class="btn btn-outline-secondary btn-sm" style="margin-left: 6px;" [routerLink]="['/catalogo/productos', p.id, 'editar']">Editar</a>
-              <button class="btn btn-danger btn-sm" style="margin-left: 8px;" (click)="eliminar(p)">Eliminar</button>
+              @if (esAdmin()) {
+                <a class="btn btn-outline-secondary btn-sm" style="margin-left: 6px;" [routerLink]="['/catalogo/productos', p.id, 'editar']">Editar</a>
+                <button class="btn btn-danger btn-sm" style="margin-left: 8px;" (click)="eliminar(p)">Eliminar</button>
+              }
             </td>
           </tr>
         } @empty {

@@ -1,0 +1,176 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0" style="font-weight: 700;">Postventa</h2>
+    <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
+      Mantenimientos preventivos de los equipos vendidos (4 por equipo: a los 3, 6, 9 y 12 meses)
+    </p>
+  </div>
+</div>
+
+<!-- ── Contadores ───────────────────────────────────────── -->
+@if (resumen(); as r) {
+  <div class="kpis">
+    <button type="button" class="card kpi" [class.kpi-alerta]="r.vencidos > 0" (click)="cambiarVista('VENCIDOS')">
+      <span>Vencidos sin atender</span><strong>{{ r.vencidos }}</strong>
+    </button>
+    <button type="button" class="card kpi" (click)="dias = 7; cambiarVista('PROXIMOS')">
+      <span>Próximos 7 días</span><strong>{{ r.proximos7 }}</strong>
+    </button>
+    <button type="button" class="card kpi" (click)="dias = 30; cambiarVista('PROXIMOS')">
+      <span>Próximos 30 días</span><strong>{{ r.proximos30 }}</strong>
+    </button>
+  </div>
+}
+
+<!-- ── Pestañas y filtros ───────────────────────────────── -->
+<div class="card filtros">
+  <div class="pestanas" role="tablist">
+    @for (v of vistas; track v.valor) {
+      <button type="button" role="tab" class="btn btn-sm" [attr.aria-selected]="vista() === v.valor"
+              [class.btn-primary]="vista() === v.valor" [class.btn-outline-secondary]="vista() !== v.valor"
+              (click)="cambiarVista(v.valor)">{{ v.etiqueta }}</button>
+    }
+  </div>
+  @if (vista() === 'PROXIMOS') {
+    <div>
+      <label class="form-label" for="fDias">Próximos (días)</label>
+      <select id="fDias" class="form-select" [(ngModel)]="dias" (change)="cargar()">
+        <option [ngValue]="7">7</option>
+        <option [ngValue]="30">30</option>
+        <option [ngValue]="60">60</option>
+        <option [ngValue]="90">90</option>
+      </select>
+    </div>
+  }
+  <div>
+    <label class="form-label" for="fCliente">Cliente</label>
+    <select id="fCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+      <option [ngValue]="null">Todos</option>
+      @for (c of clientes(); track c.id) {
+        <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
+      }
+    </select>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
+
+<!-- ── Agenda ───────────────────────────────────────────── -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 130px;">Fecha</th>
+          <th>Cliente y contacto</th>
+          <th>Equipos</th>
+          <th class="text-center" style="width: 90px;">Venta</th>
+          <th class="text-center" style="width: 110px;">Estado</th>
+          <th class="text-center" style="width: 210px;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="6" class="vacio">Cargando…</td></tr>
+        }
+        @for (m of mantenimientos(); track m.id) {
+          <tr>
+            <td>
+              <strong>{{ m.fechaProgramada }}</strong>
+              @if (textoDias(m)) {
+                <div><span class="badge" [class]="claseDias(m)">{{ textoDias(m) }}</span></div>
+              }
+              @if (m.fechaRealizada) {
+                <div class="muted">hecho el {{ m.fechaRealizada }}</div>
+              }
+            </td>
+            <td>
+              <strong>{{ m.clienteNombre }}</strong>
+              <div class="contacto">
+                @if (m.clienteTelefono) {
+                  <a [href]="'tel:' + m.clienteTelefono">📞 {{ m.clienteTelefono }}</a>
+                  @if (whatsapp(m); as wa) {
+                    <a [href]="wa" target="_blank" rel="noopener">WhatsApp</a>
+                  }
+                } @else {
+                  <span class="muted">Sin teléfono · <a [routerLink]="['/clientes', m.clienteId, 'editar']">completar</a></span>
+                }
+              </div>
+              @if (m.clienteDireccion) { <div class="muted">{{ m.clienteDireccion }}</div> }
+              @if (m.notas) { <div class="notas">{{ m.notas }}</div> }
+            </td>
+            <td>{{ m.equipos || '—' }}</td>
+            <td class="text-center"><span class="badge">#{{ m.ventaId }}</span><div class="muted">{{ m.fechaVenta }}</div></td>
+            <td class="text-center"><span class="badge" [class]="claseEstado(m.estado)">{{ m.estado }}</span></td>
+            <td class="text-center">
+              @if (m.estado === 'PENDIENTE') {
+                <div class="acciones">
+                  <button class="btn btn-sm btn-primary" (click)="abrir(m, 'REALIZADO')">✓ Realizado</button>
+                  <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REPROGRAMAR')">Reprogramar</button>
+                </div>
+              } @else {
+                <span class="muted">—</span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          @if (!loading()) {
+            <tr><td colspan="6" class="vacio">
+              @switch (vista()) {
+                @case ('VENCIDOS') { No hay mantenimientos vencidos sin atender. }
+                @case ('PROXIMOS') { No hay mantenimientos en los próximos {{ dias }} días. }
+                @case ('REALIZADOS') { Aún no se registran visitas realizadas. }
+                @default { No hay mantenimientos programados. }
+              }
+            </td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Diálogo: realizado / reprogramar ─────────────────── -->
+@if (seleccionado(); as m) {
+  <div class="dialogo-fondo" (click)="cerrar()">
+    <div class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloMant" (click)="$event.stopPropagation()">
+      <h3 id="tituloMant" style="margin: 0 0 4px 0; font-weight: 700;">
+        {{ accion() === 'REALIZADO' ? 'Registrar visita realizada' : 'Reprogramar mantenimiento' }}
+      </h3>
+      <p class="muted" style="margin: 0 0 16px 0;">
+        {{ m.clienteNombre }} · {{ m.equipos }} · programado para el {{ m.fechaProgramada }}
+      </p>
+
+      <label class="form-label" for="dFecha">
+        {{ accion() === 'REALIZADO' ? 'Fecha de la visita' : 'Nueva fecha' }}
+      </label>
+      @if (accion() === 'REALIZADO') {
+        <input id="dFecha" type="date" class="form-control" [(ngModel)]="fecha" [max]="hoy">
+      } @else {
+        <input id="dFecha" type="date" class="form-control" [(ngModel)]="fecha" [min]="hoy">
+      }
+
+      <label class="form-label" for="dNotas" style="margin-top: 12px;">
+        {{ accion() === 'REALIZADO' ? 'Trabajo realizado (opcional)' : 'Motivo (opcional)' }}
+      </label>
+      <textarea id="dNotas" class="form-control" rows="3" maxlength="300" [(ngModel)]="notas"
+                [placeholder]="accion() === 'REALIZADO' ? 'Ej.: limpieza de filtros, revisión de presión de gas' : 'Ej.: el cliente pidió después de su inventario'"></textarea>
+
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button class="btn btn-secondary" (click)="cerrar()" [disabled]="guardando()">Cancelar</button>
+        <button class="btn btn-primary" (click)="confirmar()" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

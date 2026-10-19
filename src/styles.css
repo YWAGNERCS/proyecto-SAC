@@ -46,6 +46,8 @@ body {
   border-bottom: 1px solid var(--border-color);
   padding: 0.85rem 2rem;
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   justify-content: space-between;
   align-items: center;
   position: sticky;
@@ -67,9 +69,13 @@ body {
   text-decoration: none;
 }
 
+/* Con 10 módulos la barra no cabe en pantallas medianas: los enlaces bajan de línea en vez de desbordarse */
 .nav-links {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .nav-link {
@@ -77,7 +83,8 @@ body {
   font-weight: 500;
   font-size: 0.92rem;
   text-decoration: none;
-  padding: 8px 16px;
+  white-space: nowrap;
+  padding: 8px 12px;
   border-radius: 8px;
   transition: all 0.2s ease;
 }

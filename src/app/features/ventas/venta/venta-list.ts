@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -22,6 +23,9 @@ interface Agregado {
   styleUrl: './venta-list.css',
 })
 export class VentaListComponent implements OnInit {
+  /** Solo ADMIN modifica/elimina/anula (el backend lo vuelve a exigir con 403). */
+  readonly esAdmin = inject(AuthService).esAdmin;
+
   private ventaService = inject(VentaService);
   private descargaService = inject(DescargaService);
   exportando = signal(false);
@@ -60,6 +64,9 @@ export class VentaListComponent implements OnInit {
   readonly cantidadAnuladas = computed(() => this.ventas().filter((v) => v.estado === 'ANULADA').length);
 
   ngOnInit() {
+    // Aviso que deja otra pantalla al navegar aquí (p. ej. "Convertir en venta" de una proforma).
+    const aviso = history.state?.mensaje;
+    if (typeof aviso === 'string') this.mensaje.set(aviso);
     this.buscar();
   }
 
@@ -116,10 +123,6 @@ export class VentaListComponent implements OnInit {
       this.ventaService.anular(v.id),
       `Venta #${v.id} anulada: stock restaurado, mantenimientos cancelados y nota de crédito emitida.`,
     );
-  }
-
-  marcarPagada(v: VentaResponse) {
-    this.ejecutar(this.ventaService.marcarComoPagada(v.id), `Venta #${v.id} marcada como pagada.`);
   }
 
   private ejecutar(peticion: ReturnType<VentaService['anular']>, exito: string) {

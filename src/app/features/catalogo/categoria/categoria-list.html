@@ -5,9 +5,11 @@
       Administre las categorías disponibles para clasificar productos
     </p>
   </div>
-  <a routerLink="/catalogo/categorias/nueva" class="btn btn-primary">
-    + Nueva Categoría
-  </a>
+  @if (esAdmin()) {
+    <a routerLink="/catalogo/categorias/nueva" class="btn btn-primary">
+      + Nueva Categoría
+    </a>
+  }
 </div>
 
 <div class="card">
@@ -30,12 +32,16 @@
               <span style="color: var(--text-muted);">{{ cat.descripcion || 'Sin descripción' }}</span>
             </td>
             <td style="text-align: right;">
-              <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/catalogo/categorias', cat.id, 'editar']">
-                Editar
-              </a>
-              <button class="btn btn-danger btn-sm" style="margin-left: 8px;" (click)="eliminar(cat.id!)">
-                Eliminar
-              </button>
+              @if (esAdmin()) {
+                <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/catalogo/categorias', cat.id, 'editar']">
+                  Editar
+                </a>
+                <button class="btn btn-danger btn-sm" style="margin-left: 8px;" (click)="eliminar(cat.id!)">
+                  Eliminar
+                </button>
+              } @else {
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Solo lectura</span>
+              }
             </td>
           </tr>
         } @empty {

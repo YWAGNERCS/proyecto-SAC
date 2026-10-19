@@ -89,6 +89,20 @@ export const routes: Routes = [
           import('./features/ventas/venta/venta-form').then((m) => m.VentaFormComponent),
         title: 'Nueva venta — BomERP',
       },
+      // ── Cobranza ───────────────────────────────────────
+      {
+        path: 'cobranza',
+        loadComponent: () =>
+          import('./features/cobranza/cobro/cobranza-list').then((m) => m.CobranzaListComponent),
+        title: 'Cobranza — BomERP',
+      },
+      // ── Postventa ──────────────────────────────────────
+      {
+        path: 'postventa',
+        loadComponent: () =>
+          import('./features/postventa/mantenimiento/mantenimiento-list').then((m) => m.MantenimientoListComponent),
+        title: 'Postventa — BomERP',
+      },
       // ── Compras ────────────────────────────────────────
       {
         path: 'compras',

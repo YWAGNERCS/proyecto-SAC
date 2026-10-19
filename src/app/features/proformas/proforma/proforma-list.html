@@ -18,6 +18,13 @@
   </select>
 </div>
 
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
+
 <div class="card">
   <div class="table-responsive">
     <table class="table">
@@ -66,13 +73,19 @@
                   <button class="btn btn-sm badge-success-btn" (click)="aceptar(c.id)" [disabled]="accionEnCurso() === c.id" title="Marcar como aceptada">
                     ✓
                   </button>
-                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c.id)" [disabled]="accionEnCurso() === c.id" title="Marcar como rechazada">
+                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c)" [disabled]="accionEnCurso() === c.id" title="Marcar como rechazada">
                     ✗
                   </button>
                 }
+                @if (c.estado === 'CONVERTIDA') {
+                  <a routerLink="/ventas" class="badge badge-info" title="Ver en el reporte de ventas">Venta #{{ c.ventaId }}</a>
+                }
                 @if (c.estado === 'ACEPTADA') {
-                  <button class="btn btn-sm btn-primary" (click)="convertirEnVenta(c.id)" [disabled]="accionEnCurso() === c.id" title="Convertir en venta">
+                  <button class="btn btn-sm btn-primary" (click)="abrirConversion(c)" title="Convertir en venta">
                     🛒 → Venta
+                  </button>
+                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c)" [disabled]="accionEnCurso() === c.id" title="El cliente se echó atrás: marcar como rechazada">
+                    ✗
                   </button>
                 }
               </div>
@@ -89,3 +102,54 @@
     </table>
   </div>
 </div>
+
+<!-- ── Diálogo: convertir proforma en venta ─────────────── -->
+@if (aConvertir(); as p) {
+  <div class="dialogo-fondo" (click)="cerrarConversion()">
+    <div class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloConversion" (click)="$event.stopPropagation()">
+      <h3 id="tituloConversion" style="margin: 0 0 4px 0; font-weight: 700;">Convertir proforma #{{ p.id }} en venta</h3>
+      <p style="color: var(--text-muted); margin: 0 0 16px 0; font-size: 0.9rem;">
+        Se descuenta el stock y se emite el comprobante. Revise antes de confirmar.
+      </p>
+
+      <div class="resumen">
+        <div><span>Cliente</span><strong>{{ p.clienteNombre || p.cliente?.nombreORazonSocial }}</strong></div>
+        @if (p.items?.length) {
+          <div><span>Productos</span><strong>{{ p.items?.length }} línea(s)</strong></div>
+        }
+        @if (p.subtotal != null) {
+          <div><span>Subtotal</span><strong>{{ p.subtotal | currency: (p.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}</strong></div>
+          <div><span>IGV (18 %)</span><strong>{{ p.igv | currency: (p.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}</strong></div>
+        }
+        <div class="total"><span>Total</span><strong>{{ p.total | currency: (p.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}</strong></div>
+        @if (p.tipoCambio) {
+          <div><span>Tipo de cambio</span><strong>S/ {{ p.tipoCambio | number: '1.3-3' }} por US$ (el de la proforma)</strong></div>
+        }
+      </div>
+
+      <fieldset class="tipo-pago" [disabled]="convirtiendo()">
+        <legend class="form-label">Forma de pago</legend>
+        <label><input type="radio" name="tipoPago" value="CONTADO" [(ngModel)]="tipoPago"> Contado <small>(queda como pagada)</small></label>
+        <label><input type="radio" name="tipoPago" value="CREDITO" [(ngModel)]="tipoPago"> Crédito <small>(queda pendiente de cobro)</small></label>
+        @if (tipoPago === 'CREDITO') {
+          <div class="d-flex align-items-center gap-2" style="margin-top: 8px;">
+            <label for="diasCredito" class="form-label" style="margin: 0;">Días de crédito</label>
+            <input id="diasCredito" name="diasCredito" type="number" min="1" max="365" class="form-control" style="width: 100px;" [(ngModel)]="diasCredito">
+            <small style="color: var(--text-muted);">vence el {{ fechaLimitePago() }}</small>
+          </div>
+        }
+      </fieldset>
+
+      @if (errorConversion()) {
+        <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ errorConversion() }}</div>
+      }
+
+      <div class="d-flex justify-content-end gap-2">
+        <button class="btn btn-secondary" (click)="cerrarConversion()" [disabled]="convirtiendo()">Cancelar</button>
+        <button class="btn btn-primary" (click)="confirmarConversion()" [disabled]="convirtiendo()">
+          {{ convirtiendo() ? 'Registrando…' : 'Confirmar venta' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

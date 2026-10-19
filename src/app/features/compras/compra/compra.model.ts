@@ -7,8 +7,10 @@ export interface DetalleCompraRequest {
 export interface CompraRequest {
   proveedorId: number;
   fechaCompra: string;
-  numeroFactura?: string;
+  /** Obligatorio, formato SERIE-NÚMERO (F001-123). La misma factura del mismo proveedor no se acepta dos veces. */
+  numeroFactura: string;
   moneda: 'SOLES' | 'DOLARES';
+  /** Referencial: el backend recalcula el total con las líneas. */
   total: number;
   detalles: DetalleCompraRequest[];
 }

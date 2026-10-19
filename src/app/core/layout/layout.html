@@ -11,6 +11,8 @@
     <a routerLink="/catalogo/categorias" routerLinkActive="active" class="nav-link">Categorías</a>
     <a routerLink="/proformas" routerLinkActive="active" class="nav-link">Proformas</a>
     <a routerLink="/ventas" routerLinkActive="active" class="nav-link">Ventas</a>
+    <a routerLink="/cobranza" routerLinkActive="active" class="nav-link">Cobranza</a>
+    <a routerLink="/postventa" routerLinkActive="active" class="nav-link">Postventa</a>
     <a routerLink="/compras" routerLinkActive="active" class="nav-link">Compras</a>
     <a routerLink="/clientes" routerLinkActive="active" class="nav-link">Clientes</a>
     <a routerLink="/proveedores" routerLinkActive="active" class="nav-link">Proveedores</a>
@@ -23,7 +25,8 @@
         <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15" style="opacity:0.6">
           <path d="M10 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4.42 0-8 1.79-8 4v1h16v-1c0-2.21-3.58-4-8-4z"/>
         </svg>
-        {{ u.username }}
+        {{ u.nombre || u.username }}
+        <span class="nav-rol">{{ u.roles.includes('ADMIN') ? 'Administrador' : 'Asistente' }}</span>
       </span>
       <button id="btn-logout" class="btn-logout" (click)="logout()" title="Cerrar sesión">
         <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">

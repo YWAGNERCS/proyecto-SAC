@@ -105,9 +105,12 @@
               }
               @if (v.estado === 'REGISTRADA') {
                 @if (v.estadoPago !== 'PAGADO') {
-                  <button class="btn btn-sm btn-primary" (click)="marcarPagada(v)" title="Marcar como pagada">✓ Pagada</button>
+                  <a class="btn btn-sm btn-primary" routerLink="/cobranza" [queryParams]="{ clienteId: v.clienteId }"
+                     title="Registrar un abono parcial o total en Cobranza">Cobrar</a>
                 }
-                <button class="btn btn-sm btn-danger" (click)="anular(v)" title="Anular venta">Anular</button>
+                @if (esAdmin()) {
+                  <button class="btn btn-sm btn-danger" (click)="anular(v)" title="Anular venta">Anular</button>
+                }
               } @else {
                 @if (!v.comprobanteId) { <span class="muted">—</span> }
               }
@@ -119,7 +122,7 @@
             <td colspan="8">
               <table class="detalle">
                 <thead>
-                  <tr><th>Producto</th><th class="num">Cant.</th><th class="num">P. Unit.</th><th class="num">Subtotal</th></tr>
+                  <tr><th>Producto</th><th class="num">Cant.</th><th class="num">P. Unit.</th><th class="num">Dscto.</th><th class="num">Subtotal</th></tr>
                 </thead>
                 <tbody>
                   @for (d of v.detalles; track $index) {
@@ -127,10 +130,11 @@
                       <td>{{ d.productoNombre }}</td>
                       <td class="num">{{ d.cantidad }}</td>
                       <td class="num">{{ d.precioUnitario | number: '1.2-2' }}</td>
+                      <td class="num">{{ d.descuentoPorcentaje > 0 ? (d.descuentoPorcentaje | number: '1.0-2') + ' %' : '—' }}</td>
                       <td class="num">{{ d.subtotalDetalle | number: '1.2-2' }}</td>
                     </tr>
                   }
-                  <tr class="pie"><td colspan="3" class="num">Subtotal / IGV</td><td class="num">{{ v.subtotal | number: '1.2-2' }} / {{ v.igv | number: '1.2-2' }}</td></tr>
+                  <tr class="pie"><td colspan="4" class="num">Subtotal / IGV</td><td class="num">{{ v.subtotal | number: '1.2-2' }} / {{ v.igv | number: '1.2-2' }}</td></tr>
                 </tbody>
               </table>
             </td>

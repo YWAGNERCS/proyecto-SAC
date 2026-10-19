@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AuthService } from '../../../core/auth/auth.service';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -17,6 +18,9 @@ type FiltroCategoria = 'TODAS' | 'SIN_CATEGORIA' | number;
   templateUrl: './producto-list.html',
 })
 export class ProductoList implements OnInit {
+  /** Solo ADMIN modifica/elimina/anula (el backend lo vuelve a exigir con 403). */
+  readonly esAdmin = inject(AuthService).esAdmin;
+
   private readonly productoService = inject(ProductoService);
   private readonly categoriaService = inject(CategoriaService);
 
