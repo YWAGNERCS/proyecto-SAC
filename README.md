@@ -22,13 +22,13 @@
 | 🔐 Seguridad | `/login` | Inicio de sesión con usuarios de Keycloak (realm `bomerp`); las demás rutas están protegidas por un guard. S11: redirección a Keycloak con PKCE |
 | 🏠 Inicio | `/` | Panel de bienvenida |
 | 📦 Catálogo | `/catalogo/productos`, `/catalogo/productos/:id/kardex`, `/catalogo/categorias` | Productos con categoría, **kardex** por producto (Excel) y CRUD de categorías |
-| 📄 Proformas *(antes Cotizaciones)* | `/proformas`, `/proformas/nueva` | Listado, nueva proforma, aceptar/rechazar/enviar |
-| 🛒 Ventas | `/ventas`, `/ventas/nueva` | Venta directa cabecera-detalle y **reporte** con filtros, totales, detalle, anulación, **Excel** y **PDF del comprobante** |
+| 📄 Proformas *(antes Cotizaciones)* | `/proformas`, `/proformas/nueva` | Listado con filtro por cliente, nueva proforma con **descuento por línea**, enviar (muestra si salió), aceptar, rechazar (con confirmación) y **convertir en venta** (contado o crédito) |
+| 🛒 Ventas | `/ventas`, `/ventas/nueva` | Venta directa cabecera-detalle con descuento por línea y **reporte** con filtros, totales, detalle, anulación (solo ADMIN), **Excel** y **PDF del comprobante** |
+| 💰 Cobranza | `/cobranza` | Ventas a crédito con saldo y días de atraso, **abonos** parciales o totales (un pago puede cubrir varias ventas) e historial de cobros |
+| 🔧 Postventa | `/postventa` | Agenda de mantenimientos: vencidos, próximos, realizados; marcar realizado y reprogramar; contacto por WhatsApp |
 | 🏭 Compras | `/compras`, `/compras/nueva` | Registro de compras; listado con filtros por fecha y proveedor y **Excel** |
 | 👥 Clientes | `/clientes`, `/clientes/nuevo`, `/clientes/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** (ventas, total comprado, pendiente de pago, Excel) |
 | 🚚 Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** de compras (Excel) |
-
-*Pantallas nuevas (15/10/2026):* **Postventa** (agenda de mantenimientos: vencidos, próximos, realizado, reprogramar) y **Cobranza** (saldos, abonos e historial). Proformas y ventas aceptan **descuento por línea**.
 
 *Pendientes en la SPA:* pantallas de inventario (alertas) y facturación (comprobantes y notas de crédito).
 
@@ -36,7 +36,7 @@
 
 ## 🚀 Ejecutar
 
-**Requisitos:** Node.js y el backend corriendo en `http://localhost:8080` (ver la rama `master`).
+**Requisitos:** Node.js, el backend en `http://localhost:8080` y Keycloak en `http://localhost:38080` (ambos se levantan desde la rama `master`).
 
 ```bash
 npm install
@@ -46,7 +46,7 @@ npm install
 npm start
 ```
 
-➡️ `http://localhost:4200` · Usuarios de desarrollo: `admin` / `asistente`, contraseña `123456`.
+➡️ `http://localhost:4200` · Usuarios de desarrollo: `lisandro` (ADMIN) · `lucy` (ASISTENTE) · contraseña `JdRefri2026!` (cuentas de Keycloak, solo desarrollo).
 
 | Comando | Uso |
 |---|---|
@@ -54,7 +54,7 @@ npm start
 | `npm run build` | Compilación de producción en `dist/` |
 | `npm test` | Pruebas unitarias con Vitest |
 
-La URL del backend se configura en `src/environments/environment.ts` (`apiBaseUrl`).
+La URL del backend (`apiBaseUrl`) y la de Keycloak (`keycloak.url`, `realm`, `clientId`) se configuran en `src/environments/environment.ts`.
 
 ---
 
@@ -66,25 +66,28 @@ SPA **standalone** (sin NgModules), con **signals**, detección de cambios **zon
 src/app/
 ├── core/
 │   ├── auth/            AuthService (sesión con signals), authGuard
-│   ├── interceptors/    basic-auth (credenciales en /admin/), trace-id (X-Trace-ID)
-│   ├── layout/          barra de navegación, usuario y "Salir"
+│   ├── interceptors/    jwt-auth (Authorization: Bearer y cierre de sesión ante 401), trace-id (X-Trace-ID)
+│   ├── layout/          barra de navegación (menú ☰ en pantallas angostas), usuario, rol y "Salir"
 │   ├── inicio/          página de inicio
-│   └── services/        ApiService (construye las URLs del backend)
+│   └── services/        ApiService, DescargaService, TipoCambioService, DescuentoService
 ├── features/            un directorio por módulo de negocio
 │   ├── auth/            login
 │   ├── catalogo/        categoria/, producto/
 │   ├── clientes/        cliente/
+│   ├── cobranza/        cobro/ (saldos, abonos e historial)
 │   ├── compras/         compra/
+│   ├── postventa/       mantenimiento/ (agenda de mantenimientos)
 │   ├── proformas/       proforma/ (antes cotizaciones/)
 │   ├── proveedores/     proveedor/
 │   └── ventas/          venta/ (formulario cabecera-detalle y reporte)
-└── shared/              componentes reutilizables (spinner)
 ```
 
 **Convenciones**
 - Cada funcionalidad tiene su `*.model.ts` (refleja exactamente los DTO del backend), `*-service.ts` (HTTP) y sus componentes.
 - Los montos que calcula el formulario son una **vista previa**: el backend calcula los definitivos y la SPA solo envía ids y cantidades.
 - Los errores del backend se muestran por código: `400` datos inválidos · `404` no existe · `409` regla de negocio o stock insuficiente.
+
+**Diseño responsivo:** los estilos globales (`src/styles.css`) tienen tres cortes: hasta 640 px (celular: una columna, botones y encabezados que bajan de línea, tablas con desplazamiento horizontal dentro de su tarjeta), hasta 900 px (tablet) y hasta 1280 px (el menú pasa a ☰). Cada pantalla ajusta lo suyo en su `.css`; por ejemplo, el detalle de Nueva venta se muestra como tarjetas en el celular para no recortar el buscador de productos.
 
 **Seguridad (Keycloak, S10b):** el login pide el token a Keycloak (`environment.keycloak`), lee nombre y roles de `GET /api/v1/auth/perfil` y guarda la sesión en `sessionStorage`; `jwt-auth.interceptor` adjunta `Authorization: Bearer` y renueva el token con el refresh token. Los botones de modificar el catálogo, anular ventas y eliminar clientes o proveedores solo aparecen para ADMIN (el backend responde 403 de todas formas).
 
@@ -95,7 +98,9 @@ src/app/
 - [x] **S7** · Proyecto Angular, layout, rutas, servicios HTTP
 - [x] **S8** · CRUD de tablas dependientes
 - [x] **S9** · Formulario transaccional de venta, reporte filtrable y anulación
-- [ ] **S11** · Seguridad frontend con Keycloak: token, expiración, menú por roles, 401/403
+- [x] **S10** · Login con Keycloak, sesión en `sessionStorage`, renovación del token, interceptor Bearer y botones según el rol
+- [x] Diseño responsivo (celular, tablet y escritorio)
+- [ ] **S11** · Login con redirección a Keycloak (Authorization Code + PKCE)
 - [ ] **S12** · Integración de la SPA segura (Producto U2)
 
 ---
@@ -108,7 +113,7 @@ src/app/
 | **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras · Postventa |
 | **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Cobranza |
 
-Seguridad: sin responsable, se resolverá con Keycloak.
+Seguridad: Keycloak, integrado en S10b.
 
 <div align="center">
 <sub>Proyecto Integrador ADS · BD2 · LP2 — Universidad Peruana Unión · Generado con Angular CLI 22.2</sub>
