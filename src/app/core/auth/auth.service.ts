@@ -1,176 +1,225 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { Observable, map, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { generarCodeChallenge, generarCodeVerifier, generarState } from './pkce';
+import { decodeJwtPayload } from './jwt';
 
-/** Sesión con tokens emitidos por Keycloak (realm bomerp). */
+/** Sesión emitida por Keycloak. */
+interface SesionKeycloak {
+  accessToken: string;
+  refreshToken: string;
+  idToken: string;
+  /** Momento (ms) en que vence el access token. */
+  expiraEn: number;
+}
+
+interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  id_token: string;
+  expires_in: number;
+}
+
+/** Usuario autenticado, leído de los claims del token. */
 export interface UsuarioSesion {
   username: string;
   nombre: string;
   email: string;
   /** Roles del negocio: ADMIN (Lisandro) y/o ASISTENTE (Lucy). */
   roles: string[];
-  accessToken: string;
-  refreshToken: string;
-  /** Momento (ms) en que vence el access token. */
-  expiraEn: number;
 }
 
-interface RespuestaToken {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
+const ROLES_SISTEMA = ['ADMIN', 'ASISTENTE'];
+const CLAVE_CODE_VERIFIER = 'sgejd_pkce_code_verifier';
+const CLAVE_STATE = 'sgejd_pkce_state';
+const CLAVE_DESTINO = 'sgejd_pkce_destino';
+const CLAVE_SESION = 'sgejd_sesion';
 
-interface Perfil {
-  username: string;
-  nombre: string;
-  email: string;
-  roles: string[];
-}
-
-// sessionStorage: la sesión muere al cerrar el navegador (antes localStorage guardaba la contraseña en Base64)
-const STORAGE_KEY = 'sgejd_sesion';
-/** Se renueva el token un minuto antes de que venza. */
-const MARGEN_RENOVACION_MS = 60_000;
-
+/**
+ * Autenticación con Keycloak por Authorization Code + PKCE (S11). La SPA nunca ve la contraseña:
+ * el usuario la escribe en la pantalla de Keycloak, que devuelve un código de un solo uso a
+ * /auth/callback; ese código se canjea por los tokens con el code_verifier.
+ *
+ * Dónde vive el token: en memoria (signal privado) con una copia espejo en sessionStorage, para
+ * sobrevivir un F5 en la misma pestaña. Nunca en localStorage (persistiría entre pestañas y
+ * después de cerrar el navegador). El code_verifier también va a sessionStorage porque la
+ * redirección a Keycloak recarga la SPA; se borra apenas se usa.
+ */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly kc = `${environment.keycloak.url}/realms/${environment.keycloak.realm}/protocol/openid-connect`;
-  private readonly perfilUrl = `${environment.apiBaseUrl}/v1/auth/perfil`;
+  private readonly issuer = environment.keycloak.issuer;
+  private readonly sesion = signal<SesionKeycloak | null>(this.restaurarSesion());
+  /** Un solo refresco a la vez: si varias peticiones reciben 401 juntas, comparten el mismo intento. */
+  private refrescoEnCurso: Promise<boolean> | null = null;
 
-  private readonly _usuario = signal<UsuarioSesion | null>(this.leerStorage());
-  readonly usuario = this._usuario.asReadonly();
-  readonly estaLogueado = computed(() => this._usuario() !== null);
+  /** Hay sesión (el access token puede estar vencido: el interceptor lo renueva ante un 401). */
+  readonly autenticado = computed(() => this.sesion() !== null);
+
+  readonly roles = computed<string[]>(() => {
+    const token = this.sesion()?.accessToken;
+    return token ? (decodeJwtPayload(token)?.realm_access?.roles ?? []) : [];
+  });
+
+  readonly usuario = computed<UsuarioSesion | null>(() => {
+    const token = this.sesion()?.accessToken;
+    const payload = token ? decodeJwtPayload(token) : null;
+    if (!payload) return null;
+    return {
+      username: payload.preferred_username ?? '',
+      nombre: payload.name ?? payload.preferred_username ?? 'Usuario',
+      email: payload.email ?? '',
+      roles: (payload.realm_access?.roles ?? []).filter((r) => ROLES_SISTEMA.includes(r)),
+    };
+  });
+
   /** Solo el dueño anula ventas, modifica el catálogo y elimina clientes/proveedores (el backend lo vuelve a exigir). */
-  readonly esAdmin = computed(() => this._usuario()?.roles.includes('ADMIN') ?? false);
+  readonly esAdmin = computed(() => this.roles().includes('ADMIN'));
 
-  private temporizador: ReturnType<typeof setTimeout> | null = null;
-
-  constructor(private http: HttpClient, private router: Router) {
-    const sesion = this._usuario();
-    if (sesion) {
-      if (sesion.expiraEn <= Date.now()) this.renovar();
-      else this.programarRenovacion(sesion);
-    }
+  tieneRol(...rolesPermitidos: string[]): boolean {
+    return rolesPermitidos.some((rol) => this.roles().includes(rol));
   }
 
-  /**
-   * Pide el token a Keycloak con usuario y contraseña (Direct access grant: atajo de laboratorio
-   * de S10; en S11 se reemplaza por Authorization Code + PKCE con redirección a Keycloak)
-   * y luego lee nombre, correo y roles de GET /api/v1/auth/perfil.
-   */
-  login(username: string, password: string): Observable<UsuarioSesion> {
-    const cuerpo = new HttpParams()
-      .set('grant_type', 'password')
-      .set('client_id', environment.keycloak.clientId)
-      .set('username', username)
-      .set('password', password);
-    return this.pedirToken(cuerpo).pipe(switchMap((token) => this.completarSesion(token)));
+  accessToken(): string | null {
+    return this.sesion()?.accessToken ?? null;
   }
 
-  /** Cierra la sesión también en Keycloak (invalida el refresh token). */
-  logout(motivo?: string): void {
-    const sesion = this._usuario();
-    if (sesion) {
-      const cuerpo = new HttpParams()
-        .set('client_id', environment.keycloak.clientId)
-        .set('refresh_token', sesion.refreshToken);
-      this.http.post(`${this.kc}/logout`, cuerpo.toString(), { headers: this.formulario() })
-        .subscribe({ error: () => undefined });
+  /** Redirige a la pantalla de login de Keycloak. `destino`: a dónde volver después. */
+  async iniciarLogin(destino = location.pathname + location.search): Promise<void> {
+    const verifier = generarCodeVerifier();
+    const state = generarState();
+    const challenge = await generarCodeChallenge(verifier);
+    sessionStorage.setItem(CLAVE_CODE_VERIFIER, verifier);
+    sessionStorage.setItem(CLAVE_STATE, state);
+    sessionStorage.setItem(CLAVE_DESTINO, destino.startsWith('/auth/') ? '/' : destino);
+
+    const parametros = new URLSearchParams({
+      client_id: environment.keycloak.clientId,
+      response_type: 'code',
+      redirect_uri: environment.keycloak.redirectUri,
+      scope: 'openid profile email',
+      state,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+    });
+    location.href = `${this.issuer}/protocol/openid-connect/auth?${parametros}`;
+  }
+
+  /** Canjea el código que devolvió Keycloak por los tokens (se llama desde /auth/callback). */
+  async completarLogin(code: string, stateRecibido: string): Promise<void> {
+    const stateEsperado = sessionStorage.getItem(CLAVE_STATE);
+    const verifier = sessionStorage.getItem(CLAVE_CODE_VERIFIER);
+    sessionStorage.removeItem(CLAVE_STATE);
+    if (!verifier || stateRecibido !== stateEsperado) {
+      sessionStorage.removeItem(CLAVE_CODE_VERIFIER);
+      throw new Error('El state no coincide o falta el code_verifier: inicie sesión de nuevo.');
     }
+    // fetch y no HttpClient: esta petición va a Keycloak y no debe pasar por el interceptor del backend
+    const respuesta = await fetch(`${this.issuer}/protocol/openid-connect/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: environment.keycloak.clientId,
+        redirect_uri: environment.keycloak.redirectUri,
+        code,
+        code_verifier: verifier,
+      }),
+    });
+    // El verifier es de un solo uso: si el canje falla, se reinicia el login con uno nuevo
+    sessionStorage.removeItem(CLAVE_CODE_VERIFIER);
+    if (!respuesta.ok) {
+      throw new Error('Keycloak no aceptó el código de autorización.');
+    }
+    this.guardarSesion(await respuesta.json());
+  }
+
+  /** Ruta a la que el usuario quería ir antes de pasar por Keycloak (se consume una vez). */
+  destinoPendiente(): string {
+    const destino = sessionStorage.getItem(CLAVE_DESTINO) ?? '/';
+    sessionStorage.removeItem(CLAVE_DESTINO);
+    return destino;
+  }
+
+  /** Renueva el access token con el refresh token. false si la sesión de Keycloak ya no es válida. */
+  refrescar(): Promise<boolean> {
+    this.refrescoEnCurso ??= this.pedirRefresco().finally(() => (this.refrescoEnCurso = null));
+    return this.refrescoEnCurso;
+  }
+
+  /** Cierra la sesión en la SPA y en Keycloak (RP-Initiated Logout). */
+  cerrarSesion(): void {
+    const idToken = this.sesion()?.idToken;
     this.limpiar();
-    this.router.navigate(['/login'], motivo ? { queryParams: { motivo } } : {});
-  }
-
-  getAccessToken(): string | null {
-    return this._usuario()?.accessToken ?? null;
+    const parametros = new URLSearchParams({
+      client_id: environment.keycloak.clientId,
+      post_logout_redirect_uri: environment.keycloak.postLogoutRedirectUri,
+      ...(idToken ? { id_token_hint: idToken } : {}),
+    });
+    location.href = `${this.issuer}/protocol/openid-connect/logout?${parametros}`;
   }
 
   // ── Interno ───────────────────────────────────────────────
 
-  private pedirToken(cuerpo: HttpParams): Observable<RespuestaToken> {
-    return this.http.post<RespuestaToken>(`${this.kc}/token`, cuerpo.toString(), { headers: this.formulario() });
-  }
-
-  private completarSesion(token: RespuestaToken): Observable<UsuarioSesion> {
-    const headers = new HttpHeaders({ Authorization: `Bearer ${token.access_token}` });
-    return this.http.get<Perfil>(this.perfilUrl, { headers }).pipe(
-      map((p) => ({
-        username: p.username,
-        nombre: p.nombre,
-        email: p.email,
-        roles: p.roles,
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token,
-        expiraEn: Date.now() + token.expires_in * 1000,
-      })),
-      tap((sesion) => this.guardar(sesion)),
-    );
-  }
-
-  /** Cambia el refresh token por un access token nuevo, sin volver a pedir la contraseña. */
-  private renovar(): void {
-    const sesion = this._usuario();
-    if (!sesion) return;
-    const cuerpo = new HttpParams()
-      .set('grant_type', 'refresh_token')
-      .set('client_id', environment.keycloak.clientId)
-      .set('refresh_token', sesion.refreshToken);
-    this.pedirToken(cuerpo).subscribe({
-      next: (token) =>
-        this.guardar({
-          ...sesion,
-          accessToken: token.access_token,
-          refreshToken: token.refresh_token,
-          expiraEn: Date.now() + token.expires_in * 1000,
-        }),
-      // La sesión de Keycloak ya venció o se cerró: hay que volver a entrar
-      error: () => {
-        this.limpiar();
-        this.router.navigate(['/login'], { queryParams: { motivo: 'expirada' } });
-      },
-    });
-  }
-
-  private programarRenovacion(sesion: UsuarioSesion): void {
-    if (this.temporizador) clearTimeout(this.temporizador);
-    const espera = Math.max(5_000, sesion.expiraEn - Date.now() - MARGEN_RENOVACION_MS);
-    this.temporizador = setTimeout(() => this.renovar(), espera);
-  }
-
-  private guardar(sesion: UsuarioSesion): void {
-    this._usuario.set(sesion);
+  private async pedirRefresco(): Promise<boolean> {
+    const refreshToken = this.sesion()?.refreshToken;
+    if (!refreshToken) return false;
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(sesion));
+      const respuesta = await fetch(`${this.issuer}/protocol/openid-connect/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: environment.keycloak.clientId,
+          refresh_token: refreshToken,
+        }),
+      });
+      if (!respuesta.ok) {
+        this.limpiar();
+        return false;
+      }
+      this.guardarSesion(await respuesta.json());
+      return true;
     } catch {
-      /* sin almacenamiento: la sesión dura lo que la pestaña */
+      // Keycloak no responde: no se puede renovar, pero tampoco se sabe si la sesión venció
+      return false;
     }
-    this.programarRenovacion(sesion);
+  }
+
+  private guardarSesion(datos: TokenResponse): void {
+    const sesion: SesionKeycloak = {
+      accessToken: datos.access_token,
+      refreshToken: datos.refresh_token,
+      // Un refresco no siempre devuelve id_token: se conserva el anterior para el logout
+      idToken: datos.id_token ?? this.sesion()?.idToken ?? '',
+      expiraEn: Date.now() + datos.expires_in * 1000,
+    };
+    this.sesion.set(sesion);
+    try {
+      sessionStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
+    } catch {
+      /* sin almacenamiento: la sesión dura lo que la página */
+    }
   }
 
   private limpiar(): void {
-    if (this.temporizador) clearTimeout(this.temporizador);
-    this.temporizador = null;
-    this._usuario.set(null);
+    this.sesion.set(null);
     try {
-      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(CLAVE_SESION);
       localStorage.removeItem('sgejd_auth'); // sesión HTTP Basic de versiones anteriores
     } catch {
       /* nada que limpiar */
     }
   }
 
-  private formulario(): HttpHeaders {
-    return new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' });
-  }
-
-  private leerStorage(): UsuarioSesion | null {
+  /** Se ejecuta una sola vez al crear el servicio: recupera la sesión tras un F5. */
+  private restaurarSesion(): SesionKeycloak | null {
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as UsuarioSesion) : null;
+      const guardada = sessionStorage.getItem(CLAVE_SESION);
+      if (!guardada) return null;
+      const sesion = JSON.parse(guardada) as SesionKeycloak;
+      // Aunque el access token haya vencido, el refresh token puede seguir válido: el interceptor lo renueva
+      return sesion.refreshToken ? sesion : null;
     } catch {
+      // JSON inválido (alguien editó sessionStorage): se descarta como una sesión vencida
       return null;
     }
   }

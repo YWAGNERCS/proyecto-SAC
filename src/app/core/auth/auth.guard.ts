@@ -1,22 +1,16 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '../auth/auth.service';
+import { CanActivateFn } from '@angular/router';
+import { AuthService } from './auth.service';
 
 /**
- * Protege todas las rutas del panel administrativo.
- * Si el usuario no está autenticado, redirige a /login
- * guardando la URL de destino para reencaminar después del login.
+ * Exige sesión. Sin sesión no bloquea en silencio: lleva al login de Keycloak y,
+ * al volver, retoma la ruta pedida (state.url).
  */
-export const authGuard: CanActivateFn = (route, state) => {
+export const authGuard: CanActivateFn = async (_route, state) => {
   const auth = inject(AuthService);
-  const router = inject(Router);
-
-  if (auth.estaLogueado()) {
+  if (auth.autenticado()) {
     return true;
   }
-
-  // Guarda la URL destino para redirigir después del login
-  return router.createUrlTree(['/login'], {
-    queryParams: { returnUrl: state.url },
-  });
+  await auth.iniciarLogin(state.url);
+  return false;
 };

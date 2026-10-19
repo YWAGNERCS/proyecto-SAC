@@ -3,8 +3,9 @@
   <h2 style="font-size: 2.2rem; font-weight: 800; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;">
     Bienvenido a BomERP
   </h2>
+  @if (auth.autenticado()) {
   <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 550px; margin: 0 auto 24px auto;">
-    Sistema de Gestión Empresarial. Seleccione un módulo para comenzar a trabajar.
+    Hola, {{ auth.usuario()?.nombre }}. Seleccione un módulo para comenzar a trabajar.
   </p>
   <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
     <a routerLink="/catalogo/categorias" class="btn btn-primary" style="padding: 12px 24px;">
@@ -14,4 +15,12 @@
       📄 Módulo de Proformas
     </a>
   </div>
+  } @else {
+  <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 550px; margin: 0 auto 24px auto;">
+    Sistema de Gestión Empresarial de JD Refrigeración. Inicie sesión con su cuenta para continuar.
+  </p>
+  <button type="button" class="btn btn-primary" style="padding: 12px 28px;" (click)="auth.iniciarLogin('/')">
+    🔐 Iniciar sesión
+  </button>
+  }
 </div>

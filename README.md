@@ -19,7 +19,7 @@
 
 | Módulo | Ruta | Qué permite |
 |---|---|---|
-| 🔐 Seguridad | `/login` | Inicio de sesión con usuarios de Keycloak (realm `bomerp`); las demás rutas están protegidas por un guard. S11: redirección a Keycloak con PKCE |
+| 🔐 Seguridad | `/auth/callback`, `/sin-permiso` | Login en la pantalla de Keycloak (Authorization Code + PKCE, sin formulario propio). Inicio es público; cada pantalla exige sesión (`authGuard`) y las de escritura del catálogo, además, rol ADMIN (`rolGuard`) |
 | 🏠 Inicio | `/` | Panel de bienvenida |
 | 📦 Catálogo | `/catalogo/productos`, `/catalogo/productos/:id/kardex`, `/catalogo/categorias` | Productos con categoría, **kardex** por producto (Excel) y CRUD de categorías |
 | 📄 Proformas *(antes Cotizaciones)* | `/proformas`, `/proformas/nueva` | Listado con filtro por cliente, nueva proforma con **descuento por línea**, enviar (muestra si salió), aceptar, rechazar (con confirmación) y **convertir en venta** (contado o crédito) |
@@ -65,13 +65,13 @@ SPA **standalone** (sin NgModules), con **signals**, detección de cambios **zon
 ```text
 src/app/
 ├── core/
-│   ├── auth/            AuthService (sesión con signals), authGuard
-│   ├── interceptors/    jwt-auth (Authorization: Bearer y cierre de sesión ante 401), trace-id (X-Trace-ID)
+│   ├── auth/            AuthService (PKCE, callback, refresco, logout), pkce.ts, jwt.ts, auth-callback, authGuard, rolGuard
+│   ├── interceptors/    jwt-auth (Authorization: Bearer; ante 401 refresca una vez y reintenta), trace-id (X-Trace-ID)
+│   ├── sin-permiso/     destino de rolGuard
 │   ├── layout/          barra de navegación (menú ☰ en pantallas angostas), usuario, rol y "Salir"
 │   ├── inicio/          página de inicio
 │   └── services/        ApiService, DescargaService, TipoCambioService, DescuentoService
 ├── features/            un directorio por módulo de negocio
-│   ├── auth/            login
 │   ├── catalogo/        categoria/, producto/
 │   ├── clientes/        cliente/
 │   ├── cobranza/        cobro/ (saldos, abonos e historial)
@@ -89,7 +89,12 @@ src/app/
 
 **Diseño responsivo:** los estilos globales (`src/styles.css`) tienen tres cortes: hasta 640 px (celular: una columna, botones y encabezados que bajan de línea, tablas con desplazamiento horizontal dentro de su tarjeta), hasta 900 px (tablet) y hasta 1280 px (el menú pasa a ☰). Cada pantalla ajusta lo suyo en su `.css`; por ejemplo, el detalle de Nueva venta se muestra como tarjetas en el celular para no recortar el buscador de productos.
 
-**Seguridad (Keycloak, S10b):** el login pide el token a Keycloak (`environment.keycloak`), lee nombre y roles de `GET /api/v1/auth/perfil` y guarda la sesión en `sessionStorage`; `jwt-auth.interceptor` adjunta `Authorization: Bearer` y renueva el token con el refresh token. Los botones de modificar el catálogo, anular ventas y eliminar clientes o proveedores solo aparecen para ADMIN (el backend responde 403 de todas formas).
+**Seguridad (Keycloak, S10b + S11):**
+- **Login:** `AuthService.iniciarLogin()` genera `code_verifier`, `code_challenge` (S256) y `state`, y redirige a Keycloak; `/auth/callback` comprueba el `state` y canjea el código con el verifier. La SPA nunca ve la contraseña. El cliente `bomerp-frontend` exige PKCE y no permite *Direct access grants*.
+- **Dónde vive el token:** en memoria (signal), con una copia espejo en `sessionStorage` para sobrevivir un F5 en la misma pestaña; nunca en `localStorage`. El `code_verifier` y el `state` se borran apenas se usan.
+- **Guards:** `authGuard` lleva al login de Keycloak y vuelve a la ruta pedida; `rolGuard('ADMIN')` lleva a `/sin-permiso` (crear o editar productos y categorías).
+- **Interceptor:** adjunta `Authorization: Bearer` a las peticiones al backend; ante un **401** refresca el token **una sola vez** (un único refresco compartido aunque fallen varias peticiones a la vez) y reintenta; ante un **403** no refresca.
+- **Menú por rol:** sin sesión solo se ve "Iniciar sesión"; con sesión, las secciones; el ADMIN ve además "+ Producto". Los botones de modificar el catálogo, anular ventas y eliminar clientes o proveedores solo aparecen para ADMIN (el backend responde 403 de todas formas).
 
 ---
 
@@ -100,7 +105,7 @@ src/app/
 - [x] **S9** · Formulario transaccional de venta, reporte filtrable y anulación
 - [x] **S10** · Login con Keycloak, sesión en `sessionStorage`, renovación del token, interceptor Bearer y botones según el rol
 - [x] Diseño responsivo (celular, tablet y escritorio)
-- [ ] **S11** · Login con redirección a Keycloak (Authorization Code + PKCE)
+- [x] **S11** · Login con Authorization Code + PKCE, guards por sesión y rol, refresco ante 401, menú por rol
 - [ ] **S12** · Integración de la SPA segura (Producto U2)
 
 ---

@@ -180,3 +180,9 @@
     display: none;
   }
 }
+
+/* Opción de menú solo para el administrador */
+.nav-link-admin {
+  border: 1px dashed rgba(99, 102, 241, 0.45);
+  color: #4F46E5;
+}

@@ -31,6 +31,6 @@ export class Layout {
   }
 
   logout(): void {
-    this.auth.logout();
+    this.auth.cerrarSesion();
   }
 }

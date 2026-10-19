@@ -1,30 +1,38 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { catchError, throwError } from 'rxjs';
+import { catchError, from, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { environment } from '../../../environments/environment';
 
 /**
- * Adjunta "Authorization: Bearer <access token de Keycloak>" a las peticiones al backend
- * (no al catálogo público ni a Keycloak). Si el backend responde 401, la sesión ya no sirve:
- * se cierra y se vuelve al login.
+ * Adjunta "Authorization: Bearer <access token>" a cada petición al backend (no al catálogo
+ * público ni a Keycloak).
+ *  - 401 (token vencido o inválido): refresca UNA vez y reintenta la petición; si no se puede
+ *    refrescar, vuelve al login. Nunca entra en bucle: el reintento no vuelve a refrescar.
+ *  - 403 (rol insuficiente): no se refresca; un token nuevo tendría los mismos roles.
  */
 export const jwtAuthInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const alBackend = req.url.startsWith(environment.apiBaseUrl) && !req.url.includes('/publico/');
-  const token = auth.getAccessToken();
+  if (!alBackend) return next(req);
 
-  // Si la petición ya trae su propio Authorization (p. ej. el perfil durante el login), se respeta
-  const conToken = alBackend && token && !req.headers.has('Authorization')
-    ? req.clone({ headers: req.headers.set('Authorization', `Bearer ${token}`) })
-    : req;
+  const conToken = (token: string | null) =>
+    token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
 
-  return next(conToken).pipe(
-    catchError((err: HttpErrorResponse) => {
-      if (alBackend && err.status === 401 && auth.estaLogueado()) {
-        auth.logout('expirada');
+  return next(conToken(auth.accessToken())).pipe(
+    catchError((error: HttpErrorResponse) => {
+      if (error.status !== 401 || !auth.autenticado()) {
+        return throwError(() => error);
       }
-      return throwError(() => err);
+      return from(auth.refrescar()).pipe(
+        switchMap((renovado) => {
+          if (!renovado) {
+            auth.iniciarLogin();
+            return throwError(() => error);
+          }
+          return next(conToken(auth.accessToken())); // un solo reintento
+        }),
+      );
     }),
   );
 };
