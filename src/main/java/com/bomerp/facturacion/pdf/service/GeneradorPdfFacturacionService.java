@@ -7,7 +7,6 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -15,10 +14,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 
 @Service
-@RequiredArgsConstructor
 public class GeneradorPdfFacturacionService {
 
     private final EmpresaProperties empresa;
+
+    public GeneradorPdfFacturacionService(EmpresaProperties empresa) {
+        this.empresa = empresa;
+    }
 
     public File generarFacturaPdf(Comprobante comprobante) throws Exception {
         String fileName = comprobante.getTipo().name() + "_" + comprobante.getSerie() + "-" + comprobante.getNumero() + ".pdf";

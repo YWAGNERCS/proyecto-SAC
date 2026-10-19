@@ -7,7 +7,6 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -15,10 +14,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 
 @Service
-@RequiredArgsConstructor
 public class GeneradorPdfService {
 
     private final EmpresaProperties empresa;
+
+    public GeneradorPdfService(EmpresaProperties empresa) {
+        this.empresa = empresa;
+    }
 
     public File generarProformaPdf(Proforma proforma) throws Exception {
         // Archivo temporal
