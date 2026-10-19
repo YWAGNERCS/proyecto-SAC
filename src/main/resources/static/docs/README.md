@@ -94,7 +94,8 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - **RNF-02 (Rendimiento):** endpoints por debajo de 1000 ms con carga estándar. *Objetivo, aún sin medición formal.*
 - **RNF-03 (Interoperabilidad):** backend desacoplado del frontend, solo API REST en JSON, versionada en `/api/v1/...`.
 - **RNF-04 (Mantenibilidad e IoC):** inyección de dependencias de Spring; credenciales externalizadas en variables de entorno o `application-local.properties` (ignorado por git). ✅ Cumplido en el archivo; ver 5 sobre el historial de git.
-- **RNF-05 (Seguridad):** `/api/v1/admin/**` protegido con HTTP Basic y contraseñas con BCrypt. *El código lo soporta, pero hoy está desactivado (`app.security.admin-requiere-login=false`).*
+- **RNF-05 (Seguridad):** `/api/v1/admin/**` exige un JWT emitido por Keycloak (RS256, validado por `issuer-uri`); autorización por rol (ADMIN, ASISTENTE). Las contraseñas viven solo en Keycloak.
+- **RNF-06 (Usabilidad):** la SPA es **responsiva**: menú desplegable (☰) bajo 1280 px, formularios a una columna y tablas con desplazamiento horizontal en celular (≤ 640 px); el detalle de la venta se muestra como tarjetas.
 
 ### Casos de uso / Historias de usuario
 
@@ -117,7 +118,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | Framework | Spring Boot **3.3.4** (Spring Web, Data JPA, Validation, Security, Mail) |
 | ORM | Hibernate 6.5 (`ddl-auto=update`) |
 | Base de datos | Oracle Database 23 Free (Docker `gvenzl/oracle-free:23-slim`, servicio `FREEPDB1`, puerto **1522**) |
-| Seguridad | Spring Security: HTTP Basic + BCrypt (`DelegatingPasswordEncoder`, hashes con prefijo `{bcrypt}`) |
+| Seguridad | Spring Security como OAuth2 Resource Server (`spring-boot-starter-oauth2-resource-server`) + **Keycloak 26.8** con su propio Postgres 17 (Docker, puerto 38080) |
 | Documentación API | springdoc-openapi 2.6.0 (Swagger UI en `/swagger-ui.html`) |
 | Otras | OpenPDF 1.3.32, Lombok, driver `ojdbc11`; H2 incluido como dependencia (sin perfil configurado) |
 | Frontend | Angular 22 (standalone, signals, zoneless), en `bomerp-frontend` |
@@ -230,8 +231,8 @@ src/main/java/com/bomerp/
 
 > ⚠️ Credenciales solo de desarrollo. No deben usarse ni documentarse así en un ambiente real.
 
-- Usuarios existentes hoy en la base local: `admin` (rol ADMIN) y `asistente` (rol ASISTENTE), contraseña `123456`.
-- Si la base es nueva y no tiene usuarios: `usuarios.sql` crea (o restablece) `admin` y `asistente` con contraseña `123456`.
+- Usuarios de Keycloak (realm `bomerp`): `lisandro` (ADMIN) y `lucy` (ASISTENTE), contraseña `JdRefri2026!`. Se crean al importar `keycloak/realm-bomerp.json` o con `python keycloak/configurar_realm.py`.
+- Consola de Keycloak: `http://localhost:38080` (`admin` / `admin123`). Los usuarios `admin`/`asistente` de la tabla `USUARIOS` ya no se usan.
 
 ### Flujos de operación
 
@@ -292,7 +293,7 @@ src/main/java/com/bomerp/
 | Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras, Postventa | Compra–DetalleCompra |
 | Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobro–DetalleCobro |
 
-Seguridad: sin responsable, se resolverá con Keycloak.
+Seguridad: Keycloak, integrado en S10b (backend como Resource Server y login de la SPA).
 
 ### Avance según las sesiones de LP2
 
@@ -302,8 +303,9 @@ Seguridad: sin responsable, se resolverá con Keycloak.
 | S7 | SPA Angular: layout, rutas, servicios HTTP | ✅ |
 | S8 | CRUD de tablas dependientes | ✅ Productos con categoría, categorías, clientes y proveedores (con búsqueda RUC/DNI) y compras |
 | S9 | Formulario transaccional cabecera-detalle | ✅ Venta directa con FormArray, reporte filtrable y anulación |
-| S10 | Seguridad backend con roles | ⏳ Próxima: se hará con **Keycloak** (la guía lo trata como referencia: "Reemplazo de seguridad por Keycloak") |
-| S11 | Seguridad frontend (guards, interceptores, 401/403) | 🔄 Login, guard e interceptor Basic ya existen; se adaptarán a Keycloak |
+| S10 | Seguridad backend con roles | ✅ Ruta **Keycloak** (S10b, 18/10/2026): Resource Server, reglas por rol, `GET /api/v1/auth/perfil`, matriz de 14 casos (`pruebas-seguridad/`) |
+| S11 | Seguridad frontend (guards, interceptores, 401/403) | 🔄 Guard, interceptor `Bearer`, renovación del token y botones por rol ya listos; falta el login con redirección y PKCE |
+| — | Diseño responsivo | ✅ 19/10/2026: celular, tablet y escritorio |
 
 ---
 

@@ -75,8 +75,10 @@ flowchart LR
         C[proformas] --- V[ventas] --- P[postventa]
         CAT[catalogo] --- INV[inventario] --- COM[compras]
         CLI[clientes] --- PRO[proveedores] --- F[facturacion]
-        N[notificaciones] --- CB[cobranza] --- S[seguridad]
+        N[notificaciones] --- CB[cobranza]
     end
+    SPA -->|login · token JWT| KC["🔐 Keycloak 26.8<br/>realm bomerp · puerto 38080"]
+    API -.->|valida la firma del JWT| KC
     API --> DB[("🗄️ Oracle 23 Free<br/>Docker · puerto 1522")]
     API -.-> EXT["📧 SMTP · OSE · RUC/DNI"]
 ```
@@ -87,12 +89,15 @@ flowchart LR
 
 **Requisitos:** JDK 21 · Maven · Docker Desktop · Node.js (para la SPA)
 
-**1. Levantar Oracle** (desde la carpeta que contiene `docker-compose.yml`)
+**1. Levantar Oracle y Keycloak** (desde `bomerp-backend`, donde está `docker-compose.yml`)
 
 ```bash
-docker volume create sge-jd-oracle-data   # solo la primera vez
-docker compose up -d                      # o: docker start SGE-JD si ya existe
+docker volume create sge-jd-oracle-data       # solo la primera vez
+docker compose up -d                          # o: docker start SGE-JD si Oracle ya existe
+docker compose up -d keycloak-db keycloak     # identidad: importa keycloak/realm-bomerp.json
 ```
+
+Keycloak queda en `http://localhost:38080` (consola: `admin` / `admin123`). Detalles en [keycloak/README.md](keycloak/README.md).
 
 **2. Configurar credenciales locales** (archivo ignorado por git)
 
@@ -120,7 +125,7 @@ npm start
 
 **Datos de demostración:** `datos_demo.sql` reinicia la base con 30 productos, 8 categorías, 7 proveedores y 8 clientes reales (verificados en SUNAT). Ver la [guía de instalación](src/main/resources/static/docs/README.md#doc-tecnica).
 
-**Usuarios de desarrollo:** `admin` / `asistente` · contraseña `123456`
+**Usuarios de desarrollo:** `lisandro` (ADMIN) · `lucy` (ASISTENTE) · contraseña `JdRefri2026!` (cuentas de Keycloak, solo desarrollo). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez.
 
 <details>
 <summary>Variables de entorno disponibles</summary>
@@ -187,11 +192,11 @@ src/main/java/com/bomerp/
 - [x] **S7** · SPA Angular: layout, rutas, servicios HTTP
 - [x] **S8** · CRUD de tablas dependientes
 - [x] **S9** · Formulario transaccional de venta (FormArray), reporte filtrable y anulación
-- [ ] **S10** · Seguridad backend con roles (**Keycloak**)
-- [ ] **S11** · Seguridad frontend con Keycloak (guards, interceptores, 401/403)
+- [x] **S10** · Seguridad backend con roles (ruta **Keycloak**, S10b): Resource Server, ADMIN/ASISTENTE, perfil desde el JWT
+- [ ] **S11** · Seguridad frontend con Keycloak: login con redirección y PKCE (hoy el login pide el token directo, atajo de laboratorio)
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones OSE y WhatsApp son simuladas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** las integraciones OSE y WhatsApp son simuladas, falta repartir `reportes` entre sus módulos y el login con PKCE (S11). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 

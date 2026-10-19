@@ -7,14 +7,14 @@ Keycloak emite los tokens (JWT RS256) que el backend valida. Corre aparte del ba
 | Consola | http://localhost:38080 · `admin` / `admin123` |
 | Realm | `bomerp` (login en español) |
 | Roles | `ADMIN` (Lisandro) · `ASISTENTE` (Lucy) |
-| Cliente | `bomerp-frontend` (público; *Direct access grants* activo solo hasta S11) |
+| Cliente | `bomerp-frontend` (público; *Direct access grants* activo hasta que S11 pase el login a PKCE) |
 | Usuarios | `lisandro` · `lucy` — contraseña `JdRefri2026!` (cambiar en producción) |
 | Access token | 15 minutos; la SPA lo renueva con el refresh token |
 
 ## Levantarlo
 
 ```powershell
-cd C:\SGE-JD
+cd C:\SGE-JD\bomerp-backend
 docker compose up -d keycloak-db keycloak
 ```
 

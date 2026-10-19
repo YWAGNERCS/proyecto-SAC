@@ -135,8 +135,8 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 |---|---|
 | Módulos backend (los 11) | ✅ Operativos; integraciones OSE y WhatsApp **simuladas**; RUC/DNI real vía apis.net.pe v1 (respaldo opcional: Decolecta) |
 | Reorganización | ✅ Cotizaciones → **Proformas** y Mantenimiento → **Postventa** (código, BD y SPA; migración en `migracion_proforma.sql`). ✅ **Cobranza** separada de ventas (15/10/2026). ⏳ Repartir el paquete `reportes` |
-| Facturación electrónica | ⚠️ OSE real pendiente; correlativo aleatorio (SUNAT exige secuencial) |
-| Frontend / SPA | 🔄 Angular 22 en desarrollo: login, layout, categorías, clientes, proveedores, proformas, compras y ventas (S09: formulario cabecera-detalle, reporte filtrable y anulación) |
+| Facturación electrónica | ⚠️ OSE real pendiente. ✅ Correlativo secuencial por serie (F001, B001, FC01, BC01) y datos reales de JD en el PDF |
+| Frontend / SPA | 🔄 Angular 22: login con Keycloak, catálogo, clientes, proveedores, proformas, ventas, compras, cobranza y postventa. **Diseño responsivo** (celular, tablet y escritorio). Faltan pantallas de inventario y facturación |
 | Seguridad | ✅ Keycloak 26.8 + Postgres; `/api/v1/admin/**` exige JWT; reglas por rol verificadas (matriz de 14 casos). ⏳ S11: login con redirección y PKCE |
 | Modelo relacional Oracle | ✅ Corregido (relaciones cabecera-detalle con dirección de FK validada). ✅ `Producto` → `Categoria` (13/10/2026; los productos anteriores quedaron sin categoría hasta asignarla). Nueva tabla `NOTAS_CREDITO` |
 | Credenciales | ✅ Externalizadas. ⚠️ Confirmar que se revocaron las que quedaron en el historial de git |
@@ -150,13 +150,13 @@ La lista completa de inconsistencias y pendientes está en la documentación com
 ## 7. Cómo ejecutar
 
 1. JDK 21, Maven y Docker Desktop.
-2. Oracle 23 Free en Docker (`docker-compose.yml` en la carpeta raíz del workspace): `docker start SGE-JD` si el contenedor ya existe; si no, `docker volume create sge-jd-oracle-data` y `docker compose up -d`. Puerto **1522**, servicio `FREEPDB1`, usuario `jdrefrigeracion`.
+2. Oracle 23 Free y Keycloak en Docker (`docker-compose.yml` en `bomerp-backend`): `docker start SGE-JD` si el contenedor ya existe; si no, `docker volume create sge-jd-oracle-data` y `docker compose up -d`. Puerto **1522**, servicio `FREEPDB1`, usuario `jdrefrigeracion`. Identidad: `docker compose up -d keycloak-db keycloak` (puerto **38080**).
 3. Credenciales: copiar `application-local.properties.example` como `application-local.properties` y completar `spring.datasource.password` (o usar las variables `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`).
 4. `mvn spring-boot:run` (puerto 8080). Swagger UI: `/swagger-ui.html`.
 5. Verificar: `GET /api/v1/publico/catalogo` (sin login) y `pruebas-seguridad/05_matriz.ps1` (tokens de Keycloak: `lisandro` / `lucy`).
 6. Frontend: en `bomerp-frontend`, `npm install` y `npm start` → `http://localhost:4200`.
 
-Usuarios de desarrollo: `admin` / `asistente`, contraseña `123456`.
+Usuarios de desarrollo: `lisandro` (ADMIN) · `lucy` (ASISTENTE) · contraseña `JdRefri2026!` (cuentas de Keycloak, solo desarrollo).
 
 ---
 
@@ -166,7 +166,7 @@ Usuarios de desarrollo: `admin` / `asistente`, contraseña `123456`.
 |---|---|---|
 | Yoel Wagner Chambi Sirena | Proveedores, Proformas, Ventas | Proforma–ItemProforma y Venta–DetalleVenta |
 | Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras, Postventa | Compra–DetalleCompra |
-| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobranza: Cobro–DetalleCobro (por diseñar) |
+| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobro–DetalleCobro |
 
-- **Seguridad** no tiene responsable: se resolverá con Keycloak.
+- **Seguridad:** resuelta con Keycloak en S10b (realm `bomerp`, roles ADMIN y ASISTENTE); S11 completa el login con redirección y PKCE.
 - Cada integrante es responsable de su módulo en backend y frontend, y lo evidencia con sus propios commits (el curso evalúa y sustenta el aporte individual; en S09 cada estudiante documenta un formulario cabecera-detalle de su propio módulo).
