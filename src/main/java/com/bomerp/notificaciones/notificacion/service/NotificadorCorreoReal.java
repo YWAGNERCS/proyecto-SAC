@@ -19,12 +19,16 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
     }
 
     @Override
-    public void enviarCorreo(String destinatario, String asunto, String cuerpo) {
-        enviarCorreoConAdjunto(destinatario, asunto, cuerpo, null);
+    public boolean enviarCorreo(String destinatario, String asunto, String cuerpo) {
+        return enviarCorreoConAdjunto(destinatario, asunto, cuerpo, null);
     }
 
     @Override
-    public void enviarCorreoConAdjunto(String destinatario, String asunto, String cuerpo, java.io.File adjunto) {
+    public boolean enviarCorreoConAdjunto(String destinatario, String asunto, String cuerpo, java.io.File adjunto) {
+        if (remitente == null || remitente.isBlank()) {
+            System.err.println("Correo no enviado a " + destinatario + ": falta configurar MAIL_USERNAME / MAIL_PASSWORD.");
+            return false;
+        }
         try {
             MimeMessage message = mailSender.createMimeMessage();
             // true indica que será multipart (soporta HTML e imágenes incrustadas)
@@ -48,8 +52,10 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
             
             mailSender.send(message);
             System.out.println("[REAL - Correo HTML] Enviado exitosamente a " + destinatario);
+            return true;
         } catch (Exception e) {
             System.err.println("Error enviando correo HTML: " + e.getMessage());
+            return false;
         }
     }
 }

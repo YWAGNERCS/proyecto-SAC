@@ -10,7 +10,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "COMPROBANTES")
+// Un mismo número no puede repetirse dentro de una serie (exigencia de SUNAT)
+@Table(name = "COMPROBANTES", uniqueConstraints = @UniqueConstraint(name = "UK_COMPROBANTE_SERIE_NUMERO", columnNames = {"serie", "numero"}))
 @Getter
 @Setter
 @NoArgsConstructor

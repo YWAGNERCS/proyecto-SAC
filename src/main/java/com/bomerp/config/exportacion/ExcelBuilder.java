@@ -33,7 +33,7 @@ import java.util.List;
  */
 public class ExcelBuilder {
 
-    public enum Tipo { TEXTO, ENTERO, MONEDA, FECHA }
+    public enum Tipo { TEXTO, ENTERO, MONEDA, FECHA, TIPO_CAMBIO }
 
     public record Columna(String titulo, Tipo tipo) {}
 
@@ -41,6 +41,7 @@ public class ExcelBuilder {
     public static Columna entero(String titulo) { return new Columna(titulo, Tipo.ENTERO); }
     public static Columna moneda(String titulo) { return new Columna(titulo, Tipo.MONEDA); }
     public static Columna fecha(String titulo) { return new Columna(titulo, Tipo.FECHA); }
+    public static Columna tipoCambio(String titulo) { return new Columna(titulo, Tipo.TIPO_CAMBIO); }
 
     private static final int FILA_ENCABEZADO = 3;
     private static final DateTimeFormatter GENERADO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -53,6 +54,7 @@ public class ExcelBuilder {
     private final CellStyle estiloMoneda;
     private final CellStyle estiloFecha;
     private final CellStyle estiloEntero;
+    private final CellStyle estiloTipoCambio;
     private final CellStyle estiloTotalTexto;
     private final CellStyle estiloTotalMoneda;
 
@@ -87,6 +89,8 @@ public class ExcelBuilder {
         estiloFecha = libro.createCellStyle();
         estiloFecha.setDataFormat(formato.getFormat("dd/mm/yyyy"));
         estiloFecha.setAlignment(HorizontalAlignment.CENTER);
+        estiloTipoCambio = libro.createCellStyle();
+        estiloTipoCambio.setDataFormat(formato.getFormat("0.000"));
         estiloEntero = libro.createCellStyle();
         estiloEntero.setDataFormat(formato.getFormat("#,##0"));
 
@@ -198,7 +202,9 @@ public class ExcelBuilder {
                 celda.setCellStyle(estiloFecha);
             } else if (valor instanceof Number n && tipo != Tipo.TEXTO) {
                 celda.setCellValue(n instanceof BigDecimal b ? b.doubleValue() : n.doubleValue());
-                celda.setCellStyle(tipo == Tipo.ENTERO ? estiloEntero : (total ? estiloTotalMoneda : estiloMoneda));
+                celda.setCellStyle(tipo == Tipo.ENTERO ? estiloEntero
+                        : tipo == Tipo.TIPO_CAMBIO ? estiloTipoCambio
+                        : (total ? estiloTotalMoneda : estiloMoneda));
             } else {
                 celda.setCellValue(String.valueOf(valor));
                 if (total) celda.setCellStyle(estiloTotalTexto);

@@ -1,11 +1,13 @@
 package com.bomerp.proformas.pdf.service;
 
+import com.bomerp.config.empresa.EmpresaProperties;
 import com.bomerp.proformas.proforma.entity.Proforma;
 import com.bomerp.proformas.itemproforma.entity.ItemProforma;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -13,7 +15,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 
 @Service
+@RequiredArgsConstructor
 public class GeneradorPdfService {
+
+    private final EmpresaProperties empresa;
 
     public File generarProformaPdf(Proforma proforma) throws Exception {
         // Archivo temporal
@@ -40,10 +45,16 @@ public class GeneradorPdfService {
                 document.add(logo);
             } catch (Exception e) {
                 // Fallback si no encuentra el logo
-                Paragraph fallback = new Paragraph("JD REFRIGERACION S.A.C.", titleFont);
+                Paragraph fallback = new Paragraph(empresa.razonSocial(), titleFont);
                 fallback.setAlignment(Element.ALIGN_RIGHT);
                 document.add(fallback);
             }
+
+            // Datos de JD (emisor)
+            Paragraph emisor = new Paragraph(empresa.razonSocial() + " · RUC " + empresa.ruc() + "\n" + empresa.direccion(), smallFont);
+            emisor.setAlignment(Element.ALIGN_RIGHT);
+            emisor.setSpacingAfter(10f);
+            document.add(emisor);
 
             // Título
             Paragraph titulo = new Paragraph("PROFORMA COMERCIAL", titleFont);
@@ -70,14 +81,15 @@ public class GeneradorPdfService {
             document.add(new Paragraph(" "));
             
             // Tabla de productos
-            PdfPTable table = new PdfPTable(4);
+            PdfPTable table = new PdfPTable(5);
             table.setWidthPercentage(100);
-            table.setWidths(new float[]{4f, 1f, 1.5f, 1.5f});
+            table.setWidths(new float[]{4f, 0.8f, 1.5f, 0.9f, 1.5f});
             
             // Cabeceras de tabla
             agregarCeldaCabecera(table, "Descripción", headerFont);
             agregarCeldaCabecera(table, "Cant.", headerFont);
             agregarCeldaCabecera(table, "P. Unit", headerFont);
+            agregarCeldaCabecera(table, "Dscto.", headerFont);
             agregarCeldaCabecera(table, "Subtotal", headerFont);
             
             // Items
@@ -85,6 +97,9 @@ public class GeneradorPdfService {
                 agregarCeldaItem(table, item.getProducto().getNombre() + "\n" + item.getProducto().getDescripcion(), normalFont, Element.ALIGN_LEFT);
                 agregarCeldaItem(table, String.valueOf(item.getCantidad()), normalFont, Element.ALIGN_CENTER);
                 agregarCeldaItem(table, proforma.getMoneda() + " " + item.getPrecioUnitario().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
+                agregarCeldaItem(table, item.getDescuentoPorcentaje().signum() > 0
+                        ? item.getDescuentoPorcentaje().stripTrailingZeros().toPlainString() + " %" : "—",
+                        normalFont, Element.ALIGN_CENTER);
                 agregarCeldaItem(table, proforma.getMoneda() + " " + item.calcularSubtotalItem(), normalFont, Element.ALIGN_RIGHT);
             }
             document.add(table);

@@ -10,8 +10,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     // Solo lo que debe verse en el catálogo público
     List<Producto> findByVisibleEnCatalogoTrue();
 
-    List<Producto> findBySectorAndVisibleEnCatalogoTrue(Producto.Sector sector);
-
     List<Producto> findByCategoriaIdOrderByNombre(Long categoriaId);
 
     List<Producto> findAllByOrderByNombre();

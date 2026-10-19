@@ -1,35 +1,61 @@
 package com.bomerp.postventa.mantenimiento.controller;
 
-import com.bomerp.postventa.mantenimiento.entity.Mantenimiento;
-import com.bomerp.postventa.mantenimiento.repository.MantenimientoRepository;
+import com.bomerp.postventa.mantenimiento.dto.MantenimientoResponseDTO;
 import com.bomerp.postventa.mantenimiento.service.MantenimientoScheduledService;
+import com.bomerp.postventa.mantenimiento.service.MantenimientoService;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin/mantenimientos")
 public class MantenimientoController {
 
-    private final MantenimientoRepository mantenimientoRepository;
+    private final MantenimientoService mantenimientoService;
     private final MantenimientoScheduledService mantenimientoScheduledService;
 
-    public MantenimientoController(MantenimientoRepository mantenimientoRepository, MantenimientoScheduledService mantenimientoScheduledService) {
-        this.mantenimientoRepository = mantenimientoRepository;
+    public MantenimientoController(MantenimientoService mantenimientoService,
+                                   MantenimientoScheduledService mantenimientoScheduledService) {
+        this.mantenimientoService = mantenimientoService;
         this.mantenimientoScheduledService = mantenimientoScheduledService;
     }
 
+    /** Agenda de Postventa: vista = VENCIDOS | PROXIMOS (por defecto, 30 días) | REALIZADOS | TODOS. */
     @GetMapping
-    public List<Mantenimiento> listarTodos() {
-        return mantenimientoRepository.findAll();
+    public List<MantenimientoResponseDTO> listar(@RequestParam(defaultValue = "PROXIMOS") String vista,
+                                                 @RequestParam(defaultValue = "30") int dias,
+                                                 @RequestParam(required = false) Long clienteId) {
+        return mantenimientoService.agenda(vista, dias, clienteId);
     }
 
+    /** Contadores para la cabecera: vencidos, próximos 7 y 30 días. */
+    @GetMapping("/resumen")
+    public Map<String, Integer> resumen() {
+        return mantenimientoService.resumen();
+    }
+
+    public record RealizadoRequest(LocalDate fecha, String notas) {}
+
+    public record ReprogramarRequest(LocalDate fecha, String notas) {}
+
+    @PatchMapping("/{id}/realizado")
+    public MantenimientoResponseDTO marcarRealizado(@PathVariable Long id,
+                                                    @RequestBody(required = false) RealizadoRequest request) {
+        return mantenimientoService.marcarRealizado(id,
+                request != null ? request.fecha() : null, request != null ? request.notas() : null);
+    }
+
+    @PatchMapping("/{id}/reprogramar")
+    public MantenimientoResponseDTO reprogramar(@PathVariable Long id, @RequestBody ReprogramarRequest request) {
+        return mantenimientoService.reprogramar(id, request.fecha(), request.notas());
+    }
+
+    /** Compatibilidad con la ruta anterior: marca la visita como realizada hoy. */
     @PostMapping("/{id}/marcar-realizado")
-    public Mantenimiento marcarComoRealizado(@PathVariable Long id) {
-        Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Mantenimiento no encontrado: " + id));
-        mantenimiento.setEstado(Mantenimiento.EstadoMantenimiento.REALIZADO);
-        return mantenimientoRepository.save(mantenimiento);
+    public MantenimientoResponseDTO marcarComoRealizado(@PathVariable Long id) {
+        return mantenimientoService.marcarRealizado(id, null, null);
     }
 
     /**

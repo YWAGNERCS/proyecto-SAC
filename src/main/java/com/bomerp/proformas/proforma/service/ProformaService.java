@@ -1,4 +1,7 @@
 package com.bomerp.proformas.proforma.service;
+import com.bomerp.config.ReglaNegocioException;
+import com.bomerp.config.descuento.TopeDescuentoService;
+import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.proformas.proformarequest.entity.ProformaRequest;
 import com.bomerp.proformas.pdf.service.GeneradorPdfService;
 import com.bomerp.ventas.venta.entity.Venta;
@@ -27,19 +30,25 @@ public class ProformaService {
     private final NotificadorWhatsApp notificadorWhatsApp;
     private final NotificadorCorreo notificadorCorreo;
     private final GeneradorPdfService generadorPdfService;
+    private final TipoCambioService tipoCambioService;
+    private final TopeDescuentoService topeDescuentoService;
 
     public ProformaService(ProformaRepository proformaRepository,
                               ClienteService clienteService,
                               ProductoService productoService,
                               NotificadorWhatsApp notificadorWhatsApp,
                               NotificadorCorreo notificadorCorreo,
-                              GeneradorPdfService generadorPdfService) {
+                              GeneradorPdfService generadorPdfService,
+                              TipoCambioService tipoCambioService,
+                              TopeDescuentoService topeDescuentoService) {
         this.proformaRepository = proformaRepository;
         this.clienteService = clienteService;
         this.productoService = productoService;
         this.notificadorWhatsApp = notificadorWhatsApp;
         this.notificadorCorreo = notificadorCorreo;
         this.generadorPdfService = generadorPdfService;
+        this.tipoCambioService = tipoCambioService;
+        this.topeDescuentoService = topeDescuentoService;
     }
 
     public List<Proforma> listarTodas() {
@@ -66,49 +75,107 @@ public class ProformaService {
         int dias = request.diasVigencia() != null ? request.diasVigencia() : 15; // 15 días por defecto
         proforma.setFechaVencimiento(LocalDate.now().plusDays(dias));
 
-        for (ProformaRequest.ItemDTO itemDTO : request.items()) {
-            Producto producto = productoService.obtenerPorId(itemDTO.productoId());
-            // Los precios se copian del producto: si su moneda no es la de la proforma, el total sumaría soles con dólares
-            if (producto.getMoneda() == null || !producto.getMoneda().name().equals(request.moneda().name())) {
-                throw new IllegalArgumentException("La proforma es en " + request.moneda() + " pero '"
-                        + producto.getNombre() + "' está en " + producto.getMoneda() + ". Use una proforma por moneda.");
-            }
-            proforma.agregarItem(new ItemProforma(producto, itemDTO.cantidad()));
+        // Los productos pueden estar en otra moneda: su precio se convierte a la moneda de la
+        // proforma con el tipo de cambio, que queda guardado (y se respeta al convertirla en venta).
+        List<Producto> productos = request.items().stream()
+                .map(i -> productoService.obtenerPorId(i.productoId())).toList();
+        List<java.math.BigDecimal> descuentos = request.items().stream()
+                .map(i -> topeDescuentoService.validar(i.descuentoPorcentaje())).toList();
+        String moneda = request.moneda().name();
+        boolean requiereConversion = productos.stream().anyMatch(p -> !p.getMoneda().name().equals(moneda));
+        java.math.BigDecimal tc = requiereConversion
+                ? tipoCambioService.resolver(request.tipoCambio())
+                : tipoCambioService.resolverSiSePuede(request.tipoCambio());
+        proforma.setTipoCambio(tc);
+
+        for (int i = 0; i < productos.size(); i++) {
+            Producto producto = productos.get(i);
+            java.math.BigDecimal precio = TipoCambioService.convertir(producto.calcularPrecioVenta(),
+                    producto.getMoneda().name(), moneda, tc);
+            proforma.agregarItem(new ItemProforma(producto, request.items().get(i).cantidad(), precio, descuentos.get(i)));
         }
 
         return proformaRepository.save(proforma);
     }
 
+    /**
+     * Resultado de enviar una proforma, para mostrarlo en pantalla.
+     * whatsapp: SIMULADO | SIN_TELEFONO | NO_SOLICITADO · correo: ENVIADO | FALLO | SIN_CORREO | NO_SOLICITADO
+     */
+    public record ResultadoEnvio(String whatsapp, String correo, String mensaje) {}
+
     /** RF confirmado: Lisandro envía proformas solo por WhatsApp y correo */
-    public void enviar(Long proformaId, boolean porWhatsApp, boolean porCorreo) {
+    public ResultadoEnvio enviar(Long proformaId, boolean porWhatsApp, boolean porCorreo) {
         Proforma proforma = obtenerOFallar(proformaId);
+        if (proforma.getEstado() != Proforma.EstadoProforma.PENDIENTE
+                && proforma.getEstado() != Proforma.EstadoProforma.ACEPTADA) {
+            throw new ReglaNegocioException("No se puede enviar la proforma #" + proformaId
+                    + ": está " + proforma.getEstado() + ".");
+        }
         String resumen = "Proforma #" + proforma.getId() + " por un total de "
                 + proforma.calcularTotal() + " " + proforma.getMoneda();
+        String telefono = proforma.getCliente().getTelefono();
+        String correo = proforma.getCliente().getCorreo();
 
-        if (porWhatsApp && proforma.getCliente().getTelefono() != null) {
-            notificadorWhatsApp.enviarWhatsApp(proforma.getCliente().getTelefono(), resumen);
-            proforma.setEnviadoWhatsApp(true);
-        }
-        if (porCorreo && proforma.getCliente().getCorreo() != null) {
-            String cuerpoHtml = generarHtmlProforma(proforma);
-            java.io.File pdfAdjunto = null;
-            try {
-                pdfAdjunto = generadorPdfService.generarProformaPdf(proforma);
-                notificadorCorreo.enviarCorreoConAdjunto(proforma.getCliente().getCorreo(),
-                        "Proforma JD Refrigeración S.A.C.", cuerpoHtml, pdfAdjunto);
-            } catch (Exception e) {
-                System.err.println("Error generando PDF: " + e.getMessage());
-                // Fallback sin PDF
-                notificadorCorreo.enviarCorreo(proforma.getCliente().getCorreo(),
-                        "Proforma JD Refrigeración S.A.C.", cuerpoHtml);
-            } finally {
-                if (pdfAdjunto != null && pdfAdjunto.exists()) {
-                    pdfAdjunto.delete(); // Limpiar archivo temporal
-                }
+        String estadoWhatsApp = "NO_SOLICITADO";
+        if (porWhatsApp) {
+            if (telefono == null || telefono.isBlank()) {
+                estadoWhatsApp = "SIN_TELEFONO";
+            } else {
+                // Aún simulado: solo queda en el registro (ver auditoría B1)
+                notificadorWhatsApp.enviarWhatsApp(telefono, resumen);
+                proforma.setEnviadoWhatsApp(true);
+                estadoWhatsApp = "SIMULADO";
             }
-            proforma.setEnviadoCorreo(true);
+        }
+
+        String estadoCorreo = "NO_SOLICITADO";
+        if (porCorreo) {
+            if (correo == null || correo.isBlank()) {
+                estadoCorreo = "SIN_CORREO";
+            } else {
+                String cuerpoHtml = generarHtmlProforma(proforma);
+                java.io.File pdfAdjunto = null;
+                boolean enviado;
+                try {
+                    pdfAdjunto = generadorPdfService.generarProformaPdf(proforma);
+                    enviado = notificadorCorreo.enviarCorreoConAdjunto(correo,
+                            "Proforma JD Refrigeración S.A.C.", cuerpoHtml, pdfAdjunto);
+                } catch (Exception e) {
+                    System.err.println("Error generando PDF: " + e.getMessage());
+                    // Fallback sin PDF
+                    enviado = notificadorCorreo.enviarCorreo(correo, "Proforma JD Refrigeración S.A.C.", cuerpoHtml);
+                } finally {
+                    if (pdfAdjunto != null && pdfAdjunto.exists()) {
+                        pdfAdjunto.delete(); // Limpiar archivo temporal
+                    }
+                }
+                if (enviado) {
+                    proforma.setEnviadoCorreo(true);
+                }
+                estadoCorreo = enviado ? "ENVIADO" : "FALLO";
+            }
         }
         proformaRepository.save(proforma);
+        return new ResultadoEnvio(estadoWhatsApp, estadoCorreo,
+                mensajeEnvio(proforma.getId(), estadoWhatsApp, estadoCorreo, telefono, correo));
+    }
+
+    private static String mensajeEnvio(Long id, String whatsapp, String correo, String telefono, String email) {
+        String w = switch (whatsapp) {
+            case "SIMULADO" -> "WhatsApp a " + telefono + " registrado (el envío real por WhatsApp aún no está activo)";
+            case "SIN_TELEFONO" -> "WhatsApp no enviado: el cliente no tiene teléfono";
+            default -> null;
+        };
+        String c = switch (correo) {
+            case "ENVIADO" -> "correo enviado a " + email;
+            case "FALLO" -> "el correo a " + email + " NO se pudo enviar (revise la configuración de correo)";
+            case "SIN_CORREO" -> "correo no enviado: el cliente no tiene correo";
+            default -> null;
+        };
+        return "Proforma #" + id + ": " + java.util.stream.Stream.of(w, c)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.joining("; ")) + ".";
     }
 
     private String generarHtmlProforma(Proforma proforma) {
@@ -136,6 +203,10 @@ public class ProformaService {
             sb.append("<td style='padding: 15px 0;'>")
               .append("<strong style='display: block; color: #ffffff;'>").append(item.getProducto().getNombre()).append("</strong>")
               .append("<span style='font-size: 12px; color: #888888;'>").append(item.getProducto().getDescripcion()).append("</span>")
+              .append(item.getDescuentoPorcentaje().signum() > 0
+                      ? "<span style='display: block; font-size: 12px; color: #7fd18b;'>Descuento "
+                        + item.getDescuentoPorcentaje().stripTrailingZeros().toPlainString() + " %</span>"
+                      : "")
               .append("</td>");
             sb.append("<td style='padding: 15px 0; text-align: center; color: #ffffff;'>").append(item.getCantidad()).append("</td>");
             sb.append("<td style='padding: 15px 0; text-align: right; color: #ffffff;'>").append(proforma.getMoneda()).append(" ").append(item.calcularSubtotalItem()).append("</td>");
@@ -169,13 +240,23 @@ public class ProformaService {
      */
     public Proforma aceptar(Long proformaId) {
         Proforma proforma = obtenerOFallar(proformaId);
+        if (proforma.getEstado() != Proforma.EstadoProforma.PENDIENTE) {
+            throw new ReglaNegocioException("Solo se acepta una proforma PENDIENTE. La #" + proformaId
+                    + " está " + proforma.getEstado() + ".");
+        }
         validarNoVencida(proforma);
         proforma.setEstado(Proforma.EstadoProforma.ACEPTADA);
         return proformaRepository.save(proforma);
     }
 
+    /** El cliente no la acepta (o se echa atrás antes de convertirla en venta). */
     public Proforma rechazar(Long proformaId) {
         Proforma proforma = obtenerOFallar(proformaId);
+        if (proforma.getEstado() != Proforma.EstadoProforma.PENDIENTE
+                && proforma.getEstado() != Proforma.EstadoProforma.ACEPTADA) {
+            throw new ReglaNegocioException("No se puede rechazar la proforma #" + proformaId
+                    + ": está " + proforma.getEstado() + ".");
+        }
         proforma.setEstado(Proforma.EstadoProforma.RECHAZADA);
         return proformaRepository.save(proforma);
     }
@@ -204,6 +285,14 @@ public class ProformaService {
             throw new IllegalStateException(
                     "La proforma #" + proforma.getId() + " ya venció y no puede aceptarse");
         }
+    }
+
+    /** Fachada para Ventas: la proforma ya se convirtió en la venta indicada. */
+    public void marcarConvertida(Long proformaId, Long ventaId) {
+        Proforma proforma = obtenerOFallar(proformaId);
+        proforma.setEstado(Proforma.EstadoProforma.CONVERTIDA);
+        proforma.setVentaId(ventaId);
+        proformaRepository.save(proforma);
     }
 
     /** Fachada pública para otros módulos (ventas, reportes). */

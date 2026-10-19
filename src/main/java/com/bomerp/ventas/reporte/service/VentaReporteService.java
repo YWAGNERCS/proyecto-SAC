@@ -53,13 +53,14 @@ public class VentaReporteService {
                 ExcelBuilder.texto("RUC / DNI"), ExcelBuilder.texto("Tipo de pago"), ExcelBuilder.entero("Días de crédito"),
                 ExcelBuilder.fecha("Fecha límite de pago"), ExcelBuilder.texto("Estado"), ExcelBuilder.fecha("Fecha de anulación"),
                 ExcelBuilder.texto("Estado de pago"), ExcelBuilder.texto("Origen"), ExcelBuilder.texto("Comprobante"),
-                ExcelBuilder.texto("Nota de crédito"), ExcelBuilder.texto("Moneda"), ExcelBuilder.moneda("Subtotal"),
+                ExcelBuilder.texto("Nota de crédito"), ExcelBuilder.texto("Moneda"), ExcelBuilder.tipoCambio("Tipo de cambio"),
+                ExcelBuilder.moneda("Subtotal"),
                 ExcelBuilder.moneda("IGV (18%)"), ExcelBuilder.moneda("Total"));
         ExcelBuilder.Hoja hojaDetalle = excel.hoja("Detalle", "Detalle de productos vendidos", filtros,
                 ExcelBuilder.entero("N° venta"), ExcelBuilder.fecha("Fecha"), ExcelBuilder.texto("Cliente"),
                 ExcelBuilder.texto("Estado"), ExcelBuilder.texto("Producto"), ExcelBuilder.texto("Categoría"),
                 ExcelBuilder.texto("Sector"), ExcelBuilder.entero("Cantidad"), ExcelBuilder.moneda("Precio unitario"),
-                ExcelBuilder.moneda("Subtotal"), ExcelBuilder.texto("Moneda"));
+                ExcelBuilder.moneda("Descuento %"), ExcelBuilder.moneda("Subtotal"), ExcelBuilder.texto("Moneda"));
 
         for (Venta v : ventas) {
             hojaVentas.fila(v.getId(), v.getFechaVenta(), v.getCliente().getNombreORazonSocial(), documento(v.getCliente()),
@@ -67,13 +68,13 @@ public class VentaReporteService {
                     v.getEstadoPago(), v.getProformaOrigen() != null ? "Proforma #" + v.getProformaOrigen().getId() : "Directa",
                     facturacionService.numeroComprobanteDeVenta(v.getId()).orElse(null),
                     facturacionService.numeroNotaCreditoDeVenta(v.getId()).orElse(null),
-                    v.getMoneda(), v.calcularSubtotal(), v.calcularIgv(), v.calcularTotal());
+                    v.getMoneda(), v.getTipoCambio(), v.calcularSubtotal(), v.calcularIgv(), v.calcularTotal());
             for (DetalleVenta d : v.getDetalles()) {
                 hojaDetalle.fila(v.getId(), v.getFechaVenta(), v.getCliente().getNombreORazonSocial(), v.getEstado(),
                         d.getProducto().getNombre(),
                         d.getProducto().getCategoria() != null ? d.getProducto().getCategoria().getNombre() : null,
                         d.getProducto().getSector(), d.getCantidad(), d.getPrecioUnitario(),
-                        d.calcularSubtotalDetalle(), v.getMoneda());
+                        d.getDescuentoPorcentaje(), d.calcularSubtotalDetalle(), v.getMoneda());
             }
         }
 
@@ -83,7 +84,7 @@ public class VentaReporteService {
                     .filter(v -> v.getEstado() == Venta.EstadoVenta.REGISTRADA && v.getMoneda() == moneda).toList();
             if (!vigentes.isEmpty()) {
                 hojaVentas.filaTotal("Total vigente (" + vigentes.size() + " ventas, sin anuladas)", null, null, null, null,
-                        null, null, null, null, null, null, null, null, moneda,
+                        null, null, null, null, null, null, null, null, moneda, null,
                         sumar(vigentes, Venta::calcularSubtotal), sumar(vigentes, Venta::calcularIgv), sumar(vigentes, Venta::calcularTotal));
             }
         }

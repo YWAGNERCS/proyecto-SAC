@@ -1,4 +1,7 @@
 package com.bomerp.ventas.venta.controller;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.service.VentaService;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
@@ -63,15 +66,21 @@ public class VentaController {
     public VentaResponseDTO convertirDesdeProforma(
             @PathVariable Long proformaId,
             @RequestParam Venta.TipoPago tipoPago,
-            @RequestParam(required = false) Integer diasCredito) {
-        Venta venta = ventaService.convertirProformaEnVenta(proformaId, tipoPago, diasCredito);
+            @RequestParam(required = false) Integer diasCredito,
+            @AuthenticationPrincipal Jwt jwt) {
+        // El vendedor sale del token ya validado (sub), nunca de un campo del request
+        Venta venta = ventaService.convertirProformaEnVenta(proformaId, tipoPago, diasCredito,
+                jwt.getSubject(), jwt.getClaimAsString("preferred_username"));
         return VentaResponseDTO.desdeEntidad(venta);
     }
 
     @PostMapping("/directa")
-    public VentaResponseDTO registrarVentaDirecta(@RequestBody VentaDirectaRequest request) {
+    public VentaResponseDTO registrarVentaDirecta(@RequestBody VentaDirectaRequest request,
+                                                  @AuthenticationPrincipal Jwt jwt) {
         Venta venta = ventaService.registrarVentaDirecta(
-                request.clienteId(), request.items(), request.tipoPago(), request.diasCredito());
+                request.clienteId(), request.items(), request.tipoPago(), request.diasCredito(),
+                request.moneda(), request.tipoCambio(),
+                jwt.getSubject(), jwt.getClaimAsString("preferred_username"));
         return VentaResponseDTO.desdeEntidad(venta);
     }
 
@@ -90,6 +99,8 @@ public class VentaController {
             @NotNull Long clienteId,
             @NotNull List<VentaService.ItemVentaDTO> items,
             @NotNull Venta.TipoPago tipoPago,
-            Integer diasCredito
+            Integer diasCredito,
+            Venta.Moneda moneda,                     // opcional: moneda en la que se cobra
+            java.math.BigDecimal tipoCambio          // opcional: soles por dólar (null = SUNAT del día)
     ) {}
 }

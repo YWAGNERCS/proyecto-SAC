@@ -1,11 +1,13 @@
 package com.bomerp.facturacion.pdf.service;
 
+import com.bomerp.config.empresa.EmpresaProperties;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -13,7 +15,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 
 @Service
+@RequiredArgsConstructor
 public class GeneradorPdfFacturacionService {
+
+    private final EmpresaProperties empresa;
 
     public File generarFacturaPdf(Comprobante comprobante) throws Exception {
         String fileName = comprobante.getTipo().name() + "_" + comprobante.getSerie() + "-" + comprobante.getNumero() + ".pdf";
@@ -44,11 +49,10 @@ public class GeneradorPdfFacturacionService {
                 logo.setAlignment(Element.ALIGN_LEFT);
                 leftCell.addElement(logo);
             } catch (Exception e) {
-                leftCell.addElement(new Paragraph("JD REFRIGERACION S.A.C.", titleFont));
+                leftCell.addElement(new Paragraph(empresa.razonSocial(), titleFont));
             }
-            leftCell.addElement(new Paragraph("RUC: 20123456789", boldFont));
-            leftCell.addElement(new Paragraph("Av. Las Refrigeradoras 123, Lima", normalFont));
-            leftCell.addElement(new Paragraph("Teléfono: (01) 555-1234", normalFont));
+            leftCell.addElement(new Paragraph(empresa.razonSocial(), boldFont));
+            leftCell.addElement(new Paragraph(empresa.direccion(), normalFont));
             headerTable.addCell(leftCell);
             
             // Celda Derecha: Cuadro RUC y Número de Factura
@@ -59,7 +63,7 @@ public class GeneradorPdfFacturacionService {
             rightCell.setHorizontalAlignment(Element.ALIGN_CENTER);
             rightCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
             
-            Paragraph rucEmpresa = new Paragraph("RUC: 20123456789", boldFont);
+            Paragraph rucEmpresa = new Paragraph("RUC: " + empresa.ruc(), boldFont);
             rucEmpresa.setAlignment(Element.ALIGN_CENTER);
             rightCell.addElement(rucEmpresa);
             
@@ -89,23 +93,30 @@ public class GeneradorPdfFacturacionService {
             }
             document.add(new Paragraph("FECHA DE EMISIÓN: " + comprobante.getFechaEmision(), normalFont));
             document.add(new Paragraph("MONEDA: " + comprobante.getVenta().getMoneda(), normalFont));
+            if (comprobante.getVenta().getTipoCambio() != null) {
+                // SUNAT exige el tipo de cambio cuando el comprobante es en moneda extranjera
+                document.add(new Paragraph("TIPO DE CAMBIO: S/ " + comprobante.getVenta().getTipoCambio()
+                        .setScale(3, java.math.RoundingMode.HALF_UP) + " por US$ 1", normalFont));
+            }
             
             document.add(new Paragraph(" "));
             
             // Tabla de Detalles
-            PdfPTable table = new PdfPTable(4);
+            PdfPTable table = new PdfPTable(5);
             table.setWidthPercentage(100);
-            table.setWidths(new float[]{4f, 1f, 1.5f, 1.5f});
-            
+            table.setWidths(new float[]{4f, 0.8f, 1.5f, 0.9f, 1.5f});
+
             agregarCeldaCabecera(table, "Descripción", headerFont);
             agregarCeldaCabecera(table, "Cant.", headerFont);
             agregarCeldaCabecera(table, "V. Unit", headerFont);
+            agregarCeldaCabecera(table, "Dscto.", headerFont);
             agregarCeldaCabecera(table, "Subtotal", headerFont);
             
             for (DetalleVenta item : comprobante.getVenta().getDetalles()) {
                 agregarCeldaItem(table, item.getProducto().getNombre() + "\n" + item.getProducto().getDescripcion(), normalFont, Element.ALIGN_LEFT);
                 agregarCeldaItem(table, String.valueOf(item.getCantidad()), normalFont, Element.ALIGN_CENTER);
                 agregarCeldaItem(table, comprobante.getVenta().getMoneda() + " " + item.getPrecioUnitario().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
+                agregarCeldaItem(table, porcentaje(item.getDescuentoPorcentaje()), normalFont, Element.ALIGN_CENTER);
                 agregarCeldaItem(table, comprobante.getVenta().getMoneda() + " " + item.calcularSubtotalDetalle().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
             }
             document.add(table);
@@ -140,6 +151,10 @@ public class GeneradorPdfFacturacionService {
         return pdfFile;
     }
     
+    private static String porcentaje(java.math.BigDecimal descuento) {
+        return descuento.signum() > 0 ? descuento.stripTrailingZeros().toPlainString() + " %" : "—";
+    }
+
     private void agregarCeldaCabecera(PdfPTable table, String texto, Font font) {
         PdfPCell celda = new PdfPCell(new Phrase(texto, font));
         celda.setBackgroundColor(new Color(230, 230, 230));

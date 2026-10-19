@@ -1,4 +1,5 @@
 package com.bomerp.facturacion.facturacion.service;
+import com.bomerp.facturacion.serie.service.CorrelativoService;
 import com.bomerp.facturacion.pdf.service.GeneradorPdfFacturacionService;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.facturacion.ose.integration.OseClient;
@@ -28,14 +29,17 @@ public class FacturacionService {
     private final com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo;
     private final GeneradorPdfFacturacionService generadorPdfFacturacionService;
     private final NotaCreditoRepository notaCreditoRepository;
+    private final CorrelativoService correlativoService;
 
-    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaRepository ventaRepository, OseClient oseClient, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository) {
+    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaRepository ventaRepository, OseClient oseClient, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
+                              CorrelativoService correlativoService) {
         this.comprobanteRepository = comprobanteRepository;
         this.ventaRepository = ventaRepository;
         this.oseClient = oseClient;
         this.notificadorCorreo = notificadorCorreo;
         this.generadorPdfFacturacionService = generadorPdfFacturacionService;
         this.notaCreditoRepository = notaCreditoRepository;
+        this.correlativoService = correlativoService;
     }
 
     @Transactional
@@ -61,8 +65,8 @@ public class FacturacionService {
             comprobante.setSerie("B001");
         }
 
-        // TODO: Simulación de obtener el siguiente correlativo de base de datos
-        comprobante.setNumero(String.format("%08d", (int)(Math.random() * 10000)));
+        // Correlativo por serie: 00000001, 00000002, ... sin saltos ni repetidos (SUNAT)
+        comprobante.setNumero(correlativoService.siguiente(comprobante.getSerie()));
 
         // Guardamos antes de enviar al OSE
         Comprobante comprobanteGuardado = comprobanteRepository.save(comprobante);
@@ -113,7 +117,7 @@ public class FacturacionService {
         nota.setMotivo(motivo);
         nota.setTotal(original.getTotal());
         nota.setSerie(original.getTipo() == Comprobante.TipoComprobante.FACTURA ? "FC01" : "BC01");
-        nota.setNumero(String.format("%08d", notaCreditoRepository.countBySerie(nota.getSerie()) + 1));
+        nota.setNumero(correlativoService.siguiente(nota.getSerie()));
         NotaCredito guardada = notaCreditoRepository.save(nota);
 
         OseClient.RespuestaOse respuesta = oseClient.emitirNotaCredito(guardada);

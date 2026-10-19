@@ -1,3 +1,0 @@
-UPDATE MANTENIMIENTOS SET fecha_programada = SYSDATE + 2 WHERE estado = 'PENDIENTE';
-COMMIT;
-EXIT;

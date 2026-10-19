@@ -44,13 +44,15 @@ public class MantenimientoScheduledService {
                 Mantenimiento.EstadoMantenimiento.PENDIENTE, hoy, limiteSieteDias);
 
         for (Mantenimiento mantenimiento : proximos) {
-            enviarAlertaAOficina(mantenimiento);
-            mantenimiento.setAlertaEnviada(true);
-            mantenimientoRepository.save(mantenimiento);
+            // Solo se marca si el correo salió: si falla, se vuelve a intentar al día siguiente
+            if (enviarAlertaAOficina(mantenimiento)) {
+                mantenimiento.setAlertaEnviada(true);
+                mantenimientoRepository.save(mantenimiento);
+            }
         }
     }
 
-    private void enviarAlertaAOficina(Mantenimiento mantenimiento) {
+    private boolean enviarAlertaAOficina(Mantenimiento mantenimiento) {
         String nombreCliente = mantenimiento.getVenta().getCliente().getNombreORazonSocial();
         String telefonoCliente = mantenimiento.getVenta().getCliente().getTelefono();
         
@@ -70,7 +72,14 @@ public class MantenimientoScheduledService {
                             "<p style='color: #888; font-size: 12px;'>Este es un mensaje generado automáticamente por el Sistema de JD Refrigeración.</p>" +
                             "</div></body></html>";
 
-        notificadorCorreo.enviarCorreo(correoOficina, asunto, cuerpoHtml);
-        System.out.println("Alerta de mantenimiento enviada a la oficina para el cliente: " + nombreCliente);
+        if (correoOficina == null || correoOficina.isBlank()) {
+            System.err.println("Alerta de mantenimiento no enviada: falta configurar CORREO_OFICINA.");
+            return false;
+        }
+        boolean enviado = notificadorCorreo.enviarCorreo(correoOficina, asunto, cuerpoHtml);
+        if (enviado) {
+            System.out.println("Alerta de mantenimiento enviada a la oficina para el cliente: " + nombreCliente);
+        }
+        return enviado;
     }
 }

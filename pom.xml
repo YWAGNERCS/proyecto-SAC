@@ -47,6 +47,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+        <!-- S10b: valida los JWT que emite Keycloak (Resource Server). En Boot 4 se llama
+             spring-boot-starter-security-oauth2-resource-server. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
 
         <!-- Correo Electrónico -->
         <dependency>

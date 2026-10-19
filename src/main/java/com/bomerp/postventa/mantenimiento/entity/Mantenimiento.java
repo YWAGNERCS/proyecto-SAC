@@ -43,6 +43,10 @@ public class Mantenimiento {
     @Column(length = 500)
     private String notas;
 
+    /** Día en que se hizo la visita (solo si estado = REALIZADO). */
+    @Column(name = "fecha_realizada")
+    private LocalDate fechaRealizada;
+
     public enum EstadoMantenimiento {
         PENDIENTE, REALIZADO, CANCELADO, VENCIDO
     }

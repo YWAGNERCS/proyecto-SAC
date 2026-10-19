@@ -11,11 +11,13 @@ public class ProformaRequest {
             @NotNull Long clienteId,
             @NotNull Proforma.Moneda moneda,
             Integer diasVigencia,
-            @NotNull List<ItemDTO> items
+            @NotNull List<ItemDTO> items,
+            java.math.BigDecimal tipoCambio          // opcional: soles por dólar (null = SUNAT del día)
     ) {}
 
     public record ItemDTO(
             @NotNull Long productoId,
-            @NotNull @Min(1) Integer cantidad
+            @NotNull @Min(1) Integer cantidad,
+            java.math.BigDecimal descuentoPorcentaje   // opcional: % negociado (0 a tope del rol)
     ) {}
 }

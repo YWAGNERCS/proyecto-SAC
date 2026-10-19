@@ -53,6 +53,13 @@ public class Proforma {
     @Column(nullable = false, length = 10)
     private Moneda moneda;
 
+    /**
+     * Tipo de cambio (soles por dólar) con que se convirtieron los precios. Se respeta al
+     * convertir la proforma en venta: el cliente paga lo cotizado aunque el cambio varíe.
+     */
+    @Column(name = "tipo_cambio", precision = 10, scale = 4)
+    private BigDecimal tipoCambio;
+
     @OneToMany(mappedBy = "proforma", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemProforma> items = new ArrayList<>();
 
@@ -63,8 +70,12 @@ public class Proforma {
     @Column(name = "enviado_correo")
     private boolean enviadoCorreo;
 
+    /** Venta generada al convertirla (solo si estado = CONVERTIDA). */
+    @Column(name = "venta_id")
+    private Long ventaId;
+
     public enum EstadoProforma {
-        PENDIENTE, ACEPTADA, RECHAZADA, VENCIDA
+        PENDIENTE, ACEPTADA, RECHAZADA, VENCIDA, CONVERTIDA
     }
 
     public enum Moneda {

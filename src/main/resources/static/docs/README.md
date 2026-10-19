@@ -30,9 +30,9 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - Proformas con exportación a PDF y envío por correo (SMTP).
 - Ventas al contado o a crédito: venta directa (cabecera-detalle) y conversión desde una proforma aceptada; anulación con restauración de stock.
 - Facturación electrónica (simulada, a la espera de credenciales productivas de un OSE).
-- Postventa: mantenimientos preventivos con alertas automáticas (tarea programada diaria).
+- Postventa: mantenimientos preventivos con alertas automáticas (tarea programada diaria) y pantalla de agenda (vencidos, próximos, realizado, reprogramar).
 - Inventario: descuento al vender, incremento al comprar y alertas de stock mínimo.
-- Cobranza: seguimiento de ventas a crédito, pagos pendientes y atrasados (módulo nuevo, hoy dentro de ventas).
+- Cobranza: ventas a crédito con su saldo, abonos parciales o totales (un pago puede repartirse entre varias ventas) e historial de cobros.
 - Consultas y reportes dentro de cada módulo: ventas (reporte filtrable, resumen por periodo), cobranza (pendientes y atrasadas) y proformas (pendientes).
 - Panel administrativo web (SPA Angular, en `bomerp-frontend`) con inicio de sesión.
 
@@ -48,15 +48,15 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | 1 | Catálogo (productos con categoría, categorías, catálogo público) | Maestro | Wilson | ✅ CRUD de productos con categoría (API y SPA) |
 | 2 | Clientes (autocompletado RUC/DNI) | Maestro | Aron | ✅ CRUD con validación de RUC/DNI y duplicados; autocompletado real (apis.net.pe v1) en la SPA |
 | 3 | Proveedores | Maestro | Yoel | ✅ CRUD con validación de RUC/DNI, duplicados (409) y correo; pantalla con búsqueda en SUNAT/RENIEC |
-| 4 | Proformas (+ PDF, + envío por correo) | Transaccional | Yoel | ✅ |
-| 5 | Ventas (directa, desde proforma, crédito, anulación) | Transaccional | Yoel | ✅ |
-| 6 | Compras (incrementa stock) | Transaccional | Wilson | ✅ |
+| 4 | Proformas (+ PDF, + envío por correo, descuento por línea) | Transaccional | Yoel | ✅ Estado CONVERTIDA con el N° de venta; el envío informa qué salió y qué no |
+| 5 | Ventas (directa, desde proforma, crédito, anulación, descuento por línea) | Transaccional | Yoel | ✅ |
+| 6 | Compras (incrementa stock) | Transaccional | Wilson | ✅ Valida cantidades, precios y N° de factura; total calculado en el servidor; no acepta la misma factura dos veces |
 | 7 | Inventario (alertas de stock mínimo) | Soporte | Wilson | ✅ |
-| 8 | Postventa (cronograma preventivo automático) | Operativo | Wilson | ✅ |
+| 8 | Postventa (cronograma preventivo automático) | Operativo | Wilson | ✅ Pantalla de agenda en la SPA |
 | 9 | Facturación (Comprobante, XML UBL 2.1) | Integración | Aron | ⚠️ Simulado — falta OSE real (Nubefact) y correlativo real |
 | 10 | Notificaciones (SMTP real + WhatsApp) | Integración | Aron | ⚠️ WhatsApp simulado |
-| 11 | Cobranza (crédito, pagos pendientes y atrasados) | Operativo | Aron | 🆕 Por separar: hoy vive dentro de ventas (`estadoPago`, `pagos-atrasados`, `marcar-pagada`) y en `reportes/cobranza` |
-| 12 | Seguridad (usuarios, roles, login) | Transversal | — (Keycloak) | ⚠️ Se delegará en **Keycloak**; hoy login HTTP Basic transitorio con la protección **desactivada** (ver 5) |
+| 11 | Cobranza (abonos a ventas a crédito, saldos, historial) | Operativo | Aron | ✅ Paquete `cobranza` con `Cobro`–`DetalleCobro` (15/10/2026); pantalla en la SPA |
+| 12 | Seguridad (usuarios, roles, login) | Transversal | — (Keycloak) | ✅ **Keycloak** (S10b, 18/10/2026): realm `bomerp`, roles ADMIN/ASISTENTE; el backend es Resource Server y valida el JWT (RS256, `issuer-uri`) |
 | — | Frontend (SPA Angular 22) | — | Cada responsable en su módulo | 🔄 En desarrollo (`bomerp-frontend`, rama `frontend`) |
 
 > **Reportes:** no son un módulo. Cada módulo expone sus consultas (decisión del equipo, alineada con el curso). Hoy `ventas-resumen`, `cobranza` y `proformas-pendientes` siguen en el paquete transitorio `reportes` (ver 5).
@@ -65,23 +65,28 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 
 | RF | Descripción | Estado real en el código |
 |---|---|---|
-| RF-01 | **Autenticación:** inicio de sesión con credenciales seguras. | ✅ HTTP Basic + BCrypt; pantalla de login en la SPA. |
-| RF-02 | **Roles y permisos:** restringir módulos según el rol (Administrador, Asistente). | ❌ Los roles `ADMIN`/`ASISTENTE` existen, pero ningún endpoint ni pantalla los usa. Se resolverá con roles de Keycloak. |
+| RF-01 | **Autenticación:** inicio de sesión con credenciales seguras. | ✅ Keycloak emite el JWT (RS256) y el backend lo valida; las contraseñas viven solo en Keycloak. Pantalla de login en la SPA (S11 la cambiará por redirección con PKCE). |
+| RF-02 | **Roles y permisos:** restringir módulos según el rol (Administrador, Asistente). | ✅ ADMIN (Lisandro) y ASISTENTE (Lucy). Catálogo: consultar cualquiera, modificar solo ADMIN; anular ventas y eliminar clientes/proveedores: solo ADMIN; tope de descuento por rol. 401/403 en JSON. La SPA oculta lo que el rol no puede hacer. |
 | RF-03 | **Catálogo de productos:** moneda dual y precio por margen porcentual. | ✅ Precio = costo base × (1 + margen %). CRUD completo de productos, cada uno con su categoría. |
 | RF-04 | **Autocompletado de clientes/proveedores** por RUC/DNI vía API externa. | ✅ apis.net.pe v1 sin token (RUC → SUNAT, DNI → RENIEC), con respaldo en Decolecta si se configura `DECOLECTA_TOKEN`. Valida el formato (400), distingue "no existe" (404) de "servicio ocupado" (503) y guarda las consultas exitosas en memoria. |
 | RF-05 | **Proformas** con cálculo automático de IGV y subtotales. | ✅ |
 | RF-06 | **PDF** formal y corporativo de la proforma. | ✅ Se genera al **enviar** la proforma (no al guardar). |
 | RF-07 | **Envío de proformas por correo** (SMTP). | ✅ `POST /proformas/{id}/enviar`; requiere credenciales SMTP configuradas. |
-| RF-08 | **Conversión de proforma aceptada en venta** sin redigitar. | ✅ Valida que esté ACEPTADA y que no se haya convertido antes (409). |
-| RF-09 | **Control de créditos** (contado/crédito, deudas pendientes y atrasadas). | ✅ |
+| RF-08 | **Conversión de proforma aceptada en venta** sin redigitar. | ✅ Valida que esté ACEPTADA (409); al convertirla pasa a **CONVERTIDA** y guarda el N° de venta, por lo que ya no se puede aceptar, rechazar, enviar ni convertir de nuevo. Respeta precios, tipo de cambio y descuentos de la proforma. |
+| RF-09 | **Control de créditos** (contado/crédito, deudas pendientes y atrasadas). | ✅ Con saldo por venta (RF-20). |
 | RF-10 | **Facturación electrónica** (estructura UBL 2.1). | ⚠️ Simulada; el número del comprobante es aleatorio. |
 | RF-11 | **Descuento de stock** atómico al vender. | ✅ Solo materiales (`MATERIAL_SERVICIO`); si no alcanza → 409 y no se guarda nada. Los equipos no controlan stock. |
 | RF-12 | **Incremento de stock** al registrar compras. | ✅ |
 | RF-13 | **Alertas de stock mínimo** diarias. | ✅ 8:00 a. m., solo materiales, por correo a `app.notificaciones.correo-oficina` (si está vacío, no se envía). |
 | RF-14 | **Postventa: programación de 4 mantenimientos** tras vender equipos. | ✅ A los 3, 6, 9 y 12 meses, para equipos de CLIMATIZACIÓN y REFRIGERACIÓN. |
-| RF-15 | **Postventa: alertas de mantenimiento** (8:00 a. m., próximos 7 días, correo a la oficina). | ✅ |
+| RF-15 | **Postventa: alertas de mantenimiento** (8:00 a. m., próximos 7 días, correo a la oficina). | ✅ Si el correo falla, la alerta no se marca como enviada y se reintenta al día siguiente. |
 | RF-16 | **Reportes** de ingresos y cuentas por cobrar, segmentados por moneda. | ✅ Segmenta soles/dólares y excluye las ventas anuladas. |
 | RF-17 | **Anulación de venta** (nuevo, S09): REGISTRADA → ANULADA. | ✅ `PATCH /ventas/{id}/anular`: restaura stock, cancela los mantenimientos pendientes y emite nota de crédito; 409 si ya estaba anulada. |
+| RF-19 | **Descuento por línea** (nuevo, 15/10/2026) en proformas y ventas. | ✅ % por línea con tope según el rol (`app.descuentos.tope-admin` = 30, `tope-asistente` = 10; propuesta por confirmar con Lisandro). Queda guardado en la línea y sale en la factura y la proforma (columna "Dscto.") y en el Excel. Sin usuario identificado se aplica el tope de asistente. |
+| RF-20 | **Cobranza con abonos** (nuevo, 15/10/2026). | ✅ `Cobro`–`DetalleCobro`: un pago (fecha, método, N° de operación) se reparte entre una o varias ventas del mismo cliente y moneda. Cada abono ≤ saldo (409); al llegar a 0 la venta pasa a PAGADO. El reporte de cobranza suma saldos, no totales. |
+| RF-21 | **Agenda de Postventa** (nuevo, 15/10/2026). | ✅ Vencidos, próximos N días, realizados y todos, con contacto del cliente y equipos; marcar realizado (fecha y trabajo hecho) o reprogramar (fecha ≥ hoy, con motivo). |
+| RF-18 | **Venta en soles o dólares con tipo de cambio** (nuevo, 15/10/2026). | ✅ El vendedor elige la moneda; el tipo de cambio de venta SUNAT del día se propone automáticamente y es editable (1–10). Los precios se convierten, el tipo de cambio queda guardado en la venta (no cambia aunque varíe después), aparece en la factura PDF y en el Excel. Una proforma conserva su tipo de cambio al convertirse en venta (se respeta el monto cotizado). |
+
 
 ### Requerimientos No Funcionales (RNF)
 
@@ -135,8 +140,9 @@ src/main/java/com/bomerp/
 ├── BomerpApplication.java
 ├── catalogo/        categoria/, producto/, productocatalogo/ (catálogo público, DTO sin costo ni margen)
 ├── clientes/        cliente/, consultaruc/ (RUC/DNI), general/ (entidad Cliente)
+├── cobranza/        cobro/: Cobro–DetalleCobro, saldos y abonos
 ├── compras/         compra/, detallecompra/
-├── config/          SecurityConfig (seguridad + CORS), GlobalExceptionHandler, excepciones
+├── config/          SecurityConfig (seguridad + CORS), GlobalExceptionHandler, excepciones, descuento/ (tope por rol), empresa/ (datos de JD), tipocambio/, exportacion/
 ├── proformas/       proforma/, itemproforma/, proformarequest/, pdf/ (antes cotizaciones/)
 ├── facturacion/     comprobante/, facturacion/, nubefact/, ose/, pdf/
 ├── inventario/      alertas y tarea programada de stock mínimo
@@ -144,7 +150,7 @@ src/main/java/com/bomerp/
 ├── notificaciones/  correo (real) y WhatsApp (simulado)
 ├── proveedores/     proveedor/
 ├── reportes/        TRANSITORIO: consultas por repartir a ventas/ y proformas/
-├── seguridad/       TRANSITORIO (se reemplaza por Keycloak): Usuario, UsuarioRepository, UserDetailsServiceImpl, AuthController
+├── (seguridad)      RETIRADO en S10b: la identidad la maneja Keycloak; quedan config/SecurityConfig y config/PerfilController
 └── ventas/          venta/, detalleventa/
 ```
 
@@ -155,30 +161,35 @@ src/main/java/com/bomerp/
 | `PRODUCTOS` | id, nombre, **categoria_id** (FK → `CATEGORIAS`), sector, costo_base, margen_porcentaje, moneda, stock_actual, stock_minimo, visible_en_catalogo |
 | `CATEGORIAS` | id, nombre, descripcion (una categoría con productos no se puede eliminar: 409) |
 | `CLIENTES` / `PROVEEDORES` | id, tipo (empresa/natural), ruc, dni, correo, teléfono |
-| `PROFORMAS` / `ITEMS_PROFORMA` | cabecera-detalle de proforma |
-| `VENTAS` | id, cliente_id, proforma_id, fecha_venta, tipo_pago, dias_credito, fecha_limite_pago, **estado** (REGISTRADA/ANULADA), estado_pago, moneda, comprobante_id |
-| `DETALLE_VENTA` | id, venta_id, producto_id, cantidad, precio_unitario |
-| `COMPRAS` / `DETALLE_COMPRA` | cabecera-detalle de compra |
-| `COMPROBANTES` | comprobante electrónico simulado (factura o boleta, uno por venta) |
+| `PROFORMAS` / `ITEMS_PROFORMA` | cabecera-detalle de proforma; la cabecera guarda moneda, **tipo_cambio**, estado (PENDIENTE, ACEPTADA, RECHAZADA, VENCIDA, **CONVERTIDA**) y **venta_id**; cada ítem su precio ya convertido y su **descuento_porcentaje** |
+| `VENTAS` | id, cliente_id, proforma_id, fecha_venta, tipo_pago, dias_credito, fecha_limite_pago, **estado** (REGISTRADA/ANULADA), fecha_anulacion, estado_pago, moneda, **tipo_cambio**, comprobante_id |
+| `DETALLE_VENTA` | id, venta_id, producto_id, cantidad, precio_unitario, **descuento_porcentaje** |
+| `COMPRAS` / `DETALLE_COMPRA` | cabecera-detalle de compra; numero_factura normalizado (`F001-00000123`), total calculado por el servidor |
+| `COBROS` / `DETALLE_COBRO` | pago de un cliente (fecha_cobro, moneda, metodo_pago, referencia, monto_total) y su reparto por venta (venta_id, monto) |
+| `COMPROBANTES` | comprobante electrónico simulado (factura o boleta, uno por venta); (serie, número) único |
 | `NOTAS_CREDITO` | id, serie (FC01/BC01), numero (correlativo por serie), motivo, total, estado_sunat, comprobante_id (FK único → `COMPROBANTES`) |
-| `MANTENIMIENTOS` | id, venta_id, fecha_programada, estado, alerta_enviada |
-| `USUARIOS` | id, username, password (BCrypt), rol (`ADMIN` / `ASISTENTE`) |
+| `SERIES_COMPROBANTE` | serie (PK: F001, B001, FC01, BC01), ultimo_numero — contador del correlativo SUNAT |
+| `MANTENIMIENTOS` | id, venta_id, fecha_programada, estado, alerta_enviada, **fecha_realizada**, notas |
+| `USUARIOS` | **Sin uso desde S10b** (usuarios y contraseñas viven en Keycloak). La tabla queda en las bases existentes; se puede borrar |
 
 ### API REST (v1)
 
 | Recurso | Endpoints |
 |---|---|
-| Autenticación | `GET /api/v1/admin/auth/me` (valida credenciales y devuelve usuario y roles) |
+| Autenticación | Token: `POST http://localhost:38080/realms/bomerp/protocol/openid-connect/token` (Keycloak) · `GET /api/v1/auth/perfil` (sub, usuario, correo y roles leídos del JWT) · Swagger: botón *Authorize* con el access_token |
+| Tipo de cambio | `GET /api/v1/admin/tipo-cambio?fecha=` (SUNAT vía apis.net.pe; compra y venta, S/ por US$) |
 | Catálogo público | `GET /api/v1/publico/catalogo` (sin login, sin costo ni margen) |
 | Categorías | `GET`, `POST /categorias` · `GET`, `PUT`, `DELETE /categorias/{id}` |
 | Productos | `GET /productos?categoriaId=` · `GET /productos/{id}` · `POST /productos` · `PUT /productos/{id}` · `DELETE /productos/{id}` (409 si ya se usó en ventas, proformas o compras) |
 | Clientes | CRUD `/clientes` (`GET`, `GET /{id}`, `POST`, `PUT`, `DELETE` → 409 si tiene proformas o ventas) · `GET /clientes/autocompletar/ruc/{ruc}` · `GET /clientes/autocompletar/dni/{dni}` |
 | Proveedores | `GET`, `POST /proveedores` · `GET`, `PUT`, `DELETE /proveedores/{id}` · autocompletar RUC/DNI |
-| Proformas | `GET`, `POST /proformas` · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` · `POST /proformas/marcar-vencidas` (vencimiento manual; corre solo cada día) |
-| Ventas | `GET /ventas?estado=&desde=&hasta=&clienteId=` · `GET /ventas/exportar` (Excel, mismos filtros) · `GET /ventas/historial-cliente/{clienteId}` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `GET /ventas/pagos-atrasados` · `POST /ventas/{id}/marcar-pagada` · `PATCH /ventas/{id}/anular` |
-| Compras | `GET /compras?desde=&hasta=&proveedorId=` · `GET /compras/exportar` (Excel) · `GET /compras/historial-proveedor/{proveedorId}` · `GET /compras/{id}` · `POST /compras` (sube el stock solo de materiales) |
+| Proformas | `GET /proformas?estado=&clienteId=` · `POST /proformas` (ítems con `descuentoPorcentaje`) · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` (devuelve qué canal salió) · `POST /proformas/marcar-vencidas` (vencimiento manual; corre solo cada día) |
+| Ventas | `GET /ventas?estado=&desde=&hasta=&clienteId=` · `GET /ventas/exportar` (Excel, mismos filtros) · `GET /ventas/historial-cliente/{clienteId}` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `GET /ventas/pagos-atrasados` · `POST /ventas/{id}/marcar-pagada` (anterior a Cobranza; la SPA ya no lo usa) · `PATCH /ventas/{id}/anular` |
+| Compras | `GET /compras?desde=&hasta=&proveedorId=` · `GET /compras/exportar` (Excel) · `GET /compras/historial-proveedor/{proveedorId}` · `GET /compras/{id}` · `POST /compras` (sube el stock solo de materiales; 400 si cantidad < 1, precio ≤ 0, fecha futura o N° de factura sin formato SERIE-NÚMERO; 409 si esa factura del proveedor ya existe) |
+| Cobranza | `GET /cobranza/por-cobrar?clienteId=` (saldo por venta) · `GET /cobranza/cobros?clienteId=&ventaId=` · `POST /cobranza/cobros` |
+| Descuentos | `GET /descuentos/tope` (tope % del usuario actual) |
 | Inventario | `GET /inventario/alertas` · `GET /inventario/kardex/{productoId}?desde=&hasta=` · `GET /inventario/kardex/{productoId}/exportar` (Excel) |
-| Postventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` · `POST /mantenimientos/simular-alerta` |
+| Postventa | `GET /mantenimientos?vista=VENCIDOS\|PROXIMOS\|REALIZADOS\|TODOS&dias=&clienteId=` · `GET /mantenimientos/resumen` · `PATCH /mantenimientos/{id}/realizado` · `PATCH /mantenimientos/{id}/reprogramar` · `POST /mantenimientos/simular-alerta` |
 | Facturación | `POST /facturacion/emitir/{ventaId}` · `POST /facturacion/{id}/enviar` · `GET /facturacion/ventas/{ventaId}/pdf` (descarga el comprobante) · `GET /facturacion/notas-credito` |
 | Consultas *(transitorio, por mover a ventas, cobranza y proformas)* | `GET /reportes/ventas-resumen?desde=&hasta=` · `GET /reportes/cobranza` · `GET /reportes/proformas-pendientes` |
 
@@ -197,6 +208,8 @@ src/main/java/com/bomerp/
    ```
    También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`.
 4. Ejecutar `mvn spring-boot:run` (puerto 8080). Swagger: `http://localhost:8080/swagger-ui.html`.
+   - **Identidad (Keycloak):** `docker compose up -d keycloak-db keycloak` (desde `C:\SGE-JD`). La primera vez importa `keycloak/realm-bomerp.json` (realm, roles, cliente y usuarios); si no, `python keycloak/configurar_realm.py` lo crea. Consola: `http://localhost:38080` (admin / admin123). Usuarios de desarrollo: `lisandro` (ADMIN) y `lucy` (ASISTENTE), contraseña `JdRefri2026!`. Pruebas: `pruebas-seguridad/05_matriz.ps1`.
+   - **Bases creadas antes del 15/10/2026:** después de arrancar el backend nuevo una vez, ejecutar `migracion_auditoria_altos.sql` (permite el estado CONVERTIDA de las proformas; sin él, convertir una proforma falla con ORA-02290). Se puede ejecutar varias veces.
    - **Datos de demostración (opcional):** `datos_demo.sql` borra los datos de negocio, reinicia los ID y carga 8 categorías, 30 productos, 7 proveedores y 8 clientes (empresas reales verificadas en SUNAT; relación comercial ficticia). No toca los usuarios. Con el backend ya iniciado al menos una vez (para que existan las tablas):
      ```powershell
      Get-Content -Encoding UTF8 datos_demo.sql | docker exec -i -e NLS_LANG=AMERICAN_AMERICA.AL32UTF8 SGE-JD sqlplus -s jdrefrigeracion/<password>@FREEPDB1
@@ -218,23 +231,27 @@ src/main/java/com/bomerp/
 > ⚠️ Credenciales solo de desarrollo. No deben usarse ni documentarse así en un ambiente real.
 
 - Usuarios existentes hoy en la base local: `admin` (rol ADMIN) y `asistente` (rol ASISTENTE), contraseña `123456`.
-- `data.sql` define además `lisandro` y `lucy`, pero ese archivo **no se ejecuta** (`spring.sql.init.mode=never`).
+- Si la base es nueva y no tiene usuarios: `usuarios.sql` crea (o restablece) `admin` y `asistente` con contraseña `123456`.
 
 ### Flujos de operación
 
-- **Iniciar sesión:** en la SPA (`http://localhost:4200`) con usuario y contraseña; "Salir" cierra la sesión.
+- **Iniciar sesión:** en la SPA (`http://localhost:4200`) con el usuario de Keycloak (`lisandro` o `lucy`). La sesión dura mientras la pestaña esté abierta y se renueva sola; "Salir" la cierra también en Keycloak. Junto al nombre se muestra el rol.
 - **Registrar proveedor:** Proveedores → "+ Nuevo Proveedor" → elegir empresa o persona natural → escribir el RUC o DNI → "Buscar en SUNAT/RENIEC" (llena nombre y dirección; avisa si ya está registrado) → completar teléfono, correo y contacto → Guardar.
 - **Registrar cliente:** Clientes → "+ Nuevo Cliente" → empresa (RUC) o persona natural (DNI) → "Buscar en SUNAT/RENIEC" (llena nombre y dirección; avisa si ya está registrado) → completar teléfono y correo → Guardar. Si aparece "servicio ocupado", esperar unos segundos (apis.net.pe limita las consultas seguidas).
-- **Venta directa:** Ventas → Nueva venta → elegir cliente y forma de pago → agregar líneas buscando el producto por nombre (muestra precio y stock) → revisar subtotal, IGV y total → Registrar y confirmar el resumen.
-- **Convertir proforma en venta:** la proforma debe estar ACEPTADA; se elige contado o crédito y el sistema descuenta stock, programa mantenimientos y genera el comprobante.
+- **Venta directa:** Ventas → Nueva venta → elegir cliente y forma de pago → agregar líneas buscando el producto por nombre (muestra precio y stock) → si se negoció, escribir el descuento % de la línea (hasta el tope del usuario) → revisar subtotal, IGV y total → Registrar y confirmar el resumen.
+- **Proformas:** "+ Nueva Proforma" → cliente, moneda y líneas (con descuento % opcional) → Guardar. En la lista: "📤 Enviar" muestra si salió el correo y si el cliente no tiene teléfono o correo; ✓ acepta; ✗ rechaza (pide confirmación). Una proforma convertida muestra "Venta #N".
+- **Convertir proforma en venta:** la proforma debe estar ACEPTADA. Un diálogo muestra el resumen (cliente, subtotal, IGV, total, tipo de cambio de la proforma) y pide la forma de pago: contado (queda PAGADA) o crédito con días entre 1 y 365 (queda PENDIENTE con fecha límite). Al confirmar, el sistema descuenta stock, programa mantenimientos y genera el comprobante; si algo falla (falta stock, ya convertida, no aceptada) se muestra el motivo en el mismo diálogo.
 - **Reporte de ventas:** Ventas → filtros por estado y rango de fechas (botón "Buscar"); muestra totales por moneda, ticket promedio y el detalle de cada venta.
 - **Anular una venta:** en el reporte, botón "Anular" (solo en ventas REGISTRADAS) → confirmar; el stock de los materiales se restaura.
 - **Reportes financieros (API):** `/api/v1/admin/reportes/ventas-resumen`, `/cobranza` y `/proformas-pendientes`.
+- **Moneda y tipo de cambio:** al vender o cotizar se elige soles o dólares; el tipo de cambio de SUNAT del día se carga solo y se puede cambiar si se negoció otro. Los productos en la otra moneda se convierten; el tipo de cambio queda guardado en la venta y sale en la factura.
 - **Exportar a Excel:** Ventas y Compras tienen "⬇ Exportar a Excel": descarga un .xlsx con los filtros de la pantalla, con una hoja de cabeceras (cliente/proveedor con RUC, pago, estado, comprobante, totales por moneda) y otra con el detalle línea por línea.
 - **Descargar comprobante:** en el reporte de ventas, el botón "PDF" descarga la factura o boleta de esa venta.
 - **Historial:** en Clientes y Proveedores, el botón "Historial" muestra todas sus ventas o compras, los totales por moneda y lo pendiente de pago, exportable a Excel.
 - **Kardex:** en Productos, el botón "Kardex" lista las entradas (compras), salidas (ventas) y devoluciones (anulaciones) con el saldo de stock después de cada movimiento, con filtro por fechas y exportable a Excel.
-- **Postventa:** el sistema envía a diario, a las 8:00 a. m., un correo con los clientes a contactar en los próximos 7 días (requiere `CORREO_OFICINA`).
+- **Postventa:** menú Postventa → pestañas Vencidos / Próximos (7 a 90 días) / Realizados / Todos, con filtro por cliente. Cada fila muestra cuántos días faltan, el teléfono (con enlace de WhatsApp para coordinar), la dirección y los equipos. "✓ Realizado" registra la fecha de la visita y el trabajo hecho; "Reprogramar" mueve la fecha a pedido del cliente. Además, el sistema envía a diario, a las 8:00 a. m., un correo con los clientes de los próximos 7 días (requiere `CORREO_OFICINA`).
+- **Cobranza:** menú Cobranza (o "Cobrar" en una venta pendiente) → lista de ventas a crédito con total, cobrado, saldo y días de atraso → "Registrar cobro": se abonan uno o varios montos (botón "todo" para el saldo completo) a las ventas del cliente en esa moneda, con fecha, método (transferencia, depósito, efectivo, Yape/Plin, cheque) y N° de operación. Al cubrir el saldo, la venta pasa a PAGADO. La pestaña "Historial de cobros" lista los pagos recibidos.
+- **Compras:** el N° de factura del proveedor es obligatorio (formato SERIE-NÚMERO, p. ej. F001-123). Si esa factura del mismo proveedor ya se ingresó, el sistema lo avisa y no vuelve a subir el stock.
 
 ### Preguntas frecuentes
 
@@ -259,7 +276,7 @@ src/main/java/com/bomerp/
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
 | 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
-| 7 | Desarrollo | 🔄 Backend operativo (OSE y WhatsApp simulados; RUC/DNI real); Proformas y Postventa ya renombrados; pendiente separar Cobranza y repartir reportes; SPA en desarrollo |
+| 7 | Desarrollo | 🔄 Backend operativo (OSE y WhatsApp simulados; RUC/DNI real); Proformas y Postventa ya renombrados; Cobranza separada (15/10/2026); pendiente repartir reportes; SPA en desarrollo |
 | 8 | Pruebas y validación | 🔄 Pruebas manuales de API; pruebas automatizadas mínimas (ver 5) |
 | 9 | Implementación/despliegue | ⏳ Pendiente — sin ambiente accesible para el cliente |
 | 10 | Documentación técnica | 🔄 Este documento, `CONTEXTO.md` y los `README.md` del backend y del frontend |
@@ -273,7 +290,7 @@ src/main/java/com/bomerp/
 |---|---|---|
 | Yoel Wagner Chambi Sirena | Proveedores, Proformas, Ventas | Proforma–ItemProforma, Venta–DetalleVenta |
 | Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras, Postventa | Compra–DetalleCompra |
-| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobro–DetalleCobro (por diseñar) |
+| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobro–DetalleCobro |
 
 Seguridad: sin responsable, se resolverá con Keycloak.
 
@@ -297,11 +314,11 @@ Seguridad: sin responsable, se resolverá con Keycloak.
 Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el código y la guía del curso. Ordenadas por importancia.
 
 ### Seguridad
-1. **La API está abierta sin login.** `application.properties` tiene `app.security.admin-requiere-login=false`, así que cualquiera puede llamar a `/api/v1/admin/**`. La SPA ya tiene login: hay que pasarlo a `true` (o resolverlo con Keycloak en S10).
+1. ~~**La API está abierta sin login.**~~ ✅ **Resuelto (18/10/2026, S10b):** toda `/api/v1/admin/**` exige un JWT válido de Keycloak; se retiró `app.security.admin-requiere-login`. Solo quedan abiertos el catálogo público, Swagger y `/docs`.
 2. **Credenciales en el historial de git.** La contraseña de aplicación de Gmail y el token de Decolecta ya no están en `application.properties`, pero siguen en commits anteriores. **Confirmar** que la contraseña se revocó en Google y que el token se regeneró.
-3. **Roles sin efecto (RF-02).** `ADMIN` y `ASISTENTE` pueden hacer exactamente lo mismo. Definir con el cliente qué puede hacer la asistente.
-4. **Usuarios de prueba.** La documentación anterior hablaba de `lisandro`/`lucy`, pero en la base solo existen `admin`/`asistente` (los de `data.sql` nunca se insertan). Decidir cuáles son los oficiales.
-5. **La SPA guarda el token Basic en `localStorage`**, que equivale a guardar la contraseña. Se resuelve al migrar a Keycloak (S10–S11).
+3. ~~**Roles sin efecto (RF-02).**~~ ✅ **Resuelto (18/10/2026):** ver RF-02. **Por confirmar con Lisandro:** si Lucy debe ver costo y margen de los productos (hoy los ve).
+4. ~~**Usuarios de prueba.**~~ ✅ **Resuelto en parte (18/10/2026):** cuentas `lisandro` y `lucy` en Keycloak (correos `.test` y contraseña de desarrollo: cambiarlas en producción). Cada venta guarda quién la registró (`vendedor_id` = `sub`, `vendedor_nombre`). Falta registrar el autor en compras, cobros y anulaciones.
+5. ~~**La SPA guarda el token Basic en `localStorage`**~~ ✅ **Resuelto (18/10/2026):** el access token (15 min) y el refresh token viven en `sessionStorage` y se renuevan solos; la contraseña ya no se guarda. S11: Authorization Code + PKCE.
 6. **`/docs` quedará bloqueado al activar el login:** `SecurityConfig` no hace `permitAll()` para `/docs/**` ni `/images/**`.
 
 ### Funcionalidad
@@ -310,12 +327,12 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 9. ~~**Producto sin categoría.**~~ ✅ **Resuelto (13/10/2026):** `Producto` tiene `@ManyToOne Categoria`; la API exige la categoría al crear/editar (404 si no existe) y no deja borrar una categoría con productos (409). ⚠️ Los productos anteriores quedaron **sin categoría**: hay que asignársela (PUT).
 10. ~~**Pantalla de productos en la SPA.**~~ ✅ **Resuelto (13/10/2026):** productos con filtro por categoría, y clientes y proveedores con formulario y búsqueda RUC/DNI en la SPA.
 11. ~~**Autocompletado RUC/DNI simulado.**~~ ✅ **Resuelto (13/10/2026):** proveedor principal apis.net.pe v1 (sin token), respaldo Decolecta con `DECOLECTA_TOKEN` (RUC por SUNAT, DNI por RENIEC) y modo simulado solo con `CONSULTA_DOCUMENTOS_SIMULADO=true`. ⚠️ La v1 limita las consultas seguidas (429): se responde 503 "intente en unos segundos" y se recomienda registrar un token gratuito de Decolecta como respaldo. La API oficial de RENIEC (PIDE) requiere convenio institucional y no está disponible para el proyecto.
-12. **Correlativo de comprobantes aleatorio** (`Math.random()` en `FacturacionService`). SUNAT exige numeración secuencial por serie.
+12. ~~**Correlativo de comprobantes aleatorio.**~~ ✅ **Resuelto (15/10/2026):** cada serie (F001, B001, FC01, BC01) numera 00000001, 00000002… sin saltos ni repetidos, con un contador por serie (`SERIES_COMPROBANTE`) bloqueado durante la venta y la restricción única (serie, número). Probado con 5 ventas simultáneas: números consecutivos, 0 repetidos. Las bases existentes deben correr `migracion_correlativos.sql` una vez (renumera los comprobantes ya emitidos).
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
 14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.
 15. ~~**Alerta de stock mínimo sobre todos los productos.**~~ ✅ **Resuelto (15/10/2026):** las alertas (pantalla y correo diario) consideran solo materiales (`MATERIAL_SERVICIO`); los equipos no controlan stock y ya no generan alertas falsas.
 16. ~~**Proformas vencidas sin programar.**~~ ✅ **Resuelto (15/10/2026):** `ProformaScheduledService` vence las proformas PENDIENTES todos los días a las 00:05 y también al iniciar el backend (por si estuvo apagado). Ejecución manual: `POST /proformas/marcar-vencidas`.
-17. ~~**Moneda mixta.**~~ ✅ **Resuelto (15/10/2026):** el backend rechaza con 400 una venta que mezcla productos en soles y dólares, y una proforma con productos en una moneda distinta a la suya.
+17. ~~**Moneda mixta.**~~ ✅ **Resuelto y ampliado (15/10/2026):** cada venta y proforma elige su moneda (soles o dólares) y los productos en la otra moneda se **convierten con el tipo de cambio**, que queda guardado en la venta/proforma. Ver RF-18.
 18. ~~**`ProductoController` usa el repositorio directamente.**~~ ✅ **Resuelto (13/10/2026):** ahora pasa por `ProductoService` y responde con `ProductoResponseDTO`.
 
 ### Arquitectura y alineamiento con el curso
@@ -324,17 +341,18 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 21. **Límites entre módulos incumplidos:** `FacturacionService` usa `VentaRepository`, y `ReportesService` usa `VentaRepository` y `ProformaRepository`. Se resuelve en parte con la decisión de **reportes por módulo**: mover `ventas-resumen` y `cobranza` a `ventas`, y `proformas-pendientes` a `proformas`.
 22. **Esquemas Oracle por módulo.** El curso propone esquemas `BOM_CATALOGO`, `BOM_VENTAS`, etc.; aquí todo está en un solo esquema (`JDREFRIGERACION`), y `CONTEXTO.md` mencionaba un prefijo `JD_<MODULO>` que no se usa.
 23. **Paquete raíz.** Documentaciones anteriores decían `com.jdrefrigeracion` o `pe.edu.upeu.sgejd`; el real es `com.bomerp`.
-24. **Seguridad con Keycloak sin responsable.** El equipo decidió usar Keycloak, pero alguien tiene que levantar el servidor (realm, clientes, roles), configurar el backend como *resource server* y adaptar el login de la SPA. Además, la ruta principal del curso es JWT propio (ADR-005) y Keycloak figura como referencia: **confirmar con el docente** que es válido y quién lo sustenta.
-25. **Cobranza por separar.** El módulo nuevo existe solo en la documentación: hoy su lógica está en `VentaService` (`estadoPago`, `marcarComoPagada`, `listarVentasConPagoAtrasado`) y en `ReportesService` (`/reportes/cobranza`). Falta crear el paquete `cobranza`, moverla y decidir si tendrá su propio cabecera-detalle (`Cobro`–`DetalleCobro`).
+24. ~~**Seguridad con Keycloak sin responsable.**~~ ✅ **Hecho (18/10/2026):** Keycloak 26.8 + Postgres en `docker-compose.yml`, backend como Resource Server y SPA adaptada. **Confirmar con el docente** que la ruta S10b es válida para la evaluación de S10 (la guía S10b dice que no se evalúa). Pendiente S11: login con redirección y PKCE, y desactivar *Direct access grants*.
+25. ~~**Cobranza por separar.**~~ ✅ **Resuelto (15/10/2026):** paquete `cobranza` con `Cobro`–`DetalleCobro`, abonos parciales y saldos; usa Ventas solo por su fachada (`listarPendientesDeCobro`, `obtenerPorIdPublico`, `marcarComoPagada`). Pendientes: (a) **anular una venta que ya tiene abonos** no avisa ni registra la devolución del dinero; (b) `POST /ventas/{id}/marcar-pagada` sigue existiendo y marca PAGADA sin registrar el cobro (la SPA ya no lo usa; retirarlo cuando nadie dependa de él); (c) `/reportes/cobranza` sigue en `reportes`.
+25b. **Topes de descuento por confirmar.** 30 % para Lisandro (ADMIN) y 10 % para Lucy (ASISTENTE) son una propuesta: confirmarlos con el cliente (`app.descuentos.*`). Mientras el login esté desactivado (punto 1), quien entra sin sesión recibe el tope de asistente.
 26. **Migración de base de datos para Proformas.** Cada integrante debe ejecutar `migracion_proforma.sql` en su Oracle local antes de arrancar el backend nuevo; si no, Hibernate crea tablas `PROFORMAS` vacías.
 27. **Herramienta de modernización:** `.github/modernize/` registra un intento de migrar a Java 25 / Boot 3.5.16 que no se aplicó. Confirmar y borrar esa carpeta si ya no sirve.
 
-- **Datos de JD en el PDF del comprobante.** `GeneradorPdfFacturacionService` imprime un RUC (20123456789), dirección y teléfono de ejemplo. Reemplazarlos por los datos reales de JD Refrigeración S.A.C. (idealmente en `application.properties`).
+- ~~**Datos de JD en el PDF del comprobante.**~~ ✅ **Resuelto (15/10/2026):** la factura/boleta y la proforma imprimen la razón social, el RUC (20521632268) y la dirección reales de JD, configurados en `application.properties` (`app.empresa.*`, clase `EmpresaProperties`). Se quitó el teléfono de ejemplo. **Pendiente:** teléfono y correo de la empresa, en espera de que Lisandro los confirme.
 - **Compras y stock de equipos (corregido 13/10/2026).** Las compras subían el stock de todos los productos, incluidos los equipos, mientras las ventas solo descontaban materiales. Ahora las compras también suben solo el stock de materiales.
 
 ### Pruebas y configuración
-28. **Pruebas automatizadas casi inexistentes.** `ProductoCrudTest` necesita Oracle encendido, y `HashGenTest` solo imprime un hash. No hay pruebas de ventas, de rollback ni de módulos.
-29. **H2 incluido pero sin perfil.** La dependencia está en el `pom.xml`, pero no hay configuración H2 activa. Además, `application-test.properties` está en `src/main/resources` y solo cambia el puerto.
+28. **Pruebas automatizadas casi inexistentes.** Solo queda `ProductoCrudTest`, que necesita Oracle encendido. No hay pruebas de ventas, de rollback ni de módulos.
+29. **H2 incluido pero sin perfil.** La dependencia está en el `pom.xml`, pero no hay configuración H2 activa (se eliminó `application-test.properties`, que solo cambiaba el puerto).
 30. **Paquete de arreglos 2 sin aplicar.** `Claude/arreglos2` (pruebas de ventas, correlativo secuencial, límites entre módulos) no está en el código. **No aplicar el `.patch` tal cual:** chocaría con los cambios de la S09 en ventas; portar a mano lo que se quiera.
 31. **Contenedor Docker:** la documentación anterior lo llamaba `SGE-DJ`; el real es **`SGE-JD`**. El volumen `sge-jd-oracle-data` está marcado como `external` en `docker-compose.yml`, así que debe existir antes de `docker compose up`.
 32. **Requisitos "16 RF consolidados en 8":** la documentación anterior lo decía, pero no existe esa versión consolidada. Confirmar si hay otro documento con los 8 RF.

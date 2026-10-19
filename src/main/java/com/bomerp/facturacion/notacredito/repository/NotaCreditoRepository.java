@@ -1,5 +1,7 @@
 package com.bomerp.facturacion.notacredito.repository;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,8 +12,9 @@ public interface NotaCreditoRepository extends JpaRepository<NotaCredito, Long> 
 
     Optional<NotaCredito> findByComprobanteReferencia_Id(Long comprobanteId);
 
-    /** Para el correlativo secuencial por serie (SUNAT exige numeración correlativa). */
-    long countBySerie(String serie);
+    /** Último número emitido en una serie de notas de crédito (FC01 / BC01). */
+    @Query("SELECT MAX(n.numero) FROM NotaCredito n WHERE n.serie = :serie")
+    String maxNumeroDeSerie(@Param("serie") String serie);
 
     List<NotaCredito> findAllByOrderByIdDesc();
 }

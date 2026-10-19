@@ -45,17 +45,40 @@ public class ItemProforma {
     @Column(name = "precio_unitario", nullable = false, precision = 12, scale = 2)
     private BigDecimal precioUnitario;
 
+    /** Descuento negociado de la línea (%), 0 si no hay. Nulo en filas anteriores = 0. */
+    @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
+    private BigDecimal descuentoPorcentaje;
+
     public ItemProforma(Producto producto, Integer cantidad) {
         this.producto = producto;
         this.cantidad = cantidad;
         this.precioUnitario = producto.calcularPrecioVenta(); // se "congela" aquí
     }
 
+    /** Con el precio ya convertido a la moneda de la proforma (también queda congelado). */
+    public ItemProforma(Producto producto, Integer cantidad, BigDecimal precioUnitario) {
+        this(producto, cantidad, precioUnitario, BigDecimal.ZERO);
+    }
+
+    public ItemProforma(Producto producto, Integer cantidad, BigDecimal precioUnitario, BigDecimal descuentoPorcentaje) {
+        this.producto = producto;
+        this.cantidad = cantidad;
+        this.precioUnitario = precioUnitario;
+        this.descuentoPorcentaje = descuentoPorcentaje;
+    }
+
+    public BigDecimal getDescuentoPorcentaje() {
+        return descuentoPorcentaje != null ? descuentoPorcentaje : BigDecimal.ZERO;
+    }
+
     public BigDecimal getPrecioUnitario() {
         return precioUnitario != null ? precioUnitario.setScale(2, java.math.RoundingMode.HALF_UP) : null;
     }
 
+    /** Precio × cantidad, menos el descuento de la línea. */
     public BigDecimal calcularSubtotalItem() {
-        return getPrecioUnitario().multiply(BigDecimal.valueOf(cantidad)).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal factor = BigDecimal.ONE.subtract(getDescuentoPorcentaje().movePointLeft(2));
+        return getPrecioUnitario().multiply(BigDecimal.valueOf(cantidad)).multiply(factor)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }

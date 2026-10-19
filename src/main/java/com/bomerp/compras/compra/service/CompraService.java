@@ -1,5 +1,10 @@
 package com.bomerp.compras.compra.service;
 import java.time.LocalDate;
+import com.bomerp.config.ReglaNegocioException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import com.bomerp.compras.detallecompra.entity.DetalleCompra;
 import com.bomerp.compras.compra.dto.CompraRequestDTO;
 import com.bomerp.compras.compra.entity.Compra;
@@ -55,18 +60,46 @@ public class CompraService {
         return compraRepository.detallesDeProducto(productoId);
     }
 
+    /** Serie de 4 caracteres (F001, E001, FA01…) + guion + número de hasta 8 dígitos. */
+    private static final Pattern FACTURA = Pattern.compile("^([A-Z0-9]{4})-(\\d{1,8})$");
+
+    /**
+     * Normaliza el N° de factura del proveedor: mayúsculas, sin espacios y número a 8 dígitos
+     * (F001-123 → F001-00000123), para detectar la misma factura escrita de dos formas.
+     */
+    static String normalizarFactura(String numero) {
+        String limpio = numero == null ? "" : numero.trim().toUpperCase().replace(" ", "");
+        Matcher m = FACTURA.matcher(limpio);
+        if (!m.matches()) {
+            throw new IllegalArgumentException(
+                    "El N° de factura debe tener el formato SERIE-NÚMERO, por ejemplo F001-123.");
+        }
+        return m.group(1) + "-" + String.format("%08d", Long.parseLong(m.group(2)));
+    }
+
     /**
      * Registra una compra y ACTUALIZA EL STOCK de los productos comprados.
+     *
+     * Reglas: cantidades ≥ 1 y precios > 0 (validados en el DTO), N° de factura con formato
+     * SERIE-NÚMERO, la misma factura del mismo proveedor no se registra dos veces (409)
+     * y el total lo calcula el servidor con las líneas.
      */
     public Compra registrarCompra(CompraRequestDTO dto) {
         Proveedor proveedor = proveedorService.obtenerPorId(dto.proveedorId());
+        String numeroFactura = normalizarFactura(dto.numeroFactura());
+        compraRepository.findFirstByProveedor_IdAndNumeroFactura(proveedor.getId(), numeroFactura)
+                .ifPresent(existente -> {
+                    throw new ReglaNegocioException("La factura " + numeroFactura + " de "
+                            + proveedor.getNombreORazonSocial() + " ya está registrada (compra #"
+                            + existente.getId() + "). No se puede ingresar dos veces.");
+                });
 
         Compra compra = new Compra();
         compra.setProveedor(proveedor);
         compra.setFechaCompra(dto.fechaCompra());
-        compra.setNumeroFactura(dto.numeroFactura());
+        compra.setNumeroFactura(numeroFactura);
         compra.setMoneda(dto.moneda());
-        compra.setTotal(dto.total());
+        BigDecimal total = BigDecimal.ZERO;
 
         for (CompraRequestDTO.DetalleCompraRequestDTO detDto : dto.detalles()) {
             Producto producto = productoService.obtenerPorId(detDto.productoId());
@@ -74,8 +107,9 @@ public class CompraService {
             DetalleCompra detalle = new DetalleCompra();
             detalle.setProducto(producto);
             detalle.setCantidad(detDto.cantidad());
-            detalle.setPrecioUnitarioCompra(detDto.precioUnitarioCompra());
-            
+            detalle.setPrecioUnitarioCompra(detDto.precioUnitarioCompra().setScale(2, RoundingMode.HALF_UP));
+            total = total.add(detalle.getPrecioUnitarioCompra().multiply(BigDecimal.valueOf(detDto.cantidad())));
+
             compra.addDetalle(detalle);
 
             // REGLA DE NEGOCIO: la compra sube el stock solo de los productos que lo controlan
@@ -87,6 +121,7 @@ public class CompraService {
             }
         }
 
+        compra.setTotal(total.setScale(2, RoundingMode.HALF_UP));
         return compraRepository.save(compra);
     }
 }

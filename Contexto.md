@@ -49,10 +49,11 @@ bomerp-backend/                     # proyecto Maven único
     ├── compras/                    # cabecera-detalle: Compra-DetalleCompra
     ├── inventario/                 # alertas de stock mínimo
     ├── facturacion/                # comprobantes electrónicos (OSE/SUNAT, simulado)
-    ├── postventa/                  # mantenimientos preventivos y alertas automáticas
+    ├── postventa/                  # mantenimientos preventivos, agenda y alertas automáticas
+    ├── cobranza/                   # cobros (abonos) y saldos de las ventas a crédito
     ├── notificaciones/             # correo (real) y WhatsApp (simulado)
     ├── reportes/                   # TRANSITORIO: consultas que deben pasar a ventas/, proformas/ y cobranza/
-    ├── seguridad/                  # login HTTP Basic TRANSITORIO; se reemplaza por Keycloak
+    ├── (seguridad)                 # RETIRADO en S10b: la identidad la maneja Keycloak (docker-compose)
     └── config/                     # SecurityConfig (seguridad + CORS), manejo global de errores
 
 bomerp-frontend/                    # SPA Angular 22 (rama frontend)
@@ -90,9 +91,9 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 | **inventario** | Soporte | Alertas de stock mínimo (tarea diaria 8:00 a. m.) | — (transversal a `catalogo`) |
 | **facturacion** | Integración | Comprobante electrónico (XML UBL 2.1) e integración con un OSE (hoy simulado) | `Comprobante` |
 | **postventa** | Operativo | 4 mantenimientos preventivos (3/6/9/12 meses) tras vender equipos de climatización o refrigeración; alertas diarias a la oficina | `Mantenimiento` |
-| **cobranza** *(nuevo, por separar de ventas)* | Operativo | Cuentas por cobrar: ventas a crédito, pagos pendientes y atrasados, registro de cobros y recordatorios al cliente | Hoy: campos de cobro en `Venta`. Propuesto: `Cobro` – `DetalleCobro` (un cobro puede cancelar varias ventas) |
+| **cobranza** | Operativo | Cuentas por cobrar: saldo por venta, abonos parciales o totales e historial de cobros | `Cobro` – `DetalleCobro` (un cobro puede abonar a varias ventas del mismo cliente y moneda) |
 | **notificaciones** | Integración | Interfaces segregadas por canal: `NotificadorCorreo` (SMTP real) y `NotificadorWhatsApp` (simulado) | — |
-| **seguridad** | Transversal | Usuarios, roles y login. **Decisión del equipo: se delegará en Keycloak** (servidor de identidad externo), así que no tendrá código de dominio propio ni responsable. Hoy funciona un login HTTP Basic transitorio | `Usuario` (transitorio) |
+| **seguridad** | Transversal | Usuarios, roles y login en **Keycloak** (realm `bomerp`, roles ADMIN y ASISTENTE). El backend solo valida el JWT (`config/SecurityConfig`, `config/PerfilController`) | — (vive en Keycloak) |
 
 **Reportes por módulo (decisión del equipo):** no existe un módulo `reportes`; cada módulo expone sus propias consultas y reportes, como propone el curso (p. ej. `GET /api/v1/ventas/resumen` en la S09). Así ningún módulo necesita leer los repositorios de otro.
 - **ventas:** reporte filtrable por estado y fechas (ya en `GET /ventas`) y resumen por periodo.
@@ -107,6 +108,8 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 - Ciclo de vida de la venta: `REGISTRADA → ANULADA` (`PATCH /ventas/{id}/anular`), separado del estado de cobro (`PENDIENTE/PAGADO/ATRASADO`). Anular dos veces → 409. Al anular, en una sola transacción: se devuelve el stock de los materiales, **Postventa** cancela los mantenimientos pendientes y **Facturación** emite la nota de crédito del comprobante aceptado.
 - Las ventas anuladas no cuentan en los reportes de ventas ni en la cobranza.
 
+- Moneda: cada venta/proforma elige soles o dólares. Los precios de productos en la otra moneda se convierten con el tipo de cambio (SUNAT del día, editable), que queda guardado; al convertir una proforma en venta se respeta su tipo de cambio (el cliente paga lo cotizado).
+
 **Nota de alineamiento con el curso:** el corte base exigido es `catalogo` + `ventas` funcionales, con `inventario`, `compras` y `seguridad` delimitados. Este proyecto va más allá (proformas, facturación, postventa y notificaciones), porque son requerimientos reales confirmados por el cliente.
 
 ---
@@ -118,7 +121,7 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 - **Interfaces segregadas para integraciones externas** (`ConsultaRucClient`, `OseClient`, `NotificadorCorreo`/`NotificadorWhatsApp`): permiten cambiar de proveedor sin tocar la lógica de negocio. Hoy se elige la implementación con `@Primary`.
 - **Cabecera-detalle como patrón transversal:** `Proforma/ItemProforma`, `Venta/DetalleVenta` y `Compra/DetalleCompra` siguen la misma forma, con atomicidad (commit/rollback) en cada operación.
 - **Secretos fuera del código:** se leen de variables de entorno o de `application-local.properties` (ignorado por git).
-- **Seguridad con Keycloak:** el login HTTP Basic actual es transitorio. El equipo decidió delegar usuarios, roles y emisión de tokens en Keycloak (la guía del curso lo trata como referencia en S10); el backend solo validará los tokens.
+- **Seguridad con Keycloak (hecho en S10b, 18/10/2026):** Keycloak emite los tokens y el backend los valida como Resource Server; vendedorId = `sub` del token.
 - **Reportes dentro de cada módulo:** evita un módulo "de lectura" que dependa de los repositorios de todos los demás y respeta los límites entre módulos.
 - **"Postventa" en lugar de "mantenimiento":** el módulo cubre todo lo que pasa después de la venta (mantenimientos preventivos, garantías y seguimiento del cliente), no solo el mantenimiento técnico.
 - **"Proforma" en lugar de "cotización":** es el término que usa el cliente para el documento previo a la venta. Se renombró en código, base de datos (tablas `PROFORMAS`, `ITEMS_PROFORMA`) y SPA.
@@ -131,10 +134,10 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 | Área | Estado |
 |---|---|
 | Módulos backend (los 11) | ✅ Operativos; integraciones OSE y WhatsApp **simuladas**; RUC/DNI real vía apis.net.pe v1 (respaldo opcional: Decolecta) |
-| Reorganización | ✅ Cotizaciones → **Proformas** y Mantenimiento → **Postventa** (código, BD y SPA; migración en `migracion_proforma.sql`). ⏳ Separar **Cobranza** de ventas; repartir el paquete `reportes` |
+| Reorganización | ✅ Cotizaciones → **Proformas** y Mantenimiento → **Postventa** (código, BD y SPA; migración en `migracion_proforma.sql`). ✅ **Cobranza** separada de ventas (15/10/2026). ⏳ Repartir el paquete `reportes` |
 | Facturación electrónica | ⚠️ OSE real pendiente; correlativo aleatorio (SUNAT exige secuencial) |
 | Frontend / SPA | 🔄 Angular 22 en desarrollo: login, layout, categorías, clientes, proveedores, proformas, compras y ventas (S09: formulario cabecera-detalle, reporte filtrable y anulación) |
-| Seguridad | ⚠️ Login HTTP Basic transitorio con la protección de `/api/v1/admin/**` **desactivada** (`app.security.admin-requiere-login=false`); se reemplazará por **Keycloak** (sin responsable asignado) |
+| Seguridad | ✅ Keycloak 26.8 + Postgres; `/api/v1/admin/**` exige JWT; reglas por rol verificadas (matriz de 14 casos). ⏳ S11: login con redirección y PKCE |
 | Modelo relacional Oracle | ✅ Corregido (relaciones cabecera-detalle con dirección de FK validada). ✅ `Producto` → `Categoria` (13/10/2026; los productos anteriores quedaron sin categoría hasta asignarla). Nueva tabla `NOTAS_CREDITO` |
 | Credenciales | ✅ Externalizadas. ⚠️ Confirmar que se revocaron las que quedaron en el historial de git |
 | Control de versiones | ✅ GitHub compartido (`YWAGNERCS/proyecto-SAC`) |
@@ -150,7 +153,7 @@ La lista completa de inconsistencias y pendientes está en la documentación com
 2. Oracle 23 Free en Docker (`docker-compose.yml` en la carpeta raíz del workspace): `docker start SGE-JD` si el contenedor ya existe; si no, `docker volume create sge-jd-oracle-data` y `docker compose up -d`. Puerto **1522**, servicio `FREEPDB1`, usuario `jdrefrigeracion`.
 3. Credenciales: copiar `application-local.properties.example` como `application-local.properties` y completar `spring.datasource.password` (o usar las variables `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`).
 4. `mvn spring-boot:run` (puerto 8080). Swagger UI: `/swagger-ui.html`.
-5. Verificar: `GET /api/v1/publico/catalogo` (sin login) y `GET /api/v1/admin/auth/me` con usuario y contraseña (HTTP Basic).
+5. Verificar: `GET /api/v1/publico/catalogo` (sin login) y `pruebas-seguridad/05_matriz.ps1` (tokens de Keycloak: `lisandro` / `lucy`).
 6. Frontend: en `bomerp-frontend`, `npm install` y `npm start` → `http://localhost:4200`.
 
 Usuarios de desarrollo: `admin` / `asistente`, contraseña `123456`.

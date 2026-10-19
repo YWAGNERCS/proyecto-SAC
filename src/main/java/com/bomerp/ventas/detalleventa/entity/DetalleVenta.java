@@ -39,17 +39,33 @@ public class DetalleVenta {
     @Column(name = "precio_unitario", nullable = false, precision = 12, scale = 2)
     private BigDecimal precioUnitario;
 
+    /** Descuento negociado de la línea (%), 0 si no hay. Nulo en filas anteriores = 0. */
+    @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
+    private BigDecimal descuentoPorcentaje;
+
     public DetalleVenta(Producto producto, Integer cantidad, BigDecimal precioUnitario) {
+        this(producto, cantidad, precioUnitario, BigDecimal.ZERO);
+    }
+
+    public DetalleVenta(Producto producto, Integer cantidad, BigDecimal precioUnitario, BigDecimal descuentoPorcentaje) {
         this.producto = producto;
         this.cantidad = cantidad;
         this.precioUnitario = precioUnitario;
+        this.descuentoPorcentaje = descuentoPorcentaje;
+    }
+
+    public BigDecimal getDescuentoPorcentaje() {
+        return descuentoPorcentaje != null ? descuentoPorcentaje : BigDecimal.ZERO;
     }
 
     public BigDecimal getPrecioUnitario() {
         return precioUnitario != null ? precioUnitario.setScale(2, java.math.RoundingMode.HALF_UP) : null;
     }
 
+    /** Precio × cantidad, menos el descuento de la línea. */
     public BigDecimal calcularSubtotalDetalle() {
-        return getPrecioUnitario().multiply(BigDecimal.valueOf(cantidad)).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal factor = BigDecimal.ONE.subtract(getDescuentoPorcentaje().movePointLeft(2));
+        return getPrecioUnitario().multiply(BigDecimal.valueOf(cantidad)).multiply(factor)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }

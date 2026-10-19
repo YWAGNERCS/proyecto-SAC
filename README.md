@@ -43,14 +43,16 @@ Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), co
 | Transaccional | 🏭 **Compras** | Compras a proveedor que suben el stock automáticamente |
 | Soporte | 📉 **Inventario** | Alertas diarias de stock mínimo |
 | Operativo | 🔧 **Postventa** | 4 mantenimientos preventivos automáticos (3/6/9/12 meses) tras vender equipos, y alertas a la oficina |
-| Operativo | 💰 **Cobranza** *(nuevo)* | Cuentas por cobrar: ventas a crédito, pagos pendientes y atrasados, registro de pagos *(hoy dentro de ventas; por separar)* |
+| Operativo | 💰 **Cobranza** | Cuentas por cobrar: saldo por venta, abonos parciales o totales (un pago puede cubrir varias ventas) e historial de cobros |
 | Integración | 🧾 **Facturación** | Comprobante electrónico UBL 2.1 *(OSE simulado)* |
 | Integración | ✉️ **Notificaciones** | Correo SMTP real y WhatsApp *(simulado)* |
-| Transversal | 🔐 **Seguridad** | Se delegará en **Keycloak** (usuarios, roles, login). Hoy: login HTTP Basic + BCrypt *transitorio* |
+| Transversal | 🔐 **Seguridad** | **Keycloak** (S10b): usuarios, roles y login fuera del backend; el backend valida el JWT (RS256) y autoriza por rol: ADMIN (Lisandro) y ASISTENTE (Lucy) |
 
 📤 **Exportaciones e historial:** Excel de ventas y compras (con detalle línea por línea), PDF del comprobante, historial por cliente y por proveedor, y **kardex** de inventario por producto.
 
 📊 **Reportes:** no son un módulo aparte. **Cada módulo expone sus propias consultas**: ventas (reporte filtrable por estado y fechas, resumen por periodo), cobranza (pendientes y atrasadas) y proformas (pendientes). *Hoy el resumen, la cobranza y las proformas pendientes siguen en el paquete `reportes`; falta moverlos a su módulo.*
+
+💱 **Soles o dólares:** cada venta y proforma elige su moneda; los precios se convierten con el tipo de cambio SUNAT del día (editable), que queda guardado en la venta y en la factura.
 
 **Reglas de negocio destacadas**
 - El servidor calcula precios, IGV y totales: el cliente solo envía producto y cantidad.
@@ -148,9 +150,10 @@ Base: `/api/v1/admin` (panel) · `/api/v1/publico` (sin login). Contrato complet
 | Compras | `GET` `POST /compras` · `GET /compras/{id}` |
 | Clientes | CRUD `/clientes` · `/clientes/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
 | Proveedores | CRUD `/proveedores` · `/proveedores/autocompletar/ruc/{ruc}` · `/autocompletar/dni/{dni}` |
-| Postventa | `GET /mantenimientos` · `POST /mantenimientos/{id}/marcar-realizado` |
+| Postventa | `GET /mantenimientos?vista=&dias=&clienteId=` · `GET /mantenimientos/resumen` · `PATCH /mantenimientos/{id}/realizado` · `PATCH /mantenimientos/{id}/reprogramar` |
+| Cobranza | `GET /cobranza/por-cobrar` · `GET /cobranza/cobros` · `POST /cobranza/cobros` |
 | Consultas *(por mover a su módulo)* | `/reportes/ventas-resumen` · `/reportes/cobranza` · `/reportes/proformas-pendientes` |
-| Auth | `GET /auth/me` |
+| Auth | Token en Keycloak (`/realms/bomerp/protocol/openid-connect/token`) · `GET /api/v1/auth/perfil` |
 
 Errores uniformes: `400` datos inválidos · `404` no encontrado · `409` regla de negocio o stock insuficiente.
 
@@ -167,7 +170,8 @@ src/main/java/com/bomerp/
 ├── facturacion/     comprobantes electrónicos (OSE)
 ├── inventario/      alertas de stock mínimo
 ├── notificaciones/  correo y WhatsApp
-├── postventa/       mantenimientos preventivos y alertas
+├── postventa/       mantenimientos preventivos, agenda y alertas
+├── cobranza/        cobros (abonos) y saldos de las ventas a crédito
 ├── proformas/       proformas (antes cotizaciones) + PDF
 ├── proveedores/     proveedores
 ├── reportes/        TRANSITORIO: consultas por repartir a ventas/, proformas/ y cobranza/
@@ -187,7 +191,7 @@ src/main/java/com/bomerp/
 - [ ] **S11** · Seguridad frontend con Keycloak (guards, interceptores, 401/403)
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones OSE y WhatsApp son simuladas, separar el módulo **Cobranza** de ventas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** la protección por login está desactivada en desarrollo, las integraciones OSE y WhatsApp son simuladas, repartir `reportes` entre sus módulos e integrar **Keycloak**. Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 
@@ -207,7 +211,7 @@ src/main/java/com/bomerp/
 |---|---|---|
 | **Yoel Wagner Chambi Sirena** | Proveedores · Proformas · Ventas | Proforma–ItemProforma · Venta–DetalleVenta |
 | **Wilson Ronald Apaza Mamani** | Catálogo · Inventario · Compras · Postventa | Compra–DetalleCompra |
-| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Cobranza | *Cobranza: Cobro–DetalleCobro (por diseñar)* |
+| **Aron Rodrigo Magaño Quispe** | Clientes · Facturación · Notificaciones · Cobranza | Cobro–DetalleCobro |
 
 🔐 **Seguridad** no tiene responsable: se resolverá con **Keycloak**.
 

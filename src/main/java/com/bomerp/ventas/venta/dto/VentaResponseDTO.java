@@ -7,6 +7,7 @@ import java.util.List;
 
 public record VentaResponseDTO(
         Long id,
+        Long clienteId,
         String clienteNombre,
         Long proformaOrigenId,
         LocalDate fechaVenta,
@@ -15,16 +16,19 @@ public record VentaResponseDTO(
         String estadoPago,
         LocalDate fechaLimitePago,
         String moneda,
+        BigDecimal tipoCambio,
         BigDecimal subtotal,
         BigDecimal igv,
         BigDecimal total,
         Long comprobanteId,
+        String registradoPor,
         List<DetalleResponseDTO> detalles
 ) {
     public record DetalleResponseDTO(
             String productoNombre,
             Integer cantidad,
             BigDecimal precioUnitario,
+            BigDecimal descuentoPorcentaje,
             BigDecimal subtotalDetalle
     ) {}
 
@@ -34,11 +38,13 @@ public record VentaResponseDTO(
                         d.getProducto().getNombre(),
                         d.getCantidad(),
                         d.getPrecioUnitario(),
+                        d.getDescuentoPorcentaje(),
                         d.calcularSubtotalDetalle()))
                 .toList();
 
         return new VentaResponseDTO(
                 v.getId(),
+                v.getCliente().getId(),
                 v.getCliente().getNombreORazonSocial(),
                 v.getProformaOrigen() != null ? v.getProformaOrigen().getId() : null,
                 v.getFechaVenta(),
@@ -47,10 +53,12 @@ public record VentaResponseDTO(
                 v.getEstadoPago().name(),
                 v.getFechaLimitePago(),
                 v.getMoneda().name(),
+                v.getTipoCambio(),
                 v.calcularSubtotal(),
                 v.calcularIgv(),
                 v.calcularTotal(),
                 v.getComprobanteId(),
+                v.getVendedorNombre(),
                 detalles
         );
     }

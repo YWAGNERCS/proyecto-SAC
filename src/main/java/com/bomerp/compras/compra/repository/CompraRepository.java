@@ -40,4 +40,7 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
             ORDER BY c.fechaCompra, c.id
             """)
     List<DetalleCompra> detallesDeProducto(@Param("productoId") Long productoId);
+
+    // Evita registrar dos veces la misma factura del mismo proveedor
+    Optional<Compra> findFirstByProveedor_IdAndNumeroFactura(Long proveedorId, String numeroFactura);
 }

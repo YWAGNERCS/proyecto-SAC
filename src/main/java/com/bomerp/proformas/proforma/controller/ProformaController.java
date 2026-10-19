@@ -19,13 +19,19 @@ public class ProformaController {
         this.proformaService = proformaService;
     }
 
+    /** Filtros opcionales: estado y cliente (el filtro "por cliente" de la pantalla). Más recientes primero. */
     @GetMapping
     public List<ProformaResponseDTO> listar(
-            @RequestParam(required = false) Proforma.EstadoProforma estado) {
+            @RequestParam(required = false) Proforma.EstadoProforma estado,
+            @RequestParam(required = false) Long clienteId) {
         List<Proforma> proformas = estado != null
                 ? proformaService.listarPorEstado(estado)
                 : proformaService.listarTodas();
-        return proformas.stream().map(ProformaResponseDTO::desdeEntidad).toList();
+        return proformas.stream()
+                .filter(p -> clienteId == null || p.getCliente().getId().equals(clienteId))
+                .sorted(java.util.Comparator.comparing(Proforma::getId).reversed())
+                .map(ProformaResponseDTO::desdeEntidad)
+                .toList();
     }
 
     @PostMapping
@@ -34,11 +40,12 @@ public class ProformaController {
         return ProformaResponseDTO.desdeEntidad(creada);
     }
 
+    /** Envía por WhatsApp y/o correo y devuelve qué salió y qué no. */
     @PostMapping("/{id}/enviar")
-    public void enviar(@PathVariable Long id,
+    public ProformaService.ResultadoEnvio enviar(@PathVariable Long id,
                         @RequestParam(defaultValue = "true") boolean whatsapp,
                         @RequestParam(defaultValue = "true") boolean correo) {
-        proformaService.enviar(id, whatsapp, correo);
+        return proformaService.enviar(id, whatsapp, correo);
     }
 
     @PostMapping("/{id}/aceptar")

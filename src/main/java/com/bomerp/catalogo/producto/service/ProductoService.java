@@ -95,11 +95,6 @@ public class ProductoService {
         return productoRepository.save(producto);
     }
 
-    /** Para la alerta de stock mínimo (RF02 / RF13 del brief): solo materiales que controlan stock. */
-    public List<Producto> listarConStockBajo() {
-        return listarEnAlerta();
-    }
-
     /** Fachada pública para otros módulos: evita que accedan a ProductoRepository. */
     public Producto obtenerPorId(Long id) {
         return productoRepository.findById(id)

@@ -12,15 +12,20 @@ public record ProformaResponseDTO(
         LocalDate fechaVencimiento,
         String estado,
         String moneda,
+        java.math.BigDecimal tipoCambio,
         BigDecimal subtotal,
         BigDecimal igv,
         BigDecimal total,
+        Long ventaId,
+        boolean enviadoCorreo,
+        boolean enviadoWhatsApp,
         List<ItemResponseDTO> items
 ) {
     public record ItemResponseDTO(
             String productoNombre,
             Integer cantidad,
             BigDecimal precioUnitario,
+            BigDecimal descuentoPorcentaje,
             BigDecimal subtotalItem
     ) {}
 
@@ -30,6 +35,7 @@ public record ProformaResponseDTO(
                         i.getProducto().getNombre(),
                         i.getCantidad(),
                         i.getPrecioUnitario(),
+                        i.getDescuentoPorcentaje(),
                         i.calcularSubtotalItem()))
                 .toList();
 
@@ -40,9 +46,13 @@ public record ProformaResponseDTO(
                 c.getFechaVencimiento(),
                 c.getEstado().name(),
                 c.getMoneda().name(),
+                c.getTipoCambio(),
                 c.calcularSubtotal(),
                 c.calcularIgv(),
                 c.calcularTotal(),
+                c.getVentaId(),
+                c.isEnviadoCorreo(),
+                c.isEnviadoWhatsApp(),
                 items
         );
     }

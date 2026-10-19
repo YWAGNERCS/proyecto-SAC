@@ -1,7 +1,7 @@
 -- ============================================================
 -- SGE-JD · Reinicio de datos de demostración (13/10/2026)
 --
--- BORRA todos los datos de negocio (ventas, proformas, compras, comprobantes,
+-- BORRA todos los datos de negocio (ventas, cobros, proformas, compras, comprobantes,
 -- notas de crédito, mantenimientos, productos, categorías, clientes, proveedores),
 -- reinicia los ID en 1 y carga un catálogo de demostración.
 -- NO toca USUARIOS (los accesos admin / asistente se conservan).
@@ -21,6 +21,16 @@ SET FEEDBACK OFF
 WHENEVER SQLERROR EXIT FAILURE ROLLBACK
 
 -- ── 1. Borrado (hijos antes que padres) ──────────────────────
+-- Cobranza (abonos): la crea el backend; si aún no existe, se ignora.
+BEGIN
+    EXECUTE IMMEDIATE 'DELETE FROM DETALLE_COBRO';
+    EXECUTE IMMEDIATE 'DELETE FROM COBROS';
+    EXECUTE IMMEDIATE 'ALTER TABLE DETALLE_COBRO MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1)';
+    EXECUTE IMMEDIATE 'ALTER TABLE COBROS MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1)';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
 DELETE FROM NOTAS_CREDITO;
 DELETE FROM COMPROBANTES;
 DELETE FROM MANTENIMIENTOS;
@@ -34,6 +44,14 @@ DELETE FROM PRODUCTOS;
 DELETE FROM CATEGORIAS;
 DELETE FROM CLIENTES;
 DELETE FROM PROVEEDORES;
+-- Contadores de comprobantes (F001, B001, FC01...): la próxima factura vuelve a ser la 00000001.
+-- La tabla la crea el backend; si aún no existe, se ignora.
+BEGIN
+    EXECUTE IMMEDIATE 'DELETE FROM SERIES_COMPROBANTE';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
 COMMIT;
 
 -- ── 2. Reinicio de los ID (columnas IDENTITY) ───────────────

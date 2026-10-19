@@ -17,7 +17,7 @@ import java.time.LocalDate;
  * que lo referencia. Serie FC01 para facturas y BC01 para boletas.
  */
 @Entity
-@Table(name = "NOTAS_CREDITO")
+@Table(name = "NOTAS_CREDITO", uniqueConstraints = @UniqueConstraint(name = "UK_NOTA_CREDITO_SERIE_NUMERO", columnNames = {"serie", "numero"}))
 @Getter
 @Setter
 @NoArgsConstructor

@@ -17,10 +17,13 @@ public class ReportesService {
 
     private final VentaRepository ventaRepository;
     private final ProformaRepository proformaRepository;
+    private final com.bomerp.cobranza.cobro.service.CobranzaService cobranzaService;
 
-    public ReportesService(VentaRepository ventaRepository, ProformaRepository proformaRepository) {
+    public ReportesService(VentaRepository ventaRepository, ProformaRepository proformaRepository,
+                           com.bomerp.cobranza.cobro.service.CobranzaService cobranzaService) {
         this.ventaRepository = ventaRepository;
         this.proformaRepository = proformaRepository;
+        this.cobranzaService = cobranzaService;
     }
 
     /**
@@ -86,8 +89,9 @@ public class ReportesService {
                 .toList();
 
         Map<String, Object> reporte = new HashMap<>();
-        reporte.put("pendientesNoVencidas", resumenMontos(ventasPendientesNoVencidas));
-        reporte.put("atrasadas", resumenMontos(ventasAtrasadas));
+        // Se reporta lo que falta cobrar: total menos los abonos ya recibidos
+        reporte.put("pendientesNoVencidas", resumenSaldos(ventasPendientesNoVencidas));
+        reporte.put("atrasadas", resumenSaldos(ventasAtrasadas));
         return reporte;
     }
 
@@ -107,20 +111,21 @@ public class ReportesService {
         return reporte;
     }
 
-    private Map<String, Object> resumenMontos(List<Venta> ventas) {
-        BigDecimal totalSoles = BigDecimal.ZERO;
-        BigDecimal totalDolares = BigDecimal.ZERO;
+    private Map<String, Object> resumenSaldos(List<Venta> ventas) {
+        BigDecimal saldoSoles = BigDecimal.ZERO;
+        BigDecimal saldoDolares = BigDecimal.ZERO;
         for (Venta v : ventas) {
+            BigDecimal saldo = cobranzaService.saldoDe(v);
             if (v.getMoneda() == Venta.Moneda.SOLES) {
-                totalSoles = totalSoles.add(v.calcularTotal());
+                saldoSoles = saldoSoles.add(saldo);
             } else {
-                totalDolares = totalDolares.add(v.calcularTotal());
+                saldoDolares = saldoDolares.add(saldo);
             }
         }
         Map<String, Object> resumen = new HashMap<>();
         resumen.put("cantidad", ventas.size());
-        resumen.put("totalSoles", totalSoles);
-        resumen.put("totalDolares", totalDolares);
+        resumen.put("totalSoles", saldoSoles);
+        resumen.put("totalDolares", saldoDolares);
         return resumen;
-    }
+    }
 }
