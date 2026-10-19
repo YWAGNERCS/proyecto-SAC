@@ -137,7 +137,7 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 | Reorganización | ✅ Cotizaciones → **Proformas** y Mantenimiento → **Postventa** (código, BD y SPA; migración en `migracion_proforma.sql`). ✅ **Cobranza** separada de ventas (15/10/2026). ⏳ Repartir el paquete `reportes` |
 | Facturación electrónica | ⚠️ OSE real pendiente. ✅ Correlativo secuencial por serie (F001, B001, FC01, BC01) y datos reales de JD en el PDF |
 | Frontend / SPA | 🔄 Angular 22: login con Keycloak, catálogo, clientes, proveedores, proformas, ventas, compras, cobranza y postventa. **Diseño responsivo** (celular, tablet y escritorio). Faltan pantallas de inventario y facturación |
-| Seguridad | ✅ Keycloak 26.8 + Postgres; `/api/v1/admin/**` exige JWT; reglas por rol verificadas (matriz de 14 casos). ⏳ S11: login con redirección y PKCE |
+| Seguridad | ✅ Keycloak 26.8 + Postgres; `/api/v1/admin/**` exige JWT; reglas por rol verificadas (matriz de 14 casos). ✅ S11: la SPA inicia sesión con Authorization Code + PKCE (sin formulario propio), guards por sesión y por rol, refresco del token ante 401 |
 | Modelo relacional Oracle | ✅ Corregido (relaciones cabecera-detalle con dirección de FK validada). ✅ `Producto` → `Categoria` (13/10/2026; los productos anteriores quedaron sin categoría hasta asignarla). Nueva tabla `NOTAS_CREDITO` |
 | Credenciales | ✅ Externalizadas. ⚠️ Confirmar que se revocaron las que quedaron en el historial de git |
 | Control de versiones | ✅ GitHub compartido (`YWAGNERCS/proyecto-SAC`) |
@@ -168,5 +168,5 @@ Usuarios de desarrollo: `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Key
 | Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras, Postventa | Compra–DetalleCompra |
 | Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobro–DetalleCobro |
 
-- **Seguridad:** resuelta con Keycloak en S10b (realm `bomerp`, roles ADMIN y ASISTENTE); S11 completa el login con redirección y PKCE.
+- **Seguridad:** resuelta con Keycloak en S10b (realm `bomerp`, roles ADMIN y ASISTENTE) y S11 (login con redirección y PKCE).
 - Cada integrante es responsable de su módulo en backend y frontend, y lo evidencia con sus propios commits (el curso evalúa y sustenta el aporte individual; en S09 cada estudiante documenta un formulario cabecera-detalle de su propio módulo).

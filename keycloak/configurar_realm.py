@@ -14,6 +14,7 @@ import urllib.request
 KC = "http://localhost:38080"
 REALM = "bomerp"
 CLIENTE = "bomerp-frontend"
+CLIENTE_PRUEBAS = "sgejd-pruebas"
 SPA = "http://localhost:4200"
 
 # Roles reales del negocio (auditoría C2): Lisandro administra, Lucy registra.
@@ -68,8 +69,13 @@ def main():
         "internationalizationEnabled": True,
         "supportedLocales": ["es", "en"],
         "defaultLocale": "es",
-        # 15 min de access token: la SPA lo renueva con el refresh token antes de que venza
-        "accessTokenLifespan": 900,
+        # 5 min de access token (valor por defecto de Keycloak): ante un 401 la SPA lo renueva con el refresh token
+        "accessTokenLifespan": 300,
+        # Eventos de login, intercambio de código, refresco y cierre: auditoría en la consola (Events)
+        "eventsEnabled": True,
+        "eventsExpiration": 7 * 24 * 3600,
+        "enabledEventTypes": ["LOGIN", "LOGIN_ERROR", "CODE_TO_TOKEN", "CODE_TO_TOKEN_ERROR",
+                              "REFRESH_TOKEN", "REFRESH_TOKEN_ERROR", "LOGOUT"],
     })
 
     # 3.1 Roles de realm (viajan en realm_access.roles)
@@ -77,14 +83,23 @@ def main():
         st, _ = pedir("POST", f"/admin/realms/{REALM}/roles", t, {"name": nombre, "description": desc})
         print("rol", nombre, "creado" if st == 201 else "ya existía")
 
-    # 4. Cliente público (la SPA no guarda secretos). Direct access grants: atajo de laboratorio
-    st, _ = pedir("POST", f"/admin/realms/{REALM}/clients", t, {
+    # 4. Cliente de la SPA (S11): público, solo Authorization Code y PKCE S256 obligatorio.
+    #    Sin Direct access grants: la SPA nunca recibe la contraseña del usuario.
+    guardar_cliente(t, {
         "clientId": CLIENTE, "name": "SGE-JD SPA", "protocol": "openid-connect",
-        "publicClient": True, "standardFlowEnabled": True, "directAccessGrantsEnabled": True,
-        "redirectUris": [SPA + "/*"], "webOrigins": [SPA],
-        "attributes": {"post.logout.redirect.uris": SPA + "/*"},
+        "publicClient": True, "standardFlowEnabled": True, "directAccessGrantsEnabled": False,
+        "implicitFlowEnabled": False,
+        "redirectUris": [SPA + "/auth/callback"], "webOrigins": [SPA],
+        "attributes": {"pkce.code.challenge.method": "S256", "post.logout.redirect.uris": SPA + "/*"},
     })
-    print("cliente", CLIENTE, "creado" if st == 201 else "ya existía")
+
+    # Cliente SOLO para los scripts de pruebas-seguridad (PowerShell no puede hacer el login con
+    # redirección). Mantiene el atajo de contraseña directa: no se usa desde la SPA y no debe
+    # existir en producción.
+    guardar_cliente(t, {
+        "clientId": CLIENTE_PRUEBAS, "name": "Scripts de prueba (solo desarrollo)", "protocol": "openid-connect",
+        "publicClient": True, "standardFlowEnabled": False, "directAccessGrantsEnabled": True,
+    })
 
     # 5. Usuarios semilla con su rol
     for u in USUARIOS:
@@ -100,6 +115,20 @@ def main():
         pedir("POST", f"/admin/realms/{REALM}/users/{uid}/role-mappings/realm", t,
               [{"id": rol["id"], "name": rol["name"]}])
         print("  sub =", uid, "· rol", u["rol"])
+
+
+def guardar_cliente(t, datos):
+    """Crea el cliente o, si ya existe, actualiza su configuración (idempotente)."""
+    _, lista = pedir("GET", f"/admin/realms/{REALM}/clients?clientId={datos['clientId']}", t)
+    if lista:
+        actual = lista[0]
+        actual.update({k: v for k, v in datos.items() if k != "attributes"})
+        actual.setdefault("attributes", {}).update(datos.get("attributes", {}))
+        pedir("PUT", f"/admin/realms/{REALM}/clients/{actual['id']}", t, actual)
+        print("cliente", datos["clientId"], "actualizado")
+    else:
+        pedir("POST", f"/admin/realms/{REALM}/clients", t, datos)
+        print("cliente", datos["clientId"], "creado")
 
 
 if __name__ == "__main__":

@@ -7,9 +7,11 @@ Keycloak emite los tokens (JWT RS256) que el backend valida. Corre aparte del ba
 | Consola | http://localhost:38080 · usuario y contraseña en `docker-compose.yml` (`KC_BOOTSTRAP_ADMIN_*`) |
 | Realm | `bomerp` (login en español) |
 | Roles | `ADMIN` (Lisandro) · `ASISTENTE` (Lucy) |
-| Cliente | `bomerp-frontend` (público; *Direct access grants* activo hasta que S11 pase el login a PKCE) |
+| Cliente de la SPA | `bomerp-frontend`: público, solo *Standard flow* (Authorization Code) con **PKCE S256 obligatorio**; *Direct access grants* desactivado. Retorno: `http://localhost:4200/auth/callback` |
+| Cliente de pruebas | `sgejd-pruebas`: solo para `pruebas-seguridad/*.ps1` (PowerShell no puede hacer el login con redirección). Usa contraseña directa: **no crearlo en producción** |
 | Usuarios | `lisandro` · `lucy` — contraseña de desarrollo en `configurar_realm.py` (cambiarla en producción) |
-| Access token | 15 minutos; la SPA lo renueva con el refresh token |
+| Access token | 5 minutos; ante un 401 la SPA lo renueva con el refresh token |
+| Eventos | Activados (login, canje de código, refresco, logout): consola → *Events* |
 
 ## Levantarlo
 

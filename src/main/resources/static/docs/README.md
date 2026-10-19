@@ -65,7 +65,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 
 | RF | Descripción | Estado real en el código |
 |---|---|---|
-| RF-01 | **Autenticación:** inicio de sesión con credenciales seguras. | ✅ Keycloak emite el JWT (RS256) y el backend lo valida; las contraseñas viven solo en Keycloak. Pantalla de login en la SPA (S11 la cambiará por redirección con PKCE). |
+| RF-01 | **Autenticación:** inicio de sesión con credenciales seguras. | ✅ La SPA redirige a la pantalla de login de Keycloak (Authorization Code + PKCE S256; sin formulario propio ni *Direct access grants*). Keycloak emite el JWT (RS256) y el backend lo valida; las contraseñas viven solo en Keycloak. |
 | RF-02 | **Roles y permisos:** restringir módulos según el rol (Administrador, Asistente). | ✅ ADMIN (Lisandro) y ASISTENTE (Lucy). Catálogo: consultar cualquiera, modificar solo ADMIN; anular ventas y eliminar clientes/proveedores: solo ADMIN; tope de descuento por rol. 401/403 en JSON. La SPA oculta lo que el rol no puede hacer. |
 | RF-03 | **Catálogo de productos:** moneda dual y precio por margen porcentual. | ✅ Precio = costo base × (1 + margen %). CRUD completo de productos, cada uno con su categoría. |
 | RF-04 | **Autocompletado de clientes/proveedores** por RUC/DNI vía API externa. | ✅ apis.net.pe v1 sin token (RUC → SUNAT, DNI → RENIEC), con respaldo en Decolecta si se configura `DECOLECTA_TOKEN`. Valida el formato (400), distingue "no existe" (404) de "servicio ocupado" (503) y guarda las consultas exitosas en memoria. |
@@ -236,7 +236,8 @@ src/main/java/com/bomerp/
 
 ### Flujos de operación
 
-- **Iniciar sesión:** en la SPA (`http://localhost:4200`) con el usuario de Keycloak (`lisandro` o `lucy`). La sesión dura mientras la pestaña esté abierta y se renueva sola; "Salir" la cierra también en Keycloak. Junto al nombre se muestra el rol.
+- **Iniciar sesión:** en la SPA (`http://localhost:4200`) pulsar "Iniciar sesión" (o abrir cualquier pantalla): se abre la pantalla de Keycloak, se entra con `lisandro` o `lucy` y se vuelve a la pantalla pedida. La sesión sobrevive un F5 en la misma pestaña y el token se renueva solo; "Salir" la cierra también en Keycloak. Junto al nombre se muestra el rol, y el ADMIN ve además "+ Producto" en el menú.
+- **Acceso denegado:** si un usuario abre una pantalla de su rol no permitido (por ejemplo, Lucy en *Nuevo producto*), la SPA muestra "Acceso denegado"; aunque la saltara, el backend respondería 403.
 - **Registrar proveedor:** Proveedores → "+ Nuevo Proveedor" → elegir empresa o persona natural → escribir el RUC o DNI → "Buscar en SUNAT/RENIEC" (llena nombre y dirección; avisa si ya está registrado) → completar teléfono, correo y contacto → Guardar.
 - **Registrar cliente:** Clientes → "+ Nuevo Cliente" → empresa (RUC) o persona natural (DNI) → "Buscar en SUNAT/RENIEC" (llena nombre y dirección; avisa si ya está registrado) → completar teléfono y correo → Guardar. Si aparece "servicio ocupado", esperar unos segundos (apis.net.pe limita las consultas seguidas).
 - **Venta directa:** Ventas → Nueva venta → elegir cliente y forma de pago → agregar líneas buscando el producto por nombre (muestra precio y stock) → si se negoció, escribir el descuento % de la línea (hasta el tope del usuario) → revisar subtotal, IGV y total → Registrar y confirmar el resumen.
@@ -304,7 +305,7 @@ Seguridad: Keycloak, integrado en S10b (backend como Resource Server y login de 
 | S8 | CRUD de tablas dependientes | ✅ Productos con categoría, categorías, clientes y proveedores (con búsqueda RUC/DNI) y compras |
 | S9 | Formulario transaccional cabecera-detalle | ✅ Venta directa con FormArray, reporte filtrable y anulación |
 | S10 | Seguridad backend con roles | ✅ Ruta **Keycloak** (S10b, 18/10/2026): Resource Server, reglas por rol, `GET /api/v1/auth/perfil`, matriz de 14 casos (`pruebas-seguridad/`) |
-| S11 | Seguridad frontend (guards, interceptores, 401/403) | 🔄 Guard, interceptor `Bearer`, renovación del token y botones por rol ya listos; falta el login con redirección y PKCE |
+| S11 | Seguridad frontend (guards, interceptores, 401/403) | ✅ 19/10/2026: login Authorization Code + PKCE, `/auth/callback`, `authGuard` (lleva a Keycloak) y `rolGuard('ADMIN')` (lleva a `/sin-permiso`), interceptor que refresca una vez ante 401 y no ante 403, menú por rol. Token en memoria con copia en `sessionStorage` |
 | — | Diseño responsivo | ✅ 19/10/2026: celular, tablet y escritorio |
 
 ---

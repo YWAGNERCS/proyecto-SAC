@@ -193,10 +193,10 @@ src/main/java/com/bomerp/
 - [x] **S8** · CRUD de tablas dependientes
 - [x] **S9** · Formulario transaccional de venta (FormArray), reporte filtrable y anulación
 - [x] **S10** · Seguridad backend con roles (ruta **Keycloak**, S10b): Resource Server, ADMIN/ASISTENTE, perfil desde el JWT
-- [ ] **S11** · Seguridad frontend con Keycloak: login con redirección y PKCE (hoy el login pide el token directo, atajo de laboratorio)
+- [x] **S11** · Seguridad frontend: login con Authorization Code + PKCE, `authGuard`/`rolGuard`, interceptor con refresco ante 401, menú por rol
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** las integraciones OSE y WhatsApp son simuladas, falta repartir `reportes` entre sus módulos y el login con PKCE (S11). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** las integraciones OSE y WhatsApp son simuladas, falta repartir `reportes` entre sus módulos. Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez. Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
 
 ---
 

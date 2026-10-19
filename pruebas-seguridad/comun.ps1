@@ -10,7 +10,7 @@ $Global:CLAVE = 'JdRefri2026!'
 
 function Get-Token([string]$usuario) {
     $r = Invoke-RestMethod -Method Post -Uri $Global:KC -ContentType 'application/x-www-form-urlencoded' `
-        -Body "grant_type=password&client_id=bomerp-frontend&username=$usuario&password=$($Global:CLAVE)"
+        -Body "grant_type=password&client_id=sgejd-pruebas&username=$usuario&password=$($Global:CLAVE)"
     return $r
 }
 
