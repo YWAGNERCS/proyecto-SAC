@@ -46,7 +46,7 @@ npm install
 npm start
 ```
 
-➡️ `http://localhost:4200` · Usuarios de desarrollo: `lisandro` (ADMIN) · `lucy` (ASISTENTE) · contraseña `JdRefri2026!` (cuentas de Keycloak, solo desarrollo).
+➡️ `http://localhost:4200` · Usuarios de desarrollo: `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Keycloak; la contraseña de desarrollo está en `keycloak/configurar_realm.py`, no se publica aquí).
 
 | Comando | Uso |
 |---|---|
