@@ -69,3 +69,69 @@
   font-size: 1.15rem;
   color: var(--primary);
 }
+
+/* ── Celular: cada línea del detalle es una tarjeta con sus campos rotulados ──
+   (no se usa scroll horizontal: recortaría la lista de sugerencias del buscador) */
+@media (max-width: 640px) {
+  .detalle-table {
+    min-width: 0;
+  }
+
+  .detalle-table thead {
+    display: none;
+  }
+
+  .detalle-table,
+  .detalle-table tbody {
+    display: block;
+  }
+
+  .detalle-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm, 8px);
+    position: relative;
+  }
+
+  .detalle-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: left !important;
+  }
+
+  .detalle-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+
+  /* El producto ocupa todo el ancho; deja sitio al botón ✕ arriba a la derecha */
+  .detalle-table td.producto-cell {
+    grid-column: 1 / -1;
+    padding-right: 44px;
+  }
+
+  .detalle-table td.celda-quitar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+
+  .detalle-table td.celda-quitar::before {
+    content: none;
+  }
+
+  .totales {
+    max-width: none;
+  }
+}

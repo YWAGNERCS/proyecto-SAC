@@ -84,7 +84,7 @@
         <tbody>
           @for (linea of detalles.controls; track linea; let i = $index) {
             <tr [formGroupName]="i">
-              <td class="producto-cell">
+              <td class="producto-cell" data-label="Producto">
                 <input type="text" class="form-control" formControlName="busqueda" autocomplete="off"
                        placeholder="Escriba para buscar…"
                        [class.is-invalid]="linea.controls.productoId.invalid && linea.touched"
@@ -111,11 +111,11 @@
                   <div class="error-text">Solo hay {{ productosPorLinea()[i]?.stockActual ?? 0 }} en stock.</div>
                 }
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Cantidad">
                 <input type="number" class="form-control text-center" formControlName="cantidad" min="1"
                        [class.is-invalid]="linea.controls.cantidad.invalid && linea.controls.cantidad.touched">
               </td>
-              <td style="text-align: right;">
+              <td style="text-align: right;" data-label="P. unitario">
                 @if (productosPorLinea()[i]; as p) {
                   @if (preciosPorLinea()[i] !== null) {
                     {{ simbolo() }} {{ preciosPorLinea()[i] | number: '1.2-2' }}
@@ -125,13 +125,13 @@
                   } @else { <span class="error-text">falta T.C.</span> }
                 } @else { <span class="muted">—</span> }
               </td>
-              <td class="text-center">
+              <td class="text-center" [attr.data-label]="'Dscto. % (máx. ' + topeDescuento() + ')'">
                 <input type="number" class="form-control text-center" formControlName="descuento" min="0" step="0.5"
                        [max]="topeDescuento()" [attr.aria-label]="'Descuento de la línea ' + (i + 1)"
                        [class.is-invalid]="excedeDescuento(i) || linea.controls.descuento.invalid">
               </td>
-              <td style="text-align: right; font-weight: 600;">{{ subtotales()[i] | number: '1.2-2' }}</td>
-              <td class="text-center">
+              <td style="text-align: right; font-weight: 600;" data-label="Subtotal">{{ subtotales()[i] | number: '1.2-2' }}</td>
+              <td class="text-center celda-quitar">
                 <button type="button" class="btn btn-sm btn-danger" (click)="quitarLinea(i)"
                         [disabled]="detalles.length === 1" title="Quitar línea">✕</button>
               </td>

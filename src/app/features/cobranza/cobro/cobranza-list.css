@@ -106,3 +106,40 @@
   overflow-y: auto;
   padding: 24px;
 }
+
+/* ── Celular: filtros a todo el ancho, indicadores en dos columnas ── */
+@media (max-width: 640px) {
+  .filtros {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .filtros > div {
+    flex: 1 1 100%;
+  }
+
+  .filtros .form-select {
+    width: 100%;
+  }
+
+  .pestanas {
+    margin-right: 0;
+  }
+
+  .pestanas .btn {
+    flex: 1 1 auto;
+  }
+
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .kpi strong {
+    font-size: 1.1rem;
+  }
+
+  .dialogo {
+    padding: 18px;
+  }
+}

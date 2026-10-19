@@ -25,6 +25,7 @@
 }
 
 .kpi {
+  margin-bottom: 0;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
@@ -101,4 +102,44 @@
 
 .anulada td strong {
   text-decoration: line-through;
+}
+
+/* ── Celular: estado a todo el ancho, fechas lado a lado, botones parejos ── */
+@media (max-width: 640px) {
+  .filtros {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .filtros > div {
+    min-width: 0;
+    flex: 1 1 calc(50% - 5px);
+  }
+
+  .filtros > div:first-child,
+  .filtros-acciones {
+    flex-basis: 100%;
+  }
+
+  .filtros .form-select,
+  .filtros .form-control {
+    width: 100%;
+  }
+
+  .filtros-acciones > .btn {
+    flex: 1 1 auto;
+  }
+
+  .agregados {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .kpi {
+    padding: 10px 12px;
+  }
+
+  .kpi strong {
+    font-size: 1.05rem;
+  }
 }

@@ -64,3 +64,9 @@
   color: var(--primary);
   text-decoration: none;
 }
+
+@media (max-width: 640px) {
+  .dialogo {
+    padding: 18px;
+  }
+}

@@ -1,24 +1,15 @@
-.body {
-  display: flex;
-}
-
-.sidebar {
-  width: 200px;
-}
-
-.sidebar a.active {
-  font-weight: bold;
-}
-
-.content {
-  flex: 1;
-  padding: 1rem;
-}
-
-.home-link {
+/* ── Marca ── */
+.brand-icono {
   display: inline-flex;
   align-items: center;
-  vertical-align: middle;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--primary-gradient);
+  color: white;
+  -webkit-text-fill-color: white;
+  font-size: 1.1rem;
 }
 
 /* ── Usuario y logout en navbar ── */
@@ -37,6 +28,12 @@
   color: var(--text-main, #1E293B);
   font-weight: 500;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.nav-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-logout {
@@ -45,7 +42,7 @@
   gap: 5px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
+  color: #DC2626;
   border-radius: 7px;
   padding: 0.3rem 0.65rem;
   font-size: 0.8rem;
@@ -58,7 +55,7 @@
 .btn-logout:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.5);
-  color: #f87171;
+  color: #B91C1C;
 }
 
 .nav-rol {
@@ -68,4 +65,118 @@
   font-size: 0.72rem;
   background: rgba(99, 102, 241, 0.12);
   color: #4F46E5;
+}
+
+/* ── Botón ☰ (solo en pantallas angostas) ── */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+}
+
+.nav-toggle span {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text-main, #1E293B);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.menu-abierto .nav-toggle span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.menu-abierto .nav-toggle span:nth-child(2) { opacity: 0; }
+.menu-abierto .nav-toggle span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* Escritorio ancho: todo en una línea */
+@media (min-width: 1281px) {
+  .nav-links {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Laptop (1281–1500 px): para que quepa en una línea, el nombre va solo en el tooltip */
+@media (min-width: 1281px) and (max-width: 1500px) {
+  .nav-nombre {
+    display: none;
+  }
+
+  .nav-links {
+    gap: 2px;
+  }
+
+  .nav-links .nav-link {
+    padding: 8px 9px;
+  }
+}
+
+/* Tablet y celular: menú desplegable debajo de la barra */
+@media (max-width: 1280px) {
+  .nav-toggle {
+    display: flex;
+  }
+
+  .nav-links {
+    order: 3;
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .menu-abierto .nav-links {
+    display: flex;
+  }
+
+  .nav-links .nav-link {
+    padding: 10px 12px;
+  }
+}
+
+/* Celular: solo el rol junto al ícono, sin el nombre; "Salir" como ícono */
+@media (max-width: 560px) {
+  .nav-nombre,
+  .btn-logout-texto {
+    display: none;
+  }
+
+  .nav-rol {
+    margin-left: 0;
+  }
+
+  .btn-logout {
+    padding: 0.4rem 0.55rem;
+  }
+
+  /* Marca, rol, salir y ☰ en una sola línea */
+  .app-navbar {
+    padding: 0.6rem 0.75rem;
+    gap: 8px;
+  }
+
+  .brand-logo {
+    font-size: 1.2rem;
+  }
+
+  .brand-icono {
+    width: 30px;
+    height: 30px;
+  }
+
+  .nav-user {
+    gap: 6px;
+  }
+
+  .nav-username svg {
+    display: none;
+  }
 }
