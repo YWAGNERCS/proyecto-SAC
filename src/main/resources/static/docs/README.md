@@ -209,7 +209,7 @@ src/main/java/com/bomerp/
    ```
    También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`.
 4. Ejecutar `mvn spring-boot:run` (puerto 8080). Swagger: `http://localhost:8080/swagger-ui.html`.
-   - **Identidad (Keycloak):** `docker compose up -d keycloak-db keycloak` (desde `C:\SGE-JD`). La primera vez importa `keycloak/realm-bomerp.json` (realm, roles, cliente y usuarios); si no, `python keycloak/configurar_realm.py` lo crea. Consola: `http://localhost:38080` (admin / admin123). Usuarios de desarrollo: `lisandro` (ADMIN) y `lucy` (ASISTENTE), contraseña `JdRefri2026!`. Pruebas: `pruebas-seguridad/05_matriz.ps1`.
+   - **Identidad (Keycloak):** `docker compose up -d keycloak-db keycloak` (desde `bomerp-backend`). La primera vez importa `keycloak/realm-bomerp.json` (realm, roles, cliente y usuarios); si no, `python keycloak/configurar_realm.py` lo crea. Consola: `http://localhost:38080` (credenciales en `docker-compose.yml`, `KC_BOOTSTRAP_ADMIN_*`). Usuarios de desarrollo: `lisandro` (ADMIN) y `lucy` (ASISTENTE) (contraseña de desarrollo en `keycloak/configurar_realm.py`). Pruebas: `pruebas-seguridad/05_matriz.ps1`.
    - **Bases creadas antes del 15/10/2026:** después de arrancar el backend nuevo una vez, ejecutar `migracion_auditoria_altos.sql` (permite el estado CONVERTIDA de las proformas; sin él, convertir una proforma falla con ORA-02290). Se puede ejecutar varias veces.
    - **Datos de demostración (opcional):** `datos_demo.sql` borra los datos de negocio, reinicia los ID y carga 8 categorías, 30 productos, 7 proveedores y 8 clientes (empresas reales verificadas en SUNAT; relación comercial ficticia). No toca los usuarios. Con el backend ya iniciado al menos una vez (para que existan las tablas):
      ```powershell
@@ -231,8 +231,8 @@ src/main/java/com/bomerp/
 
 > ⚠️ Credenciales solo de desarrollo. No deben usarse ni documentarse así en un ambiente real.
 
-- Usuarios de Keycloak (realm `bomerp`): `lisandro` (ADMIN) y `lucy` (ASISTENTE), contraseña `JdRefri2026!`. Se crean al importar `keycloak/realm-bomerp.json` o con `python keycloak/configurar_realm.py`.
-- Consola de Keycloak: `http://localhost:38080` (`admin` / `admin123`). Los usuarios `admin`/`asistente` de la tabla `USUARIOS` ya no se usan.
+- Usuarios de Keycloak (realm `bomerp`): `lisandro` (ADMIN) y `lucy` (ASISTENTE) (contraseña de desarrollo en `keycloak/configurar_realm.py`). Se crean al importar `keycloak/realm-bomerp.json` o con `python keycloak/configurar_realm.py`.
+- Consola de Keycloak: `http://localhost:38080` (credenciales en `docker-compose.yml`, `KC_BOOTSTRAP_ADMIN_*`). Los usuarios `admin`/`asistente` de la tabla `USUARIOS` ya no se usan.
 
 ### Flujos de operación
 

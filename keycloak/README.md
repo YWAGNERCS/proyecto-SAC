@@ -4,11 +4,11 @@ Keycloak emite los tokens (JWT RS256) que el backend valida. Corre aparte del ba
 
 | Pieza | Valor (desarrollo) |
 |---|---|
-| Consola | http://localhost:38080 · `admin` / `admin123` |
+| Consola | http://localhost:38080 · usuario y contraseña en `docker-compose.yml` (`KC_BOOTSTRAP_ADMIN_*`) |
 | Realm | `bomerp` (login en español) |
 | Roles | `ADMIN` (Lisandro) · `ASISTENTE` (Lucy) |
 | Cliente | `bomerp-frontend` (público; *Direct access grants* activo hasta que S11 pase el login a PKCE) |
-| Usuarios | `lisandro` · `lucy` — contraseña `JdRefri2026!` (cambiar en producción) |
+| Usuarios | `lisandro` · `lucy` — contraseña de desarrollo en `configurar_realm.py` (cambiarla en producción) |
 | Access token | 15 minutos; la SPA lo renueva con el refresh token |
 
 ## Levantarlo

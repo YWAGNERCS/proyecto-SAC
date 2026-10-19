@@ -97,7 +97,7 @@ docker compose up -d                          # o: docker start SGE-JD si Oracle
 docker compose up -d keycloak-db keycloak     # identidad: importa keycloak/realm-bomerp.json
 ```
 
-Keycloak queda en `http://localhost:38080` (consola: `admin` / `admin123`). Detalles en [keycloak/README.md](keycloak/README.md).
+Keycloak queda en `http://localhost:38080` (consola: usuario y contraseña definidos en `docker-compose.yml`). Detalles en [keycloak/README.md](keycloak/README.md).
 
 **2. Configurar credenciales locales** (archivo ignorado por git)
 
@@ -125,7 +125,7 @@ npm start
 
 **Datos de demostración:** `datos_demo.sql` reinicia la base con 30 productos, 8 categorías, 7 proveedores y 8 clientes reales (verificados en SUNAT). Ver la [guía de instalación](src/main/resources/static/docs/README.md#doc-tecnica).
 
-**Usuarios de desarrollo:** `lisandro` (ADMIN) · `lucy` (ASISTENTE) · contraseña `JdRefri2026!` (cuentas de Keycloak, solo desarrollo). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez.
+**Usuarios de desarrollo:** `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Keycloak; la contraseña de desarrollo está en `keycloak/configurar_realm.py`, no se publica aquí). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez.
 
 <details>
 <summary>Variables de entorno disponibles</summary>
