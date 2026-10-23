@@ -7,8 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 
@@ -62,9 +60,7 @@ public class Producto {
     @Column(name = "stock_minimo")
     private Integer stockMinimo;
 
-    // NUMBER(1) con CHECK (0,1), como lo creó Hibernate 6. Sin BIT, Hibernate 7 en Oracle 23 lo convertiría a BOOLEAN.
     @Column(name = "visible_en_catalogo", nullable = false)
-    @JdbcTypeCode(SqlTypes.BIT)
     private boolean visibleEnCatalogo = true;
 
     /**

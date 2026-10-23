@@ -73,11 +73,11 @@ public class Venta {
 
     /**
      * Ciclo de vida de la venta (independiente del estado de cobro).
-     * El DEFAULT permite que ddl-auto=update agregue la columna en Oracle
-     * aunque la tabla ya tenga filas: las ventas existentes quedan REGISTRADA.
+     * La columna se agregó con DEFAULT 'REGISTRADA' (las ventas que ya existían quedaron REGISTRADA);
+     * ese DEFAULT sigue en Oracle. Las ventas nuevas toman REGISTRADA desde Java.
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false, columnDefinition = "VARCHAR2(20) DEFAULT 'REGISTRADA'")
+    @Column(name = "estado", nullable = false, length = 20)
     private EstadoVenta estado = EstadoVenta.REGISTRADA;
 
     /** Fecha en que se anuló (null si está REGISTRADA). La usa el kardex para la devolución de stock. */

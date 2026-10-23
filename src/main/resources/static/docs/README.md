@@ -116,11 +116,11 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 |---|---|
 | Lenguaje | Java 21 |
 | Framework | Spring Boot **4.0.7** · Spring Framework 7 (Web MVC, Data JPA, Validation, Security, Mail) |
-| ORM | Hibernate 7.2 (`ddl-auto=update`); los `boolean` llevan `@JdbcTypeCode(SqlTypes.BIT)` para seguir como `NUMBER(1)` |
+| ORM | Hibernate 7.2 (`ddl-auto=update`); los `boolean` son `BOOLEAN` nativo de Oracle 23 |
 | Base de datos | Oracle Database 23 Free (Docker `gvenzl/oracle-free:23-slim`, servicio `FREEPDB1`, puerto **1522**) |
-| Seguridad | Spring Security como OAuth2 Resource Server (`spring-boot-starter-oauth2-resource-server`) + **Keycloak 26.8** con su propio Postgres 17 (Docker, puerto 38080) |
+| Seguridad | Spring Security como OAuth2 Resource Server (`spring-boot-starter-security-oauth2-resource-server`) + **Keycloak 26.8** con su propio Postgres 17 (Docker, puerto 38080) |
 | Documentación API | springdoc-openapi 3.0.2, OpenAPI 3.1 (Swagger UI en `/swagger-ui.html`) |
-| JSON | Jackson 3 (`tools.jackson`) con `spring.jackson.use-jackson2-defaults=true`: mismo JSON que con Jackson 2 |
+| JSON | Jackson 3 (`tools.jackson`), con su configuración por defecto |
 | Otras | OpenPDF 1.3.32, Lombok, driver `ojdbc11`; H2 incluido como dependencia (sin perfil configurado) |
 | Frontend | Angular 22 (standalone, signals, zoneless), en `bomerp-frontend` |
 
@@ -134,11 +134,12 @@ De 3.3.4 a 4.0.7 (Spring Framework 7, Hibernate 7.2, Jackson 3, Spring Security 
 | springdoc 2.6.0 → 3.0.2 | La línea 2.x no funciona con Boot 4; Swagger pasa a OpenAPI 3.1 |
 | `SecurityConfig` y `ConsultaRucClientDecolecta` usan `tools.jackson` | Boot 4 configura Jackson 3. Jackson 2 sigue en el classpath solo porque lo trae springdoc, así que compilaba pero fallaba al ejecutar |
 | `texto()` de Decolecta lee solo valores simples | En Jackson 3, `asText()`/`asString()` lanza excepción sobre un objeto (en Jackson 2 devolvía `""`) |
-| `spring.jackson.use-jackson2-defaults=true` | Jackson 3 ordena los campos alfabéticamente, entre otros cambios; así la SPA recibe exactamente el mismo JSON |
-| `@JdbcTypeCode(SqlTypes.BIT)` en los 4 `boolean` + `hibernate.type.preferred_boolean_jdbc_type=BIT` | Hibernate 7 en Oracle 23 usa `BOOLEAN` nativo e intentaba convertir las columnas `NUMBER(1)` en cada arranque. Hacen falta las dos cosas |
+| Jackson 3 con su configuración por defecto | Solo cambia el orden de algunos campos del JSON (ahora alfabético); los datos son los mismos y la SPA lee los campos por nombre |
+| **`migracion_boot4_booleanos.sql`**: los 4 `boolean` (`productos.visible_en_catalogo`, `mantenimientos.alerta_enviada`, `proformas.enviado_correo` y `enviado_whatsapp`) pasan de `NUMBER(1)` + CHECK a `BOOLEAN` | Es el tipo que Hibernate 7 usa en Oracle 23; sin el script, intentaba convertirlos en cada arranque y Oracle lo rechazaba. Conserva los valores; `datos_demo.sql` sigue funcionando porque Oracle acepta 1/0 en `BOOLEAN` |
+| `Venta.estado`: `length = 20` en vez de `columnDefinition` | El `columnDefinition` solo servía para agregar la columna con `DEFAULT` (ya existe); en Hibernate 7 provocaba un `ALTER` en cada arranque |
 | Se quitó `spring.jpa.database-platform` | Hibernate 7 detecta el dialecto solo |
 
-Verificado: las respuestas de los GET coinciden con 3.3.4 (mismos datos y orden), los errores 400/401/403/404 tienen el mismo formato, la matriz de seguridad da 14 de 14, PKCE funciona, el esquema de Oracle no cambió, hay pruebas de venta (contado, crédito, stock insuficiente, anulación) con rollback, y se recorrió la SPA con 0 errores. Queda un aviso inofensivo: Hibernate 7 reaplica en cada arranque `ventas.estado` (`columnDefinition`) sin cambiarla.
+Sin configuraciones que fuercen comportamiento antiguo: Hibernate arranca sin ejecutar ningún DDL. Verificado: las respuestas de los GET traen los mismos datos que con 3.3.4, los errores 400/401/403/404 tienen el mismo formato, la matriz de seguridad da 14 de 14, PKCE funciona, los 60 valores booleanos se conservaron, las pruebas de venta (contado, crédito, stock insuficiente, anulación) pasan con rollback y se recorrió la SPA como ADMIN y como ASISTENTE.
 
 ### Arquitectura de software
 
