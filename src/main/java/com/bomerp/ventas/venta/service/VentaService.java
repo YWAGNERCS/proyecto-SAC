@@ -3,6 +3,7 @@ package com.bomerp.ventas.venta.service;
 import com.bomerp.config.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
 import java.math.BigDecimal;
+import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.repository.VentaRepository;
@@ -77,13 +78,13 @@ public class VentaService {
      *  - La proforma no debe haberse convertido ya en venta (409 si ya existe).
      *  - Para productos con controlaStock() = true, el stock debe ser suficiente (409 si no).
      */
-    public Venta convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito) {
+    public VentaResponseDTO convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito) {
         return convertirProformaEnVenta(proformaId, tipoPago, diasCredito, null, null);
     }
 
     /** @param vendedorId sub del JWT de quien registra · @param vendedorNombre su nombre de usuario */
-    public Venta convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito,
-                                          String vendedorId, String vendedorNombre) {
+    public VentaResponseDTO convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito,
+                                                     String vendedorId, String vendedorNombre) {
         log.info("Iniciando transaccion: Convertir Proforma {} en Venta", proformaId);
 
         Proforma proforma = proformaService.obtenerPorId(proformaId);
@@ -153,7 +154,7 @@ public class VentaService {
         emitirFactura(ventaGuardada);
 
         log.info("Transaccion exitosa: Venta registrada con ID {}", ventaGuardada.getId());
-        return ventaGuardada;
+        return VentaResponseDTO.desdeEntidad(ventaGuardada);
     }
 
     /**
@@ -163,14 +164,14 @@ public class VentaService {
      * Reglas de negocio:
      *  - Para productos con controlaStock() = true, el stock debe ser suficiente (409 si no).
      */
-    public Venta registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
-                                       Venta.TipoPago tipoPago, Integer diasCredito) {
+    public VentaResponseDTO registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
+                                                  Venta.TipoPago tipoPago, Integer diasCredito) {
         return registrarVentaDirecta(clienteId, items, tipoPago, diasCredito, null, null);
     }
 
-    public Venta registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
-                                       Venta.TipoPago tipoPago, Integer diasCredito,
-                                       Venta.Moneda monedaVenta, BigDecimal tipoCambio) {
+    public VentaResponseDTO registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
+                                                  Venta.TipoPago tipoPago, Integer diasCredito,
+                                                  Venta.Moneda monedaVenta, BigDecimal tipoCambio) {
         return registrarVentaDirecta(clienteId, items, tipoPago, diasCredito, monedaVenta, tipoCambio, null, null);
     }
 
@@ -178,10 +179,10 @@ public class VentaService {
      * @param monedaVenta moneda en la que se cobra (null = la del primer producto)
      * @param tipoCambio  soles por dólar negociado (null = venta SUNAT del día)
      */
-    public Venta registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
-                                       Venta.TipoPago tipoPago, Integer diasCredito,
-                                       Venta.Moneda monedaVenta, BigDecimal tipoCambio,
-                                       String vendedorId, String vendedorNombre) {
+    public VentaResponseDTO registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
+                                                  Venta.TipoPago tipoPago, Integer diasCredito,
+                                                  Venta.Moneda monedaVenta, BigDecimal tipoCambio,
+                                                  String vendedorId, String vendedorNombre) {
         log.info("Iniciando transaccion: Registrar Venta directa para Cliente ID {}", clienteId);
 
         if (items == null || items.isEmpty()) {
@@ -255,13 +256,24 @@ public class VentaService {
 
         log.info("Transaccion exitosa: Venta registrada con ID {} en {} (tipo de cambio {})",
                 ventaGuardada.getId(), moneda, tc);
-        return ventaGuardada;
+        return VentaResponseDTO.desdeEntidad(ventaGuardada);
     }
 
     /** RNF: seguimiento de cobranza — ventas a crédito vencidas */
-    public List<Venta> listarVentasConPagoAtrasado() {
+    @Transactional(readOnly = true)
+    public List<VentaResponseDTO> listarVentasConPagoAtrasado() {
         return ventaRepository.findByEstadoAndEstadoPagoAndFechaLimitePagoBefore(
-                Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE, LocalDate.now());
+                        Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE, LocalDate.now())
+                .stream().map(VentaResponseDTO::desdeEntidad).toList();
+    }
+
+    /**
+     * Reporte de ventas para el controller. El DTO lee los detalles (LAZY), así que se arma aquí,
+     * dentro de la transacción, y no en el controller (guía S3, 2.7).
+     */
+    @Transactional(readOnly = true)
+    public List<VentaResponseDTO> listar(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta, Long clienteId) {
+        return buscar(estado, desde, hasta, clienteId).stream().map(VentaResponseDTO::desdeEntidad).toList();
     }
 
     @Transactional(readOnly = true)
@@ -287,7 +299,7 @@ public class VentaService {
         return ventaRepository.detallesDeProducto(productoId);
     }
 
-    public Venta marcarComoPagada(Long ventaId) {
+    public VentaResponseDTO marcarComoPagada(Long ventaId) {
         Venta venta = obtenerPorId(ventaId);
         if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
             throw new ReglaNegocioException("No se puede cobrar la venta #" + ventaId + ": está ANULADA.");
@@ -296,7 +308,7 @@ public class VentaService {
             throw new ReglaNegocioException("La venta #" + ventaId + " ya está PAGADA.");
         }
         venta.setEstadoPago(Venta.EstadoPago.PAGADO);
-        return ventaRepository.save(venta);
+        return VentaResponseDTO.desdeEntidad(ventaRepository.save(venta));
     }
 
     /**
@@ -311,7 +323,7 @@ public class VentaService {
      *    2) Postventa cancela los mantenimientos aún pendientes de esa venta;
      *    3) Facturación emite la nota de crédito que anula el comprobante aceptado.
      */
-    public Venta anular(Long ventaId) {
+    public VentaResponseDTO anular(Long ventaId) {
         Venta venta = obtenerPorId(ventaId);
         if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
             throw new ReglaNegocioException("La venta #" + ventaId + " ya está ANULADA.");
@@ -336,7 +348,7 @@ public class VentaService {
 
         log.info("Venta {} anulada: stock restaurado, {} mantenimientos cancelados, nota de crédito {}",
                 ventaId, mantenimientosCancelados, notaCredito);
-        return ventaRepository.save(venta);
+        return VentaResponseDTO.desdeEntidad(ventaRepository.save(venta));
     }
 
     /** Fachada para Cobranza: ventas REGISTRADAS aún no pagadas (opcional: de un cliente). */

@@ -5,6 +5,7 @@ import com.bomerp.proformas.proforma.repository.ProformaRepository;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.repository.VentaRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,7 +13,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Solo lectura; los reportes recorren detalles e ítems (LAZY), así que cada método corre en una transacción. */
 @Service
+@Transactional(readOnly = true)
 public class ReportesService {
 
     private final VentaRepository ventaRepository;
@@ -127,5 +130,6 @@ public class ReportesService {
         resumen.put("totalSoles", saldoSoles);
         resumen.put("totalDolares", saldoDolares);
         return resumen;
-    }
+    }
+
 }

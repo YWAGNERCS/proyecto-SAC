@@ -5,6 +5,7 @@ import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.proformas.proformarequest.entity.ProformaRequest;
 import com.bomerp.proformas.pdf.service.GeneradorPdfService;
 import com.bomerp.ventas.venta.entity.Venta;
+import com.bomerp.proformas.proforma.dto.ProformaResponseDTO;
 import com.bomerp.proformas.proforma.repository.ProformaRepository;
 import com.bomerp.proformas.proforma.entity.Proforma;
 import com.bomerp.proformas.itemproforma.entity.ItemProforma;
@@ -17,11 +18,13 @@ import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.notificaciones.notificacion.service.NotificadorCorreo;
 import com.bomerp.notificaciones.notificacion.service.NotificadorWhatsApp;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
+@Transactional
 public class ProformaService {
 
     private final ProformaRepository proformaRepository;
@@ -51,12 +54,15 @@ public class ProformaService {
         this.topeDescuentoService = topeDescuentoService;
     }
 
-    public List<Proforma> listarTodas() {
-        return proformaRepository.findAll();
-    }
-
-    public List<Proforma> listarPorEstado(Proforma.EstadoProforma estado) {
-        return proformaRepository.findByEstado(estado);
+    /** Lista para el controller: el DTO lee los ítems (LAZY), así que se arma dentro de la transacción. */
+    @Transactional(readOnly = true)
+    public List<ProformaResponseDTO> listar(Proforma.EstadoProforma estado, Long clienteId) {
+        List<Proforma> proformas = estado != null ? proformaRepository.findByEstado(estado) : proformaRepository.findAll();
+        return proformas.stream()
+                .filter(p -> clienteId == null || p.getCliente().getId().equals(clienteId))
+                .sorted(java.util.Comparator.comparing(Proforma::getId).reversed())
+                .map(ProformaResponseDTO::desdeEntidad)
+                .toList();
     }
 
     /**
@@ -64,7 +70,7 @@ public class ProformaService {
      * El precio de cada item se "congela" con el precio vigente del
      * producto en este momento (ver ItemProforma).
      */
-    public Proforma crear(ProformaRequest.CrearProformaDTO request) {
+    public ProformaResponseDTO crear(ProformaRequest.CrearProformaDTO request) {
         Cliente cliente = clienteService.obtenerPorId(request.clienteId());
 
         Proforma proforma = new Proforma();
@@ -95,7 +101,7 @@ public class ProformaService {
             proforma.agregarItem(new ItemProforma(producto, request.items().get(i).cantidad(), precio, descuentos.get(i)));
         }
 
-        return proformaRepository.save(proforma);
+        return ProformaResponseDTO.desdeEntidad(proformaRepository.save(proforma));
     }
 
     /**
@@ -238,7 +244,7 @@ public class ProformaService {
      * Proforma como fuente de datos — se conecta cuando se construya
      * el módulo de Ventas.
      */
-    public Proforma aceptar(Long proformaId) {
+    public ProformaResponseDTO aceptar(Long proformaId) {
         Proforma proforma = obtenerOFallar(proformaId);
         if (proforma.getEstado() != Proforma.EstadoProforma.PENDIENTE) {
             throw new ReglaNegocioException("Solo se acepta una proforma PENDIENTE. La #" + proformaId
@@ -246,11 +252,11 @@ public class ProformaService {
         }
         validarNoVencida(proforma);
         proforma.setEstado(Proforma.EstadoProforma.ACEPTADA);
-        return proformaRepository.save(proforma);
+        return ProformaResponseDTO.desdeEntidad(proformaRepository.save(proforma));
     }
 
     /** El cliente no la acepta (o se echa atrás antes de convertirla en venta). */
-    public Proforma rechazar(Long proformaId) {
+    public ProformaResponseDTO rechazar(Long proformaId) {
         Proforma proforma = obtenerOFallar(proformaId);
         if (proforma.getEstado() != Proforma.EstadoProforma.PENDIENTE
                 && proforma.getEstado() != Proforma.EstadoProforma.ACEPTADA) {
@@ -258,7 +264,7 @@ public class ProformaService {
                     + ": está " + proforma.getEstado() + ".");
         }
         proforma.setEstado(Proforma.EstadoProforma.RECHAZADA);
-        return proformaRepository.save(proforma);
+        return ProformaResponseDTO.desdeEntidad(proformaRepository.save(proforma));
     }
 
     /**

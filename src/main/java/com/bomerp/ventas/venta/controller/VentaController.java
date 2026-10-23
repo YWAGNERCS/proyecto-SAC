@@ -35,7 +35,7 @@ public class VentaController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) Long clienteId) {
-        return ventaService.buscar(estado, desde, hasta, clienteId).stream().map(VentaResponseDTO::desdeEntidad).toList();
+        return ventaService.listar(estado, desde, hasta, clienteId);
     }
 
     /** Mismo reporte en Excel (.xlsx): hoja "Ventas" y hoja "Detalle". Acepta los mismos filtros. */
@@ -58,7 +58,7 @@ public class VentaController {
     /** Transición REGISTRADA -> ANULADA; restaura el stock. 409 si ya estaba anulada. */
     @PatchMapping("/{id}/anular")
     public VentaResponseDTO anular(@PathVariable Long id) {
-        return VentaResponseDTO.desdeEntidad(ventaService.anular(id));
+        return ventaService.anular(id);
     }
 
     /** Endpoint estrella: conversión de proforma aceptada en venta */
@@ -69,30 +69,27 @@ public class VentaController {
             @RequestParam(required = false) Integer diasCredito,
             @AuthenticationPrincipal Jwt jwt) {
         // El vendedor sale del token ya validado (sub), nunca de un campo del request
-        Venta venta = ventaService.convertirProformaEnVenta(proformaId, tipoPago, diasCredito,
+        return ventaService.convertirProformaEnVenta(proformaId, tipoPago, diasCredito,
                 jwt.getSubject(), jwt.getClaimAsString("preferred_username"));
-        return VentaResponseDTO.desdeEntidad(venta);
     }
 
     @PostMapping("/directa")
     public VentaResponseDTO registrarVentaDirecta(@RequestBody VentaDirectaRequest request,
                                                   @AuthenticationPrincipal Jwt jwt) {
-        Venta venta = ventaService.registrarVentaDirecta(
+        return ventaService.registrarVentaDirecta(
                 request.clienteId(), request.items(), request.tipoPago(), request.diasCredito(),
                 request.moneda(), request.tipoCambio(),
                 jwt.getSubject(), jwt.getClaimAsString("preferred_username"));
-        return VentaResponseDTO.desdeEntidad(venta);
     }
 
     @GetMapping("/pagos-atrasados")
     public List<VentaResponseDTO> listarPagosAtrasados() {
-        return ventaService.listarVentasConPagoAtrasado().stream()
-                .map(VentaResponseDTO::desdeEntidad).toList();
+        return ventaService.listarVentasConPagoAtrasado();
     }
 
     @PostMapping("/{id}/marcar-pagada")
     public VentaResponseDTO marcarComoPagada(@PathVariable Long id) {
-        return VentaResponseDTO.desdeEntidad(ventaService.marcarComoPagada(id));
+        return ventaService.marcarComoPagada(id);
     }
 
     public record VentaDirectaRequest(

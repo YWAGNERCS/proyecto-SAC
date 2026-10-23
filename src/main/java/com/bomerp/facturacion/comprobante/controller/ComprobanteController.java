@@ -1,7 +1,7 @@
 package com.bomerp.facturacion.comprobante.controller;
-import com.bomerp.facturacion.comprobante.entity.Comprobante;
+import com.bomerp.facturacion.comprobante.dto.ComprobanteResponseDTO;
 import com.bomerp.facturacion.facturacion.service.FacturacionService;
-import com.bomerp.facturacion.notacredito.entity.NotaCredito;
+import com.bomerp.facturacion.notacredito.dto.NotaCreditoResponseDTO;
 
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -22,8 +22,8 @@ public class ComprobanteController {
     }
 
     @PostMapping("/emitir/{ventaId}")
-    public Comprobante emitir(@PathVariable Long ventaId) {
-        return facturacionService.emitirComprobanteParaVenta(ventaId);
+    public ComprobanteResponseDTO emitir(@PathVariable Long ventaId) {
+        return facturacionService.emitir(ventaId);
     }
 
     @PostMapping("/{id}/enviar")
@@ -44,7 +44,7 @@ public class ComprobanteController {
 
     /** Notas de crédito emitidas (al anular ventas con comprobante aceptado). */
     @GetMapping("/notas-credito")
-    public List<NotaCredito> listarNotasCredito() {
+    public List<NotaCreditoResponseDTO> listarNotasCredito() {
         return facturacionService.listarNotasCredito();
     }
 }

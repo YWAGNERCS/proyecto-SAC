@@ -19,16 +19,9 @@ public class Mantenimiento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id", nullable = false)
     private Venta venta;
-
-    // Getter expuesto para el JSON
-    @com.fasterxml.jackson.annotation.JsonProperty("ventaId")
-    public Long getVentaId() {
-        return this.venta != null ? this.venta.getId() : null;
-    }
 
     @Column(name = "fecha_programada", nullable = false)
     private LocalDate fechaProgramada;

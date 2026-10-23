@@ -48,7 +48,6 @@ public class Comprobante {
     private String enlaceXml;
 
     // Relación directa a la Venta que originó este comprobante
-    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToOne
     @JoinColumn(name = "venta_id", nullable = false, unique = true)
     private Venta venta;

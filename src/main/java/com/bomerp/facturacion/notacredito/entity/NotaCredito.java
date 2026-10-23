@@ -1,8 +1,6 @@
 package com.bomerp.facturacion.notacredito.entity;
 
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -53,22 +51,15 @@ public class NotaCredito {
     private String enlaceXml;
 
     /** Comprobante que esta nota anula (una sola nota por comprobante: anulación total). */
-    @JsonIgnore
     @OneToOne
     @JoinColumn(name = "comprobante_id", nullable = false, unique = true)
     private Comprobante comprobanteReferencia;
 
-    @JsonProperty("comprobanteAnulado")
+    /** Serie-número del comprobante anulado (para el PDF, el envío a la OSE y la API). */
     public String getNumeroComprobanteReferencia() {
         return comprobanteReferencia != null
                 ? comprobanteReferencia.getSerie() + "-" + comprobanteReferencia.getNumero()
                 : null;
     }
 
-    @JsonProperty("ventaId")
-    public Long getVentaId() {
-        return comprobanteReferencia != null && comprobanteReferencia.getVenta() != null
-                ? comprobanteReferencia.getVenta().getId()
-                : null;
-    }
 }

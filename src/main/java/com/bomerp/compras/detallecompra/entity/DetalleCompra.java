@@ -1,7 +1,6 @@
 package com.bomerp.compras.detallecompra.entity;
 import com.bomerp.compras.compra.entity.Compra;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.bomerp.catalogo.producto.entity.Producto;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -23,7 +22,6 @@ public class DetalleCompra {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "compra_id", nullable = false)
-    @JsonIgnore
     private Compra compra;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -24,20 +24,12 @@ public class ProformaController {
     public List<ProformaResponseDTO> listar(
             @RequestParam(required = false) Proforma.EstadoProforma estado,
             @RequestParam(required = false) Long clienteId) {
-        List<Proforma> proformas = estado != null
-                ? proformaService.listarPorEstado(estado)
-                : proformaService.listarTodas();
-        return proformas.stream()
-                .filter(p -> clienteId == null || p.getCliente().getId().equals(clienteId))
-                .sorted(java.util.Comparator.comparing(Proforma::getId).reversed())
-                .map(ProformaResponseDTO::desdeEntidad)
-                .toList();
+        return proformaService.listar(estado, clienteId);
     }
 
     @PostMapping
     public ProformaResponseDTO crear(@Valid @RequestBody ProformaRequest.CrearProformaDTO request) {
-        Proforma creada = proformaService.crear(request);
-        return ProformaResponseDTO.desdeEntidad(creada);
+        return proformaService.crear(request);
     }
 
     /** Envía por WhatsApp y/o correo y devuelve qué salió y qué no. */
@@ -50,7 +42,7 @@ public class ProformaController {
 
     @PostMapping("/{id}/aceptar")
     public ProformaResponseDTO aceptar(@PathVariable Long id) {
-        return ProformaResponseDTO.desdeEntidad(proformaService.aceptar(id));
+        return proformaService.aceptar(id);
     }
 
     /** Ejecuta a mano el vencimiento diario (normalmente corre solo a las 00:05 y al iniciar). */
@@ -61,6 +53,6 @@ public class ProformaController {
 
     @PostMapping("/{id}/rechazar")
     public ProformaResponseDTO rechazar(@PathVariable Long id) {
-        return ProformaResponseDTO.desdeEntidad(proformaService.rechazar(id));
+        return proformaService.rechazar(id);
     }
 }

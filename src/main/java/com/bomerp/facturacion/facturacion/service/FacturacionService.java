@@ -1,4 +1,6 @@
 package com.bomerp.facturacion.facturacion.service;
+import com.bomerp.facturacion.comprobante.dto.ComprobanteResponseDTO;
+import com.bomerp.facturacion.notacredito.dto.NotaCreditoResponseDTO;
 import com.bomerp.facturacion.serie.service.CorrelativoService;
 import com.bomerp.facturacion.pdf.service.GeneradorPdfFacturacionService;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
@@ -170,8 +172,14 @@ public class FacturacionService {
     public record PdfComprobante(String nombreArchivo, byte[] contenido) {}
 
     @Transactional(readOnly = true)
-    public List<NotaCredito> listarNotasCredito() {
-        return notaCreditoRepository.findAllByOrderByIdDesc();
+    public List<NotaCreditoResponseDTO> listarNotasCredito() {
+        return notaCreditoRepository.findAllByOrderByIdDesc().stream().map(NotaCreditoResponseDTO::desdeEntidad).toList();
+    }
+
+    /** Emisión manual desde la API: responde con el DTO (la entidad lleva la venta completa). */
+    @Transactional
+    public ComprobanteResponseDTO emitir(Long ventaId) {
+        return ComprobanteResponseDTO.desdeEntidad(emitirComprobanteParaVenta(ventaId));
     }
 
     public void enviarFacturaCorreo(Long comprobanteId) {
