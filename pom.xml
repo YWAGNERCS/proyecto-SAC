@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.4</version>
+        <version>4.0.7</version>
         <relativePath/>
     </parent>
 
@@ -24,10 +24,10 @@
     </properties>
 
     <dependencies>
-        <!-- Web (REST) -->
+        <!-- Web (REST). En Boot 4, spring-boot-starter-web quedó deprecado a favor de -webmvc (ADR-003) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <!-- JPA / Hibernate -->
@@ -47,11 +47,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        <!-- S10b: valida los JWT que emite Keycloak (Resource Server). En Boot 4 se llama
-             spring-boot-starter-security-oauth2-resource-server. -->
+        <!-- S10b: valida los JWT que emite Keycloak (Resource Server) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
         </dependency>
 
         <!-- Correo Electrónico -->
@@ -78,7 +77,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.6.0</version>
+            <version>3.0.2</version>
         </dependency>
 
         <!-- Driver Oracle -->
@@ -102,9 +101,15 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Pruebas: en Boot 4 hay un starter de prueba por cada starter de producción (ADR-003) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

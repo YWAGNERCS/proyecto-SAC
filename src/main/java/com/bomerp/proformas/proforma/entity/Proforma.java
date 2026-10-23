@@ -11,6 +11,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -64,10 +66,13 @@ public class Proforma {
     private List<ItemProforma> items = new ArrayList<>();
 
     /** Canal por el que se envió: WHATSAPP, CORREO, o ambos (se registran 2 filas si aplica) */
+    // NUMBER(1) con CHECK (0,1), como los creó Hibernate 6. Sin BIT, Hibernate 7 en Oracle 23 los convertiría a BOOLEAN.
     @Column(name = "enviado_whatsapp")
+    @JdbcTypeCode(SqlTypes.BIT)
     private boolean enviadoWhatsApp;
 
     @Column(name = "enviado_correo")
+    @JdbcTypeCode(SqlTypes.BIT)
     private boolean enviadoCorreo;
 
     /** Venta generada al convertirla (solo si estado = CONVERTIDA). */

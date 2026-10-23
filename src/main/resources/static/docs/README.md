@@ -115,13 +115,30 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | Capa | Tecnología |
 |---|---|
 | Lenguaje | Java 21 |
-| Framework | Spring Boot **3.3.4** (Spring Web, Data JPA, Validation, Security, Mail) |
-| ORM | Hibernate 6.5 (`ddl-auto=update`) |
+| Framework | Spring Boot **4.0.7** · Spring Framework 7 (Web MVC, Data JPA, Validation, Security, Mail) |
+| ORM | Hibernate 7.2 (`ddl-auto=update`); los `boolean` llevan `@JdbcTypeCode(SqlTypes.BIT)` para seguir como `NUMBER(1)` |
 | Base de datos | Oracle Database 23 Free (Docker `gvenzl/oracle-free:23-slim`, servicio `FREEPDB1`, puerto **1522**) |
 | Seguridad | Spring Security como OAuth2 Resource Server (`spring-boot-starter-oauth2-resource-server`) + **Keycloak 26.8** con su propio Postgres 17 (Docker, puerto 38080) |
-| Documentación API | springdoc-openapi 2.6.0 (Swagger UI en `/swagger-ui.html`) |
+| Documentación API | springdoc-openapi 3.0.2, OpenAPI 3.1 (Swagger UI en `/swagger-ui.html`) |
+| JSON | Jackson 3 (`tools.jackson`) con `spring.jackson.use-jackson2-defaults=true`: mismo JSON que con Jackson 2 |
 | Otras | OpenPDF 1.3.32, Lombok, driver `ojdbc11`; H2 incluido como dependencia (sin perfil configurado) |
 | Frontend | Angular 22 (standalone, signals, zoneless), en `bomerp-frontend` |
+
+### Migración a Spring Boot 4.0.7 (22/10/2026)
+
+De 3.3.4 a 4.0.7 (Spring Framework 7, Hibernate 7.2, Jackson 3, Spring Security 7), la versión de la guía del curso (ADR-003). Qué cambió y por qué:
+
+| Cambio | Motivo |
+|---|---|
+| `spring-boot-starter-web` → `-webmvc`; `-oauth2-resource-server` → `-security-oauth2-resource-server`; `-test` → `-webmvc-test` + `-data-jpa-test` | Boot 4 divide los starters por módulo |
+| springdoc 2.6.0 → 3.0.2 | La línea 2.x no funciona con Boot 4; Swagger pasa a OpenAPI 3.1 |
+| `SecurityConfig` y `ConsultaRucClientDecolecta` usan `tools.jackson` | Boot 4 configura Jackson 3. Jackson 2 sigue en el classpath solo porque lo trae springdoc, así que compilaba pero fallaba al ejecutar |
+| `texto()` de Decolecta lee solo valores simples | En Jackson 3, `asText()`/`asString()` lanza excepción sobre un objeto (en Jackson 2 devolvía `""`) |
+| `spring.jackson.use-jackson2-defaults=true` | Jackson 3 ordena los campos alfabéticamente, entre otros cambios; así la SPA recibe exactamente el mismo JSON |
+| `@JdbcTypeCode(SqlTypes.BIT)` en los 4 `boolean` + `hibernate.type.preferred_boolean_jdbc_type=BIT` | Hibernate 7 en Oracle 23 usa `BOOLEAN` nativo e intentaba convertir las columnas `NUMBER(1)` en cada arranque. Hacen falta las dos cosas |
+| Se quitó `spring.jpa.database-platform` | Hibernate 7 detecta el dialecto solo |
+
+Verificado: las respuestas de los GET coinciden con 3.3.4 (mismos datos y orden), los errores 400/401/403/404 tienen el mismo formato, la matriz de seguridad da 14 de 14, PKCE funciona, el esquema de Oracle no cambió, hay pruebas de venta (contado, crédito, stock insuficiente, anulación) con rollback, y se recorrió la SPA con 0 errores. Queda un aviso inofensivo: Hibernate 7 reaplica en cada arranque `ventas.estado` (`columnDefinition`) sin cambiarla.
 
 ### Arquitectura de software
 
@@ -339,7 +356,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 18. ~~**`ProductoController` usa el repositorio directamente.**~~ ✅ **Resuelto (13/10/2026):** ahora pasa por `ProductoService` y responde con `ProductoResponseDTO`.
 
 ### Arquitectura y alineamiento con el curso
-19. **Versión de Spring Boot.** Esta documentación decía 3.5.16; el `pom.xml` usa **3.3.4**. La guía del curso (ADR-003) fija **Spring Boot 4.0.7**. Confirmar con el docente si es obligatorio migrar.
+19. **Versión de Spring Boot.** ✅ Migrado de 3.3.4 a **4.0.7** (22/10/2026), la versión que fija la guía del curso (ADR-003). Ver la sección *Migración a Spring Boot 4.0.7* más abajo.
 20. **Spring Modulith no está implementado** (ADR-002) ni hay `ModularityTests`. La regla de módulos solo está documentada.
 21. **Límites entre módulos incumplidos:** `FacturacionService` usa `VentaRepository`, y `ReportesService` usa `VentaRepository` y `ProformaRepository`. Se resuelve en parte con la decisión de **reportes por módulo**: mover `ventas-resumen` y `cobranza` a `ventas`, y `proformas-pendientes` a `proformas`.
 22. **Esquemas Oracle por módulo.** El curso propone esquemas `BOM_CATALOGO`, `BOM_VENTAS`, etc.; aquí todo está en un solo esquema (`JDREFRIGERACION`), y `CONTEXTO.md` mencionaba un prefijo `JD_<MODULO>` que no se usa.

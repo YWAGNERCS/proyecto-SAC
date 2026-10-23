@@ -1,6 +1,5 @@
 package com.bomerp.clientes.consultaruc.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -10,6 +9,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Proveedor de respaldo: Decolecta (sucesor de apis.net.pe), requiere token gratuito.
@@ -74,11 +74,15 @@ public class ConsultaRucClientDecolecta implements ConsultaRucClient {
         return null;
     }
 
-    /** Lee el primer campo presente: el JSON de Decolecta usa snake_case. */
+    /**
+     * Lee el primer campo presente: el JSON de Decolecta usa snake_case.
+     * Solo valores simples (texto, número): en Jackson 3 asString() lanza excepción sobre un objeto o arreglo.
+     */
     private static String texto(JsonNode body, String... campos) {
         for (String campo : campos) {
-            if (body.hasNonNull(campo) && !body.get(campo).asText().isBlank()) {
-                return body.get(campo).asText().trim();
+            JsonNode valor = body.get(campo);
+            if (valor != null && valor.isValueNode() && !valor.isNull() && !valor.asString().isBlank()) {
+                return valor.asString().trim();
             }
         }
         return null;

@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 
@@ -37,7 +39,9 @@ public class Mantenimiento {
     @Column(nullable = false, length = 20)
     private EstadoMantenimiento estado = EstadoMantenimiento.PENDIENTE;
 
+    // NUMBER(1) con CHECK (0,1), como lo creó Hibernate 6. Sin BIT, Hibernate 7 en Oracle 23 lo convertiría a BOOLEAN.
     @Column(name = "alerta_enviada", nullable = false)
+    @JdbcTypeCode(SqlTypes.BIT)
     private boolean alertaEnviada = false;
 
     @Column(length = 500)

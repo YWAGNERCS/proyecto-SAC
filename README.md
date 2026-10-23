@@ -5,7 +5,7 @@
 **Backend modular para JD Refrigeración S.A.C.: proformas, ventas, compras, inventario, facturación y postventa en un solo sistema.**
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?logo=springboot&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.7-6DB33F?logo=springboot&logoColor=white)
 ![Oracle](https://img.shields.io/badge/Oracle-23%20Free-F80000?logo=oracle&logoColor=white)
 ![Angular](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Oracle%20DB-2496ED?logo=docker&logoColor=white)
