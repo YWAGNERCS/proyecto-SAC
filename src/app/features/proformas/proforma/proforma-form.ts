@@ -135,7 +135,7 @@ export class ProformaFormComponent implements OnInit {
     };
 
     this.loading.set(true);
-    this.proformaService.crear(payload as any).subscribe({
+    this.proformaService.crear(payload).subscribe({
       next: () => {
         this.loading.set(false);
         this.router.navigate(['/proformas']);

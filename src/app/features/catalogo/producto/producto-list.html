@@ -12,7 +12,7 @@
 
 <div class="card d-flex align-items-center gap-3" style="padding: 16px; margin-bottom: 20px; flex-wrap: wrap;">
   <label class="form-label mb-0" for="filtroCategoria">Categoría</label>
-  <select id="filtroCategoria" class="form-select" style="max-width: 280px;" [(ngModel)]="filtro" (ngModelChange)="cargar()">
+  <select id="filtroCategoria" class="form-select filtro-select" [(ngModel)]="filtro" (ngModelChange)="cargar()">
     <option [ngValue]="'TODAS'">Todas</option>
     @for (c of categorias(); track c.id) {
       <option [ngValue]="c.id">{{ c.nombre }}</option>
