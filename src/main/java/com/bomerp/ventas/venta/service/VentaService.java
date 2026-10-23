@@ -364,12 +364,23 @@ public class VentaService {
 
     /** Emite y envía la factura electrónica; los errores no abortan la venta. */
     private void emitirFactura(Venta venta) {
+        com.bomerp.facturacion.comprobante.entity.Comprobante comp;
         try {
-            com.bomerp.facturacion.comprobante.entity.Comprobante comp =
-                    facturacionService.emitirComprobanteParaVenta(venta.getId());
+            comp = facturacionService.emitirComprobanteParaVenta(venta.getId());
+        } catch (Exception e) {
+            log.error("Error al emitir el comprobante de la Venta {}: {}", venta.getId(), e.getMessage());
+            return;
+        }
+        // Sin correo no es un error: el comprobante queda emitido y se descarga o reenvía desde Ventas
+        String correo = venta.getCliente().getCorreo();
+        if (correo == null || correo.isBlank()) {
+            log.info("Comprobante de la Venta {} emitido; no se envía por correo: el cliente no tiene correo", venta.getId());
+            return;
+        }
+        try {
             facturacionService.enviarFacturaCorreo(comp.getId());
         } catch (Exception e) {
-            log.error("Error al emitir/enviar factura para Venta {}: {}", venta.getId(), e.getMessage());
+            log.warn("Comprobante de la Venta {} emitido, pero no se pudo enviar por correo: {}", venta.getId(), e.getMessage());
         }
     }
 
