@@ -8,13 +8,13 @@
             <span>⚠️</span> {{ errorMessage() }}
         </div>
 
-        <form (ngSubmit)="guardar()">
+        <form [formGroup]="form" (ngSubmit)="guardar()">
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="proveedorSelect">
                         Proveedor <span style="color: var(--danger);">*</span>
                     </label>
-                    <select id="proveedorSelect" class="form-select" [(ngModel)]="proveedorIdSeleccionado" name="proveedorId">
+                    <select id="proveedorSelect" class="form-select" formControlName="proveedorId">
                         <option [ngValue]="null">-- Seleccione un proveedor --</option>
                         <option *ngFor="let p of proveedores()" [ngValue]="p.id">
                             {{ p.nombreORazonSocial }}
@@ -23,11 +23,11 @@
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label" for="fechaCompraInput">Fecha de Compra</label>
-                    <input id="fechaCompraInput" type="date" class="form-control" [(ngModel)]="fechaCompra" name="fechaCompra" [max]="hoy">
+                    <input id="fechaCompraInput" type="date" class="form-control" formControlName="fechaCompra" [max]="hoy">
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label" for="monedaSelect">Moneda</label>
-                    <select id="monedaSelect" class="form-select" [(ngModel)]="moneda" name="moneda">
+                    <select id="monedaSelect" class="form-select" formControlName="moneda">
                         <option value="SOLES">Soles</option>
                         <option value="DOLARES">Dólares (USD)</option>
                     </select>
@@ -36,7 +36,7 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="facturaInput">N° Factura del Proveedor</label>
-                    <input id="facturaInput" type="text" class="form-control" [(ngModel)]="numeroFactura" name="numeroFactura" placeholder="Ej: F001-00123" required maxlength="13">
+                    <input id="facturaInput" type="text" class="form-control" formControlName="numeroFactura" placeholder="Ej: F001-00123" maxlength="13">
                 </div>
             </div>
 
@@ -45,7 +45,7 @@
             <div class="row mb-3 align-items-end" style="background-color: #F8FAFC; padding: 1.25rem; border: 1px solid var(--border-color); border-radius: 8px;">
                 <div class="col-md-4">
                     <label class="form-label">Producto</label>
-                    <select class="form-select" [(ngModel)]="productoSeleccionadoId" name="productoSeleccionadoId">
+                    <select class="form-select" [formControl]="nuevoDetalle.controls.productoId">
                         <option [ngValue]="null">-- Seleccione --</option>
                         <option *ngFor="let p of productos()" [ngValue]="p.id">
                             {{ p.nombre }}
@@ -54,11 +54,11 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Cantidad</label>
-                    <input type="number" class="form-control" [(ngModel)]="cantidadSeleccionada" name="cantidadSeleccionada" min="1">
+                    <input type="number" class="form-control" [formControl]="nuevoDetalle.controls.cantidad" min="1">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Precio Unit. Compra</label>
-                    <input type="number" class="form-control" [(ngModel)]="precioUnitarioSeleccionado" name="precioUnitarioSeleccionado" min="0.01" step="0.01" placeholder="0.00">
+                    <input type="number" class="form-control" [formControl]="nuevoDetalle.controls.precioUnitarioCompra" min="0.01" step="0.01" placeholder="0.00">
                 </div>
                 <div class="col-md-3">
                     <button type="button" class="btn btn-secondary w-100" (click)="agregarDetalle()">
@@ -78,16 +78,16 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let d of detalles; let i = index">
+                    <tr *ngFor="let d of detalles.controls; let i = index">
                         <td>
-                            <strong>{{ getNombreProducto(d.productoId) }}</strong>
+                            <strong>{{ getNombreProducto(d.controls.productoId.value) }}</strong>
                         </td>
-                        <td class="text-center">{{ d.cantidad }}</td>
+                        <td class="text-center">{{ d.controls.cantidad.value }}</td>
                         <td style="text-align: right;">
-                            {{ d.precioUnitarioCompra | currency: (moneda === 'SOLES' ? 'PEN ' : 'USD ') }}
+                            {{ d.controls.precioUnitarioCompra.value | currency: prefijoMoneda() }}
                         </td>
                         <td style="text-align: right; font-weight: 600;">
-                            {{ d.cantidad * d.precioUnitarioCompra | currency: (moneda === 'SOLES' ? 'PEN ' : 'USD ') }}
+                            {{ d.controls.cantidad.value * d.controls.precioUnitarioCompra.value | currency: prefijoMoneda() }}
                         </td>
                         <td class="text-center">
                             <button type="button" class="btn btn-sm btn-danger" (click)="eliminarDetalle(i)">
@@ -100,7 +100,7 @@
                     <tr>
                         <td colspan="3" style="text-align: right; font-weight: 700; padding-top: 12px;">TOTAL:</td>
                         <td style="text-align: right; font-weight: 700; font-size: 1.05rem; color: var(--primary); padding-top: 12px;">
-                            {{ calcularTotal() | currency: (moneda === 'SOLES' ? 'PEN ' : 'USD ') }}
+                            {{ total() | currency: prefijoMoneda() }}
                         </td>
                         <td></td>
                     </tr>

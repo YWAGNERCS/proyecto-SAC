@@ -43,13 +43,13 @@ export class ProformaListComponent implements OnInit {
 
   cargarProformas(clienteId?: number) {
     this.proformaService.listar(clienteId).subscribe({
-      next: (data: any) => this.proformas.set(data)
+      next: (data) => this.proformas.set(data)
     });
   }
 
   cargarClientes() {
     this.clienteService.listarTodos().subscribe({
-      next: (data: any) => this.clientes.set(data)
+      next: (data) => this.clientes.set(data)
     });
   }
 

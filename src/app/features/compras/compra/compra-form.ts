@@ -1,21 +1,32 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CompraService } from './compra-service';
 import { ProveedorService } from '../../proveedores/proveedor/proveedor-service';
 import { ProductoService } from '../../catalogo/producto/producto-service';
-import { CompraRequest, DetalleCompraRequest } from './compra.model';
+import { CompraRequest } from './compra.model';
 import { Proveedor } from '../../proveedores/proveedor/proveedor.model';
 import { Producto } from '../../catalogo/producto/producto.model';
 
+/** Una línea de la compra. */
+type DetalleForm = FormGroup<{
+  productoId: FormControl<number>;
+  cantidad: FormControl<number>;
+  precioUnitarioCompra: FormControl<number>;
+}>;
+
+/** Formulario reactivo cabecera-detalle (como VentaForm, S9): las líneas son un FormArray. */
 @Component({
   selector: 'app-compra-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './compra-form.html'
 })
 export class CompraFormComponent implements OnInit {
+  private fb = inject(FormBuilder);
   private compraService = inject(CompraService);
   private proveedorService = inject(ProveedorService);
   private productoService = inject(ProductoService);
@@ -26,69 +37,80 @@ export class CompraFormComponent implements OnInit {
   errorMessage = signal('');
   loading = signal(false);
 
-  proveedorIdSeleccionado: number | null = null;
   /** Hoy en hora local (toISOString usaría UTC y de noche daría el día siguiente). */
   readonly hoy = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
-  fechaCompra: string = this.hoy;
-  numeroFactura: string = '';
-  moneda: 'SOLES' | 'DOLARES' = 'SOLES';
-  detalles: DetalleCompraRequest[] = [];
 
-  productoSeleccionadoId: number | null = null;
-  cantidadSeleccionada: number = 1;
-  precioUnitarioSeleccionado: number = 0;
+  readonly form = this.fb.nonNullable.group({
+    proveedorId: [null as number | null, [Validators.required]],
+    fechaCompra: [this.hoy, [Validators.required]],
+    numeroFactura: ['', [Validators.required, Validators.pattern(/^\s*[A-Za-z0-9]{4}-\d{1,8}\s*$/)]],
+    moneda: ['SOLES' as 'SOLES' | 'DOLARES'],
+    detalles: this.fb.array<DetalleForm>([], [Validators.minLength(1)]),
+  });
+
+  /** Selector de la fila "+ Agregar" (no se envía: solo arma las líneas). */
+  readonly nuevoDetalle = this.fb.nonNullable.group({
+    productoId: [null as number | null],
+    cantidad: [1, [Validators.min(1)]],
+    precioUnitarioCompra: [0, [Validators.min(0.01)]],
+  });
+
+  get detalles() {
+    return this.form.controls.detalles;
+  }
+
+  /** Valor de las líneas como señal, para que el total se recalcule solo. */
+  private readonly lineas = toSignal(this.detalles.valueChanges, { initialValue: this.detalles.getRawValue() });
+  private readonly moneda = toSignal(this.form.controls.moneda.valueChanges, { initialValue: this.form.controls.moneda.value });
+
+  readonly total = computed(() =>
+    this.lineas().reduce((suma, d) => suma + (d.cantidad ?? 0) * (d.precioUnitarioCompra ?? 0), 0));
+  readonly prefijoMoneda = computed(() => (this.moneda() === 'SOLES' ? 'PEN ' : 'USD '));
 
   ngOnInit() {
     this.proveedorService.listarTodos().subscribe({
-      next: (data: any) => this.proveedores.set(data),
-      error: (err: any) => console.error('Error al cargar proveedores:', err)
+      next: (data) => this.proveedores.set(data),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar proveedores:', err)
     });
     this.productoService.listarTodos().subscribe({
       next: (data) => this.productos.set(data),
-      error: (err: any) => console.error('Error al cargar productos:', err)
+      error: (err: HttpErrorResponse) => console.error('Error al cargar productos:', err)
     });
   }
 
   agregarDetalle() {
-    if (!this.productoSeleccionadoId || this.cantidadSeleccionada <= 0 || this.precioUnitarioSeleccionado <= 0) {
+    const { productoId, cantidad, precioUnitarioCompra } = this.nuevoDetalle.getRawValue();
+    if (!productoId || !cantidad || cantidad <= 0 || !precioUnitarioCompra || precioUnitarioCompra <= 0) {
       return;
     }
 
-    const prodId = Number(this.productoSeleccionadoId);
-    const cant = Number(this.cantidadSeleccionada);
-    const precio = Number(this.precioUnitarioSeleccionado);
-
-    const existente = this.detalles.find(d => d.productoId === prodId);
+    const existente = this.detalles.controls.find(d => d.controls.productoId.value === productoId);
     if (existente) {
-      existente.cantidad += cant;
-      existente.precioUnitarioCompra = precio;
-    } else {
-      this.detalles.push({
-        productoId: prodId,
-        cantidad: cant,
-        precioUnitarioCompra: precio
+      existente.patchValue({
+        cantidad: existente.controls.cantidad.value + cantidad,
+        precioUnitarioCompra,
       });
+    } else {
+      this.detalles.push(this.fb.nonNullable.group({
+        productoId: [productoId],
+        cantidad: [cantidad, [Validators.min(1)]],
+        precioUnitarioCompra: [precioUnitarioCompra, [Validators.min(0.01)]],
+      }));
     }
 
-    this.productoSeleccionadoId = null;
-    this.cantidadSeleccionada = 1;
-    this.precioUnitarioSeleccionado = 0;
+    this.nuevoDetalle.reset({ productoId: null, cantidad: 1, precioUnitarioCompra: 0 });
   }
 
   eliminarDetalle(index: number) {
-    this.detalles.splice(index, 1);
+    this.detalles.removeAt(index);
   }
 
   getNombreProducto(id: number): string {
     const prod = this.productos().find(p => p.id === id);
     return prod ? prod.nombre : 'Producto #' + id;
-  }
-
-  calcularTotal(): number {
-    return this.detalles.reduce((sum, d) => sum + (d.cantidad * d.precioUnitarioCompra), 0);
   }
 
   /** El aviso de error está arriba del formulario: se sube para que se vea. */
@@ -99,35 +121,32 @@ export class CompraFormComponent implements OnInit {
 
   guardar() {
     this.errorMessage.set('');
+    const v = this.form.getRawValue();
 
-    if (!this.proveedorIdSeleccionado) {
+    if (!v.proveedorId) {
       this.mostrarError('Debe seleccionar un proveedor.');
       return;
     }
-    if (!this.detalles || this.detalles.length === 0) {
+    if (v.detalles.length === 0) {
       this.mostrarError('Debe agregar al menos un producto a la compra.');
       return;
     }
-    if (!/^[A-Za-z0-9]{4}-\d{1,8}$/.test(this.numeroFactura.trim())) {
+    if (this.form.controls.numeroFactura.invalid) {
       this.mostrarError('Ingrese el N° de factura del proveedor con el formato SERIE-NÚMERO, por ejemplo F001-123.');
       return;
     }
-    if (this.fechaCompra > this.hoy) {
+    if (v.fechaCompra > this.hoy) {
       this.mostrarError('La fecha de compra no puede ser futura.');
       return;
     }
 
     const payload: CompraRequest = {
-      proveedorId: Number(this.proveedorIdSeleccionado),
-      fechaCompra: this.fechaCompra,
-      numeroFactura: this.numeroFactura.trim(),
-      moneda: this.moneda,
-      total: this.calcularTotal(),
-      detalles: this.detalles.map(d => ({
-        productoId: Number(d.productoId),
-        cantidad: Number(d.cantidad),
-        precioUnitarioCompra: Number(d.precioUnitarioCompra)
-      }))
+      proveedorId: v.proveedorId,
+      fechaCompra: v.fechaCompra,
+      numeroFactura: v.numeroFactura.trim(),
+      moneda: v.moneda,
+      total: this.total(),
+      detalles: v.detalles,
     };
 
     this.loading.set(true);
@@ -136,7 +155,7 @@ export class CompraFormComponent implements OnInit {
         this.loading.set(false);
         this.router.navigate(['/compras']);
       },
-      error: (err: any) => {
+      error: (err: HttpErrorResponse) => {
         this.loading.set(false);
         // 400 con detalle por campo, 409 si la factura ya estaba registrada
         const errores = err.error?.errores as Record<string, string> | undefined;
