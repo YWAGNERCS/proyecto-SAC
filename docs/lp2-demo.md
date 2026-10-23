@@ -14,14 +14,14 @@ con Authorization Code + PKCE (S11). El código del JWT propio ya no existe en e
 ## Producto
 
 Una **sola SPA** Angular 22 (standalone, signals, zoneless), modular y segura, conectada al
-**único backend** Spring Boot 3.3.4 (Java 21) sobre Oracle 23 Free. Cubre el ciclo comercial
+**único backend** Spring Boot 4.0.7 (Java 21) sobre Oracle 23 Free. Cubre el ciclo comercial
 de la empresa: catálogo, proformas, ventas, cobranza, compras, clientes, proveedores y
 postventa, con control de acceso por rol.
 
 | Pieza | Tecnología | Dirección local |
 |---|---|---|
 | SPA | Angular 22 | `http://localhost:4200` |
-| Backend | Spring Boot 3.3.4 · OAuth2 Resource Server | `http://localhost:8080` (Swagger en `/swagger-ui.html`) |
+| Backend | Spring Boot 4.0.7 · OAuth2 Resource Server | `http://localhost:8080` (Swagger en `/swagger-ui.html`) |
 | Identidad | Keycloak 26.8 + Postgres 17 | `http://localhost:38080` (realm `bomerp`) |
 | Base de datos | Oracle 23 Free (contenedor `SGE-JD`) | `localhost:1522/FREEPDB1`, esquema `JDREFRIGERACION` |
 
@@ -67,7 +67,7 @@ Backend (paquetes por módulo de negocio): `catalogo`, `proformas`, `ventas`, `c
 
 ```bash
 docker start SGE-JD                                                  # Oracle
-docker compose up -d sge-jd-keycloak-db sge-jd-keycloak              # Keycloak + Postgres
+docker compose up -d keycloak-db keycloak                            # Keycloak + Postgres
 cd bomerp-backend  && mvn spring-boot:run                            # backend :8080
 cd bomerp-frontend && npm start                                      # SPA :4200
 ```
@@ -135,7 +135,7 @@ flowchart LR
     SPA[SPA Angular 22<br/>core · features]
     KC[Keycloak 26.8<br/>realm bomerp]
     KCDB[(Postgres 17<br/>sge-jd-keycloak-db)]
-    API[Spring Boot 3.3.4<br/>bomerp-backend]
+    API[Spring Boot 4.0.7<br/>bomerp-backend]
     MOD[Módulos<br/>catalogo · proformas · ventas · cobranza<br/>compras · inventario · postventa · facturacion]
     DB[(Oracle 23 Free<br/>esquema JDREFRIGERACION)]
 
