@@ -1,18 +1,25 @@
 <div class="card" style="text-align: center; padding: 50px 30px; margin-bottom: 2rem; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);">
-  <span style="font-size: 3rem; margin-bottom: 12px; display: inline-block;">🚀</span>
+  <span style="font-size: 3rem; margin-bottom: 12px; display: inline-block;">❄️</span>
   <h2 style="font-size: 2.2rem; font-weight: 800; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;">
-    Bienvenido a BomERP
+    Bienvenido a SGE-JD
   </h2>
   @if (auth.autenticado()) {
   <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 550px; margin: 0 auto 24px auto;">
     Hola, {{ auth.usuario()?.nombre }}. Seleccione un módulo para comenzar a trabajar.
   </p>
+  <!-- Accesos al trabajo diario; el resto está en el menú -->
   <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
-    <a routerLink="/catalogo/categorias" class="btn btn-primary" style="padding: 12px 24px;">
-      📂 Catálogo de Categorías
+    <a routerLink="/ventas" class="btn btn-primary" style="padding: 12px 24px;">
+      🛒 Ventas
     </a>
     <a routerLink="/proformas" class="btn btn-secondary" style="padding: 12px 24px;">
-      📄 Módulo de Proformas
+      📄 Proformas
+    </a>
+    <a routerLink="/cobranza" class="btn btn-secondary" style="padding: 12px 24px;">
+      💰 Cobranza
+    </a>
+    <a routerLink="/postventa" class="btn btn-secondary" style="padding: 12px 24px;">
+      🔧 Postventa
     </a>
   </div>
   } @else {

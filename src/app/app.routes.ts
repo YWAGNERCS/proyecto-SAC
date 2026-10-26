@@ -7,7 +7,7 @@ export const routes: Routes = [
   {
     path: 'auth/callback',
     loadComponent: () => import('./core/auth/auth-callback').then((m) => m.AuthCallback),
-    title: 'Iniciando sesión — BomERP',
+    title: 'Iniciando sesión — SGE-JD',
   },
   // El login ya no es un formulario propio: es la pantalla de Keycloak
   { path: 'login', redirectTo: '' },
@@ -21,7 +21,7 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('./core/inicio/inicio').then((m) => m.Inicio),
-        title: 'Inicio — BomERP',
+        title: 'Inicio — SGE-JD',
       },
       // ── Catálogo ───────────────────────────────────────
       {
@@ -29,49 +29,49 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/catalogo/categoria/categoria-list').then((m) => m.CategoriaList),
-        title: 'Categorías — BomERP',
+        title: 'Categorías — SGE-JD',
       },
       {
         path: 'catalogo/categorias/nueva',
         canActivate: [authGuard, rolGuard('ADMIN')],
         loadComponent: () =>
           import('./features/catalogo/categoria/categoria-form').then((m) => m.CategoriaForm),
-        title: 'Nueva categoría — BomERP',
+        title: 'Nueva categoría — SGE-JD',
       },
       {
         path: 'catalogo/categorias/:id/editar',
         canActivate: [authGuard, rolGuard('ADMIN')],
         loadComponent: () =>
           import('./features/catalogo/categoria/categoria-form').then((m) => m.CategoriaForm),
-        title: 'Editar categoría — BomERP',
+        title: 'Editar categoría — SGE-JD',
       },
       {
         path: 'catalogo/productos',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/catalogo/producto/producto-list').then((m) => m.ProductoList),
-        title: 'Productos — BomERP',
+        title: 'Productos — SGE-JD',
       },
       {
         path: 'catalogo/productos/nuevo',
         canActivate: [authGuard, rolGuard('ADMIN')],
         loadComponent: () =>
           import('./features/catalogo/producto/producto-form').then((m) => m.ProductoForm),
-        title: 'Nuevo producto — BomERP',
+        title: 'Nuevo producto — SGE-JD',
       },
       {
         path: 'catalogo/productos/:id/editar',
         canActivate: [authGuard, rolGuard('ADMIN')],
         loadComponent: () =>
           import('./features/catalogo/producto/producto-form').then((m) => m.ProductoForm),
-        title: 'Editar producto — BomERP',
+        title: 'Editar producto — SGE-JD',
       },
       {
         path: 'catalogo/productos/:id/kardex',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/catalogo/producto/producto-kardex').then((m) => m.ProductoKardexComponent),
-        title: 'Kardex — BomERP',
+        title: 'Kardex — SGE-JD',
       },
       // ── Proformas ──────────────────────────────────
       {
@@ -79,14 +79,14 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/proformas/proforma/proforma-list').then((m) => m.ProformaListComponent),
-        title: 'Proformas — BomERP',
+        title: 'Proformas — SGE-JD',
       },
       {
         path: 'proformas/nueva',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/proformas/proforma/proforma-form').then((m) => m.ProformaFormComponent),
-        title: 'Nueva proforma — BomERP',
+        title: 'Nueva proforma — SGE-JD',
       },
       // ── Ventas ─────────────────────────────────────────
       {
@@ -94,14 +94,14 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/ventas/venta/venta-list').then((m) => m.VentaListComponent),
-        title: 'Ventas — BomERP',
+        title: 'Ventas — SGE-JD',
       },
       {
         path: 'ventas/nueva',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/ventas/venta/venta-form').then((m) => m.VentaFormComponent),
-        title: 'Nueva venta — BomERP',
+        title: 'Nueva venta — SGE-JD',
       },
       // ── Cobranza ───────────────────────────────────────
       {
@@ -109,7 +109,7 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/cobranza/cobro/cobranza-list').then((m) => m.CobranzaListComponent),
-        title: 'Cobranza — BomERP',
+        title: 'Cobranza — SGE-JD',
       },
       // ── Postventa ──────────────────────────────────────
       {
@@ -117,7 +117,7 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/postventa/mantenimiento/mantenimiento-list').then((m) => m.MantenimientoListComponent),
-        title: 'Postventa — BomERP',
+        title: 'Postventa — SGE-JD',
       },
       // ── Compras ────────────────────────────────────────
       {
@@ -125,14 +125,14 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/compras/compra/compra-list').then((m) => m.CompraListComponent),
-        title: 'Compras — BomERP',
+        title: 'Compras — SGE-JD',
       },
       {
         path: 'compras/nueva',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/compras/compra/compra-form').then((m) => m.CompraFormComponent),
-        title: 'Nueva compra — BomERP',
+        title: 'Nueva compra — SGE-JD',
       },
       // ── Clientes ───────────────────────────────────────
       {
@@ -140,28 +140,28 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/clientes/cliente/cliente-list').then((m) => m.ClienteListComponent),
-        title: 'Clientes — BomERP',
+        title: 'Clientes — SGE-JD',
       },
       {
         path: 'clientes/nuevo',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/clientes/cliente/cliente-form').then((m) => m.ClienteFormComponent),
-        title: 'Nuevo cliente — BomERP',
+        title: 'Nuevo cliente — SGE-JD',
       },
       {
         path: 'clientes/:id/editar',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/clientes/cliente/cliente-form').then((m) => m.ClienteFormComponent),
-        title: 'Editar cliente — BomERP',
+        title: 'Editar cliente — SGE-JD',
       },
       {
         path: 'clientes/:id/historial',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/clientes/cliente/cliente-historial').then((m) => m.ClienteHistorialComponent),
-        title: 'Historial del cliente — BomERP',
+        title: 'Historial del cliente — SGE-JD',
       },
       // ── Proveedores ────────────────────────────────────
       {
@@ -169,35 +169,35 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/proveedores/proveedor/proveedor-list').then((m) => m.ProveedorListComponent),
-        title: 'Proveedores — BomERP',
+        title: 'Proveedores — SGE-JD',
       },
       {
         path: 'proveedores/nuevo',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/proveedores/proveedor/proveedor-form').then((m) => m.ProveedorFormComponent),
-        title: 'Nuevo proveedor — BomERP',
+        title: 'Nuevo proveedor — SGE-JD',
       },
       {
         path: 'proveedores/:id/editar',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/proveedores/proveedor/proveedor-form').then((m) => m.ProveedorFormComponent),
-        title: 'Editar proveedor — BomERP',
+        title: 'Editar proveedor — SGE-JD',
       },
       {
         path: 'proveedores/:id/historial',
         canActivate: [authGuard],
         loadComponent: () =>
           import('./features/proveedores/proveedor/proveedor-historial').then((m) => m.ProveedorHistorialComponent),
-        title: 'Historial del proveedor — BomERP',
+        title: 'Historial del proveedor — SGE-JD',
       },
       // Destino de rolGuard cuando el rol no alcanza
       {
         path: 'sin-permiso',
         canActivate: [authGuard],
         loadComponent: () => import('./core/sin-permiso/sin-permiso').then((m) => m.SinPermiso),
-        title: 'Acceso denegado — BomERP',
+        title: 'Acceso denegado — SGE-JD',
       },
     ],
   },
