@@ -182,6 +182,7 @@ public class FacturacionService {
         return ComprobanteResponseDTO.desdeEntidad(emitirComprobanteParaVenta(ventaId));
     }
 
+    @Transactional(readOnly = true)
     public void enviarFacturaCorreo(Long comprobanteId) {
         Comprobante comprobante = comprobanteRepository.findById(comprobanteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));
