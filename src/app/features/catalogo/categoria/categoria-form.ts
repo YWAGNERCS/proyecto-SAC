@@ -25,12 +25,6 @@ export class CategoriaForm {
   });
 
   constructor() {
-    this.form.valueChanges.subscribe((valor) => {
-      console.log('Formulario:', valor);
-      console.log('Nombre:', valor.nombre);
-      console.log('Descripción:', valor.descripcion);
-    });
-
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       const id = Number(idParam);
