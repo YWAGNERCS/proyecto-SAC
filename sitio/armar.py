@@ -22,12 +22,19 @@ SECCIONES = {
     "estado-trazabilidad": ("estado.md", "4. Estado y trazabilidad del proyecto"),
     "por-verificar": ("por-verificar.md", "5. Por verificar"),
 }
+# Subtítulos enlazados desde otra sección: en el sitio quedan en otra página
+SUBSECCIONES = {
+    "relaciones-muchos-a-muchos": "tecnica.md",
+    "sectores-del-producto": "tecnica.md",
+}
 
 
 def enlaces(texto):
     """Los enlaces internos del README apuntan a anclas; en el sitio, a páginas."""
     for ancla, (archivo, _) in SECCIONES.items():
         texto = texto.replace(f"](#{ancla})", f"]({archivo})")
+    for ancla, archivo in SUBSECCIONES.items():
+        texto = texto.replace(f"](#{ancla})", f"]({archivo}#{ancla})")
     texto = texto.replace("](LIMITACIONES.md)", "](limitaciones.md)")
     # Docsify necesita `a\|b` dentro de una tabla; MkDocs ya ignora los | del código y mostraría la barra
     texto = re.sub(r"`[^`\n]*`", lambda m: m.group(0).replace("\\|", "|"), texto)

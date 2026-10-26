@@ -25,7 +25,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 |---|---|---|
 | **Facturas y boletas electrónicas** | El sistema arma la factura o boleta, le pone su número y genera el PDF, pero **no la envía a SUNAT**. Esos comprobantes **no tienen validez tributaria**: no los entreguen como factura oficial. Lo mismo pasa con las notas de crédito. | Contratar un proveedor de facturación electrónica autorizado por SUNAT (OSE, por ejemplo Nubefact) y conectar su cuenta. |
 | **WhatsApp** | Al "enviar" una proforma por WhatsApp, el sistema solo lo anota internamente; **el cliente no recibe nada**. Sí funciona el enlace de WhatsApp de Postventa, que abre la conversación en su celular. | Una cuenta de WhatsApp Business API (tiene costo mensual). |
-| **Correo** | El envío de proformas y facturas por correo y el resumen diario de mantenimientos **están programados pero no configurados**: hoy no sale ningún correo. | Una cuenta de correo de la empresa para enviar (por ejemplo Gmail con "contraseña de aplicación") y el correo de la oficina que recibe el resumen diario. |
+| **Correo** | El envío de proformas y facturas por correo y el resumen diario de mantenimientos **funcionan en la laptop de desarrollo** con una cuenta Gmail de prueba (la de Aron); en la computadora de la empresa todavía no sale ningún correo. | Una cuenta de correo de la empresa para enviar (por ejemplo Gmail con "contraseña de aplicación") y el correo de la oficina que recibe el resumen diario. |
 
 ## 3. Límites que conviene conocer
 

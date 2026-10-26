@@ -209,6 +209,61 @@ Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el
 | `MANTENIMIENTOS` | id, venta_id, fecha_programada, estado, alerta_enviada, **fecha_realizada**, notas |
 | `USUARIOS` | **Sin uso desde S10b** (usuarios y contraseñas viven en Keycloak). La tabla queda en las bases existentes; se puede borrar |
 
+### Relaciones muchos a muchos
+
+Una venta lleva **varios productos** y un mismo producto aparece en **varias ventas**: eso es una relación muchos a muchos (N:M). En una base relacional no se guarda directo (una fila de `VENTAS` no puede tener "una lista de productos"), así que se pone una **tabla intermedia** donde **cada fila es una línea**: esta venta + este producto + sus datos propios. El N:M queda partido en dos relaciones uno a muchos.
+
+```mermaid
+erDiagram
+  VENTAS ||--|{ DETALLE_VENTA : "tiene líneas"
+  PRODUCTOS ||--o{ DETALLE_VENTA : "aparece en"
+  DETALLE_VENTA {
+    number venta_id FK
+    number producto_id FK
+    number cantidad
+    number precio_unitario
+    number descuento_porcentaje
+  }
+```
+
+Ejemplo (dos ventas y dos productos):
+
+| `DETALLE_VENTA` | venta_id | producto | cantidad | precio_unitario | descuento % |
+|---|---|---|---|---|---|
+| línea 1 | 110 | Tubería de cobre 1/4 | 3 | 52.00 | 30 |
+| línea 2 | 110 | Split inverter 12 000 BTU | 1 | 1,406.25 | 0 |
+| línea 3 | 111 | Tubería de cobre 1/4 | 2 | 52.00 | 5 |
+
+La venta 110 sale dos veces (llevó dos productos) y la tubería también (está en dos ventas).
+
+**Por qué una entidad intermedia y no `@ManyToMany`:** la unión **tiene datos propios** (cantidad, precio, descuento, monto), que no son ni de la venta ni del producto. `@ManyToMany` solo crea una tabla con los dos ids. Además el precio se **copia** en la línea al vender: si mañana sube el producto, la venta de hoy conserva su precio. En código es una entidad con dos `@ManyToOne`, y la cabecera la lista con `@OneToMany(mappedBy = ..., cascade = ALL, orphanRemoval = true)`, de modo que cabecera y líneas se graban en una sola transacción.
+
+| Lado A | Tabla intermedia | Lado B | Datos propios de cada fila | A cargo |
+|---|---|---|---|---|
+| `PROFORMAS` | `ITEMS_PROFORMA` | `PRODUCTOS` | cantidad, precio, descuento | Yoel |
+| `VENTAS` | `DETALLE_VENTA` | `PRODUCTOS` | cantidad, precio, descuento | Yoel |
+| `COMPRAS` | `DETALLE_COMPRA` | `PRODUCTOS` | cantidad, precio de compra | Wilson |
+| `COBROS` | `DETALLE_COBRO` | **`VENTAS`** | monto abonado | Aron |
+
+`DETALLE_COBRO` une **cobros con ventas**: un cobro puede pagar varias ventas (una transferencia por dos facturas) y una venta puede recibir varios cobros (paga en partes). El saldo de una venta es su total menos la suma de sus filas en `DETALLE_COBRO`.
+
+En la SPA cada fila de la tabla intermedia es una fila del `FormArray`: "Agregar línea" en Proforma, Venta y Compra, y las filas de abono del diálogo "Registrar cobro".
+
+### Sectores del producto
+
+Cada producto tiene uno de **4 sectores fijos**. A diferencia de la **categoría** (libre, solo para ordenar el catálogo), el sector decide qué reglas le aplica el sistema:
+
+| Sector | Ejemplos | ¿Controla stock? | ¿Programa mantenimientos al venderse? |
+|---|---|---|---|
+| `CLIMATIZACION` | aires split, cassette, piso-techo | No | Sí: 4 (a los 3, 6, 9 y 12 meses) |
+| `REFRIGERACION` | cámaras frigoríficas, condensadoras | No | Sí: 4 |
+| `VENTILACION_FORZADA` | extractores, inyectores | No | No |
+| `MATERIAL_SERVICIO` | tubería de cobre, gas, manómetros | **Sí** | No |
+
+Los equipos se compran por proyecto y no se almacenan (acuerdo con el cliente), por eso no llevan stock: en la lista de productos su stock se ve como "—", una compra no lo sube y una venta no lo exige; en el kardex figuran sin saldo. Solo los materiales suben con las compras, bajan con las ventas, vuelven al anular y generan alertas de stock mínimo (`Producto.controlaStock()`). Los mantenimientos se programan si la venta incluye al menos un equipo de climatización o refrigeración (`MantenimientoService`).
+
+El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + margen_porcentaje / 100)`, en la moneda del producto. El precio de compra de cada factura (lo que se le pagó al proveedor) se guarda aparte, en `DETALLE_COMPRA`, y es el que aparece como "c/u" en el historial del proveedor.
+
 ### API REST (v1)
 
 | Recurso | Endpoints |
@@ -335,7 +390,7 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
 | 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
-| 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos (S1–S11), con Spring Boot 4.0.7 y Keycloak. Simulados: OSE y WhatsApp; correo sin configurar. Pendiente repartir `reportes` entre sus módulos |
+| 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos (S1–S11), con Spring Boot 4.0.7 y Keycloak. Simulados: OSE y WhatsApp; correo real por Gmail (configurado en la laptop de desarrollo el 26/10/2026). Pendiente repartir `reportes` entre sus módulos |
 | 8 | Pruebas y validación | 🔄 Recorridos completos por API como Lisandro y Lucy, matriz de seguridad 14/14 y pruebas de cada corrección de la auditoría; pruebas automatizadas mínimas (ver 5) |
 | 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Pendiente un ambiente accesible desde otras PC |
 | 10 | Documentación técnica | ✅ Este documento, `CONTEXTO.md`, los `README.md` y `lp2-demo.md`, publicados en https://ywagnercs.github.io/proyecto-SAC/ |
@@ -347,11 +402,13 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 
 Equipo **CherryTree**.
 
-| Integrante | Módulos a cargo | Transaccional (cabecera-detalle) |
+| Integrante | Módulos a cargo | Transaccional (muchos a muchos, con su tabla intermedia) |
 |---|---|---|
-| Yoel Wagner Chambi Sirena | Proveedores, Proformas, Ventas | Proforma–ItemProforma, Venta–DetalleVenta |
-| Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras, Postventa | Compra–DetalleCompra |
-| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobro–DetalleCobro |
+| Yoel Wagner Chambi Sirena | Proveedores, Proformas, Ventas | Proforma ↔ Producto (`ItemProforma`) · Venta ↔ Producto (`DetalleVenta`) |
+| Wilson Ronald Apaza Mamani | Catálogo, Inventario, Compras, Postventa | Compra ↔ Producto (`DetalleCompra`) |
+| Aron Rodrigo Magaño Quispe | Clientes, Facturación, Notificaciones, Cobranza | Cobro ↔ Venta (`DetalleCobro`) |
+
+Cómo funcionan estas relaciones: ver [Relaciones muchos a muchos](#relaciones-muchos-a-muchos).
 
 Seguridad: Keycloak, integrado en S10b (backend como Resource Server y login de la SPA).
 
@@ -394,7 +451,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 12. ~~**Correlativo de comprobantes aleatorio.**~~ ✅ **Resuelto (15/10/2026):** cada serie (F001, B001, FC01, BC01) numera 00000001, 00000002… sin saltos ni repetidos, con un contador por serie (`SERIES_COMPROBANTE`) bloqueado durante la venta y la restricción única (serie, número). Probado con 5 ventas simultáneas: números consecutivos, 0 repetidos. Las bases existentes deben correr `migracion_correlativos.sql` una vez (renumera los comprobantes ya emitidos).
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
 13b. **Facturación electrónica simulada:** `NubefactClientSimulado` numera y genera el PDF, pero no envía a SUNAT; los comprobantes no tienen validez tributaria. Falta contratar una OSE y conectar su cuenta.
-13c. **Correo sin configurar:** `spring.mail.username`/`password` y `CORREO_OFICINA` están vacíos, así que no sale ningún correo (proformas, facturas ni el resumen diario de mantenimientos). Al emitir una factura: si el cliente no tiene correo queda en INFO, si el envío falla queda en WARN y solo un fallo de emisión es ERROR.
+13c. ~~**Correo sin configurar.**~~ ✅ **Resuelto en desarrollo (26/10/2026):** sale por Gmail con una contraseña de aplicación puesta en `application-local.properties` (ignorado por git), con el correo de Aron como remitente y como `correo-oficina`; probado con una boleta enviada con su PDF adjunto. Cada máquina que corra el backend debe poner sus propias credenciales, y para producción falta la cuenta de correo de la empresa. Al emitir una factura: si el cliente no tiene correo queda en INFO, si el envío falla queda en WARN y solo un fallo de emisión es ERROR.
 14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.
 15. ~~**Alerta de stock mínimo sobre todos los productos.**~~ ✅ **Resuelto (15/10/2026):** las alertas (pantalla y correo diario) consideran solo materiales (`MATERIAL_SERVICIO`); los equipos no controlan stock y ya no generan alertas falsas.
 16. ~~**Proformas vencidas sin programar.**~~ ✅ **Resuelto (15/10/2026):** `ProformaScheduledService` vence las proformas PENDIENTES todos los días a las 00:05 y también al iniciar el backend (por si estuvo apagado). Ejecución manual: `POST /proformas/marcar-vencidas`.

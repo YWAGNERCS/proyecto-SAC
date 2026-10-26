@@ -22,9 +22,11 @@ Universidad Peruana Unión, construido sobre la base académica BomERP.
 
 | Integrante | Módulos | Transaccional (muchos a muchos) |
 |---|---|---|
-| **Yoel Wagner Chambi Sirena** | Proveedores, Proformas y Ventas | Proforma–ItemProforma · Venta–DetalleVenta |
-| **Wilson Ronald Apaza Mamani** | Catálogo, Inventario, Compras y Postventa | Compra–DetalleCompra |
-| **Aron Rodrigo Magaño Quispe** | Clientes, Facturación, Notificaciones y Cobranza | Cobro–DetalleCobro |
+| **Yoel Wagner Chambi Sirena** | Proveedores, Proformas y Ventas | Proforma ↔ Producto (`ItemProforma`) · Venta ↔ Producto (`DetalleVenta`) |
+| **Wilson Ronald Apaza Mamani** | Catálogo, Inventario, Compras y Postventa | Compra ↔ Producto (`DetalleCompra`) |
+| **Aron Rodrigo Magaño Quispe** | Clientes, Facturación, Notificaciones y Cobranza | Cobro ↔ Venta (`DetalleCobro`) |
+
+Cada muchos a muchos se resuelve con una **tabla intermedia** (entre paréntesis) en la que cada fila es una línea con sus propios datos: cantidad, precio, descuento o monto abonado. Explicación con diagrama y ejemplo en [Relaciones muchos a muchos](tecnica.md#relaciones-muchos-a-muchos).
 
 ## Tecnologías
 
