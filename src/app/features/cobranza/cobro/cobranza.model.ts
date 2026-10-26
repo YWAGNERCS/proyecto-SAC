@@ -47,3 +47,35 @@ export interface Cobro {
   montoTotal: number;
   abonos: { ventaId: number; monto: number }[];
 }
+
+/** Lo que el cliente pagó de una venta (al contado o con abonos): se le devuelve si se anula. */
+export interface PagadoDeVenta {
+  ventaId: number;
+  moneda: MonedaCobro;
+  pagado: number;
+}
+
+export type EstadoDevolucion = 'PENDIENTE' | 'DEVUELTA';
+
+/** Dinero por devolver de una venta anulada que el cliente ya había pagado. */
+export interface Devolucion {
+  id: number;
+  ventaId: number;
+  clienteId: number;
+  clienteNombre: string;
+  moneda: MonedaCobro;
+  monto: number;
+  estado: EstadoDevolucion;
+  fechaAnulacion: string;
+  fechaDevolucion: string | null;
+  metodoPago: MetodoPago | null;
+  referencia: string | null;
+  notas: string | null;
+}
+
+export interface DevolucionRequest {
+  fecha: string | null;
+  metodoPago: MetodoPago;
+  referencia: string | null;
+  notas: string | null;
+}

@@ -2,7 +2,7 @@
   <div>
     <h2 class="mb-0" style="font-weight: 700;">Cobranza</h2>
     <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
-      Ventas a crédito con saldo pendiente y abonos recibidos (parciales o totales)
+      Ventas a crédito con saldo pendiente, abonos recibidos y devoluciones de ventas anuladas
     </p>
   </div>
 </div>
@@ -29,6 +29,9 @@
     <button type="button" role="tab" class="btn btn-sm" [attr.aria-selected]="vista() === 'HISTORIAL'"
             [class.btn-primary]="vista() === 'HISTORIAL'" [class.btn-outline-secondary]="vista() !== 'HISTORIAL'"
             (click)="cambiarVista('HISTORIAL')">Historial de cobros</button>
+    <button type="button" role="tab" class="btn btn-sm" [attr.aria-selected]="vista() === 'DEVOLUCIONES'"
+            [class.btn-primary]="vista() === 'DEVOLUCIONES'" [class.btn-outline-secondary]="vista() !== 'DEVOLUCIONES'"
+            (click)="cambiarVista('DEVOLUCIONES')">Devoluciones</button>
   </div>
   <div>
     <label class="form-label" for="fCliente">Cliente</label>
@@ -92,7 +95,7 @@
           }
         </tbody>
       </table>
-    } @else {
+    } @else if (vista() === 'HISTORIAL') {
       <table class="table">
         <thead>
           <tr>
@@ -130,14 +133,61 @@
           }
         </tbody>
       </table>
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 90px;">Venta</th>
+            <th>Cliente</th>
+            <th class="text-center" style="width: 130px;">Anulada el</th>
+            <th class="num" style="width: 130px;">Por devolver</th>
+            <th style="width: 220px;">Devolución</th>
+            <th class="text-center" style="width: 170px;">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr><td colspan="6" class="vacio">Cargando…</td></tr>
+          }
+          @for (d of devoluciones(); track d.id) {
+            <tr>
+              <td><span class="badge">#{{ d.ventaId }}</span></td>
+              <td><strong>{{ d.clienteNombre }}</strong>
+                @if (d.notas) { <div class="muted">{{ d.notas }}</div> }</td>
+              <td class="text-center">{{ d.fechaAnulacion }}</td>
+              <td class="num"><strong>{{ simbolo(d.moneda) }} {{ d.monto | number: '1.2-2' }}</strong></td>
+              <td>
+                @if (d.estado === 'DEVUELTA') {
+                  <span class="badge badge-success">Devuelta</span> {{ d.fechaDevolucion }}
+                  <div class="muted">{{ etiquetaMetodo(d.metodoPago ?? '') }}@if (d.referencia) { · {{ d.referencia }} }</div>
+                } @else {
+                  <span class="badge badge-warning">Pendiente</span>
+                }
+              </td>
+              <td class="text-center">
+                @if (d.estado === 'PENDIENTE' && esAdmin()) {
+                  <button class="btn btn-sm btn-primary" (click)="abrirDevolucion(d)">Registrar devolución</button>
+                } @else if (d.estado === 'PENDIENTE') {
+                  <span class="muted">La registra el administrador</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            @if (!loading()) {
+              <tr><td colspan="6" class="vacio">No hay devoluciones: ninguna venta pagada se ha anulado.</td></tr>
+            }
+          }
+        </tbody>
+      </table>
     }
   </div>
 </div>
 
-<!-- ── Diálogo: registrar cobro ─────────────────────────── -->
+<!-- ── Diálogo: registrar cobro (formulario reactivo: cabecera + FormArray de abonos) ── -->
 @if (dialogo(); as d) {
   <div class="dialogo-fondo" (click)="cerrar()">
-    <div class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloCobro" (click)="$event.stopPropagation()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloCobro"
+          [formGroup]="cobroForm" (ngSubmit)="confirmar()" (click)="$event.stopPropagation()" novalidate>
       <h3 id="tituloCobro" style="margin: 0 0 4px 0; font-weight: 700;">Registrar cobro</h3>
       <p class="muted" style="margin: 0 0 16px 0;">
         {{ d.clienteNombre }} · en {{ d.moneda === 'SOLES' ? 'soles' : 'dólares' }}.
@@ -148,17 +198,20 @@
         <thead>
           <tr><th>Venta</th><th class="num">Saldo</th><th class="num" style="width: 150px;">Abono</th></tr>
         </thead>
-        <tbody>
-          @for (l of lineas; track l.cuenta.ventaId) {
-            <tr>
-              <td>#{{ l.cuenta.ventaId }} <span class="muted">{{ l.cuenta.comprobante }}</span>
-                @if (l.cuenta.diasAtraso > 0) { <span class="badge badge-danger">vencida</span> }</td>
-              <td class="num">{{ l.cuenta.saldo | number: '1.2-2' }}
-                <button type="button" class="link" (click)="pagarTodo(l)">todo</button></td>
+        <tbody formArrayName="abonos">
+          @for (g of abonos.controls; track g.controls.ventaId.value; let i = $index) {
+            @let c = cuentasDialogo[i];
+            <tr [formGroupName]="i">
+              <td>#{{ c.ventaId }} <span class="muted">{{ c.comprobante }}</span>
+                @if (c.diasAtraso > 0) { <span class="badge badge-danger">vencida</span> }</td>
+              <td class="num">{{ c.saldo | number: '1.2-2' }}
+                <button type="button" class="link" (click)="pagarTodo(i)">todo</button></td>
               <td class="num">
-                <input type="number" class="form-control text-end" min="0" step="0.01" [max]="l.cuenta.saldo"
-                       [(ngModel)]="l.monto" [attr.aria-label]="'Abono a la venta ' + l.cuenta.ventaId"
-                       [class.is-invalid]="(l.monto ?? 0) > l.cuenta.saldo">
+                <input type="number" class="form-control text-end" min="0" step="0.01" [max]="c.saldo"
+                       formControlName="monto" [attr.aria-label]="'Abono a la venta ' + c.ventaId"
+                       [class.is-invalid]="g.controls.monto.invalid">
+                @if (g.controls.monto.hasError('max')) { <span class="error-text">Supera el saldo</span> }
+                @if (g.controls.monto.hasError('min')) { <span class="error-text">Debe ser mayor que 0</span> }
               </td>
             </tr>
           }
@@ -170,32 +223,78 @@
       <div class="campos">
         <div>
           <label class="form-label" for="cFecha">Fecha del pago</label>
-          <input id="cFecha" type="date" class="form-control" [(ngModel)]="fecha" [max]="hoy">
+          <input id="cFecha" type="date" class="form-control" formControlName="fecha" [max]="hoy"
+                 [class.is-invalid]="cobroForm.controls.fecha.invalid">
         </div>
         <div>
           <label class="form-label" for="cMetodo">Método</label>
-          <select id="cMetodo" class="form-select" [(ngModel)]="metodoPago">
+          <select id="cMetodo" class="form-select" formControlName="metodoPago">
             @for (m of metodos; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
           </select>
         </div>
         <div>
           <label class="form-label" for="cRef">N° de operación (opcional)</label>
-          <input id="cRef" type="text" class="form-control" maxlength="100" [(ngModel)]="referencia">
+          <input id="cRef" type="text" class="form-control" maxlength="100" formControlName="referencia">
         </div>
       </div>
       <label class="form-label" for="cNotas">Notas (opcional)</label>
-      <input id="cNotas" type="text" class="form-control" maxlength="300" [(ngModel)]="notas">
+      <input id="cNotas" type="text" class="form-control" maxlength="300" formControlName="notas">
 
       @if (errorDialogo()) {
         <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
       }
 
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
-        <button class="btn btn-secondary" (click)="cerrar()" [disabled]="guardando()">Cancelar</button>
-        <button class="btn btn-primary" (click)="confirmar()" [disabled]="guardando() || totalCobro() <= 0">
+        <button type="button" class="btn btn-secondary" (click)="cerrar()" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando() || totalCobro() <= 0">
           {{ guardando() ? 'Registrando…' : 'Registrar ' + simbolo(d.moneda) + ' ' + (totalCobro() | number: '1.2-2') }}
         </button>
       </div>
-    </div>
+    </form>
+  </div>
+}
+
+<!-- ── Diálogo: registrar devolución ────────────────────── -->
+@if (devolucionAbierta(); as d) {
+  <div class="dialogo-fondo" (click)="cerrarDevolucion()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloDevolucion"
+          [formGroup]="devolucionForm" (ngSubmit)="confirmarDevolucion()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tituloDevolucion" style="margin: 0 0 4px 0; font-weight: 700;">Registrar devolución</h3>
+      <p class="muted" style="margin: 0 0 16px 0;">
+        {{ d.clienteNombre }} · venta #{{ d.ventaId }}, anulada el {{ d.fechaAnulacion }}.
+        Se devolvió <strong>{{ simbolo(d.moneda) }} {{ d.monto | number: '1.2-2' }}</strong>.
+      </p>
+
+      <div class="campos">
+        <div>
+          <label class="form-label" for="dFecha">Fecha de la devolución</label>
+          <input id="dFecha" type="date" class="form-control" formControlName="fecha" [min]="d.fechaAnulacion" [max]="hoy"
+                 [class.is-invalid]="devolucionForm.controls.fecha.invalid">
+        </div>
+        <div>
+          <label class="form-label" for="dMetodo">Método</label>
+          <select id="dMetodo" class="form-select" formControlName="metodoPago">
+            @for (m of metodos; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="dRef">N° de operación (opcional)</label>
+          <input id="dRef" type="text" class="form-control" maxlength="100" formControlName="referencia">
+        </div>
+      </div>
+      <label class="form-label" for="dNotas">Notas (opcional)</label>
+      <input id="dNotas" type="text" class="form-control" maxlength="300" formControlName="notas">
+
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDevolucion()" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">
+          {{ guardando() ? 'Registrando…' : 'Registrar devolución' }}
+        </button>
+      </div>
+    </form>
   </div>
 }

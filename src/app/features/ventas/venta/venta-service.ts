@@ -34,10 +34,6 @@ export class VentaService {
     return this.http.get<VentaResponse[]>(this.api.buildUrl(`${this.endpoint}/pagos-atrasados`));
   }
 
-  marcarComoPagada(id: number) {
-    return this.http.post<VentaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/marcar-pagada`), {});
-  }
-
   /** REGISTRADA -> ANULADA. Body vacío: el backend ya sabe qué stock devolver. */
   anular(id: number) {
     return this.http.patch<VentaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/anular`), {});

@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
 import { EstadoVenta, VentaResponse } from './venta.model';
 import { DescargaService } from '../../../core/services/descarga-service';
+import { CobranzaService } from '../../cobranza/cobro/cobranza-service';
 
 interface Agregado {
   moneda: 'SOLES' | 'DOLARES';
@@ -28,6 +29,7 @@ export class VentaListComponent implements OnInit {
 
   private ventaService = inject(VentaService);
   private descargaService = inject(DescargaService);
+  private cobranzaService = inject(CobranzaService);
   exportando = signal(false);
 
   ventas = signal<VentaResponse[]>([]);
@@ -35,6 +37,8 @@ export class VentaListComponent implements OnInit {
   loading = signal(false);
   error = signal('');
   mensaje = signal('');
+  /** Tras anular una venta ya pagada: muestra el enlace a Cobranza › Devoluciones. */
+  devolucionPendiente = signal(false);
 
   // Filtros: se aplican solo al pulsar "Buscar" (no en cada cambio de fecha)
   estado: EstadoVenta | '' = '';
@@ -111,26 +115,45 @@ export class VentaListComponent implements OnInit {
     });
   }
 
+  /** Antes de confirmar se consulta cuánto pagó el cliente: si anula, hay que devolvérselo (auditoría A8). */
   anular(v: VentaResponse) {
+    this.error.set('');
+    this.cobranzaService.pagadoDeVenta(v.id).subscribe({
+      next: (p) => this.confirmarAnulacion(v, Number(p.pagado)),
+      error: (err: HttpErrorResponse) =>
+        this.error.set(err.status === 404 ? 'La venta ya no existe.' : 'No se pudo consultar lo pagado de la venta. Inténtalo de nuevo.'),
+    });
+  }
+
+  private confirmarAnulacion(v: VentaResponse, pagado: number) {
+    const monto = (n: number) => `${this.simbolo(v.moneda)} ${n.toFixed(2)}`;
+    const aviso = pagado > 0
+      ? `\n\n⚠️ El cliente ya pagó ${monto(pagado)} de esta venta. Ese monto quedará como devolución pendiente ` +
+        `en Cobranza › Devoluciones, donde se registra cuándo y cómo se le devolvió.`
+      : '';
     const ok = confirm(
-      `¿Anular la venta #${v.id} de ${v.clienteNombre} por ${this.simbolo(v.moneda)} ${Number(v.total).toFixed(2)}?\n\n` +
+      `¿Anular la venta #${v.id} de ${v.clienteNombre} por ${monto(Number(v.total))}?\n\n` +
         `Se restaurará el stock de sus materiales, se cancelarán sus mantenimientos pendientes
 ` +
-        `y se emitirá una nota de crédito por su comprobante. Esta acción no se puede deshacer.`,
+        `y se emitirá una nota de crédito por su comprobante. Esta acción no se puede deshacer.` + aviso,
     );
     if (!ok) return;
     this.ejecutar(
       this.ventaService.anular(v.id),
-      `Venta #${v.id} anulada: stock restaurado, mantenimientos cancelados y nota de crédito emitida.`,
+      `Venta #${v.id} anulada: stock restaurado, mantenimientos cancelados y nota de crédito emitida.` +
+        (pagado > 0 ? ` Queda por devolver ${monto(pagado)} a ${v.clienteNombre}.` : ''),
+      pagado > 0,
     );
   }
 
-  private ejecutar(peticion: ReturnType<VentaService['anular']>, exito: string) {
+  private ejecutar(peticion: ReturnType<VentaService['anular']>, exito: string, conDevolucion = false) {
     this.error.set('');
     this.mensaje.set('');
+    this.devolucionPendiente.set(false);
     peticion.subscribe({
       next: () => {
         this.mensaje.set(exito);
+        this.devolucionPendiente.set(conDevolucion);
         this.recargar();
       },
       error: (err: HttpErrorResponse) => {

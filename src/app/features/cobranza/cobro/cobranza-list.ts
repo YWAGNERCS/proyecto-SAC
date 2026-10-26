@@ -1,38 +1,57 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  AbstractControl, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule,
+  ValidationErrors, ValidatorFn, Validators,
+} from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { CobranzaService } from './cobranza-service';
-import { Cobro, CuentaPorCobrar, METODOS_PAGO, MetodoPago, MonedaCobro } from './cobranza.model';
+import { Cobro, CuentaPorCobrar, Devolucion, METODOS_PAGO, MetodoPago, MonedaCobro } from './cobranza.model';
+import { AuthService } from '../../../core/auth/auth.service';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 
-/** Una línea del diálogo: cuánto se abona a cada venta del cliente. */
-interface LineaAbono {
-  cuenta: CuentaPorCobrar;
-  monto: number | null;
-}
+type Vista = 'POR_COBRAR' | 'HISTORIAL' | 'DEVOLUCIONES';
+
+/** Una línea del cobro: cuánto se abona a una venta del cliente (vacía = no se le abona). */
+type AbonoForm = FormGroup<{
+  ventaId: FormControl<number>;
+  monto: FormControl<number | null>;
+}>;
+
+/** El cobro debe abonar algo a por lo menos una de las ventas listadas. */
+const alMenosUnAbono: ValidatorFn = (lineas: AbstractControl): ValidationErrors | null =>
+  (lineas.value as { monto: number | null }[]).some((l) => (l.monto ?? 0) > 0) ? null : { sinAbonos: true };
+
+/** Fecha en formato yyyy-mm-dd que no pase de hoy (el backend también lo rechaza). */
+const noFutura = (hoy: string): ValidatorFn => (c: AbstractControl): ValidationErrors | null =>
+  c.value && c.value > hoy ? { futura: true } : null;
 
 @Component({
   selector: 'app-cobranza-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './cobranza-list.html',
   styleUrl: './cobranza-list.css',
 })
 export class CobranzaListComponent implements OnInit {
+  private fb = inject(FormBuilder);
   private cobranzaService = inject(CobranzaService);
   private clienteService = inject(ClienteService);
   private route = inject(ActivatedRoute);
 
+  /** Registrar una devolución es solo de ADMIN (el backend lo vuelve a exigir con 403). */
+  readonly esAdmin = inject(AuthService).esAdmin;
   readonly metodos = METODOS_PAGO;
 
-  vista = signal<'POR_COBRAR' | 'HISTORIAL'>('POR_COBRAR');
+  vista = signal<Vista>('POR_COBRAR');
   clienteId: number | null = null;
   clientes = signal<Cliente[]>([]);
   cuentas = signal<CuentaPorCobrar[]>([]);
   cobros = signal<Cobro[]>([]);
+  devoluciones = signal<Devolucion[]>([]);
   loading = signal(false);
   error = signal('');
   mensaje = signal('');
@@ -52,27 +71,52 @@ export class CobranzaListComponent implements OnInit {
       .filter((t) => t.cantidad > 0),
   );
 
-  // Diálogo "Registrar cobro"
-  dialogo = signal<{ clienteNombre: string; clienteId: number; moneda: MonedaCobro } | null>(null);
-  lineas: LineaAbono[] = [];
-  fecha = '';
-  metodoPago: MetodoPago = 'TRANSFERENCIA';
-  referencia = '';
-  notas = '';
+  readonly hoy = this.isoHoy();
   guardando = signal(false);
   errorDialogo = signal('');
 
-  readonly hoy = this.isoHoy();
+  // ── Diálogo "Registrar cobro": formulario reactivo cabecera-detalle (como VentaForm, S9) ──
+  dialogo = signal<{ clienteNombre: string; clienteId: number; moneda: MonedaCobro } | null>(null);
+  /** Ventas del diálogo: la posición i corresponde a la línea i del FormArray `abonos`. */
+  cuentasDialogo: CuentaPorCobrar[] = [];
+
+  readonly cobroForm = this.fb.nonNullable.group({
+    fecha: [this.hoy, [Validators.required, noFutura(this.hoy)]],
+    metodoPago: ['TRANSFERENCIA' as MetodoPago, [Validators.required]],
+    referencia: ['', [Validators.maxLength(100)]],
+    notas: ['', [Validators.maxLength(300)]],
+    abonos: this.fb.array<AbonoForm>([], [alMenosUnAbono]),
+  });
+
+  get abonos() {
+    return this.cobroForm.controls.abonos;
+  }
+
+  /** Valor de las líneas como señal, para que el total se recalcule solo. */
+  private readonly valorAbonos = toSignal(this.abonos.valueChanges, { initialValue: this.abonos.getRawValue() });
+  readonly totalCobro = computed(() => this.valorAbonos().reduce((s, a) => s + (Number(a.monto) || 0), 0));
+
+  // ── Diálogo "Registrar devolución" ──
+  devolucionAbierta = signal<Devolucion | null>(null);
+
+  readonly devolucionForm = this.fb.nonNullable.group({
+    fecha: [this.hoy, [Validators.required, noFutura(this.hoy)]],
+    metodoPago: ['TRANSFERENCIA' as MetodoPago, [Validators.required]],
+    referencia: ['', [Validators.maxLength(100)]],
+    notas: ['', [Validators.maxLength(300)]],
+  });
 
   ngOnInit() {
     // Desde Ventas se llega con ?clienteId=… para ver directamente lo que debe ese cliente
     const id = Number(this.route.snapshot.queryParamMap.get('clienteId'));
     this.clienteId = id > 0 ? id : null;
+    // Desde Ventas, después de anular una venta pagada, se llega con ?vista=DEVOLUCIONES
+    if (this.route.snapshot.queryParamMap.get('vista') === 'DEVOLUCIONES') this.vista.set('DEVOLUCIONES');
     this.clienteService.listarTodos().subscribe({ next: (data: Cliente[]) => this.clientes.set(data) });
     this.cargar();
   }
 
-  cambiarVista(v: 'POR_COBRAR' | 'HISTORIAL') {
+  cambiarVista(v: Vista) {
     this.vista.set(v);
     this.cargar();
   }
@@ -89,28 +133,37 @@ export class CobranzaListComponent implements OnInit {
         next: (data) => { this.cuentas.set(data); this.loading.set(false); },
         error: fallo,
       });
-    } else {
+    } else if (this.vista() === 'HISTORIAL') {
       this.cobranzaService.historial(this.clienteId).subscribe({
         next: (data) => { this.cobros.set(data); this.loading.set(false); },
+        error: fallo,
+      });
+    } else {
+      this.cobranzaService.devoluciones(this.clienteId).subscribe({
+        next: (data) => { this.devoluciones.set(data); this.loading.set(false); },
         error: fallo,
       });
     }
   }
 
-  // ── Diálogo ─────────────────────────────────────────────────
+  // ── Diálogo de cobro ───────────────────────────────────────
 
   /**
-   * Abre el cobro para el cliente y la moneda de la venta elegida. Se listan todas sus ventas
-   * pendientes en esa moneda; la elegida viene con su saldo completo (se puede bajar para un abono parcial).
+   * Abre el cobro para el cliente y la moneda de la venta elegida. Hay una línea por cada venta
+   * pendiente del cliente en esa moneda; la elegida viene con su saldo completo (se puede bajar
+   * para un abono parcial) y ninguna línea acepta más que su propio saldo.
    */
   abrirCobro(cuenta: CuentaPorCobrar) {
-    this.lineas = this.cuentas()
-      .filter((c) => c.clienteId === cuenta.clienteId && c.moneda === cuenta.moneda)
-      .map((c) => ({ cuenta: c, monto: c.ventaId === cuenta.ventaId ? Number(c.saldo) : null }));
-    this.fecha = this.hoy;
-    this.metodoPago = 'TRANSFERENCIA';
-    this.referencia = '';
-    this.notas = '';
+    this.cobroForm.reset();
+    this.abonos.clear();
+    this.cuentasDialogo = this.cuentas().filter((c) => c.clienteId === cuenta.clienteId && c.moneda === cuenta.moneda);
+    for (const c of this.cuentasDialogo) {
+      this.abonos.push(this.fb.group({
+        ventaId: this.fb.nonNullable.control(c.ventaId),
+        monto: this.fb.control<number | null>(c.ventaId === cuenta.ventaId ? Number(c.saldo) : null,
+          [Validators.min(0.01), Validators.max(Number(c.saldo))]),
+      }));
+    }
     this.errorDialogo.set('');
     this.dialogo.set({ clienteNombre: cuenta.clienteNombre, clienteId: cuenta.clienteId, moneda: cuenta.moneda });
   }
@@ -119,47 +172,38 @@ export class CobranzaListComponent implements OnInit {
     if (!this.guardando()) this.dialogo.set(null);
   }
 
-  totalCobro(): number {
-    return this.lineas.reduce((s, l) => s + (Number(l.monto) || 0), 0);
-  }
-
-  pagarTodo(l: LineaAbono) {
-    l.monto = Number(l.cuenta.saldo);
+  pagarTodo(i: number) {
+    this.abonos.at(i).controls.monto.setValue(Number(this.cuentasDialogo[i].saldo));
   }
 
   confirmar() {
     const d = this.dialogo();
     if (!d) return;
-    const abonos = this.lineas
-      .filter((l) => Number(l.monto) > 0)
-      .map((l) => ({ ventaId: l.cuenta.ventaId, monto: Math.round(Number(l.monto) * 100) / 100 }));
-    if (abonos.length === 0) {
-      this.errorDialogo.set('Indique el monto abonado en al menos una venta.');
+    if (this.cobroForm.invalid) {
+      this.cobroForm.markAllAsTouched();
+      this.errorDialogo.set(this.motivoCobroInvalido());
       return;
     }
-    const excedida = this.lineas.find((l) => Number(l.monto) > Number(l.cuenta.saldo));
-    if (excedida) {
-      this.errorDialogo.set(`El abono a la venta #${excedida.cuenta.ventaId} supera su saldo (${excedida.cuenta.saldo}).`);
-      return;
-    }
+    const v = this.cobroForm.getRawValue();
+    const abonos = v.abonos
+      .filter((a) => (a.monto ?? 0) > 0)
+      .map((a) => ({ ventaId: a.ventaId, monto: Math.round(Number(a.monto) * 100) / 100 }));
     this.guardando.set(true);
     this.errorDialogo.set('');
     this.cobranzaService.registrar({
       clienteId: d.clienteId,
-      fecha: this.fecha || null,
+      fecha: v.fecha || null,
       moneda: d.moneda,
-      metodoPago: this.metodoPago,
-      referencia: this.referencia.trim() || null,
-      notas: this.notas.trim() || null,
+      metodoPago: v.metodoPago,
+      referencia: v.referencia.trim() || null,
+      notas: v.notas.trim() || null,
       abonos,
     }).subscribe({
       next: (cobro) => {
         this.guardando.set(false);
         this.dialogo.set(null);
-        const saldadas = abonos.filter((a) => {
-          const cuenta = this.lineas.find((l) => l.cuenta.ventaId === a.ventaId)!.cuenta;
-          return a.monto >= Number(cuenta.saldo);
-        }).length;
+        const saldadas = abonos.filter((a) =>
+          a.monto >= Number(this.cuentasDialogo.find((c) => c.ventaId === a.ventaId)!.saldo)).length;
         this.mensaje.set(`Cobro #${cobro.id} registrado: ${this.simbolo(d.moneda)} ${Number(cobro.montoTotal).toFixed(2)} de ${d.clienteNombre}`
           + (saldadas ? ` · ${saldadas} venta(s) quedaron pagadas` : ''));
         this.cargar();
@@ -167,6 +211,61 @@ export class CobranzaListComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
         this.errorDialogo.set(this.mensajeDeError(err, 'No se pudo registrar el cobro.'));
+      },
+    });
+  }
+
+  /** El primer motivo por el que el cobro no es válido, dicho como lo entiende el usuario. */
+  private motivoCobroInvalido(): string {
+    const excedida = this.abonos.controls.findIndex((g) => g.controls.monto.hasError('max'));
+    if (excedida >= 0) {
+      const c = this.cuentasDialogo[excedida];
+      return `El abono a la venta #${c.ventaId} supera su saldo (${Number(c.saldo).toFixed(2)}).`;
+    }
+    if (this.abonos.controls.some((g) => g.controls.monto.hasError('min'))) return 'Los montos abonados deben ser mayores que 0.';
+    if (this.abonos.hasError('sinAbonos')) return 'Indique el monto abonado en al menos una venta.';
+    if (this.cobroForm.controls.fecha.invalid) return 'Indique la fecha del pago (no puede ser futura).';
+    return 'Revise los datos del cobro.';
+  }
+
+  // ── Devoluciones ────────────────────────────────────────────
+
+  abrirDevolucion(d: Devolucion) {
+    this.devolucionForm.reset();
+    this.errorDialogo.set('');
+    this.devolucionAbierta.set(d);
+  }
+
+  cerrarDevolucion() {
+    if (!this.guardando()) this.devolucionAbierta.set(null);
+  }
+
+  confirmarDevolucion() {
+    const d = this.devolucionAbierta();
+    if (!d) return;
+    if (this.devolucionForm.invalid) {
+      this.devolucionForm.markAllAsTouched();
+      this.errorDialogo.set('Indique la fecha de la devolución (no puede ser futura).');
+      return;
+    }
+    const v = this.devolucionForm.getRawValue();
+    this.guardando.set(true);
+    this.errorDialogo.set('');
+    this.cobranzaService.registrarDevolucion(d.id, {
+      fecha: v.fecha || null,
+      metodoPago: v.metodoPago,
+      referencia: v.referencia.trim() || null,
+      notas: v.notas.trim() || null,
+    }).subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.devolucionAbierta.set(null);
+        this.mensaje.set(`Devolución registrada: ${this.simbolo(d.moneda)} ${Number(d.monto).toFixed(2)} a ${d.clienteNombre} (venta #${d.ventaId}).`);
+        this.cargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.guardando.set(false);
+        this.errorDialogo.set(this.mensajeDeError(err, 'No se pudo registrar la devolución.'));
       },
     });
   }

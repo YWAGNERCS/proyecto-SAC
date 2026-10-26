@@ -73,8 +73,8 @@ cd bomerp-frontend && npm start                                      # SPA :4200
 ```
 
 Usuarios del realm `bomerp`: **`lisandro`** (ADMIN, dueño) y **`lucy`** (ASISTENTE). Las
-contraseñas de desarrollo están en `bomerp-backend/keycloak/configurar_realm.py`; no se
-publican aquí.
+contraseñas están en `bomerp-backend/.env` (no se versiona; plantilla en `.env.example`);
+no se publican aquí.
 
 ## 3. Evidencias del producto real
 
@@ -90,6 +90,7 @@ Tabla 1. Evidencias exigidas y dónde están en el código
 | **CRUD independiente** | Categoría completa: listar, crear, editar, eliminar | `features/catalogo/categoria/*` → `/api/v1/admin/categorias` |
 | **CRUD dependiente** | Producto → Categoría: la lista desplegable se llena desde `CategoriaService`, la categoría es obligatoria (`Validators.required`) y el backend devuelve **404** si no existe | `features/catalogo/producto/producto-form.ts` |
 | **Cabecera–detalle** | Venta–DetalleVenta con `FormArray` de líneas. Calcula en vivo subtotal, descuento, IGV y total. Valida al menos una línea (`minLength(1)`), que no se repitan productos, el tope de descuento por rol y la conversión de moneda con el tipo de cambio SUNAT. Muestra un mensaje distinto para cada error del backend: 0 (sin conexión), 400, 404 y 409 (stock insuficiente) | `features/ventas/venta/venta-form.ts` → `POST /api/v1/admin/ventas` |
+| **Cabecera–detalle (resto del equipo)** | Compra–DetalleCompra y "Registrar cobro" (Cobro–DetalleCobro) con el mismo patrón: `FormArray` tipado, total en vivo con `toSignal`. Compra exige al menos una línea y el backend rechaza la misma factura del proveedor (409); en Cobranza cada abono valida `min(0.01)` y `max(saldo de su venta)` y un validador del arreglo exige abonar al menos a una venta (el backend vuelve a validar: 409) | `features/compras/compra/compra-form.ts` → `POST /api/v1/admin/compras` · `features/cobranza/cobro/cobranza-list.ts` → `POST /api/v1/admin/cobranza/cobros` |
 | **Consultas y reportes** | Ventas filtradas por fecha, cliente y estado. Kardex por producto. Historial de clientes y proveedores. Exportación a PDF y Excel | `features/ventas/venta/venta-list.*`, `producto-kardex`, `*-historial` |
 | **Control de acceso** | El menú y los botones dependen del rol: *+ Producto*, *Anular venta* y *Eliminar* solo aparecen al ADMIN. El backend aplica las mismas reglas y responde 403 si se saltan | `layout.html` (`auth.tieneRol('ADMIN')`), listas con `esAdmin()`, `SecurityConfig.java` |
 

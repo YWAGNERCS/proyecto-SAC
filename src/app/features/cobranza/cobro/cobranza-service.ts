@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ApiService } from '../../../core/services/api-service';
-import { Cobro, CobroRequest, CuentaPorCobrar } from './cobranza.model';
+import { Cobro, CobroRequest, CuentaPorCobrar, Devolucion, DevolucionRequest, PagadoDeVenta } from './cobranza.model';
 
 @Injectable({ providedIn: 'root' })
 export class CobranzaService {
@@ -24,5 +24,22 @@ export class CobranzaService {
 
   registrar(request: CobroRequest) {
     return this.http.post<Cobro>(this.api.buildUrl(`${this.endpoint}/cobros`), request);
+  }
+
+  /** Cuánto pagó el cliente de una venta: se avisa antes de anularla. */
+  pagadoDeVenta(ventaId: number) {
+    return this.http.get<PagadoDeVenta>(this.api.buildUrl(`${this.endpoint}/ventas/${ventaId}/pagado`));
+  }
+
+  /** Devoluciones por ventas anuladas (opcional: de un cliente), primero las pendientes. */
+  devoluciones(clienteId?: number | null) {
+    let params = new HttpParams();
+    if (clienteId) params = params.set('clienteId', clienteId);
+    return this.http.get<Devolucion[]>(this.api.buildUrl(`${this.endpoint}/devoluciones`), { params });
+  }
+
+  /** PENDIENTE -> DEVUELTA (solo ADMIN). */
+  registrarDevolucion(id: number, request: DevolucionRequest) {
+    return this.http.post<Devolucion>(this.api.buildUrl(`${this.endpoint}/devoluciones/${id}/registrar`), request);
   }
 }

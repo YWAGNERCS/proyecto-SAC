@@ -43,7 +43,11 @@
   <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
 }
 @if (mensaje()) {
-  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+  <div class="alert alert-info" role="status">{{ mensaje() }}
+    @if (devolucionPendiente()) {
+      <a routerLink="/cobranza" [queryParams]="{ vista: 'DEVOLUCIONES' }">Ver devoluciones</a>
+    }
+  </div>
 }
 
 <!-- ── Agregados (computed) ─────────────────────────────── -->
