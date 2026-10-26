@@ -11,7 +11,7 @@
 
 </div>
 
-> Backend: rama `master` del mismo repositorio (`bomerp-backend`, Spring Boot + Oracle). La documentación funcional completa vive allí (`README.md`, `Contexto.md` y `src/main/resources/static/docs/README.md`) y está publicada en https://ywagnercs.github.io/proyecto-SAC/, junto con el producto de LP2 ([`docs/lp2-demo.md`](docs/lp2-demo.md)).
+> Backend: rama `master` del mismo repositorio (`bomerp-backend`, Spring Boot + Oracle). La documentación funcional completa vive allí (`README.md`, `Contexto.md` y `docs/README.md`) y está publicada en https://ywagnercs.github.io/proyecto-SAC/, junto con el producto de LP2 ([`docs/lp2-demo.md`](docs/lp2-demo.md)).
 
 ---
 

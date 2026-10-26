@@ -108,7 +108,7 @@ Tabla 2. Reglas de autorización reales del backend (`SecurityConfig.java`)
 | `DELETE` clientes / proveedores | ✅ | ❌ 403 | ❌ 401 |
 | `POST /cobranza/devoluciones/{id}/registrar` | ✅ | ❌ 403 | ❌ 401 |
 | Resto de `/api/v1/admin/**` (registrar ventas, proformas, cobros, compras…) | ✅ | ✅ | ❌ 401 |
-| `/api/v1/publico/**`, Swagger, `/docs` | ✅ | ✅ | ✅ |
+| `/api/v1/publico/**`, Swagger | ✅ | ✅ | ✅ |
 
 La matriz completa (14 casos, con los dos usuarios) se probó con `pruebas-seguridad/01…05_*.ps1`.
 El flujo PKCE se probó con `06_s11_pkce.ps1`.
