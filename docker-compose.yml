@@ -1,4 +1,6 @@
 name: SGE-JD
+# Contraseñas: en .env (no se versiona; plantilla en .env.example).
+# Puertos solo en 127.0.0.1: las bases y la consola de Keycloak no quedan expuestas a la red.
 
 services:
   SGE-JD:
@@ -6,11 +8,11 @@ services:
     container_name: SGE-JD
     restart: unless-stopped
     ports:
-      - "1522:1521"
+      - "127.0.0.1:1522:1521"
     environment:
-      ORACLE_PASSWORD: "jd123"
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Falta ORACLE_PASSWORD en .env (ver .env.example)}
       APP_USER: "jdrefrigeracion"
-      APP_USER_PASSWORD: "jd123"
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD:?Falta APP_USER_PASSWORD en .env}
     volumes:
       - sge-jd-oracle-data:/opt/oracle/oradata
 
@@ -20,11 +22,11 @@ services:
     container_name: sge-jd-keycloak-db
     restart: unless-stopped
     ports:
-      - "35432:5432"
+      - "127.0.0.1:35432:5432"
     environment:
       POSTGRES_DB: sgejd_keycloak
       POSTGRES_USER: sgejd_keycloak
-      POSTGRES_PASSWORD: "123456"
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?Falta KC_DB_PASSWORD en .env}
     volumes:
       - keycloak-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -44,14 +46,14 @@ services:
       keycloak-db:
         condition: service_healthy
     ports:
-      - "38080:8080"
+      - "127.0.0.1:38080:8080"
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin123
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:?Falta KC_ADMIN_PASSWORD en .env}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/sgejd_keycloak
       KC_DB_USERNAME: sgejd_keycloak
-      KC_DB_PASSWORD: "123456"
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?Falta KC_DB_PASSWORD en .env}
       # Memoria acotada: la laptop de desarrollo también corre Oracle, el backend y el SPA
       JAVA_OPTS_KC_HEAP: "-Xms64m -Xmx512m"
     volumes:

@@ -5,6 +5,7 @@ import com.bomerp.config.tipocambio.TipoCambioService;
 import java.math.BigDecimal;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.venta.entity.Venta;
+import com.bomerp.ventas.venta.event.VentaAnuladaEvent;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.repository.VentaRepository;
 
@@ -21,6 +22,7 @@ import com.bomerp.config.StockInsuficienteException;
 import com.bomerp.postventa.mantenimiento.service.MantenimientoService;
 import com.bomerp.facturacion.facturacion.service.FacturacionService;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,7 @@ public class VentaService {
     private final FacturacionService facturacionService;
     private final TipoCambioService tipoCambioService;
     private final TopeDescuentoService topeDescuentoService;
+    private final ApplicationEventPublisher eventos;
 
     public VentaService(VentaRepository ventaRepository,
                         ProformaService proformaService,
@@ -50,7 +53,8 @@ public class VentaService {
                         MantenimientoService mantenimientoService,
                         FacturacionService facturacionService,
                         TipoCambioService tipoCambioService,
-                        TopeDescuentoService topeDescuentoService) {
+                        TopeDescuentoService topeDescuentoService,
+                        ApplicationEventPublisher eventos) {
         this.ventaRepository = ventaRepository;
         this.proformaService = proformaService;
         this.clienteService = clienteService;
@@ -59,6 +63,7 @@ public class VentaService {
         this.facturacionService = facturacionService;
         this.tipoCambioService = tipoCambioService;
         this.topeDescuentoService = topeDescuentoService;
+        this.eventos = eventos;
     }
 
     public List<Venta> listarTodas() {
@@ -299,6 +304,10 @@ public class VentaService {
         return ventaRepository.detallesDeProducto(productoId);
     }
 
+    /**
+     * Fachada para Cobranza: la venta pasa a PAGADO cuando sus abonos cubren el total.
+     * No tiene endpoint propio (auditoría A7): un pago siempre entra como cobro.
+     */
     public VentaResponseDTO marcarComoPagada(Long ventaId) {
         Venta venta = obtenerPorId(ventaId);
         if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
@@ -321,7 +330,8 @@ public class VentaService {
      *    1) se devuelve al inventario lo vendido de los productos con controlaStock() = true
      *       (los equipos no se almacenan, no se restauran);
      *    2) Postventa cancela los mantenimientos aún pendientes de esa venta;
-     *    3) Facturación emite la nota de crédito que anula el comprobante aceptado.
+     *    3) Facturación emite la nota de crédito que anula el comprobante aceptado;
+     *    4) Cobranza deja pendiente la devolución de lo que el cliente ya pagó (VentaAnuladaEvent).
      */
     public VentaResponseDTO anular(Long ventaId) {
         Venta venta = obtenerPorId(ventaId);
@@ -346,9 +356,12 @@ public class VentaService {
                 .map(nc -> nc.getSerie() + "-" + nc.getNumero())
                 .orElse("no requerida");
 
+        Venta anulada = ventaRepository.save(venta);
+        eventos.publishEvent(new VentaAnuladaEvent(ventaId));
+
         log.info("Venta {} anulada: stock restaurado, {} mantenimientos cancelados, nota de crédito {}",
                 ventaId, mantenimientosCancelados, notaCredito);
-        return VentaResponseDTO.desdeEntidad(ventaRepository.save(venta));
+        return VentaResponseDTO.desdeEntidad(anulada);
     }
 
     /** Fachada para Cobranza: ventas REGISTRADAS aún no pagadas (opcional: de un cliente). */

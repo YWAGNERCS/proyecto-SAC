@@ -7,6 +7,8 @@ Uso (con Keycloak en http://localhost:38080):
 Se puede ejecutar varias veces: lo que ya existe se deja como está.
 """
 import json
+import os
+import pathlib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,14 +24,27 @@ ROLES = {
     "ADMIN": "Dueño (Lisandro): todo, incluido anular ventas, editar precios y eliminar",
     "ASISTENTE": "Asistente (Lucy): registra proformas, ventas, compras, clientes y cobros",
 }
-# Contraseña de desarrollo (cámbiela en producción). Correos .test: dominio reservado, no reales.
-CLAVE = "JdRefri2026!"
+# Correos .test: dominio reservado, no reales. Las contraseñas NO están aquí: salen de .env
+# (variables SGEJD_CLAVE_<USUARIO> y KC_ADMIN_PASSWORD; plantilla en .env.example).
 USUARIOS = [
     {"username": "lisandro", "email": "lisandro@jdrefrigeracion.test",
      "firstName": "Lisandro", "lastName": "Madrid", "rol": "ADMIN"},
     {"username": "lucy", "email": "lucy@jdrefrigeracion.test",
      "firstName": "Lucy", "lastName": "Asistente", "rol": "ASISTENTE"},
 ]
+
+
+def secreto(nombre):
+    """Lee un secreto de la variable de entorno o, si no está, de bomerp-backend/.env."""
+    if os.environ.get(nombre):
+        return os.environ[nombre]
+    env = pathlib.Path(__file__).resolve().parent.parent / ".env"
+    if env.exists():
+        for linea in env.read_text(encoding="utf-8").splitlines():
+            clave, _, valor = linea.partition("=")
+            if clave.strip() == nombre and valor.strip():
+                return valor.strip()
+    raise SystemExit(f"Falta {nombre}: póngalo en .env (ver .env.example)")
 
 
 def pedir(metodo, ruta, token=None, datos=None, form=False):
@@ -56,7 +71,7 @@ def pedir(metodo, ruta, token=None, datos=None, form=False):
 def main():
     _, tok = pedir("POST", "/realms/master/protocol/openid-connect/token", datos={
         "grant_type": "password", "client_id": "admin-cli",
-        "username": "admin", "password": "admin123"}, form=True)
+        "username": "admin", "password": secreto("KC_ADMIN_PASSWORD")}, form=True)
     t = tok["access_token"]
 
     # 3.1 Realm (con login en español, 3.2) y tiempos de token
@@ -76,6 +91,11 @@ def main():
         "eventsExpiration": 7 * 24 * 3600,
         "enabledEventTypes": ["LOGIN", "LOGIN_ERROR", "CODE_TO_TOKEN", "CODE_TO_TOKEN_ERROR",
                               "REFRESH_TOKEN", "REFRESH_TOKEN_ERROR", "LOGOUT"],
+        # Auditoría A9: tras 5 claves erradas el usuario espera 1 min (crece hasta 15); nunca se bloquea para siempre
+        "bruteForceProtected": True, "permanentLockout": False, "failureFactor": 5,
+        "waitIncrementSeconds": 60, "maxFailureWaitSeconds": 900, "maxDeltaTimeSeconds": 43200,
+        "quickLoginCheckMilliSeconds": 1000, "minimumQuickLoginWaitSeconds": 60,
+        "passwordPolicy": "length(10) and notUsername and notEmail",
     })
 
     # 3.1 Roles de realm (viajan en realm_access.roles)
@@ -106,11 +126,15 @@ def main():
         st, _ = pedir("POST", f"/admin/realms/{REALM}/users", t, {
             "username": u["username"], "email": u["email"], "emailVerified": True, "enabled": True,
             "firstName": u["firstName"], "lastName": u["lastName"], "requiredActions": [],
-            "credentials": [{"type": "password", "value": CLAVE, "temporary": False}],
         })
         print("usuario", u["username"], "creado" if st == 201 else "ya existía")
         _, lista = pedir("GET", f"/admin/realms/{REALM}/users?exact=true&username={u['username']}", t)
         uid = lista[0]["id"]
+        # La clave de .env manda: se vuelve a poner en cada ejecución (la política la valida)
+        st, error = pedir("PUT", f"/admin/realms/{REALM}/users/{uid}/reset-password", t, {
+            "type": "password", "value": secreto("SGEJD_CLAVE_" + u["username"].upper()), "temporary": False})
+        if st != 204:
+            raise SystemExit(f"Keycloak rechazó la clave de {u['username']}: {error}")
         _, rol = pedir("GET", f"/admin/realms/{REALM}/roles/{u['rol']}", t)
         pedir("POST", f"/admin/realms/{REALM}/users/{uid}/role-mappings/realm", t,
               [{"id": rol["id"], "name": rol["name"]}])

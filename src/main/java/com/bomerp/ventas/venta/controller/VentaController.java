@@ -87,11 +87,6 @@ public class VentaController {
         return ventaService.listarVentasConPagoAtrasado();
     }
 
-    @PostMapping("/{id}/marcar-pagada")
-    public VentaResponseDTO marcarComoPagada(@PathVariable Long id) {
-        return ventaService.marcarComoPagada(id);
-    }
-
     public record VentaDirectaRequest(
             @NotNull Long clienteId,
             @NotNull List<VentaService.ItemVentaDTO> items,

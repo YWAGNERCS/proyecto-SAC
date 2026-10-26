@@ -139,6 +139,18 @@ De 3.3.4 a 4.0.7 (Spring Framework 7, Hibernate 7.2, Jackson 3, Spring Security 
 | `Venta.estado`: `length = 20` en vez de `columnDefinition` | El `columnDefinition` solo servía para agregar la columna con `DEFAULT` (ya existe); en Hibernate 7 provocaba un `ALTER` en cada arranque |
 | Se quitó `spring.jpa.database-platform` | Hibernate 7 detecta el dialecto solo |
 
+**Después de la migración (23-24/10/2026):**
+
+| Cambio | Motivo |
+|---|---|
+| `spring.jpa.open-in-view=false` | Con el valor por defecto, la sesión de Hibernate quedaba abierta hasta escribir el JSON y escondía cargas perezosas fuera de la transacción. Al apagarlo aparecieron 6 endpoints con `LazyInitializationException` |
+| Los services devuelven DTO (`VentaService`, `ProformaService`, `FacturacionService`; nuevos `ComprobanteResponseDTO` y `NotaCreditoResponseDTO`) y se arman dentro del `@Transactional` | Regla de la S3: el controller no toca entidades. Se quitaron las anotaciones de Jackson de `Comprobante`, `NotaCredito`, `Mantenimiento`, `DetalleVenta` y `DetalleCompra` |
+| Filtros y orden de `GET /ventas` y `GET /proformas` pasan del controller al service (`listar(...)`, `readOnly`) | El controller queda delgado |
+| Proforma, Compra y el diálogo "Registrar cobro" de Cobranza con formularios reactivos (`FormArray` tipado), como Venta | Mismo patrón de la S9 en las cuatro pantallas transaccionales: cada línea trae su validación (en Cobranza, el abono no supera el saldo de su venta) y el total sale del formulario |
+| `ProformaRequest`: `@NotEmpty` en ítems y `@Min(1)` en cantidad | Antes se podía guardar una proforma sin productos o con cantidad 0; ahora responde 400 con mensaje |
+
+Verificado de nuevo con `open-in-view=false`: recorrido completo por API como Lisandro (90/90) y como Lucy (84/84), 0 `LazyInitializationException` y 0 `ERROR` en el registro, y los mismos estilos en la SPA a 1280 y 375 px.
+
 Sin configuraciones que fuercen comportamiento antiguo: Hibernate arranca sin ejecutar ningún DDL. Verificado: las respuestas de los GET traen los mismos datos que con 3.3.4, los errores 400/401/403/404 tienen el mismo formato, la matriz de seguridad da 14 de 14, PKCE funciona, los 60 valores booleanos se conservaron, las pruebas de venta (contado, crédito, stock insuficiente, anulación) pasan con rollback y se recorrió la SPA como ADMIN y como ASISTENTE.
 
 ### Arquitectura de software
@@ -184,6 +196,7 @@ src/main/java/com/bomerp/
 | `VENTAS` | id, cliente_id, proforma_id, fecha_venta, tipo_pago, dias_credito, fecha_limite_pago, **estado** (REGISTRADA/ANULADA), fecha_anulacion, estado_pago, moneda, **tipo_cambio**, comprobante_id |
 | `DETALLE_VENTA` | id, venta_id, producto_id, cantidad, precio_unitario, **descuento_porcentaje** |
 | `COMPRAS` / `DETALLE_COMPRA` | cabecera-detalle de compra; numero_factura normalizado (`F001-00000123`), total calculado por el servidor |
+| `DEVOLUCIONES` | dinero por devolver de una venta anulada que ya estaba pagada: venta_id (único), cliente_id, moneda, monto, estado (PENDIENTE/DEVUELTA), fecha_anulacion, fecha_devolucion, metodo_pago, referencia, notas (`migracion_devoluciones.sql`) |
 | `COBROS` / `DETALLE_COBRO` | pago de un cliente (fecha_cobro, moneda, metodo_pago, referencia, monto_total) y su reparto por venta (venta_id, monto) |
 | `COMPROBANTES` | comprobante electrónico simulado (factura o boleta, uno por venta); (serie, número) único |
 | `NOTAS_CREDITO` | id, serie (FC01/BC01), numero (correlativo por serie), motivo, total, estado_sunat, comprobante_id (FK único → `COMPROBANTES`) |
@@ -203,9 +216,9 @@ src/main/java/com/bomerp/
 | Clientes | CRUD `/clientes` (`GET`, `GET /{id}`, `POST`, `PUT`, `DELETE` → 409 si tiene proformas o ventas) · `GET /clientes/autocompletar/ruc/{ruc}` · `GET /clientes/autocompletar/dni/{dni}` |
 | Proveedores | `GET`, `POST /proveedores` · `GET`, `PUT`, `DELETE /proveedores/{id}` · autocompletar RUC/DNI |
 | Proformas | `GET /proformas?estado=&clienteId=` · `POST /proformas` (ítems con `descuentoPorcentaje`) · `POST /proformas/{id}/aceptar` · `/rechazar` · `/enviar` (devuelve qué canal salió) · `POST /proformas/marcar-vencidas` (vencimiento manual; corre solo cada día) |
-| Ventas | `GET /ventas?estado=&desde=&hasta=&clienteId=` · `GET /ventas/exportar` (Excel, mismos filtros) · `GET /ventas/historial-cliente/{clienteId}` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `GET /ventas/pagos-atrasados` · `POST /ventas/{id}/marcar-pagada` (anterior a Cobranza; la SPA ya no lo usa) · `PATCH /ventas/{id}/anular` |
+| Ventas | `GET /ventas?estado=&desde=&hasta=&clienteId=` · `GET /ventas/exportar` (Excel, mismos filtros) · `GET /ventas/historial-cliente/{clienteId}` · `POST /ventas/directa` · `POST /ventas/desde-proforma/{id}` · `GET /ventas/pagos-atrasados` · `PATCH /ventas/{id}/anular` |
 | Compras | `GET /compras?desde=&hasta=&proveedorId=` · `GET /compras/exportar` (Excel) · `GET /compras/historial-proveedor/{proveedorId}` · `GET /compras/{id}` · `POST /compras` (sube el stock solo de materiales; 400 si cantidad < 1, precio ≤ 0, fecha futura o N° de factura sin formato SERIE-NÚMERO; 409 si esa factura del proveedor ya existe) |
-| Cobranza | `GET /cobranza/por-cobrar?clienteId=` (saldo por venta) · `GET /cobranza/cobros?clienteId=&ventaId=` · `POST /cobranza/cobros` |
+| Cobranza | `GET /cobranza/por-cobrar?clienteId=` (saldo por venta) · `GET /cobranza/cobros?clienteId=&ventaId=` · `POST /cobranza/cobros` · `GET /cobranza/ventas/{ventaId}/pagado` (lo que se devolvería al anular) · `GET /cobranza/devoluciones?estado=&clienteId=` · `POST /cobranza/devoluciones/{id}/registrar` (solo ADMIN) |
 | Descuentos | `GET /descuentos/tope` (tope % del usuario actual) |
 | Inventario | `GET /inventario/alertas` · `GET /inventario/kardex/{productoId}?desde=&hasta=` · `GET /inventario/kardex/{productoId}/exportar` (Excel) |
 | Postventa | `GET /mantenimientos?vista=VENCIDOS\|PROXIMOS\|REALIZADOS\|TODOS&dias=&clienteId=` · `GET /mantenimientos/resumen` · `PATCH /mantenimientos/{id}/realizado` · `PATCH /mantenimientos/{id}/reprogramar` · `POST /mantenimientos/simular-alerta` |
@@ -227,7 +240,8 @@ src/main/java/com/bomerp/
    ```
    También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`.
 4. Ejecutar `mvn spring-boot:run` (puerto 8080). Swagger: `http://localhost:8080/swagger-ui.html`.
-   - **Identidad (Keycloak):** `docker compose up -d keycloak-db keycloak` (desde `bomerp-backend`). La primera vez importa `keycloak/realm-bomerp.json` (realm, roles, cliente y usuarios); si no, `python keycloak/configurar_realm.py` lo crea. Consola: `http://localhost:38080` (credenciales en `docker-compose.yml`, `KC_BOOTSTRAP_ADMIN_*`). Usuarios de desarrollo: `lisandro` (ADMIN) y `lucy` (ASISTENTE) (contraseña de desarrollo en `keycloak/configurar_realm.py`). Pruebas: `pruebas-seguridad/05_matriz.ps1`.
+   - **Identidad (Keycloak):** `docker compose up -d keycloak-db keycloak` (desde `bomerp-backend`). Antes, copiar `.env.example` como `.env` (no se versiona) y poner las contraseñas: las usan `docker compose`, `configurar_realm.py` y `pruebas-seguridad/`. La primera vez Keycloak importa `keycloak/realm-bomerp.json` (realm, roles, clientes y usuarios, sin contraseñas); después ejecutar `python keycloak/configurar_realm.py`, que pone las contraseñas de `.env` (y crea el realm si no existe). Consola: `http://localhost:38080` (usuario `admin`, contraseña `KC_ADMIN_PASSWORD` de `.env`). Usuarios: `lisandro` (ADMIN) y `lucy` (ASISTENTE). Pruebas: `pruebas-seguridad/05_matriz.ps1`.
+   - **Bases creadas antes del 25/10/2026:** ejecutar una vez `migracion_devoluciones.sql` (crea la tabla `DEVOLUCIONES`; se puede ejecutar varias veces).
    - **Bases creadas antes del 15/10/2026:** después de arrancar el backend nuevo una vez, ejecutar `migracion_auditoria_altos.sql` (permite el estado CONVERTIDA de las proformas; sin él, convertir una proforma falla con ORA-02290). Se puede ejecutar varias veces.
    - **Datos de demostración (opcional):** `datos_demo.sql` borra los datos de negocio, reinicia los ID y carga 8 categorías, 30 productos, 7 proveedores y 8 clientes (empresas reales verificadas en SUNAT; relación comercial ficticia). No toca los usuarios. Con el backend ya iniciado al menos una vez (para que existan las tablas):
      ```powershell
@@ -235,13 +249,32 @@ src/main/java/com/bomerp/
      ```
 5. Frontend: en `bomerp-frontend`, `npm install` y `npm start` (puerto 4200).
 
+### Uso diario: encender, apagar, respaldar y limpiar (`scripts/`)
+
+Ya instalado (pasos 1 a 5 hechos una vez), todo se maneja con doble clic en `bomerp-backend/scripts/`. Suponen que `bomerp-backend` y `bomerp-frontend` están en la misma carpeta (si no, `-Frontend <ruta>`).
+
+| Archivo | Qué hace |
+|---|---|
+| `iniciar_sgejd.bat` | Enciende Docker Desktop si hace falta, Oracle (`SGE-JD`), Keycloak (`keycloak-db keycloak`), el backend y el frontend en dos ventanas propias; espera a que cada uno responda y abre `http://localhost:4200`. Lo que ya está encendido lo deja como está. Desde cero tarda unos 85 s |
+| `detener_sgejd.bat` | Apaga frontend, backend, Keycloak y Oracle; los datos quedan. `-Simular` muestra qué apagaría; `-DejarBaseDatos` deja Oracle y Keycloak |
+| `respaldar_sgejd.bat` | Respaldo completo del esquema con Data Pump (`expdp`) en `C:\SGE-JD\respaldos\sgejd_AAAAMMDD_HHMM.dmp` (fuera de los repositorios) |
+| `base_limpia.bat` | Borra los datos marcados `[Prueba]` y todo lo que cuelga de ellos (proformas, ventas, comprobantes, cobros, compras, mantenimientos) y devuelve al stock lo que movieron. Primero hace un **ensayo con ROLLBACK** que muestra cuántas filas borraría, pide escribir `BORRAR` y saca un respaldo; si algo falla, Oracle deshace todo |
+| `base_limpia.bat -Entrega` | Deja la base para el cliente: borra **todos** los movimientos y lo marcado `[Prueba]`, reinicia las series de comprobantes y los contadores de id de los movimientos. Conserva catálogo, clientes y proveedores reales; el stock se ajusta después con el inventario físico |
+| `base_limpia.bat -SoloEnsayo` | Solo el ensayo, sin cambiar nada (también con `-Entrega`) |
+| `restaurar_sgejd.bat <archivo.dmp>` | Vuelve la base al estado de un respaldo: reemplaza las tablas de `JDREFRIGERACION` por las del archivo (pide escribir `RESTAURAR` y antes saca un respaldo de lo actual). Apagar antes el backend |
+
+Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) trajo las 17 tablas con los mismos conteos.
+
 ---
 
 <a id="manual-usuario"></a>
 
 ## 3. MANUAL DE USUARIO (¿Cómo se opera?)
 
+> 📄 **Antes de usarlo con clientes reales, leer [Qué hace hoy y qué todavía no](LIMITACIONES.md)**: facturación, WhatsApp y correo simulados o sin configurar, respaldos y decisiones pendientes.
+
 ### Requisitos de entorno
+- Encender con `iniciar_sgejd.bat` y apagar con `detener_sgejd.bat` (ver *Uso diario* en la sección 2).
 - Navegador actualizado (Chrome, Firefox o Edge).
 - Internet para la consulta de RUC/DNI, el envío de correos y la facturación electrónica real (hoy simulada). Sin internet se puede activar `CONSULTA_DOCUMENTOS_SIMULADO=true`.
 
@@ -249,8 +282,8 @@ src/main/java/com/bomerp/
 
 > ⚠️ Credenciales solo de desarrollo. No deben usarse ni documentarse así en un ambiente real.
 
-- Usuarios de Keycloak (realm `bomerp`): `lisandro` (ADMIN) y `lucy` (ASISTENTE) (contraseña de desarrollo en `keycloak/configurar_realm.py`). Se crean al importar `keycloak/realm-bomerp.json` o con `python keycloak/configurar_realm.py`.
-- Consola de Keycloak: `http://localhost:38080` (credenciales en `docker-compose.yml`, `KC_BOOTSTRAP_ADMIN_*`). Los usuarios `admin`/`asistente` de la tabla `USUARIOS` ya no se usan.
+- Usuarios de Keycloak (realm `bomerp`): `lisandro` (ADMIN) y `lucy` (ASISTENTE) (contraseñas en `bomerp-backend/.env`). Se crean al importar `keycloak/realm-bomerp.json` o con `python keycloak/configurar_realm.py`.
+- Consola de Keycloak: `http://localhost:38080` (usuario `admin`, contraseña `KC_ADMIN_PASSWORD` de `.env`). Los usuarios `admin`/`asistente` de la tabla `USUARIOS` ya no se usan.
 
 ### Flujos de operación
 
@@ -262,7 +295,7 @@ src/main/java/com/bomerp/
 - **Proformas:** "+ Nueva Proforma" → cliente, moneda y líneas (con descuento % opcional) → Guardar. En la lista: "📤 Enviar" muestra si salió el correo y si el cliente no tiene teléfono o correo; ✓ acepta; ✗ rechaza (pide confirmación). Una proforma convertida muestra "Venta #N".
 - **Convertir proforma en venta:** la proforma debe estar ACEPTADA. Un diálogo muestra el resumen (cliente, subtotal, IGV, total, tipo de cambio de la proforma) y pide la forma de pago: contado (queda PAGADA) o crédito con días entre 1 y 365 (queda PENDIENTE con fecha límite). Al confirmar, el sistema descuenta stock, programa mantenimientos y genera el comprobante; si algo falla (falta stock, ya convertida, no aceptada) se muestra el motivo en el mismo diálogo.
 - **Reporte de ventas:** Ventas → filtros por estado y rango de fechas (botón "Buscar"); muestra totales por moneda, ticket promedio y el detalle de cada venta.
-- **Anular una venta:** en el reporte, botón "Anular" (solo en ventas REGISTRADAS) → confirmar; el stock de los materiales se restaura.
+- **Anular una venta:** en el reporte, botón "Anular" (solo en ventas REGISTRADAS) → confirmar; el stock de los materiales se restaura. Si el cliente ya había pagado (al contado o con abonos), el aviso muestra cuánto: ese monto queda como devolución pendiente en Cobranza › Devoluciones.
 - **Reportes financieros (API):** `/api/v1/admin/reportes/ventas-resumen`, `/cobranza` y `/proformas-pendientes`.
 - **Moneda y tipo de cambio:** al vender o cotizar se elige soles o dólares; el tipo de cambio de SUNAT del día se carga solo y se puede cambiar si se negoció otro. Los productos en la otra moneda se convierten; el tipo de cambio queda guardado en la venta y sale en la factura.
 - **Exportar a Excel:** Ventas y Compras tienen "⬇ Exportar a Excel": descarga un .xlsx con los filtros de la pantalla, con una hoja de cabeceras (cliente/proveedor con RUC, pago, estado, comprobante, totales por moneda) y otra con el detalle línea por línea.
@@ -270,14 +303,15 @@ src/main/java/com/bomerp/
 - **Historial:** en Clientes y Proveedores, el botón "Historial" muestra todas sus ventas o compras, los totales por moneda y lo pendiente de pago, exportable a Excel.
 - **Kardex:** en Productos, el botón "Kardex" lista las entradas (compras), salidas (ventas) y devoluciones (anulaciones) con el saldo de stock después de cada movimiento, con filtro por fechas y exportable a Excel.
 - **Postventa:** menú Postventa → pestañas Vencidos / Próximos (7 a 90 días) / Realizados / Todos, con filtro por cliente. Cada fila muestra cuántos días faltan, el teléfono (con enlace de WhatsApp para coordinar), la dirección y los equipos. "✓ Realizado" registra la fecha de la visita y el trabajo hecho; "Reprogramar" mueve la fecha a pedido del cliente. Además, el sistema envía a diario, a las 8:00 a. m., un correo con los clientes de los próximos 7 días (requiere `CORREO_OFICINA`).
-- **Cobranza:** menú Cobranza (o "Cobrar" en una venta pendiente) → lista de ventas a crédito con total, cobrado, saldo y días de atraso → "Registrar cobro": se abonan uno o varios montos (botón "todo" para el saldo completo) a las ventas del cliente en esa moneda, con fecha, método (transferencia, depósito, efectivo, Yape/Plin, cheque) y N° de operación. Al cubrir el saldo, la venta pasa a PAGADO. La pestaña "Historial de cobros" lista los pagos recibidos.
+- **Cobranza:** menú Cobranza (o "Cobrar" en una venta pendiente) → lista de ventas a crédito con total, cobrado, saldo y días de atraso → "Registrar cobro": se abonan uno o varios montos (botón "todo" para el saldo completo) a las ventas del cliente en esa moneda, con fecha, método (transferencia, depósito, efectivo, Yape/Plin, cheque) y N° de operación. Al cubrir el saldo, la venta pasa a PAGADO. La pestaña "Historial de cobros" lista los pagos recibidos. La pestaña "Devoluciones" lista el dinero por devolver de ventas anuladas; el administrador pulsa "Registrar devolución" e indica fecha, método y N° de operación.
 - **Compras:** el N° de factura del proveedor es obligatorio (formato SERIE-NÚMERO, p. ej. F001-123). Si esa factura del mismo proveedor ya se ingresó, el sistema lo avisa y no vuelve a subir el stock.
 
 ### Preguntas frecuentes
 
 - **"El cliente no recibió el correo":** verificar el correo del cliente (errores como `.con`), las credenciales SMTP (`MAIL_USERNAME`/`MAIL_PASSWORD`) y la salida al puerto 587.
 - **"No me deja vender por stock":** los materiales no admiten stock negativo (409 "Stock insuficiente"); registre una compra o ajuste la cantidad. Los equipos no controlan stock.
-- **"El backend no arranca: Network Adapter could not establish the connection":** Oracle no está encendido; inicie Docker Desktop y `docker start SGE-JD`.
+- **"El backend no arranca: Network Adapter could not establish the connection":** Oracle no está encendido; use `iniciar_sgejd.bat` (enciende Docker y Oracle antes que el backend).
+- **"¿Cómo guardo una copia de la información?":** `respaldar_sgejd.bat`, al menos una vez por semana, y copiar el archivo de `C:\SGE-JD\respaldos` fuera de la PC.
 - **Soporte técnico:** equipo de desarrollo estudiantil (ver 4. Equipo y responsables).
 
 ---
@@ -296,11 +330,11 @@ src/main/java/com/bomerp/
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
 | 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
-| 7 | Desarrollo | 🔄 Backend operativo (OSE y WhatsApp simulados; RUC/DNI real); Proformas y Postventa ya renombrados; Cobranza separada (15/10/2026); pendiente repartir reportes; SPA en desarrollo |
+| 7 | Desarrollo | 🔄 Backend operativo (OSE y WhatsApp simulados; RUC/DNI real); Proformas y Postventa ya renombrados; Cobranza separada (15/10/2026); pendiente repartir reportes; SPA operativa en todos los módulos (S7–S11) |
 | 8 | Pruebas y validación | 🔄 Pruebas manuales de API; pruebas automatizadas mínimas (ver 5) |
-| 9 | Implementación/despliegue | ⏳ Pendiente — sin ambiente accesible para el cliente |
+| 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Pendiente un ambiente accesible desde otras PC |
 | 10 | Documentación técnica | 🔄 Este documento, `CONTEXTO.md` y los `README.md` del backend y del frontend |
-| 11 | Manual de usuario | 🔄 Sección 3 (se completará con la SPA) |
+| 11 | Manual de usuario | 🔄 Sección 3 y hoja para el cliente [`LIMITACIONES.md`](LIMITACIONES.md) (25/10/2026); falta un manual con capturas por pantalla |
 | 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
 | 13 | Mantenimiento y evolución | ✅ Git/GitHub en uso (`YWAGNERCS/proyecto-SAC`) |
 
@@ -339,8 +373,9 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 2. **Credenciales en el historial de git.** La contraseña de aplicación de Gmail y el token de Decolecta ya no están en `application.properties`, pero siguen en commits anteriores. **Confirmar** que la contraseña se revocó en Google y que el token se regeneró.
 3. ~~**Roles sin efecto (RF-02).**~~ ✅ **Resuelto (18/10/2026):** ver RF-02. **Por confirmar con Lisandro:** si Lucy debe ver costo y margen de los productos (hoy los ve).
 4. ~~**Usuarios de prueba.**~~ ✅ **Resuelto en parte (18/10/2026):** cuentas `lisandro` y `lucy` en Keycloak (correos `.test` y contraseña de desarrollo: cambiarlas en producción). Cada venta guarda quién la registró (`vendedor_id` = `sub`, `vendedor_nombre`). Falta registrar el autor en compras, cobros y anulaciones.
-5. ~~**La SPA guarda el token Basic en `localStorage`**~~ ✅ **Resuelto (18/10/2026):** el access token (15 min) y el refresh token viven en `sessionStorage` y se renuevan solos; la contraseña ya no se guarda. S11: Authorization Code + PKCE.
-6. **`/docs` quedará bloqueado al activar el login:** `SecurityConfig` no hace `permitAll()` para `/docs/**` ni `/images/**`.
+5. ~~**La SPA guarda el token Basic en `localStorage`**~~ ✅ **Resuelto (18-19/10/2026):** login Authorization Code + PKCE (S256); el access token (5 min) y el refresh token viven en memoria con una copia en `sessionStorage` (sobrevive un F5, se borra al cerrar la pestaña) y se renuevan solos. *Direct access grants* desactivado en `bomerp-frontend`; los scripts de prueba usan su propio cliente, `sgejd-pruebas`. Nota: Spring acepta 60 s de tolerancia de reloj sobre el `exp`.
+6. ~~**`/docs` quedará bloqueado al activar el login.**~~ ✅ **Resuelto:** `SecurityConfig` hace `permitAll()` de `/docs/**` e `/images/**`.
+6b. ~~**Contraseñas de desarrollo en el repositorio.**~~ ✅ **Resuelto (25/10/2026, auditoría A9):** todas las contraseñas salen de `bomerp-backend/.env` (en `.gitignore`; plantilla `.env.example`): `docker-compose.yml`, `configurar_realm.py` y `pruebas-seguridad/` las leen de ahí, y `realm-bomerp.json` ya no trae hashes. Se cambiaron las de `lisandro`, `lucy` y la consola de Keycloak; el realm tiene protección contra fuerza bruta (5 intentos, espera de 1 a 15 min) y política de contraseñas (10 caracteres, distinta del usuario y del correo), y los puertos de Docker (Oracle 1522, Postgres 35432, Keycloak 38080) solo escuchan en `127.0.0.1`. También se cambiaron las contraseñas de Oracle (SYS, SYSTEM, PDBADMIN y JDREFRIGERACION) y del Postgres de Keycloak; las viejas quedan en el historial de git, pero ya no sirven. Al instalar en el cliente, poner contraseñas propias en su `.env`.
 
 ### Funcionalidad
 7. ~~**El reporte `ventas-resumen` cuenta ventas anuladas.**~~ ✅ **Resuelto (13/10/2026):** `ventas-resumen`, `cobranza` y `/ventas/pagos-atrasados` solo consideran ventas REGISTRADAS.
@@ -350,6 +385,8 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 11. ~~**Autocompletado RUC/DNI simulado.**~~ ✅ **Resuelto (13/10/2026):** proveedor principal apis.net.pe v1 (sin token), respaldo Decolecta con `DECOLECTA_TOKEN` (RUC por SUNAT, DNI por RENIEC) y modo simulado solo con `CONSULTA_DOCUMENTOS_SIMULADO=true`. ⚠️ La v1 limita las consultas seguidas (429): se responde 503 "intente en unos segundos" y se recomienda registrar un token gratuito de Decolecta como respaldo. La API oficial de RENIEC (PIDE) requiere convenio institucional y no está disponible para el proyecto.
 12. ~~**Correlativo de comprobantes aleatorio.**~~ ✅ **Resuelto (15/10/2026):** cada serie (F001, B001, FC01, BC01) numera 00000001, 00000002… sin saltos ni repetidos, con un contador por serie (`SERIES_COMPROBANTE`) bloqueado durante la venta y la restricción única (serie, número). Probado con 5 ventas simultáneas: números consecutivos, 0 repetidos. Las bases existentes deben correr `migracion_correlativos.sql` una vez (renumera los comprobantes ya emitidos).
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
+13b. **Facturación electrónica simulada:** `NubefactClientSimulado` numera y genera el PDF, pero no envía a SUNAT; los comprobantes no tienen validez tributaria. Falta contratar una OSE y conectar su cuenta.
+13c. **Correo sin configurar:** `spring.mail.username`/`password` y `CORREO_OFICINA` están vacíos, así que no sale ningún correo (proformas, facturas ni el resumen diario de mantenimientos). Al emitir una factura: si el cliente no tiene correo queda en INFO, si el envío falla queda en WARN y solo un fallo de emisión es ERROR.
 14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.
 15. ~~**Alerta de stock mínimo sobre todos los productos.**~~ ✅ **Resuelto (15/10/2026):** las alertas (pantalla y correo diario) consideran solo materiales (`MATERIAL_SERVICIO`); los equipos no controlan stock y ya no generan alertas falsas.
 16. ~~**Proformas vencidas sin programar.**~~ ✅ **Resuelto (15/10/2026):** `ProformaScheduledService` vence las proformas PENDIENTES todos los días a las 00:05 y también al iniciar el backend (por si estuvo apagado). Ejecución manual: `POST /proformas/marcar-vencidas`.
@@ -362,9 +399,9 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 21. **Límites entre módulos incumplidos:** `FacturacionService` usa `VentaRepository`, y `ReportesService` usa `VentaRepository` y `ProformaRepository`. Se resuelve en parte con la decisión de **reportes por módulo**: mover `ventas-resumen` y `cobranza` a `ventas`, y `proformas-pendientes` a `proformas`.
 22. **Esquemas Oracle por módulo.** El curso propone esquemas `BOM_CATALOGO`, `BOM_VENTAS`, etc.; aquí todo está en un solo esquema (`JDREFRIGERACION`), y `CONTEXTO.md` mencionaba un prefijo `JD_<MODULO>` que no se usa.
 23. **Paquete raíz.** Documentaciones anteriores decían `com.jdrefrigeracion` o `pe.edu.upeu.sgejd`; el real es `com.bomerp`.
-24. ~~**Seguridad con Keycloak sin responsable.**~~ ✅ **Hecho (18/10/2026):** Keycloak 26.8 + Postgres en `docker-compose.yml`, backend como Resource Server y SPA adaptada. **Confirmar con el docente** que la ruta S10b es válida para la evaluación de S10 (la guía S10b dice que no se evalúa). Pendiente S11: login con redirección y PKCE, y desactivar *Direct access grants*.
-25. ~~**Cobranza por separar.**~~ ✅ **Resuelto (15/10/2026):** paquete `cobranza` con `Cobro`–`DetalleCobro`, abonos parciales y saldos; usa Ventas solo por su fachada (`listarPendientesDeCobro`, `obtenerPorIdPublico`, `marcarComoPagada`). Pendientes: (a) **anular una venta que ya tiene abonos** no avisa ni registra la devolución del dinero; (b) `POST /ventas/{id}/marcar-pagada` sigue existiendo y marca PAGADA sin registrar el cobro (la SPA ya no lo usa; retirarlo cuando nadie dependa de él); (c) `/reportes/cobranza` sigue en `reportes`.
-25b. **Topes de descuento por confirmar.** 30 % para Lisandro (ADMIN) y 10 % para Lucy (ASISTENTE) son una propuesta: confirmarlos con el cliente (`app.descuentos.*`). Mientras el login esté desactivado (punto 1), quien entra sin sesión recibe el tope de asistente.
+24. ~~**Seguridad con Keycloak sin responsable.**~~ ✅ **Hecho (18/10/2026):** Keycloak 26.8 + Postgres en `docker-compose.yml`, backend como Resource Server y SPA adaptada. **Confirmar con el docente** que la ruta S10b es válida para la evaluación de S10 (la guía S10b dice que no se evalúa). S11 hecho (19/10/2026): login con redirección y PKCE, y *Direct access grants* desactivado (ver punto 5).
+25. ~~**Cobranza por separar.**~~ ✅ **Resuelto (15/10/2026):** paquete `cobranza` con `Cobro`–`DetalleCobro`, abonos parciales y saldos; usa Ventas solo por su fachada (`listarPendientesDeCobro`, `obtenerPorIdPublico`, `marcarComoPagada`). (a) ✅ **Resuelto (25/10/2026, A8):** anular una venta que el cliente ya pagó (al contado o con abonos) avisa el monto antes de confirmar y deja una **devolución PENDIENTE** en Cobranza › Devoluciones; el ADMIN registra cuándo y cómo se devolvió. Ventas publica `VentaAnuladaEvent` y Cobranza lo escucha en la misma transacción, así Ventas no depende de Cobranza. (b) ✅ **Resuelto (25/10/2026, A7):** se retiró `POST /ventas/{id}/marcar-pagada`, que también podía llamar ASISTENTE y marcaba PAGADA sin cobro; una venta solo pasa a PAGADO por sus abonos. Pendiente: (c) `/reportes/cobranza` sigue en `reportes`.
+25b. **Topes de descuento por confirmar.** 30 % para Lisandro (ADMIN) y 10 % para Lucy (ASISTENTE) son una propuesta: confirmarlos con el cliente (`app.descuentos.*`). El tope sale del rol del JWT; sin sesión la API responde 401.
 26. **Migración de base de datos para Proformas.** Cada integrante debe ejecutar `migracion_proforma.sql` en su Oracle local antes de arrancar el backend nuevo; si no, Hibernate crea tablas `PROFORMAS` vacías.
 27. **Herramienta de modernización:** `.github/modernize/` registra un intento de migrar a Java 25 / Boot 3.5.16 que no se aplicó. Confirmar y borrar esa carpeta si ya no sirve.
 
@@ -374,6 +411,12 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 ### Pruebas y configuración
 28. **Pruebas automatizadas casi inexistentes.** Solo queda `ProductoCrudTest`, que necesita Oracle encendido. No hay pruebas de ventas, de rollback ni de módulos.
 29. **H2 incluido pero sin perfil.** La dependencia está en el `pom.xml`, pero no hay configuración H2 activa (se eliminó `application-test.properties`, que solo cambiaba el puerto).
-30. **Paquete de arreglos 2 sin aplicar.** `Claude/arreglos2` (pruebas de ventas, correlativo secuencial, límites entre módulos) no está en el código. **No aplicar el `.patch` tal cual:** chocaría con los cambios de la S09 en ventas; portar a mano lo que se quiera.
+30. ~~**Paquete de arreglos 2 sin aplicar.**~~ Ya no existe la carpeta `Claude/arreglos2`. De lo que traía, el correlativo secuencial se hizo aparte (punto 12); siguen pendientes las pruebas de ventas (punto 28) y los límites entre módulos (punto 21).
 31. **Contenedor Docker:** la documentación anterior lo llamaba `SGE-DJ`; el real es **`SGE-JD`**. El volumen `sge-jd-oracle-data` está marcado como `external` en `docker-compose.yml`, así que debe existir antes de `docker compose up`.
 32. **Requisitos "16 RF consolidados en 8":** la documentación anterior lo decía, pero no existe esa versión consolidada. Confirmar si hay otro documento con los 8 RF.
+33. **`System.out` en vez de logger** en 5 clases (`NubefactClientSimulado`, `NotificadorSimulado`, `NotificadorCorreoReal`, `InventarioScheduledService`, `MantenimientoScheduledService`). Pasarlas a SLF4J como el resto.
+34. **Algunos controllers todavía responden entidades:** Categoría, Cliente y Proveedor (el resto ya usa DTO).
+
+### Operación
+35. **Datos de prueba en la base.** Los recorridos como Lisandro y Lucy dejaron registros marcados `[Prueba]` (15 clientes, 6 productos, 6 proveedores, 3 categorías y los movimientos que cuelgan de ellos). Se dejaron a propósito; antes de entregar, `base_limpia.bat` (o `-Entrega`).
+36. **Respaldos manuales.** `respaldar_sgejd.bat` existe, pero nada lo ejecuta solo. Si el cliente lo usa a diario, programarlo en el Programador de tareas de Windows y copiar el archivo fuera de la PC.

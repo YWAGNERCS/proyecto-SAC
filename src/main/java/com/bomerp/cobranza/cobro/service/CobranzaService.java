@@ -5,6 +5,7 @@ import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.cobranza.cobro.dto.CobroRequestDTO;
 import com.bomerp.cobranza.cobro.dto.CobroResponseDTO;
 import com.bomerp.cobranza.cobro.dto.CuentaPorCobrarDTO;
+import com.bomerp.cobranza.cobro.dto.PagadoDeVentaDTO;
 import com.bomerp.cobranza.cobro.entity.Cobro;
 import com.bomerp.cobranza.cobro.entity.DetalleCobro;
 import com.bomerp.cobranza.cobro.repository.CobroRepository;
@@ -141,6 +142,25 @@ public class CobranzaService {
         log.info("Cobro {} registrado: {} {} de {} en {} venta(s)", guardado.getId(), total, dto.moneda(),
                 cliente.getNombreORazonSocial(), saldosFinales.size());
         return CobroResponseDTO.desdeEntidad(guardado);
+    }
+
+    /**
+     * Lo que el cliente ya pagó de una venta: la suma de sus abonos o, si se pagó sin abonos
+     * (venta al contado), su total. Es lo que se le devuelve si la venta se anula.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal pagadoDe(Venta venta) {
+        BigDecimal cobrado = cobroRepository.totalCobradoDeVenta(venta.getId());
+        if (cobrado.signum() > 0) {
+            return cobrado;
+        }
+        return venta.getEstadoPago() == Venta.EstadoPago.PAGADO ? venta.calcularTotal() : BigDecimal.ZERO;
+    }
+
+    @Transactional(readOnly = true)
+    public PagadoDeVentaDTO pagadoDeVenta(Long ventaId) {
+        Venta venta = ventaService.obtenerPorIdPublico(ventaId);
+        return new PagadoDeVentaDTO(venta.getId(), venta.getMoneda().name(), pagadoDe(venta));
     }
 
     /** Saldo pendiente de una venta (fachada para Reportes). */

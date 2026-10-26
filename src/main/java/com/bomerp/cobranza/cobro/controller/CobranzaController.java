@@ -3,6 +3,7 @@ package com.bomerp.cobranza.cobro.controller;
 import com.bomerp.cobranza.cobro.dto.CobroRequestDTO;
 import com.bomerp.cobranza.cobro.dto.CobroResponseDTO;
 import com.bomerp.cobranza.cobro.dto.CuentaPorCobrarDTO;
+import com.bomerp.cobranza.cobro.dto.PagadoDeVentaDTO;
 import com.bomerp.cobranza.cobro.service.CobranzaService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,12 @@ public class CobranzaController {
     public List<CobroResponseDTO> historial(@RequestParam(required = false) Long clienteId,
                                             @RequestParam(required = false) Long ventaId) {
         return cobranzaService.historial(clienteId, ventaId);
+    }
+
+    /** Cuánto pagó el cliente de una venta: se muestra antes de anularla (se le devolverá). */
+    @GetMapping("/ventas/{ventaId}/pagado")
+    public PagadoDeVentaDTO pagadoDeVenta(@PathVariable Long ventaId) {
+        return cobranzaService.pagadoDeVenta(ventaId);
     }
 
     /** Registra un pago (abono parcial o total a una o varias ventas). */

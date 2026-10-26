@@ -125,7 +125,7 @@ npm start
 
 **Datos de demostración:** `datos_demo.sql` reinicia la base con 30 productos, 8 categorías, 7 proveedores y 8 clientes reales (verificados en SUNAT). Ver la [guía de instalación](src/main/resources/static/docs/README.md#doc-tecnica).
 
-**Usuarios de desarrollo:** `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Keycloak; la contraseña de desarrollo está en `keycloak/configurar_realm.py`, no se publica aquí). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez.
+**Usuarios de desarrollo:** `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Keycloak; las contraseñas están en `bomerp-backend/.env` (no se versiona; plantilla en `.env.example`)). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez.
 
 <details>
 <summary>Variables de entorno disponibles</summary>

@@ -5,12 +5,24 @@ $ErrorActionPreference = 'Stop'
 
 $Global:KC  = 'http://localhost:38080/realms/bomerp/protocol/openid-connect/token'
 $Global:API = 'http://localhost:8080/api/v1'
-# Usuarios semilla de desarrollo (keycloak/configurar_realm.py). Cambiar en producción.
-$Global:CLAVE = 'JdRefri2026!'
+# Contraseñas de los usuarios: en bomerp-backend/.env (SGEJD_CLAVE_LISANDRO, SGEJD_CLAVE_LUCY), no aquí.
+function Get-Clave([string]$usuario) {
+    $nombre = 'SGEJD_CLAVE_' + $usuario.ToUpper()
+    $valor = [Environment]::GetEnvironmentVariable($nombre)
+    if (-not $valor) {
+        $archivo = Join-Path $PSScriptRoot '..\.env'
+        if (Test-Path $archivo) {
+            $linea = Get-Content -Encoding UTF8 $archivo | Where-Object { $_ -match "^$nombre=" } | Select-Object -First 1
+            if ($linea) { $valor = $linea.Substring($nombre.Length + 1).Trim() }
+        }
+    }
+    if (-not $valor) { throw "Falta $nombre en bomerp-backend/.env (ver .env.example)" }
+    return $valor
+}
 
 function Get-Token([string]$usuario) {
     $r = Invoke-RestMethod -Method Post -Uri $Global:KC -ContentType 'application/x-www-form-urlencoded' `
-        -Body "grant_type=password&client_id=sgejd-pruebas&username=$usuario&password=$($Global:CLAVE)"
+        -Body "grant_type=password&client_id=sgejd-pruebas&username=$usuario&password=$([uri]::EscapeDataString((Get-Clave $usuario)))"
     return $r
 }
 

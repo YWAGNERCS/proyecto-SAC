@@ -6,7 +6,7 @@ $retorno = [uri]::EscapeDataString('http://localhost:4200/auth/callback')
 Write-Paso '1. Atajo de S10b (password grant) contra el cliente de la SPA -> rechazado'
 try {
     Invoke-RestMethod -Method Post -Uri "$KC/token" -ContentType 'application/x-www-form-urlencoded' `
-        -Body "grant_type=password&client_id=bomerp-frontend&username=lucy&password=$($Global:CLAVE)" | Out-Null
+        -Body "grant_type=password&client_id=bomerp-frontend&username=lucy&password=$([uri]::EscapeDataString((Get-Clave 'lucy')))" | Out-Null
     Write-Host 'ERROR: el cliente aceptó la contraseña directa' -ForegroundColor Red
 } catch {
     Write-Host ("HTTP {0}  (esperado 400)" -f [int]$_.Exception.Response.StatusCode) -ForegroundColor Green

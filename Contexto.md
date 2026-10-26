@@ -156,7 +156,7 @@ La lista completa de inconsistencias y pendientes está en la documentación com
 5. Verificar: `GET /api/v1/publico/catalogo` (sin login) y `pruebas-seguridad/05_matriz.ps1` (tokens de Keycloak: `lisandro` / `lucy`).
 6. Frontend: en `bomerp-frontend`, `npm install` y `npm start` → `http://localhost:4200`.
 
-Usuarios de desarrollo: `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Keycloak; la contraseña de desarrollo está en `keycloak/configurar_realm.py`, no se publica aquí).
+Usuarios de desarrollo: `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Keycloak; las contraseñas están en `bomerp-backend/.env` (no se versiona; plantilla en `.env.example`)).
 
 ---
 

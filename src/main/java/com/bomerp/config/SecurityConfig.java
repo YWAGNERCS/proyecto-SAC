@@ -104,6 +104,8 @@ public class SecurityConfig {
                 // Operaciones que solo decide el dueño (auditoría C2)
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/admin/ventas/*/anular").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/clientes/**", "/api/v1/admin/proveedores/**").hasRole("ADMIN")
+                // Devolver dinero de una venta anulada lo registra quien anula (auditoría A8)
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/cobranza/devoluciones/**").hasRole("ADMIN")
 
                 // Resto del panel: cualquiera de los dos roles del negocio
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "ASISTENTE")
