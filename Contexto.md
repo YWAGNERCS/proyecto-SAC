@@ -146,7 +146,7 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 | Operación | ✅ `scripts/`: arranque, apagado, respaldo, restauración y base limpia de un clic |
 | Pruebas automatizadas | ⚠️ Mínimas (sin pruebas de ventas ni de módulos) |
 
-La lista completa de inconsistencias y pendientes está en la documentación completa (`src/main/resources/static/docs/README.md`), sección **5. Por verificar**.
+La lista completa de inconsistencias y pendientes está en la documentación completa (`docs/README.md`, publicada en https://ywagnercs.github.io/proyecto-SAC/), sección **5. Por verificar**.
 
 ---
 

@@ -11,7 +11,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Oracle%20DB-2496ED?logo=docker&logoColor=white)
 ![Estado](https://img.shields.io/badge/LP2-Unidad%20II%20cerrada-2E7D5B)
 
-[Inicio rápido](#-inicio-rápido) · [Funcionalidades](#-funcionalidades) · [Arquitectura](#-arquitectura) · [API](#-api) · [Documentación completa](src/main/resources/static/docs/README.md) · [Documentación publicada](https://ywagnercs.github.io/proyecto-SAC/)
+[Inicio rápido](#-inicio-rápido) · [Funcionalidades](#-funcionalidades) · [Arquitectura](#-arquitectura) · [API](#-api) · [Documentación completa](docs/README.md) · [Documentación publicada](https://ywagnercs.github.io/proyecto-SAC/)
 
 </div>
 
@@ -89,7 +89,7 @@ flowchart LR
 
 **Requisitos:** JDK 21 · Maven · Docker Desktop · Node.js (para la SPA)
 
-> **Uso diario (ya instalado):** doble clic en `scripts/iniciar_sgejd.bat`: enciende Docker, Oracle, Keycloak, el backend y la SPA, y abre el navegador. Para apagar, `detener_sgejd.bat`. Ver *Uso diario* en la [documentación completa](src/main/resources/static/docs/README.md#doc-tecnica).
+> **Uso diario (ya instalado):** doble clic en `scripts/iniciar_sgejd.bat`: enciende Docker, Oracle, Keycloak, el backend y la SPA, y abre el navegador. Para apagar, `detener_sgejd.bat`. Ver *Uso diario* en la [documentación completa](docs/README.md#doc-tecnica).
 
 **1. Levantar Oracle y Keycloak** (desde `bomerp-backend`, donde está `docker-compose.yml`). Antes, copiar `.env.example` como `.env` y poner las contraseñas: `docker compose` las lee de ahí.
 
@@ -115,7 +115,7 @@ cp src/main/resources/application-local.properties.example src/main/resources/ap
 mvn spring-boot:run
 ```
 
-➡️ API en `http://localhost:8080` · Swagger en `http://localhost:8080/swagger-ui.html` · Documentación en `http://localhost:8080/docs/`
+➡️ API en `http://localhost:8080` · Swagger en `http://localhost:8080/swagger-ui.html` · Documentación en https://ywagnercs.github.io/proyecto-SAC/
 
 **4. Ejecutar la SPA** (rama `frontend`, carpeta `bomerp-frontend`)
 
@@ -126,7 +126,7 @@ npm start
 
 ➡️ `http://localhost:4200`
 
-**Datos de demostración:** `datos_demo.sql` reinicia la base con 30 productos, 8 categorías, 7 proveedores y 8 clientes reales (verificados en SUNAT). Ver la [guía de instalación](src/main/resources/static/docs/README.md#doc-tecnica).
+**Datos de demostración:** `datos_demo.sql` reinicia la base con 30 productos, 8 categorías, 7 proveedores y 8 clientes reales (verificados en SUNAT). Ver la [guía de instalación](docs/README.md#doc-tecnica).
 
 **Usuarios de desarrollo:** `lisandro` (ADMIN) · `lucy` (ASISTENTE) (cuentas de Keycloak; las contraseñas están en `bomerp-backend/.env` (no se versiona; plantilla en `.env.example`)). Las bases creadas antes del 15/10/2026 deben correr `migracion_auditoria_altos.sql` una vez, y las creadas antes del 25/10/2026, `migracion_devoluciones.sql`.
 
@@ -201,7 +201,7 @@ La identidad no es un paquete: vive en **Keycloak** (`keycloak/`), y el backend 
 - [x] **S12** · Evaluación de la Unidad II: producto [`lp2-demo.md`](https://ywagnercs.github.io/proyecto-SAC/#/lp2-demo) publicado
 - [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
 
-> ⚠️ **Pendientes conocidos:** las integraciones OSE y WhatsApp son simuladas y el correo no está configurado; falta repartir `reportes` entre sus módulos. Qué significa para el cliente: [LIMITACIONES.md](src/main/resources/static/docs/LIMITACIONES.md). Lista completa en **[Por verificar](src/main/resources/static/docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** las integraciones OSE y WhatsApp son simuladas y el correo no está configurado; falta repartir `reportes` entre sus módulos. Qué significa para el cliente: [LIMITACIONES.md](docs/LIMITACIONES.md). Lista completa en **[Por verificar](docs/README.md#por-verificar)**.
 
 ---
 
@@ -209,9 +209,9 @@ La identidad no es un paquete: vive en **Keycloak** (`keycloak/`), y el backend 
 
 | Documento | Contenido |
 |---|---|
-| [Documentación completa](src/main/resources/static/docs/README.md) | Requerimientos (RF/RNF), modelo de datos, manual de usuario, trazabilidad y lista "Por verificar" |
+| [Documentación completa](docs/README.md) | Requerimientos (RF/RNF), modelo de datos, manual de usuario, trazabilidad y lista "Por verificar" |
 | [Documentación publicada](https://ywagnercs.github.io/proyecto-SAC/) | La documentación completa, el producto de LP2 (`lp2-demo.md`) y la hoja para el cliente, en la web |
-| [LIMITACIONES.md](src/main/resources/static/docs/LIMITACIONES.md) | Para Lisandro y Lucy: qué funciona de verdad, qué está simulado y qué decisiones faltan |
+| [LIMITACIONES.md](docs/LIMITACIONES.md) | Para Lisandro y Lucy: qué funciona de verdad, qué está simulado y qué decisiones faltan |
 | [Contexto.md](Contexto.md) | Problema del negocio, decisiones de arquitectura, estado y equipo |
 | Swagger UI | `http://localhost:8080/swagger-ui.html` (con el backend encendido) |
 

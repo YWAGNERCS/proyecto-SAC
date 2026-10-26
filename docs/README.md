@@ -2,7 +2,7 @@
 
 > Última revisión contra el código: **25/10/2026** (sesión S12 de LP2, cierre de la Unidad II). Equipo **CherryTree**.
 > Repositorio: `https://github.com/YWAGNERCS/proyecto-SAC` — backend en la rama `master`, frontend en la rama `frontend`.
-> Publicado en **https://ywagnercs.github.io/proyecto-SAC/** junto con el producto de LP2 (`lp2-demo.md`) y la hoja para el cliente; se actualiza solo al subir cambios de `/docs` a `master`.
+> Publicado en **https://ywagnercs.github.io/proyecto-SAC/** junto con el producto de LP2 (`lp2-demo.md`) y la hoja para el cliente; se actualiza solo al subir cambios de `docs/` a `master`.
 > Lo que no coincide entre el código, esta documentación o la guía del curso está listado en **[5. Por verificar](#por-verificar)**.
 
 ---
@@ -188,7 +188,7 @@ src/main/java/com/bomerp/
 └── ventas/          venta/ (con event/VentaAnuladaEvent), detalleventa/
 ```
 
-Fuera de `src/`: `scripts/` (arranque, respaldo, restauración y base limpia), `keycloak/` (realm y `configurar_realm.py`), `pruebas-seguridad/` (matriz de permisos), los `migracion_*.sql` y `.github/workflows/docs.yml` (publica esta documentación).
+Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el sitio MkDocs), `scripts/` (arranque, respaldo, restauración y base limpia), `keycloak/` (realm y `configurar_realm.py`), `pruebas-seguridad/` (matriz de permisos), los `migracion_*.sql` y `.github/workflows/docs.yml` (publica esta documentación).
 
 ### Modelo de datos (tablas reales, esquema `JDREFRIGERACION`)
 
@@ -377,12 +377,12 @@ Seguridad: Keycloak, integrado en S10b (backend como Resource Server y login de 
 Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el código y la guía del curso. Ordenadas por importancia.
 
 ### Seguridad
-1. ~~**La API está abierta sin login.**~~ ✅ **Resuelto (18/10/2026, S10b):** toda `/api/v1/admin/**` exige un JWT válido de Keycloak; se retiró `app.security.admin-requiere-login`. Solo quedan abiertos el catálogo público, Swagger y `/docs`.
+1. ~~**La API está abierta sin login.**~~ ✅ **Resuelto (18/10/2026, S10b):** toda `/api/v1/admin/**` exige un JWT válido de Keycloak; se retiró `app.security.admin-requiere-login`. Solo quedan abiertos el catálogo público y Swagger.
 2. **Credenciales en el historial de git.** La contraseña de aplicación de Gmail y el token de Decolecta ya no están en `application.properties`, pero siguen en commits anteriores. **Confirmar** que la contraseña se revocó en Google y que el token se regeneró.
 3. ~~**Roles sin efecto (RF-02).**~~ ✅ **Resuelto (18/10/2026):** ver RF-02. **Por confirmar con Lisandro:** si Lucy debe ver costo y margen de los productos (hoy los ve).
 4. ~~**Usuarios de prueba.**~~ ✅ **Resuelto en parte (18/10/2026):** cuentas `lisandro` y `lucy` en Keycloak (correos `.test`; contraseñas en `.env`, ver 6b). Cada venta guarda quién la registró (`vendedor_id` = `sub`, `vendedor_nombre`). Falta registrar el autor en compras, cobros y anulaciones.
 5. ~~**La SPA guarda el token Basic en `localStorage`**~~ ✅ **Resuelto (18-19/10/2026):** login Authorization Code + PKCE (S256); el access token (5 min) y el refresh token viven en memoria con una copia en `sessionStorage` (sobrevive un F5, se borra al cerrar la pestaña) y se renuevan solos. *Direct access grants* desactivado en `bomerp-frontend`; los scripts de prueba usan su propio cliente, `sgejd-pruebas`. Nota: Spring acepta 60 s de tolerancia de reloj sobre el `exp`.
-6. ~~**`/docs` quedará bloqueado al activar el login.**~~ ✅ **Resuelto:** `SecurityConfig` hace `permitAll()` de `/docs/**` e `/images/**`.
+6. ~~**`/docs` quedará bloqueado al activar el login.**~~ ✅ **Ya no aplica (25/10/2026):** el backend dejó de servir la documentación en `/docs`; ahora vive en la carpeta `docs/` del repositorio y se publica en https://ywagnercs.github.io/proyecto-SAC/. `SecurityConfig` solo deja abierto `/images/**` (el logo de la factura y del correo).
 6b. ~~**Contraseñas de desarrollo en el repositorio.**~~ ✅ **Resuelto (25/10/2026, auditoría A9):** todas las contraseñas salen de `bomerp-backend/.env` (en `.gitignore`; plantilla `.env.example`): `docker-compose.yml`, `configurar_realm.py` y `pruebas-seguridad/` las leen de ahí, y `realm-bomerp.json` ya no trae hashes. Se cambiaron las de `lisandro`, `lucy` y la consola de Keycloak; el realm tiene protección contra fuerza bruta (5 intentos, espera de 1 a 15 min) y política de contraseñas (10 caracteres, distinta del usuario y del correo), y los puertos de Docker (Oracle 1522, Postgres 35432, Keycloak 38080) solo escuchan en `127.0.0.1`. También se cambiaron las contraseñas de Oracle (SYS, SYSTEM, PDBADMIN y JDREFRIGERACION) y del Postgres de Keycloak; las viejas quedan en el historial de git, pero ya no sirven. Al instalar en el cliente, poner contraseñas propias en su `.env`.
 
 ### Funcionalidad

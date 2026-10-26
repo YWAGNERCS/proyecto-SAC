@@ -1,6 +1,6 @@
-"""Arma sitio/docs/ para MkDocs a partir de la documentación que ya sirve el backend en /docs.
+"""Arma sitio/docs/ para MkDocs a partir de la documentación del proyecto (carpeta docs/ del backend).
 
-La fuente sigue siendo una sola: src/main/resources/static/docs/README.md (se divide en una página
+La fuente sigue siendo una sola: docs/README.md del backend (se divide en una página
 por sección, como las sesiones del sitio del curso), LIMITACIONES.md y lp2-demo.md de la rama frontend.
 Las páginas generadas no se versionan (sitio/.gitignore).
 
@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
-FUENTE = AQUI.parent / "src" / "main" / "resources" / "static" / "docs"
+FUENTE = AQUI.parent / "docs"
 
 # Ancla de cada sección del README → página del sitio y su título
 SECCIONES = {

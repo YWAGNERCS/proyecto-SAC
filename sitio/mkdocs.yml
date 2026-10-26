@@ -1,5 +1,5 @@
 # Sitio de documentación de SGE-JD (MkDocs + Material, como el sitio del curso).
-# Las páginas se generan con armar.py a partir de src/main/resources/static/docs (no se editan en docs/).
+# Las páginas se generan con armar.py a partir de ../docs (no se editan en sitio/docs/, que se regenera).
 #   python sitio/armar.py && mkdocs serve -f sitio/mkdocs.yml      → vista previa en http://127.0.0.1:8000
 site_name: SGE-JD
 site_description: Sistema de gestión empresarial de JD Refrigeración S.A.C. — Proyecto Integrador ADS · BD2 · LP2, equipo CherryTree

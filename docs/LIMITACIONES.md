@@ -49,4 +49,4 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 
 ---
 
-*Equipo: Yoel Wagner Chambi Sirena, Wilson Ronald Apaza Mamani y Aron Rodrigo Magaño Quispe. Detalle técnico: sección 5 de la documentación (`/docs`).*
+*Equipo: Yoel Wagner Chambi Sirena, Wilson Ronald Apaza Mamani y Aron Rodrigo Magaño Quispe. Detalle técnico: sección 5 de la documentación, en https://ywagnercs.github.io/proyecto-SAC/.*

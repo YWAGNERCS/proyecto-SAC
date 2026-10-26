@@ -1,6 +1,6 @@
 ﻿# Respaldo completo del esquema JDREFRIGERACION con Oracle Data Pump (expdp).
 # Uso: doble clic en respaldar_sgejd.bat. Deja el archivo en C:\SGE-JD\respaldos (fuera de los repositorios).
-# Restaurar (reemplaza las tablas por las del respaldo): ver "Respaldo y restauración" en /docs.
+# Restaurar (reemplaza las tablas por las del respaldo): restaurar_sgejd.bat, ver "Uso diario" en docs/README.md.
 param(
     [string]$Carpeta = (Join-Path (Resolve-Path "$PSScriptRoot\..\..").Path 'respaldos'),
     [string]$Nombre = ('sgejd_' + (Get-Date -Format 'yyyyMMdd_HHmm'))

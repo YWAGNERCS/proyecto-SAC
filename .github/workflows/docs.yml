@@ -1,7 +1,7 @@
 # Publica la documentación en GitHub Pages con MkDocs + Material (como el sitio del curso).
-# Las páginas salen de /docs de master (el README se divide por secciones) y de lp2-demo.md,
+# Las páginas salen de docs/ de master (el README se divide por secciones) y de lp2-demo.md,
 # el producto de LP2 Unidad II, que vive en la rama frontend (ver sitio/armar.py).
-# Corre al cambiar /docs o sitio/ en master. Si solo cambió lp2-demo.md (rama frontend), ejecutarlo a mano:
+# Corre al cambiar docs/ o sitio/ en master. Si solo cambió lp2-demo.md (rama frontend), ejecutarlo a mano:
 #   gh workflow run docs.yml      (o Actions → Documentación → Run workflow)
 name: Documentación
 
@@ -9,7 +9,7 @@ on:
   push:
     branches: [master]
     paths:
-      - 'src/main/resources/static/docs/**'
+      - 'docs/**'
       - 'sitio/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:

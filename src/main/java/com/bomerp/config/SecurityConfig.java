@@ -93,7 +93,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/v1/publico/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                        "/docs/**", "/images/**", "/error").permitAll()
+                        "/images/**", "/error").permitAll()
 
                 // Catálogo (módulo no transaccional): consultar = cualquier usuario; modificar = ADMIN
                 .requestMatchers(HttpMethod.GET, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").authenticated()
