@@ -30,7 +30,9 @@ def enlaces(texto):
         texto = texto.replace(f"](#{ancla})", f"]({archivo})")
     texto = texto.replace("](LIMITACIONES.md)", "](limitaciones.md)")
     # Docsify necesita `a\|b` dentro de una tabla; MkDocs ya ignora los | del código y mostraría la barra
-    return re.sub(r"`[^`\n]*`", lambda m: m.group(0).replace("\\|", "|"), texto)
+    texto = re.sub(r"`[^`\n]*`", lambda m: m.group(0).replace("\\|", "|"), texto)
+    # "6b. …" no es un número de lista: MkDocs lo pegaría al punto anterior. Va como párrafo propio dentro de él
+    return re.sub(r"^(\d+[a-z])\. ", r"\n    **\1.** ", texto, flags=re.M)
 
 
 def main():

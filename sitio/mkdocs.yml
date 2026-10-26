@@ -36,6 +36,7 @@ markdown_extensions:
   - md_in_html
   - admonition
   - pymdownx.details
+  - pymdownx.tilde        # ~~tachado~~ (lo usa "Por verificar" para lo ya resuelto)
   - toc:
       permalink: true
   - pymdownx.superfences:
