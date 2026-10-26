@@ -1,0 +1,57 @@
+# Publica la documentación en GitHub Pages: el sitio Docsify de /docs (rama master) más
+# lp2-demo.md, el producto de LP2 Unidad II, que vive en la rama frontend.
+# Corre al cambiar /docs en master. Si solo cambió lp2-demo.md (rama frontend), ejecutarlo a mano:
+#   gh workflow run docs.yml      (o Actions → Documentación → Run workflow)
+name: Documentación
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/main/resources/static/docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Traer lp2-demo.md de la rama frontend
+        uses: actions/checkout@v4
+        with:
+          ref: frontend
+          path: frontend
+          sparse-checkout: docs
+
+      - name: Armar el sitio
+        run: |
+          mkdir -p _site
+          cp -r src/main/resources/static/docs/. _site/
+          cp frontend/docs/lp2-demo.md _site/lp2-demo.md
+          touch _site/.nojekyll
+          printf -- '- [Documentación del sistema](/)\n- [Producto LP2 · Unidad II](lp2-demo.md)\n- [Qué hace hoy y qué todavía no](LIMITACIONES.md)\n' > _site/_sidebar.md
+          # En el sitio publicado hay menú lateral; la copia que sirve el backend no lo usa
+          sed -i 's/loadSidebar: false/loadSidebar: true/' _site/index.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
