@@ -26,7 +26,18 @@ Universidad Peruana Unión, construido sobre la base académica BomERP.
 | **Wilson Ronald Apaza Mamani** | Catálogo, Inventario, Compras y Postventa | Compra ↔ Producto (`DetalleCompra`) |
 | **Aron Rodrigo Magaño Quispe** | Clientes, Facturación, Notificaciones y Cobranza | Cobro ↔ Venta (`DetalleCobro`) |
 
-Cada muchos a muchos se resuelve con una **tabla intermedia** (entre paréntesis) en la que cada fila es una línea con sus propios datos: cantidad, precio, descuento o monto abonado. Explicación con diagrama y ejemplo en [Relaciones muchos a muchos](tecnica.md#relaciones-muchos-a-muchos).
+### Cómo funciona el muchos a muchos
+
+Cada muchos a muchos se resuelve con una **tabla del medio**: cada fila une un registro del lado A con uno del lado B y guarda sus propios datos.
+
+| Integrante | Lado A | Tabla del medio | Lado B | Dato propio |
+|---|---|---|---|---|
+| Yoel | Proforma | `ItemProforma` | Producto | cantidad, precio, descuento |
+| Yoel | Venta | `DetalleVenta` | Producto | cantidad, precio, descuento |
+| Wilson | Compra | `DetalleCompra` | Producto | cantidad, precio de compra |
+| Aron | Cobro | `DetalleCobro` | **Venta** | monto abonado |
+
+Por ejemplo, una venta lleva varios productos y un mismo producto aparece en varias ventas; cada línea de `DetalleVenta` es "esta venta + este producto, tantas unidades, a tal precio". La de Aron une **cobros con ventas**: un cobro puede pagar varias ventas y una venta puede recibir varios cobros. Diagrama y ejemplo completo en [Relaciones muchos a muchos](tecnica.md#relaciones-muchos-a-muchos).
 
 ## Tecnologías
 

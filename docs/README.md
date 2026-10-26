@@ -238,12 +238,12 @@ La venta 110 sale dos veces (llevó dos productos) y la tubería también (está
 
 **Por qué una entidad intermedia y no `@ManyToMany`:** la unión **tiene datos propios** (cantidad, precio, descuento, monto), que no son ni de la venta ni del producto. `@ManyToMany` solo crea una tabla con los dos ids. Además el precio se **copia** en la línea al vender: si mañana sube el producto, la venta de hoy conserva su precio. En código es una entidad con dos `@ManyToOne`, y la cabecera la lista con `@OneToMany(mappedBy = ..., cascade = ALL, orphanRemoval = true)`, de modo que cabecera y líneas se graban en una sola transacción.
 
-| Lado A | Tabla intermedia | Lado B | Datos propios de cada fila | A cargo |
+| Integrante | Lado A | Tabla del medio | Lado B | Dato propio |
 |---|---|---|---|---|
-| `PROFORMAS` | `ITEMS_PROFORMA` | `PRODUCTOS` | cantidad, precio, descuento | Yoel |
-| `VENTAS` | `DETALLE_VENTA` | `PRODUCTOS` | cantidad, precio, descuento | Yoel |
-| `COMPRAS` | `DETALLE_COMPRA` | `PRODUCTOS` | cantidad, precio de compra | Wilson |
-| `COBROS` | `DETALLE_COBRO` | **`VENTAS`** | monto abonado | Aron |
+| Yoel | `PROFORMAS` | `ITEMS_PROFORMA` | `PRODUCTOS` | cantidad, precio, descuento |
+| Yoel | `VENTAS` | `DETALLE_VENTA` | `PRODUCTOS` | cantidad, precio, descuento |
+| Wilson | `COMPRAS` | `DETALLE_COMPRA` | `PRODUCTOS` | cantidad, precio de compra |
+| Aron | `COBROS` | `DETALLE_COBRO` | **`VENTAS`** | monto abonado |
 
 `DETALLE_COBRO` une **cobros con ventas**: un cobro puede pagar varias ventas (una transferencia por dos facturas) y una venta puede recibir varios cobros (paga en partes). El saldo de una venta es su total menos la suma de sus filas en `DETALLE_COBRO`.
 
