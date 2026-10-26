@@ -1,6 +1,7 @@
-# Publica la documentación en GitHub Pages: el sitio Docsify de /docs (rama master) más
-# lp2-demo.md, el producto de LP2 Unidad II, que vive en la rama frontend.
-# Corre al cambiar /docs en master. Si solo cambió lp2-demo.md (rama frontend), ejecutarlo a mano:
+# Publica la documentación en GitHub Pages con MkDocs + Material (como el sitio del curso).
+# Las páginas salen de /docs de master (el README se divide por secciones) y de lp2-demo.md,
+# el producto de LP2 Unidad II, que vive en la rama frontend (ver sitio/armar.py).
+# Corre al cambiar /docs o sitio/ en master. Si solo cambió lp2-demo.md (rama frontend), ejecutarlo a mano:
 #   gh workflow run docs.yml      (o Actions → Documentación → Run workflow)
 name: Documentación
 
@@ -9,6 +10,7 @@ on:
     branches: [master]
     paths:
       - 'src/main/resources/static/docs/**'
+      - 'sitio/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -37,15 +39,17 @@ jobs:
           path: frontend
           sparse-checkout: docs
 
-      - name: Armar el sitio
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar MkDocs
+        run: pip install -r sitio/requirements.txt
+
+      - name: Armar y compilar el sitio
         run: |
-          mkdir -p _site
-          cp -r src/main/resources/static/docs/. _site/
-          cp frontend/docs/lp2-demo.md _site/lp2-demo.md
-          touch _site/.nojekyll
-          printf -- '- [Documentación del sistema](/)\n- [Producto LP2 · Unidad II](lp2-demo.md)\n- [Qué hace hoy y qué todavía no](LIMITACIONES.md)\n' > _site/_sidebar.md
-          # En el sitio publicado hay menú lateral; la copia que sirve el backend no lo usa
-          sed -i 's/loadSidebar: false/loadSidebar: true/' _site/index.html
+          python sitio/armar.py --lp2 frontend/docs/lp2-demo.md
+          mkdocs build --strict -f sitio/mkdocs.yml -d ../_site
 
       - uses: actions/configure-pages@v5
 

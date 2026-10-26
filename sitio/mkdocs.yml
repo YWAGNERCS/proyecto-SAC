@@ -1,0 +1,58 @@
+# Sitio de documentación de SGE-JD (MkDocs + Material, como el sitio del curso).
+# Las páginas se generan con armar.py a partir de src/main/resources/static/docs (no se editan en docs/).
+#   python sitio/armar.py && mkdocs serve -f sitio/mkdocs.yml      → vista previa en http://127.0.0.1:8000
+site_name: SGE-JD
+site_description: Sistema de gestión empresarial de JD Refrigeración S.A.C. — Proyecto Integrador ADS · BD2 · LP2, equipo CherryTree
+site_author: Equipo CherryTree
+site_url: https://ywagnercs.github.io/proyecto-SAC/
+repo_url: https://github.com/YWAGNERCS/proyecto-SAC
+repo_name: YWAGNERCS/proyecto-SAC
+edit_uri: ""
+copyright: "Equipo CherryTree · Proyecto Integrador ADS · BD2 · LP2 — Universidad Peruana Unión · Cliente: JD Refrigeración S.A.C."
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: es
+  palette:
+    primary: indigo
+    accent: teal
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+markdown_extensions:
+  - tables
+  - attr_list
+  - md_in_html
+  - admonition
+  - pymdownx.details
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Inicio: index.md
+  - Documentación del sistema:
+      - 1. Funcional: funcional.md
+      - 2. Técnica: tecnica.md
+      - 3. Manual de usuario: manual.md
+      - 4. Estado y trazabilidad: estado.md
+      - 5. Por verificar: por-verificar.md
+  - LP2:
+      - Producto de la Unidad II: lp2-demo.md
+  - Para el cliente:
+      - Qué hace hoy y qué todavía no: limitaciones.md
