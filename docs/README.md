@@ -424,7 +424,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 32. **Requisitos "16 RF consolidados en 8":** la documentación anterior lo decía, pero no existe esa versión consolidada. Confirmar si hay otro documento con los 8 RF.
 33. **`System.out` en vez de logger** en 5 clases (`NubefactClientSimulado`, `NotificadorSimulado`, `NotificadorCorreoReal`, `InventarioScheduledService`, `MantenimientoScheduledService`). Pasarlas a SLF4J como el resto.
 34. **Algunos controllers todavía responden entidades:** Categoría, Cliente y Proveedor (el resto ya usa DTO).
-34b. **La SPA todavía dice "BomERP":** título de la pestaña (`index.html`), menú (`layout.html`) e Inicio ("Bienvenido a BomERP", con accesos solo a Categorías y Proformas). Cambiar a SGE-JD y poner indicadores en el Inicio.
+34b. ~~**La SPA todavía dice "BomERP".**~~ ✅ **Resuelto (25/10/2026):** pestaña, títulos de las 25 rutas, menú (ícono "JD") e Inicio dicen SGE-JD, y el Inicio tiene accesos a Ventas, Proformas, Cobranza y Postventa. (`bomerp` sigue siendo el nombre técnico del realm y del cliente de Keycloak.) Pendiente: indicadores en el Inicio (ventas del mes, por cobrar, stock en alerta).
 34c. **Restos de depuración y dependencias:** `categoria-form.ts` imprime el formulario en la consola (`console.log`); `npm audit` marca 2 avisos altos en `@angular/router` (solo afecta a SSR, que no se usa) y `zod`, ambos con actualización menor.
 
 ### Operación
