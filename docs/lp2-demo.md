@@ -4,7 +4,8 @@
 > [lp2-demo.md del docente](https://262ciclo4.github.io/bomerp/proyecto-integrador/u2/lp2-demo/)
 > y el contenido real de nuestro proyecto: el sistema de gestión de **JD Refrigeración S.A.C.**
 > (RUC 20521632268, Breña, Lima), empresa que vende e instala equipos de refrigeración y
-> aire acondicionado.
+> aire acondicionado. Equipo **CherryTree**: Yoel Wagner Chambi Sirena, Wilson Ronald Apaza
+> Mamani y Aron Rodrigo Magaño Quispe.
 
 **Sobre la seguridad: Keycloak, no JWT propio.** En S10 construimos un módulo `seguridad` con
 JWT propio como primer paso. En S10b lo **eliminamos** y lo reemplazamos por Keycloak 26.8
@@ -65,6 +66,9 @@ Backend (paquetes por módulo de negocio): `catalogo`, `proformas`, `ventas`, `c
 
 ## 2. Cómo se ejecuta
 
+Lo más simple es un doble clic en `bomerp-backend/scripts/iniciar_sgejd.bat`, que enciende todo
+en orden y abre el navegador. A mano, con las contraseñas ya puestas en `bomerp-backend/.env`:
+
 ```bash
 docker start SGE-JD                                                  # Oracle
 docker compose up -d keycloak-db keycloak                            # Keycloak + Postgres
@@ -89,7 +93,7 @@ Tabla 1. Evidencias exigidas y dónde están en el código
 | **Navegación modular** | Un solo shell con menú, más de 20 rutas hijas, carga diferida por módulo y diseño responsivo (640/900/1280 px) | `core/layout/*`, `app.routes.ts` |
 | **CRUD independiente** | Categoría completa: listar, crear, editar, eliminar | `features/catalogo/categoria/*` → `/api/v1/admin/categorias` |
 | **CRUD dependiente** | Producto → Categoría: la lista desplegable se llena desde `CategoriaService`, la categoría es obligatoria (`Validators.required`) y el backend devuelve **404** si no existe | `features/catalogo/producto/producto-form.ts` |
-| **Cabecera–detalle** | Venta–DetalleVenta con `FormArray` de líneas. Calcula en vivo subtotal, descuento, IGV y total. Valida al menos una línea (`minLength(1)`), que no se repitan productos, el tope de descuento por rol y la conversión de moneda con el tipo de cambio SUNAT. Muestra un mensaje distinto para cada error del backend: 0 (sin conexión), 400, 404 y 409 (stock insuficiente) | `features/ventas/venta/venta-form.ts` → `POST /api/v1/admin/ventas` |
+| **Cabecera–detalle** | Venta–DetalleVenta con `FormArray` de líneas. Calcula en vivo subtotal, descuento, IGV y total. Valida al menos una línea (`minLength(1)`), que no se repitan productos, el tope de descuento por rol y la conversión de moneda con el tipo de cambio SUNAT. Muestra un mensaje distinto para cada error del backend: 0 (sin conexión), 400, 404 y 409 (stock insuficiente) | `features/ventas/venta/venta-form.ts` → `POST /api/v1/admin/ventas/directa` |
 | **Cabecera–detalle (resto del equipo)** | Compra–DetalleCompra y "Registrar cobro" (Cobro–DetalleCobro) con el mismo patrón: `FormArray` tipado, total en vivo con `toSignal`. Compra exige al menos una línea y el backend rechaza la misma factura del proveedor (409); en Cobranza cada abono valida `min(0.01)` y `max(saldo de su venta)` y un validador del arreglo exige abonar al menos a una venta (el backend vuelve a validar: 409) | `features/compras/compra/compra-form.ts` → `POST /api/v1/admin/compras` · `features/cobranza/cobro/cobranza-list.ts` → `POST /api/v1/admin/cobranza/cobros` |
 | **Consultas y reportes** | Ventas filtradas por fecha, cliente y estado. Kardex por producto. Historial de clientes y proveedores. Exportación a PDF y Excel | `features/ventas/venta/venta-list.*`, `producto-kardex`, `*-historial` |
 | **Control de acceso** | El menú y los botones dependen del rol: *+ Producto*, *Anular venta* y *Eliminar* solo aparecen al ADMIN. El backend aplica las mismas reglas y responde 403 si se saltan | `layout.html` (`auth.tieneRol('ADMIN')`), listas con `esAdmin()`, `SecurityConfig.java` |
@@ -102,6 +106,7 @@ Tabla 2. Reglas de autorización reales del backend (`SecurityConfig.java`)
 | `POST`/`PUT`/`DELETE` productos / categorías | ✅ | ❌ 403 | ❌ 401 |
 | `PATCH /ventas/{id}/anular` | ✅ | ❌ 403 | ❌ 401 |
 | `DELETE` clientes / proveedores | ✅ | ❌ 403 | ❌ 401 |
+| `POST /cobranza/devoluciones/{id}/registrar` | ✅ | ❌ 403 | ❌ 401 |
 | Resto de `/api/v1/admin/**` (registrar ventas, proformas, cobros, compras…) | ✅ | ✅ | ❌ 401 |
 | `/api/v1/publico/**`, Swagger, `/docs` | ✅ | ✅ | ✅ |
 
@@ -123,6 +128,8 @@ Tabla 3. Casos de prueba de la SPA
 | Validación | Cantidad mayor que el stock | 409 "Stock insuficiente…". Mensaje claro y nada persistido (transacción) | ✅ |
 | Venta sin líneas | Eliminar todas las líneas | El formulario es inválido y no se envía | ✅ |
 | Anular venta | ADMIN pulsa *Anular* | Estado ANULADA, stock repuesto en el kardex. Anular dos veces da 409 | ✅ |
+| Anular venta pagada | ADMIN anula una venta con un abono | El aviso muestra lo pagado; queda una devolución PENDIENTE en Cobranza › Devoluciones y el ADMIN la registra (DEVUELTA) | ✅ |
+| Cobro mayor al saldo | Abonar más que el saldo de una venta | El campo se marca en rojo ("Supera el saldo") y no se envía; por API daría 409 | ✅ |
 | Permiso insuficiente | `lucy` abre `/catalogo/productos/nuevo` | `rolGuard` muestra "Acceso denegado". Por API daría 403 | ✅ |
 | Token vencido | Esperar más de 6 min (token de 300 s + 60 s de tolerancia) y navegar | 401 → `POST /token` 200 → reintento 200, sin salir de la pantalla | ✅ |
 | Logout | Pulsar *Salir* | Se cierra también la sesión SSO de Keycloak; la siguiente ruta protegida pide login | ✅ |
