@@ -97,7 +97,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - **RNF-03 (Interoperabilidad):** backend desacoplado del frontend, solo API REST en JSON, versionada en `/api/v1/...`.
 - **RNF-04 (Mantenibilidad e IoC):** inyección de dependencias de Spring; credenciales externalizadas: el backend las lee de variables de entorno o de `application-local.properties`, y Docker y Keycloak de `.env` (ambos ignorados por git, con plantilla `.example`). ✅ Cumplido; ver 5 sobre el historial de git.
 - **RNF-05 (Seguridad):** `/api/v1/admin/**` exige un JWT emitido por Keycloak (RS256, validado por `issuer-uri`); autorización por rol (ADMIN, ASISTENTE). Las contraseñas viven solo en Keycloak, con protección contra fuerza bruta (5 intentos) y política de contraseñas.
-- **RNF-06 (Usabilidad):** la SPA es **responsiva**: menú desplegable (☰) bajo 1280 px, formularios a una columna y tablas con desplazamiento horizontal en celular (≤ 640 px); el detalle de la venta se muestra como tarjetas.
+- **RNF-06 (Usabilidad):** la SPA es **responsiva**: menú lateral que pasa a desplegable (☰) bajo 1024 px, formularios a una columna y tablas con desplazamiento horizontal en celular (≤ 640 px); el detalle de la venta se muestra como tarjetas.
 
 ### Casos de uso / Historias de usuario
 
