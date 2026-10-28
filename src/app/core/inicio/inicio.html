@@ -1,33 +1,164 @@
-<div class="card" style="text-align: center; padding: 50px 30px; margin-bottom: 2rem; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);">
-  <span style="font-size: 3rem; margin-bottom: 12px; display: inline-block;">❄️</span>
-  <h2 style="font-size: 2.2rem; font-weight: 800; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;">
-    Bienvenido a SGE-JD
-  </h2>
-  @if (auth.autenticado()) {
-  <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 550px; margin: 0 auto 24px auto;">
-    Hola, {{ auth.usuario()?.nombre }}. Seleccione un módulo para comenzar a trabajar.
-  </p>
-  <!-- Accesos al trabajo diario; el resto está en el menú -->
-  <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
-    <a routerLink="/ventas" class="btn btn-primary" style="padding: 12px 24px;">
-      🛒 Ventas
-    </a>
-    <a routerLink="/proformas" class="btn btn-secondary" style="padding: 12px 24px;">
-      📄 Proformas
-    </a>
-    <a routerLink="/cobranza" class="btn btn-secondary" style="padding: 12px 24px;">
-      💰 Cobranza
-    </a>
-    <a routerLink="/postventa" class="btn btn-secondary" style="padding: 12px 24px;">
-      🔧 Postventa
-    </a>
+@if (auth.autenticado()) {
+<!-- ── Tablero ── -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ saludo() }}, {{ primerNombre() }}</h1>
+    <p class="page-sub">Así va JD Refrigeración en {{ mesActual }}.</p>
   </div>
-  } @else {
-  <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 550px; margin: 0 auto 24px auto;">
-    Sistema de Gestión Empresarial de JD Refrigeración. Inicie sesión con su cuenta para continuar.
-  </p>
-  <button type="button" class="btn btn-primary" style="padding: 12px 28px;" (click)="auth.iniciarLogin('/')">
-    🔐 Iniciar sesión
-  </button>
-  }
+  <div class="d-flex gap-2">
+    <a routerLink="/proformas/nueva" class="btn btn-secondary">Nueva proforma</a>
+    <a routerLink="/ventas/nueva" class="btn btn-primary">Nueva venta</a>
+  </div>
 </div>
+
+@if (error()) {
+  <div class="alert alert-danger">Parte del tablero no se pudo cargar.
+    <button type="button" class="btn btn-sm btn-secondary" (click)="cargar()">Reintentar</button></div>
+}
+
+<!-- Indicadores -->
+<section class="tablero-kpis" [class.cargando]="cargando()" aria-label="Indicadores">
+  <a routerLink="/ventas" class="tarjeta-kpi">
+    <span class="kpi-titulo">Ventas del mes</span>
+    <strong class="kpi-valor num">S/ {{ ventasMes().soles | number: '1.2-2' }}</strong>
+    <span class="kpi-pie">
+      {{ ventasMes().cantidad }} {{ ventasMes().cantidad === 1 ? 'venta' : 'ventas' }}
+      @if (ventasMes().dolares > 0) { · US$ {{ ventasMes().dolares | number: '1.2-2' }} }
+    </span>
+  </a>
+
+  <a routerLink="/cobranza" class="tarjeta-kpi">
+    <span class="kpi-titulo">Por cobrar</span>
+    <strong class="kpi-valor num">S/ {{ cobranza().soles | number: '1.2-2' }}</strong>
+    <span class="kpi-pie">
+      @if (cobranza().dolares > 0) { US$ {{ cobranza().dolares | number: '1.2-2' }} · }
+      @if (cobranza().vencidas > 0) {
+        <span class="pie-alerta">{{ cobranza().vencidas }} {{ cobranza().vencidas === 1 ? 'vencida' : 'vencidas' }}</span>
+      } @else { al día }
+    </span>
+  </a>
+
+  <a routerLink="/postventa" class="tarjeta-kpi">
+    <span class="kpi-titulo">Mantenimientos</span>
+    <strong class="kpi-valor num">{{ postventa()?.proximos7 ?? 0 }} <small>esta semana</small></strong>
+    <span class="kpi-pie">
+      @if ((postventa()?.vencidos ?? 0) > 0) {
+        <span class="pie-alerta">{{ postventa()?.vencidos }} sin atender</span>
+      } @else { ninguno atrasado }
+      · {{ postventa()?.proximos30 ?? 0 }} en 30 días
+    </span>
+  </a>
+
+  <a routerLink="/proformas" class="tarjeta-kpi">
+    <span class="kpi-titulo">Proformas pendientes</span>
+    <strong class="kpi-valor num">{{ proformasPendientes() }}</strong>
+    <span class="kpi-pie">esperando respuesta del cliente</span>
+  </a>
+</section>
+
+<div class="tablero-rejilla">
+  <!-- Ventas de la semana -->
+  <section class="card panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Ventas de los últimos 7 días</h2>
+        <p>En soles, sin anuladas</p>
+      </div>
+      <strong class="num panel-total">S/ {{ totalSemana() | number: '1.2-2' }}</strong>
+    </div>
+    <div class="grafico" role="img"
+         [attr.aria-label]="'Ventas en soles de los últimos 7 días, total S/ ' + (totalSemana() | number: '1.2-2')">
+      @for (d of semana(); track d.fecha) {
+        <div class="grafico-col" [title]="d.cantidad + (d.cantidad === 1 ? ' venta' : ' ventas') + ' · S/ ' + (d.total | number: '1.2-2')">
+          <span class="grafico-valor num">{{ d.total > 0 ? (d.total | number: '1.0-0') : '' }}</span>
+          <div class="grafico-barra-zona">
+            <div class="grafico-barra" [class.grafico-barra-hoy]="$last" [style.height.%]="alturaBarra(d.total)"></div>
+          </div>
+          <span class="grafico-dia" [class.grafico-dia-hoy]="$last">{{ $last ? 'Hoy' : d.etiqueta }}</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Stock bajo -->
+  <section class="card panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Stock bajo</h2>
+        <p>Materiales en o bajo su mínimo</p>
+      </div>
+      <span class="badge" [class.badge-danger]="stockBajo().length > 0" [class.badge-success]="stockBajo().length === 0">
+        {{ stockBajo().length }}
+      </span>
+    </div>
+    @if (stockBajo().length === 0) {
+      <p class="panel-vacio">Todos los materiales están sobre su stock mínimo.</p>
+    } @else {
+      <ul class="lista">
+        @for (p of stockBajo().slice(0, 5); track p.id) {
+          <li>
+            <a [routerLink]="['/catalogo/productos', p.id, 'kardex']" class="lista-nombre">{{ p.nombre }}</a>
+            <span class="num lista-dato"><strong class="texto-alerta">{{ p.stockActual ?? 0 }}</strong> / mín. {{ p.stockMinimo ?? 0 }}</span>
+          </li>
+        }
+      </ul>
+      @if (stockBajo().length > 5) {
+        <a routerLink="/catalogo/productos" class="panel-enlace">Ver los {{ stockBajo().length }} materiales →</a>
+      }
+    }
+  </section>
+</div>
+
+<!-- Últimas ventas -->
+<section class="card">
+  <div class="panel-cabecera panel-cabecera-tabla">
+    <div>
+      <h2>Últimas ventas</h2>
+      <p>Las 6 más recientes</p>
+    </div>
+    <a routerLink="/ventas" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr><th>N°</th><th>Cliente</th><th>Fecha</th><th>Pago</th><th>Estado</th><th class="text-end">Total</th></tr>
+      </thead>
+      <tbody>
+        @for (v of ultimasVentas(); track v.id) {
+          <tr>
+            <td class="num texto-muted">#{{ v.id }}</td>
+            <td class="celda-cliente">{{ v.clienteNombre }}</td>
+            <td class="num texto-muted">{{ v.fechaVenta }}</td>
+            <td>{{ v.tipoPago === 'CREDITO' ? 'Crédito' : 'Contado' }}</td>
+            <td>
+              @if (v.estado === 'ANULADA') {
+                <span class="badge badge-danger">Anulada</span>
+              } @else if (v.estadoPago === 'PAGADO') {
+                <span class="badge badge-success">Pagada</span>
+              } @else if (v.estadoPago === 'ATRASADO') {
+                <span class="badge badge-danger">Atrasada</span>
+              } @else {
+                <span class="badge badge-warning">Por cobrar</span>
+              }
+            </td>
+            <td class="text-end num"><strong>{{ simbolo(v.moneda) }} {{ v.total | number: '1.2-2' }}</strong></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" class="text-center texto-muted">{{ cargando() ? 'Cargando…' : 'Todavía no hay ventas.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+} @else {
+<!-- ── Sin sesión: bienvenida ── -->
+<section class="bienvenida">
+  <span class="bienvenida-icono" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 2v20 M4.9 6l14.2 12 M19.1 6 4.9 18 M9 3.5l3 2 3-2 M9 20.5l3-2 3 2" /></svg>
+  </span>
+  <h1>Bienvenido a SGE-JD</h1>
+  <p>Sistema de Gestión Empresarial de JD Refrigeración: proformas, ventas, cobranza, compras y postventa en un solo lugar.</p>
+  <button type="button" class="btn btn-primary" (click)="auth.iniciarLogin('/')">Iniciar sesión</button>
+</section>
+}

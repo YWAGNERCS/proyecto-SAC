@@ -1,1 +1,270 @@
-/* Estilos para inicio */
+/* ── Indicadores ── */
+.tablero-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+  transition: opacity 0.2s ease;
+}
+
+.tablero-kpis.cargando {
+  opacity: 0.5;
+}
+
+.tarjeta-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--text-main);
+  transition: border-color 0.15s ease;
+}
+
+.tarjeta-kpi:hover {
+  border-color: var(--border-focus);
+}
+
+.kpi-titulo {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.kpi-valor {
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.kpi-valor small {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+
+.kpi-pie {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.pie-alerta,
+.texto-alerta {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+/* ── Paneles ── */
+.tablero-rejilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.panel {
+  padding: 18px 20px 20px;
+}
+
+.panel-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-cabecera-tabla {
+  padding: 18px 20px 14px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-cabecera h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.panel-cabecera p {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.panel-total {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.panel-vacio {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.87rem;
+}
+
+.panel-enlace {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.83rem;
+  text-decoration: none;
+}
+
+/* ── Gráfico de barras de la semana ── */
+.grafico {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  height: 190px;
+}
+
+.grafico-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.grafico-valor {
+  height: 16px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.grafico-barra-zona {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.grafico-barra {
+  width: min(36px, 70%);
+  border-radius: 6px 6px 0 0;
+  background: #C7D2FE;
+  transition: height 0.3s ease;
+}
+
+.grafico-barra-hoy {
+  background: var(--primary);
+}
+
+.grafico-dia {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.grafico-dia-hoy {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+/* ── Lista de stock bajo ── */
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #F0F1F3;
+  font-size: 0.86rem;
+}
+
+.lista li:last-child {
+  border-bottom: none;
+}
+
+.lista-nombre {
+  color: var(--text-main);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lista-nombre:hover {
+  color: var(--primary);
+}
+
+.lista-dato {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.celda-cliente {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Bienvenida (sin sesión) ── */
+.bienvenida {
+  max-width: 520px;
+  margin: 10vh auto 0;
+  text-align: center;
+}
+
+.bienvenida-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--primary-light);
+  color: var(--primary);
+  margin-bottom: 18px;
+}
+
+.bienvenida-icono svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bienvenida h1 {
+  margin: 0 0 8px;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.bienvenida p {
+  margin: 0 0 24px;
+  color: var(--text-muted);
+}
+
+/* ── Responsivo ── */
+@media (max-width: 1100px) {
+  .tablero-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .tablero-rejilla { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .tablero-kpis { gap: 10px; }
+  .tarjeta-kpi { padding: 12px 14px; }
+  .kpi-valor { font-size: 1.2rem; }
+  .grafico { height: 160px; gap: 6px; }
+  .grafico-valor { display: none; }
+}

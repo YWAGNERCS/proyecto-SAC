@@ -68,8 +68,8 @@ src/app/
 │   ├── auth/            AuthService (PKCE, callback, refresco, logout), pkce.ts, jwt.ts, auth-callback, authGuard, rolGuard
 │   ├── interceptors/    jwt-auth (Authorization: Bearer; ante 401 refresca una vez y reintenta), trace-id (X-Trace-ID)
 │   ├── sin-permiso/     destino de rolGuard
-│   ├── layout/          barra de navegación (menú ☰ en pantallas angostas), usuario, rol y "Salir"
-│   ├── inicio/          página de inicio
+│   ├── layout/          menú lateral por grupos (desplegable con ☰ en pantallas angostas), barra superior con el título, usuario, rol y "Salir"
+│   ├── inicio/          tablero: indicadores del mes, ventas de la semana, stock bajo y últimas ventas (sin sesión: bienvenida)
 │   └── services/        ApiService, DescargaService, TipoCambioService, DescuentoService
 ├── features/            un directorio por módulo de negocio
 │   ├── catalogo/        categoria/, producto/
@@ -87,7 +87,7 @@ src/app/
 - Los montos que calcula el formulario son una **vista previa**: el backend calcula los definitivos y la SPA solo envía ids y cantidades.
 - Los errores del backend se muestran por código: `400` datos inválidos · `404` no existe · `409` regla de negocio o stock insuficiente.
 
-**Diseño responsivo:** los estilos globales (`src/styles.css`) tienen tres cortes: hasta 640 px (celular: una columna, botones y encabezados que bajan de línea, tablas con desplazamiento horizontal dentro de su tarjeta), hasta 900 px (tablet) y hasta 1280 px (el menú pasa a ☰). Cada pantalla ajusta lo suyo en su `.css`; por ejemplo, el detalle de Nueva venta se muestra como tarjetas en el celular para no recortar el buscador de productos.
+**Diseño responsivo:** los estilos globales (`src/styles.css`) tienen tres cortes: hasta 640 px (celular: una columna, botones y encabezados que bajan de línea, tablas con desplazamiento horizontal dentro de su tarjeta), hasta 900 px (tablet) y hasta 1024 px (el menú lateral pasa a desplegable con ☰). El estilo es de tablero moderno y minimalista: superficies planas, un solo color de acento (índigo) y sin degradados. Cada pantalla ajusta lo suyo en su `.css`; por ejemplo, el detalle de Nueva venta se muestra como tarjetas en el celular para no recortar el buscador de productos.
 
 **Seguridad (Keycloak, S10b + S11):**
 - **Login:** `AuthService.iniciarLogin()` genera `code_verifier`, `code_challenge` (S256) y `state`, y redirige a Keycloak; `/auth/callback` comprueba el `state` y canjea el código con el verifier. La SPA nunca ve la contraseña. El cliente `bomerp-frontend` exige PKCE y no permite *Direct access grants*.
