@@ -2,7 +2,7 @@
   <div>
     <h2 class="mb-0" style="font-weight: 700;">Postventa</h2>
     <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
-      Mantenimientos preventivos de los equipos vendidos (4 por equipo: a los 3, 6, 9 y 12 meses)
+      Visitas de mantenimiento preventivo: las 4 de cada venta de equipos (a los 3, 6, 9 y 12 meses), las del plan de cada equipo instalado y las de los contratos
     </p>
   </div>
 </div>
@@ -69,7 +69,7 @@
           <th style="width: 130px;">Fecha</th>
           <th>Cliente y contacto</th>
           <th>Equipos</th>
-          <th class="text-center" style="width: 90px;">Venta</th>
+          <th class="text-center" style="width: 110px;">Origen</th>
           <th class="text-center" style="width: 110px;">Estado</th>
           <th class="text-center" style="width: 210px;">Acciones</th>
         </tr>
@@ -91,6 +91,7 @@
             </td>
             <td>
               <strong>{{ m.clienteNombre }}</strong>
+              @if (m.sedeNombre) { <div class="muted">Sede {{ m.sedeNombre }}</div> }
               <div class="contacto">
                 @if (m.clienteTelefono) {
                   <a [href]="'tel:' + m.clienteTelefono">📞 {{ m.clienteTelefono }}</a>
@@ -104,13 +105,27 @@
               @if (m.clienteDireccion) { <div class="muted">{{ m.clienteDireccion }}</div> }
               @if (m.notas) { <div class="notas">{{ m.notas }}</div> }
             </td>
-            <td>{{ m.equipos || '—' }}</td>
-            <td class="text-center"><span class="badge">#{{ m.ventaId }}</span><div class="muted">{{ m.fechaVenta }}</div></td>
+            <td>{{ m.equipos || '—' }}
+              @if (m.tecnico) { <div class="muted">Técnico: {{ m.tecnico }}</div> }
+              @if (m.ordenTrabajoId) {
+                <div><a [routerLink]="['/servicios/ordenes', m.ordenTrabajoId]">Orden de trabajo #{{ m.ordenTrabajoId }}</a></div>
+              }
+            </td>
+            <td class="text-center">
+              @switch (m.origen) {
+                @case ('EQUIPO') { <span class="badge">Equipo</span> }
+                @case ('CONTRATO') { <span class="badge">Contrato #{{ m.contratoId }}</span> }
+                @default { <span class="badge">Venta #{{ m.ventaId }}</span><div class="muted">{{ m.fechaVenta }}</div> }
+              }
+            </td>
             <td class="text-center"><span class="badge" [class]="claseEstado(m.estado)">{{ m.estado }}</span></td>
             <td class="text-center">
               @if (m.estado === 'PENDIENTE') {
                 <div class="acciones">
-                  <button class="btn btn-sm btn-primary" (click)="abrir(m, 'REALIZADO')">✓ Realizado</button>
+                  <a class="btn btn-sm btn-primary" [routerLink]="['/servicios/ordenes/nueva']"
+                     [queryParams]="{ mantenimientoId: m.id, clienteId: m.clienteId, fecha: m.fechaProgramada }"
+                     title="Programar la visita con técnico: al cerrar la orden queda realizada">Orden</a>
+                  <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REALIZADO')">✓ Realizado</button>
                   <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REPROGRAMAR')">Reprogramar</button>
                 </div>
               } @else {

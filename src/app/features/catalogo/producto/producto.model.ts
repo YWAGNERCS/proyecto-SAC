@@ -16,7 +16,7 @@ export interface Producto {
   visibleEnCatalogo?: boolean;
 }
 
-export type Sector = 'CLIMATIZACION' | 'REFRIGERACION' | 'VENTILACION_FORZADA' | 'MATERIAL_SERVICIO';
+export type Sector = 'CLIMATIZACION' | 'REFRIGERACION' | 'VENTILACION_FORZADA' | 'MATERIAL_SERVICIO' | 'SERVICIO';
 export type Moneda = 'SOLES' | 'DOLARES';
 
 /** Lo que se envía al crear o editar (refleja ProductoRequestDTO del backend). */
@@ -37,8 +37,14 @@ export const SECTORES: { valor: Sector; etiqueta: string }[] = [
   { valor: 'CLIMATIZACION', etiqueta: 'Climatización' },
   { valor: 'REFRIGERACION', etiqueta: 'Refrigeración' },
   { valor: 'VENTILACION_FORZADA', etiqueta: 'Ventilación forzada' },
-  { valor: 'MATERIAL_SERVICIO', etiqueta: 'Material / servicio' },
+  { valor: 'MATERIAL_SERVICIO', etiqueta: 'Material (con stock)' },
+  { valor: 'SERVICIO', etiqueta: 'Servicio (mano de obra)' },
 ];
+
+/** Equipo que se instala en el local del cliente (puede registrarse como equipo instalado). */
+export function esEquipo(sector: Sector | undefined | null): boolean {
+  return sector === 'CLIMATIZACION' || sector === 'REFRIGERACION' || sector === 'VENTILACION_FORZADA';
+}
 
 /** Solo los materiales controlan stock; los equipos no se almacenan. */
 export function controlaStock(sector: Sector | undefined | null): boolean {

@@ -1,0 +1,100 @@
+<div class="card card-form" style="--ancho-form: 820px">
+  <div class="card-header">
+    <h2>{{ id() ? 'Editar orden #' + id() : 'Nueva orden de trabajo' }}</h2>
+    <p>
+      @if (mantenimientoId()) {
+        Ejecuta la visita de mantenimiento #{{ mantenimientoId() }}: al cerrar la orden, la visita queda realizada.
+      } @else {
+        Programe el trabajo con técnico, fecha y lugar. Al cerrarla se registra lo hecho y los materiales usados.
+      }
+    </p>
+  </div>
+  <div class="card-body">
+    @if (error()) {
+      <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+    }
+    <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="tipo">Tipo de trabajo</label>
+          <select id="tipo" class="form-select" formControlName="tipo" [attr.disabled]="mantenimientoId() ? true : null">
+            @for (t of tipos; track t.valor) { <option [value]="t.valor">{{ t.etiqueta }}</option> }
+          </select>
+        </div>
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="cliente">Cliente <span style="color: var(--danger);">*</span></label>
+          <select id="cliente" class="form-select" formControlName="clienteId" [class.is-invalid]="invalido('clienteId')"
+                  [attr.disabled]="mantenimientoId() ? true : null">
+            <option [ngValue]="null">-- Seleccione --</option>
+            @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="sede">Sede</label>
+          <select id="sede" class="form-select" formControlName="sedeId">
+            <option [ngValue]="null">{{ sedes().length ? 'Sin sede (dirección del cliente)' : 'El cliente no tiene sedes' }}</option>
+            @for (s of sedes(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
+          </select>
+        </div>
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="fecha">Fecha <span style="color: var(--danger);">*</span></label>
+          <input id="fecha" type="date" class="form-control" formControlName="fechaProgramada" [class.is-invalid]="invalido('fechaProgramada')">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="venta">Venta de origen</label>
+          <select id="venta" class="form-select" formControlName="ventaId">
+            <option [ngValue]="null">{{ esInstalacion() ? 'Sin venta (equipos de otro origen)' : 'Ninguna' }}</option>
+            @for (v of ventasCliente(); track v.id) {
+              <option [ngValue]="v.id">Venta #{{ v.id }} · {{ v.fechaVenta }} · {{ v.detalles[0]?.productoNombre }}{{ v.detalles.length > 1 ? ' y otros' : '' }}</option>
+            }
+          </select>
+          @if (esInstalacion()) { <span class="muted">Para una instalación, la venta con la que se vendieron los equipos.</span> }
+        </div>
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="equipo">Equipo instalado</label>
+          <select id="equipo" class="form-select" formControlName="equipoId">
+            <option [ngValue]="null">{{ equipos().length ? 'Ninguno en particular' : 'El cliente no tiene equipos registrados' }}</option>
+            @for (e of equipos(); track e.id) {
+              <option [ngValue]="e.id">{{ e.productoNombre }}{{ e.numeroSerie ? ' · serie ' + e.numeroSerie : '' }}{{ e.sedeNombre ? ' · ' + e.sedeNombre : '' }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="tecnico">Técnico <span style="color: var(--danger);">*</span></label>
+          <input id="tecnico" type="text" class="form-control" formControlName="tecnico" list="tecnicos" maxlength="100"
+                 [class.is-invalid]="invalido('tecnico')" placeholder="Nombre del técnico">
+          <datalist id="tecnicos">
+            @for (t of tecnicos(); track t) { <option [value]="t"></option> }
+          </datalist>
+        </div>
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="direccion">Dirección</label>
+          <input id="direccion" type="text" class="form-control" formControlName="direccion" maxlength="200"
+                 placeholder="Vacío: la de la sede o la del cliente">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="descripcion">Trabajo a realizar <span style="color: var(--danger);">*</span></label>
+        <textarea id="descripcion" class="form-control" formControlName="descripcion" maxlength="500" rows="3"
+                  [class.is-invalid]="invalido('descripcion')" placeholder="Ej.: instalar 2 splits en la sala de ventas"></textarea>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <a [routerLink]="id() ? ['/servicios/ordenes', id()] : ['/servicios/ordenes']" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : id() ? 'Guardar cambios' : 'Programar orden' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

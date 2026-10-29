@@ -119,6 +119,43 @@ export const routes: Routes = [
           import('./features/postventa/mantenimiento/mantenimiento-list').then((m) => m.MantenimientoListComponent),
         title: 'Postventa — SGE-JD',
       },
+      // ── Servicios técnicos: órdenes de trabajo, equipos instalados y contratos ──
+      {
+        path: 'servicios/ordenes',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/servicios/orden/orden-list').then((m) => m.OrdenListComponent),
+        title: 'Órdenes de trabajo — SGE-JD',
+      },
+      {
+        path: 'servicios/ordenes/nueva',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/servicios/orden/orden-form').then((m) => m.OrdenFormComponent),
+        title: 'Nueva orden de trabajo — SGE-JD',
+      },
+      {
+        path: 'servicios/ordenes/:id',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/servicios/orden/orden-detalle').then((m) => m.OrdenDetalleComponent),
+        title: 'Orden de trabajo — SGE-JD',
+      },
+      {
+        path: 'servicios/ordenes/:id/editar',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/servicios/orden/orden-form').then((m) => m.OrdenFormComponent),
+        title: 'Editar orden de trabajo — SGE-JD',
+      },
+      {
+        path: 'servicios/equipos',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/postventa/equipo/equipo-list').then((m) => m.EquipoListComponent),
+        title: 'Equipos instalados — SGE-JD',
+      },
+      {
+        path: 'servicios/contratos',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/postventa/contrato/contrato-list').then((m) => m.ContratoListComponent),
+        title: 'Contratos de mantenimiento — SGE-JD',
+      },
       // ── Compras ────────────────────────────────────────
       {
         path: 'compras',

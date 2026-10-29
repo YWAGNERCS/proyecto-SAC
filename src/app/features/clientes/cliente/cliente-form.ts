@@ -5,12 +5,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ClienteService } from './cliente-service';
 import { Cliente } from './cliente.model';
+import { SedesClienteComponent } from '../sede/sedes-cliente';
 
 type Tipo = Cliente['tipo'];
 
 @Component({
   selector: 'app-cliente-form',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, SedesClienteComponent],
   templateUrl: './cliente-form.html',
 })
 export class ClienteFormComponent {
@@ -34,6 +35,7 @@ export class ClienteFormComponent {
     direccion: ['', [Validators.maxLength(200)]],
     telefono: ['', [Validators.maxLength(20)]],
     correo: ['', [Validators.email, Validators.maxLength(100)]],
+    agenteRetencion: [false],
   });
 
   private readonly tipo = toSignal(this.form.controls.tipo.valueChanges, { initialValue: this.form.controls.tipo.value });
@@ -65,6 +67,7 @@ export class ClienteFormComponent {
             direccion: c.direccion ?? '',
             telefono: c.telefono ?? '',
             correo: c.correo ?? '',
+            agenteRetencion: !!c.agenteRetencion,
           });
           this.loading.set(false);
         },
@@ -136,6 +139,8 @@ export class ClienteFormComponent {
       direccion: v.direccion.trim() || null,
       telefono: v.telefono.trim() || null,
       correo: v.correo.trim() || null,
+      // Solo una empresa puede ser agente de retención
+      agenteRetencion: v.tipo === 'EMPRESA' && v.agenteRetencion,
     };
 
     const id = this.id();

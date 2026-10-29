@@ -1,0 +1,71 @@
+<div class="card card-form" style="--ancho-form: 760px">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div>
+      <h2>Sedes</h2>
+      <p>Locales del cliente donde se instalan y mantienen equipos</p>
+    </div>
+    @if (editando() === null) {
+      <button type="button" class="btn btn-secondary btn-sm" (click)="nueva()">+ Agregar sede</button>
+    }
+  </div>
+  <div class="card-body">
+    @if (error()) {
+      <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+    }
+
+    @if (editando() !== null) {
+      <form [formGroup]="form" (ngSubmit)="guardar()" novalidate class="mb-3">
+        <div class="row">
+          <div class="col-md-6 form-group">
+            <label class="form-label" for="sNombre">Nombre de la sede <span style="color: var(--danger);">*</span></label>
+            <input id="sNombre" type="text" class="form-control" formControlName="nombre" placeholder="Ej.: Tienda Breña"
+                   [class.is-invalid]="form.controls.nombre.touched && form.controls.nombre.invalid">
+          </div>
+          <div class="col-md-6 form-group">
+            <label class="form-label" for="sDireccion">Dirección</label>
+            <input id="sDireccion" type="text" class="form-control" formControlName="direccion">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 form-group">
+            <label class="form-label" for="sContacto">Contacto en el local</label>
+            <input id="sContacto" type="text" class="form-control" formControlName="contacto" placeholder="Ej.: jefe de mantenimiento">
+          </div>
+          <div class="col-md-6 form-group">
+            <label class="form-label" for="sTelefono">Teléfono</label>
+            <input id="sTelefono" type="tel" class="form-control" formControlName="telefono">
+          </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelar()" [disabled]="guardando()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="guardando()">{{ editando() ? 'Guardar cambios' : 'Agregar sede' }}</button>
+        </div>
+      </form>
+    }
+
+    @if (sedes().length === 0 && editando() === null) {
+      <p class="texto-muted" style="margin: 0;">Sin sedes: los equipos y las órdenes usan la dirección del cliente.</p>
+    } @else if (sedes().length > 0) {
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Sede</th><th>Dirección</th><th>Contacto</th><th class="text-end">Acción</th></tr></thead>
+          <tbody>
+            @for (s of sedes(); track s.id) {
+              <tr>
+                <td><strong>{{ s.nombre }}</strong></td>
+                <td>{{ s.direccion ?? '—' }}</td>
+                <td>{{ s.contacto ?? '—' }}@if (s.telefono) { <div class="texto-muted">{{ s.telefono }}</div> }</td>
+                <td class="text-end" style="white-space: nowrap;">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="editar(s)">Editar</button>
+                  @if (esAdmin()) {
+                    <button type="button" class="btn btn-sm btn-danger" style="margin-left: 6px;" (click)="eliminar(s)">Eliminar</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

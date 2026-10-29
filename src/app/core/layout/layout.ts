@@ -29,6 +29,9 @@ const ICONOS = {
   clientes: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8',
   proveedores: 'M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16 M16 9h3a2 2 0 0 1 2 2v10 M2 21h20 M8 7h4 M8 11h4 M8 15h4',
   nuevo: 'M12 5v14 M5 12h14',
+  ordenes: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2z M9 12l2 2 4-4',
+  equipos: 'M3 6h18v8H3z M7 18v-4 M17 18v-4 M7 10h.01 M11 10h6',
+  contratos: 'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M8 14h.01 M12 14h.01 M16 14h.01',
 };
 
 @Component({
@@ -60,7 +63,15 @@ export class Layout {
         { ruta: '/proformas', texto: 'Proformas', icono: ICONOS.proformas },
         { ruta: '/ventas', texto: 'Ventas', icono: ICONOS.ventas },
         { ruta: '/cobranza', texto: 'Cobranza', icono: ICONOS.cobranza },
+      ],
+    },
+    {
+      titulo: 'Servicios',
+      opciones: [
+        { ruta: '/servicios/ordenes', texto: 'Órdenes de trabajo', icono: ICONOS.ordenes },
         { ruta: '/postventa', texto: 'Postventa', icono: ICONOS.postventa },
+        { ruta: '/servicios/equipos', texto: 'Equipos instalados', icono: ICONOS.equipos },
+        { ruta: '/servicios/contratos', texto: 'Contratos', icono: ICONOS.contratos },
       ],
     },
     {

@@ -1,0 +1,160 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Contratos de mantenimiento</h1>
+    <p class="page-sub">Visitas periódicas pactadas con el cliente; cada visita se programa en Postventa y se ejecuta con una orden</p>
+  </div>
+  @if (esAdmin()) {
+    <button type="button" class="btn btn-primary" (click)="nuevo()">+ Nuevo contrato</button>
+  }
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
+
+<div class="card">
+  <div class="barra-filtros">
+    <div style="min-width: 260px;">
+      <label class="form-label" for="kCliente">Cliente</label>
+      <select id="kCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+        <option [ngValue]="null">Todos</option>
+        @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="kEstado">Estado</label>
+      <select id="kEstado" class="form-select" [(ngModel)]="estado" (change)="cargar()">
+        <option value="VIGENTE">Vigentes</option>
+        <option value="CANCELADO">Cancelados</option>
+        <option value="">Todos</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 70px;">N°</th>
+          <th>Cliente y alcance</th>
+          <th style="width: 190px;">Vigencia</th>
+          <th style="width: 150px;">Frecuencia</th>
+          <th class="text-end" style="width: 130px;">Por visita</th>
+          <th style="width: 140px;">Visitas</th>
+          <th class="text-end" style="width: 110px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="7" class="vacio">Cargando…</td></tr>
+        }
+        @for (k of contratos(); track k.id) {
+          <tr>
+            <td><span class="badge">#{{ k.id }}</span></td>
+            <td><strong>{{ k.clienteNombre }}</strong>
+              <div class="muted">{{ k.sedeNombre ? 'Sede ' + k.sedeNombre : 'Todas las sedes' }}</div>
+              <div>{{ k.descripcion }}</div>
+              @if (k.estado === 'CANCELADO') { <div class="muted"><span class="badge badge-danger">Cancelado</span> {{ k.motivoCancelacion }}</div> }</td>
+            <td style="white-space: nowrap;">{{ k.fechaInicio }} al {{ k.fechaFin }}</td>
+            <td>{{ etiquetaFrecuencia(k.frecuenciaMeses) }}</td>
+            <td class="text-end"><strong>{{ simbolo(k.moneda) }} {{ k.montoVisita | number: '1.2-2' }}</strong><div class="muted">sin IGV</div></td>
+            <td>{{ k.visitasRealizadas }} hecha(s)<div class="muted">{{ k.visitasPendientes }} pendiente(s)</div></td>
+            <td class="acciones-fila">
+              <a class="btn btn-sm btn-outline-secondary" routerLink="/postventa" title="Ver sus visitas en Postventa">Visitas</a>
+              @if (esAdmin() && k.estado === 'VIGENTE') {
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="abrirCancelacion(k)">Cancelar</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          @if (!loading()) {
+            <tr><td colspan="7" class="vacio">No hay contratos con estos filtros.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Diálogo: nuevo contrato (solo administrador) ── -->
+@if (creando()) {
+  <div class="dialogo-fondo" (click)="cerrarDialogo()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tContrato"
+          [formGroup]="form" (ngSubmit)="guardar()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tContrato">Nuevo contrato de mantenimiento</h3>
+      <p class="muted" style="margin: 0 0 14px;">Al guardarlo se programan sus visitas desde hoy hasta el fin del contrato.</p>
+      <div class="campos">
+        <div style="grid-column: span 2;">
+          <label class="form-label" for="cCli">Cliente *</label>
+          <select id="cCli" class="form-select" formControlName="clienteId">
+            <option [ngValue]="null">-- Seleccione --</option>
+            @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="cSede">Sede</label>
+          <select id="cSede" class="form-select" formControlName="sedeId">
+            <option [ngValue]="null">Todas las sedes</option>
+            @for (s of sedesDialogo(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
+          </select>
+        </div>
+      </div>
+      <div class="campos">
+        <div><label class="form-label" for="cIni">Inicio *</label>
+          <input id="cIni" type="date" class="form-control" formControlName="fechaInicio"></div>
+        <div><label class="form-label" for="cFin">Fin *</label>
+          <input id="cFin" type="date" class="form-control" formControlName="fechaFin"></div>
+        <div><label class="form-label" for="cFrec">Visitas</label>
+          <select id="cFrec" class="form-select" formControlName="frecuenciaMeses">
+            @for (f of frecuencias; track f.valor) { <option [ngValue]="f.valor">{{ f.etiqueta }}</option> }
+          </select></div>
+      </div>
+      <div class="campos">
+        <div><label class="form-label" for="cMonto">Monto por visita (sin IGV) *</label>
+          <input id="cMonto" type="number" min="0.01" step="0.01" class="form-control" formControlName="montoVisita"></div>
+        <div><label class="form-label" for="cMon">Moneda</label>
+          <select id="cMon" class="form-select" formControlName="moneda">
+            <option value="SOLES">Soles</option>
+            <option value="DOLARES">Dólares</option>
+          </select></div>
+        @if (vistaPrevia(); as p) {
+          <div><span class="form-label">Vista previa</span>
+            <strong>{{ p.visitas }} visita(s)</strong>
+            <div class="muted">{{ form.controls.moneda.value === 'DOLARES' ? 'US$' : 'S/' }} {{ p.total | number: '1.2-2' }} sin IGV</div></div>
+        }
+      </div>
+      <label class="form-label" for="cDesc">Qué cubre *</label>
+      <input id="cDesc" class="form-control" formControlName="descripcion" maxlength="300"
+             placeholder="Ej.: mantenimiento de las 4 cámaras de frío y 2 splits de la tienda">
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">{{ guardando() ? 'Creando…' : 'Crear contrato' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ── Diálogo: cancelar (solo administrador) ── -->
+@if (cancelando(); as k) {
+  <div class="dialogo-fondo" (click)="cerrarDialogo()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tCancelarK"
+          (ngSubmit)="confirmarCancelacion()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tCancelarK">Cancelar el contrato #{{ k.id }}</h3>
+      <p class="muted" style="margin: 0 0 14px;">Sus {{ k.visitasPendientes }} visita(s) pendiente(s) se cancelan; las realizadas quedan en el historial.</p>
+      <label class="form-label" for="kMotivo">Motivo</label>
+      <input id="kMotivo" class="form-control" [formControl]="motivo" maxlength="300" placeholder="Ej.: el cliente no renovó">
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Volver</button>
+        <button type="submit" class="btn btn-danger" [disabled]="guardando()">Cancelar contrato</button>
+      </div>
+    </form>
+  </div>
+}

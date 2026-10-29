@@ -8,4 +8,6 @@ export interface Cliente {
   direccion?: string | null;
   telefono?: string | null;
   correo?: string | null;
+  /** Agente de retención del IGV designado por SUNAT: retiene el 3 % de las facturas de más de S/ 700. */
+  agenteRetencion?: boolean;
 }

@@ -1,47 +1,69 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
-    <h2 class="mb-0" style="font-weight: 700;">Cobranza</h2>
-    <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">
-      Ventas a crédito con saldo pendiente, abonos recibidos y devoluciones de ventas anuladas
-    </p>
+    <h1 class="page-title">Cobranza</h1>
+    <p class="page-sub">Ventas a crédito con saldo pendiente, abonos recibidos y devoluciones de ventas anuladas</p>
   </div>
-</div>
-
-<!-- ── Totales por moneda ───────────────────────────────── -->
-@if (vista() === 'POR_COBRAR') {
-  <div class="kpis">
-    @for (t of totales(); track t.moneda) {
-      <div class="card kpi"><span>Por cobrar en {{ t.moneda === 'SOLES' ? 'soles' : 'dólares' }} ({{ t.cantidad }})</span>
-        <strong>{{ simbolo(t.moneda) }} {{ t.porCobrar | number: '1.2-2' }}</strong></div>
-      <div class="card kpi" [class.kpi-alerta]="t.vencido > 0"><span>Ya vencido</span>
-        <strong>{{ simbolo(t.moneda) }} {{ t.vencido | number: '1.2-2' }}</strong></div>
-    } @empty {
-      <div class="card kpi"><span>Por cobrar</span><strong>0</strong></div>
-    }
-  </div>
-}
-
-<div class="card filtros">
-  <div class="pestanas" role="tablist">
-    <button type="button" role="tab" class="btn btn-sm" [attr.aria-selected]="vista() === 'POR_COBRAR'"
-            [class.btn-primary]="vista() === 'POR_COBRAR'" [class.btn-outline-secondary]="vista() !== 'POR_COBRAR'"
-            (click)="cambiarVista('POR_COBRAR')">Por cobrar</button>
-    <button type="button" role="tab" class="btn btn-sm" [attr.aria-selected]="vista() === 'HISTORIAL'"
-            [class.btn-primary]="vista() === 'HISTORIAL'" [class.btn-outline-secondary]="vista() !== 'HISTORIAL'"
-            (click)="cambiarVista('HISTORIAL')">Historial de cobros</button>
-    <button type="button" role="tab" class="btn btn-sm" [attr.aria-selected]="vista() === 'DEVOLUCIONES'"
-            [class.btn-primary]="vista() === 'DEVOLUCIONES'" [class.btn-outline-secondary]="vista() !== 'DEVOLUCIONES'"
-            (click)="cambiarVista('DEVOLUCIONES')">Devoluciones</button>
-  </div>
-  <div>
+  <div class="filtro-cliente">
     <label class="form-label" for="fCliente">Cliente</label>
     <select id="fCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
-      <option [ngValue]="null">Todos</option>
+      <option [ngValue]="null">Todos los clientes</option>
       @for (c of clientes(); track c.id) {
         <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
       }
     </select>
   </div>
+</div>
+
+<!-- ── Indicadores (cada uno lleva a su pestaña) ── -->
+<section class="kpis-cobranza" [class.cargando]="loading()" aria-label="Indicadores de cobranza">
+  <button type="button" class="kpi-c" (click)="cambiarVista('POR_COBRAR'); soloVencidas.set(false)">
+    <span class="kpi-c-titulo">Por cobrar</span>
+    <strong class="num">S/ {{ totalMoneda('SOLES', 'porCobrar') | number: '1.2-2' }}</strong>
+    <span class="kpi-c-pie">
+      @if (totalMoneda('DOLARES', 'porCobrar') > 0) { US$ {{ totalMoneda('DOLARES', 'porCobrar') | number: '1.2-2' }} · }
+      {{ cuentas().length }} {{ cuentas().length === 1 ? 'venta' : 'ventas' }}
+    </span>
+  </button>
+  <button type="button" class="kpi-c" [class.kpi-c-alerta]="cuentasVencidas() > 0"
+          (click)="cambiarVista('POR_COBRAR'); soloVencidas.set(true)">
+    <span class="kpi-c-titulo">Ya vencido</span>
+    <strong class="num">S/ {{ totalMoneda('SOLES', 'vencido') | number: '1.2-2' }}</strong>
+    <span class="kpi-c-pie">
+      @if (totalMoneda('DOLARES', 'vencido') > 0) { US$ {{ totalMoneda('DOLARES', 'vencido') | number: '1.2-2' }} · }
+      @if (cuentasVencidas() === 0) { nada vencido } @else { {{ cuentasVencidas() }} {{ cuentasVencidas() === 1 ? 'venta' : 'ventas' }} }
+    </span>
+  </button>
+  <button type="button" class="kpi-c" (click)="cambiarVista('HISTORIAL')">
+    <span class="kpi-c-titulo">Cobrado este mes</span>
+    <strong class="num">S/ {{ cobradoMes().soles | number: '1.2-2' }}</strong>
+    <span class="kpi-c-pie">
+      @if (cobradoMes().dolares > 0) { US$ {{ cobradoMes().dolares | number: '1.2-2' }} · }
+      {{ cobradoMes().cantidad }} {{ cobradoMes().cantidad === 1 ? 'cobro' : 'cobros' }}
+    </span>
+  </button>
+  <button type="button" class="kpi-c" [class.kpi-c-aviso]="porDevolver().cantidad > 0" (click)="cambiarVista('DEVOLUCIONES')">
+    <span class="kpi-c-titulo">Por devolver</span>
+    <strong class="num">S/ {{ porDevolver().soles | number: '1.2-2' }}</strong>
+    <span class="kpi-c-pie">
+      @if (porDevolver().dolares > 0) { US$ {{ porDevolver().dolares | number: '1.2-2' }} · }
+      @if (porDevolver().cantidad === 0) { sin pendientes } @else { {{ porDevolver().cantidad }} pendiente(s) }
+    </span>
+  </button>
+</section>
+
+<!-- ── Pestañas ── -->
+<div class="pestanas" role="tablist">
+  <button type="button" role="tab" class="pestana" [attr.aria-selected]="vista() === 'POR_COBRAR'"
+          [class.activa]="vista() === 'POR_COBRAR'" (click)="cambiarVista('POR_COBRAR')">
+    Por cobrar <span class="contador">{{ cuentas().length }}</span></button>
+  <button type="button" role="tab" class="pestana" [attr.aria-selected]="vista() === 'HISTORIAL'"
+          [class.activa]="vista() === 'HISTORIAL'" (click)="cambiarVista('HISTORIAL')">
+    Historial de cobros <span class="contador">{{ cobros().length }}</span></button>
+  <button type="button" role="tab" class="pestana" [attr.aria-selected]="vista() === 'DEVOLUCIONES'"
+          [class.activa]="vista() === 'DEVOLUCIONES'" (click)="cambiarVista('DEVOLUCIONES')">
+    Devoluciones
+    @if (porDevolver().cantidad > 0) { <span class="contador contador-aviso">{{ porDevolver().cantidad }}</span> }
+  </button>
 </div>
 
 @if (error()) {
@@ -51,72 +73,154 @@
   <div class="alert alert-info" role="status">{{ mensaje() }}</div>
 }
 
-<div class="card">
-  <div class="table-responsive">
-    @if (vista() === 'POR_COBRAR') {
+@if (vista() === 'POR_COBRAR') {
+  <!-- Antigüedad de saldos -->
+  @if (cuentas().length > 0) {
+    <section class="card antiguedad" aria-label="Antigüedad de saldos">
+      <h2>Antigüedad de saldos</h2>
+      <div class="tramos">
+        @for (t of antiguedad(); track t.etiqueta) {
+          <div class="tramo" [attr.data-nivel]="t.nivel">
+            <span class="tramo-etiqueta">{{ t.etiqueta }}</span>
+            <strong class="num">S/ {{ t.soles | number: '1.2-2' }}</strong>
+            <span class="tramo-pie num">
+              @if (t.dolares > 0) { US$ {{ t.dolares | number: '1.2-2' }} · }
+              {{ t.cantidad }} {{ t.cantidad === 1 ? 'venta' : 'ventas' }}
+            </span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <div class="card">
+    <div class="barra-tabla">
+      <input type="search" class="form-control buscador" placeholder="Buscar cliente, N° de venta o comprobante"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" aria-label="Buscar en lo por cobrar">
+      <label class="check">
+        <input type="checkbox" [ngModel]="soloVencidas()" (ngModelChange)="soloVencidas.set($event)"> Solo vencidas
+      </label>
+    </div>
+    <div class="table-responsive">
       <table class="table">
         <thead>
           <tr>
-            <th style="width: 90px;">Venta</th>
-            <th>Cliente</th>
-            <th class="text-center" style="width: 140px;">Vence</th>
-            <th class="num" style="width: 120px;">Total</th>
-            <th class="num" style="width: 120px;">Cobrado</th>
+            <th style="width: 110px;">Venta</th>
+            <th style="min-width: 200px;">Cliente</th>
+            <th style="width: 150px;">Vence</th>
+            <th style="width: 190px;">Cobrado</th>
             <th class="num" style="width: 130px;">Saldo</th>
-            <th class="text-center" style="width: 150px;">Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (loading()) {
-            <tr><td colspan="7" class="vacio">Cargando…</td></tr>
-          }
-          @for (c of cuentas(); track c.ventaId) {
-            <tr>
-              <td><span class="badge">#{{ c.ventaId }}</span>
-                @if (c.comprobante) { <div class="muted">{{ c.comprobante }}</div> }</td>
-              <td><strong>{{ c.clienteNombre }}</strong><div class="muted">Venta del {{ c.fechaVenta }}</div></td>
-              <td class="text-center">
-                {{ c.fechaLimitePago ?? '—' }}
-                @if (c.diasAtraso > 0) {
-                  <div><span class="badge badge-danger">{{ c.diasAtraso }} día(s) de atraso</span></div>
-                }
-              </td>
-              <td class="num">{{ simbolo(c.moneda) }} {{ c.total | number: '1.2-2' }}</td>
-              <td class="num">{{ simbolo(c.moneda) }} {{ c.cobrado | number: '1.2-2' }}</td>
-              <td class="num"><strong>{{ simbolo(c.moneda) }} {{ c.saldo | number: '1.2-2' }}</strong></td>
-              <td class="text-center">
-                <button class="btn btn-sm btn-primary" (click)="abrirCobro(c)">Registrar cobro</button>
-              </td>
-            </tr>
-          } @empty {
-            @if (!loading()) {
-              <tr><td colspan="7" class="vacio">No hay ventas a crédito pendientes de cobro.</td></tr>
-            }
-          }
-        </tbody>
-      </table>
-    } @else if (vista() === 'HISTORIAL') {
-      <table class="table">
-        <thead>
-          <tr>
-            <th style="width: 80px;">Cobro</th>
-            <th style="width: 110px;">Fecha</th>
-            <th>Cliente</th>
-            <th style="width: 150px;">Método</th>
-            <th>Abonado a</th>
-            <th class="num" style="width: 130px;">Monto</th>
+            <th class="text-end" style="width: 220px;">Acción</th>
           </tr>
         </thead>
         <tbody>
           @if (loading()) {
             <tr><td colspan="6" class="vacio">Cargando…</td></tr>
           }
-          @for (c of cobros(); track c.id) {
+          @for (c of cuentasFiltradas(); track c.ventaId) {
             <tr>
+              <td><span class="badge">#{{ c.ventaId }}</span>
+                @if (c.comprobante) { <div class="muted">{{ c.comprobante }}</div> }</td>
+              <td><strong>{{ c.clienteNombre }}</strong><div class="muted">Venta del {{ c.fechaVenta }}</div></td>
+              <td>
+                {{ c.fechaLimitePago ?? '—' }}
+                @if (c.diasAtraso > 0) {
+                  <div><span class="badge badge-danger">{{ c.diasAtraso }} día(s) de atraso</span></div>
+                }
+              </td>
+              <td>
+                <div class="avance" role="img" [attr.aria-label]="'Cobrado ' + (avance(c) | number: '1.0-0') + ' %'">
+                  <div class="avance-barra" [style.width.%]="avance(c)"></div>
+                </div>
+                <div class="muted num">{{ simbolo(c.moneda) }} {{ c.cobrado | number: '1.2-2' }} de {{ c.total | number: '1.2-2' }}</div>
+              </td>
+              <td class="num"><strong>{{ simbolo(c.moneda) }} {{ c.saldo | number: '1.2-2' }}</strong>
+                @if (c.deduccionPendiente > 0) {
+                  <div class="muted">{{ c.tipoDeduccion === 'DETRACCION' ? 'Detracción' : 'Retención' }}: {{ c.deduccionPendiente | number: '1.2-2' }}</div>
+                  <div class="muted">Neto: {{ c.netoPorCobrar | number: '1.2-2' }}</div>
+                }
+              </td>
+              <td class="text-end acciones">
+                @if (enlaceRecordatorio(c); as enlace) {
+                  <a class="btn btn-sm btn-secondary" [href]="enlace" target="_blank" rel="noopener"
+                     title="Abre WhatsApp con el recordatorio escrito; usted lo revisa y lo envía">Recordar</a>
+                } @else {
+                  <span class="btn btn-sm btn-secondary deshabilitado" title="El cliente no tiene teléfono registrado">Recordar</span>
+                }
+                @if (c.deduccionPendiente > 0) {
+                  <button class="btn btn-sm btn-secondary" (click)="abrirCobro(c, true)"
+                          [title]="c.tipoDeduccion === 'DETRACCION' ? 'Registrar la constancia de depósito de la detracción' : 'Registrar el comprobante de retención'">
+                    {{ c.tipoDeduccion === 'DETRACCION' ? 'Detracción' : 'Retención' }}</button>
+                }
+                <button class="btn btn-sm btn-primary" (click)="abrirCobro(c)">Registrar cobro</button>
+              </td>
+            </tr>
+          } @empty {
+            @if (!loading()) {
+              <tr><td colspan="6" class="vacio">
+                {{ cuentas().length === 0 ? 'No hay ventas a crédito pendientes de cobro.' : 'Ninguna cuenta coincide con el filtro.' }}
+              </td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else if (vista() === 'HISTORIAL') {
+  <div class="card">
+    <div class="barra-tabla">
+      <div class="campo-corto">
+        <label class="form-label" for="hDesde">Desde</label>
+        <input id="hDesde" type="date" class="form-control" [max]="hoy" [ngModel]="desde()" (ngModelChange)="desde.set($event)">
+      </div>
+      <div class="campo-corto">
+        <label class="form-label" for="hHasta">Hasta</label>
+        <input id="hHasta" type="date" class="form-control" [max]="hoy" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)">
+      </div>
+      <div class="campo-corto">
+        <label class="form-label" for="hMetodo">Método</label>
+        <select id="hMetodo" class="form-select" [ngModel]="metodo()" (ngModelChange)="metodo.set($event)">
+          <option value="">Todos</option>
+          @for (m of metodos; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+        </select>
+      </div>
+      @if (desde() || hasta() || metodo()) {
+        <button type="button" class="btn btn-outline-secondary" (click)="limpiarFiltrosHistorial()">Limpiar</button>
+      }
+      <div class="total-periodo">
+        <span>{{ cobrosFiltrados().length }} {{ cobrosFiltrados().length === 1 ? 'cobro' : 'cobros' }}</span>
+        <strong class="num">S/ {{ totalHistorial().soles | number: '1.2-2' }}
+          @if (totalHistorial().dolares > 0) { · US$ {{ totalHistorial().dolares | number: '1.2-2' }} }</strong>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 80px;">Cobro</th>
+            <th style="width: 110px;">Fecha</th>
+            <th style="min-width: 200px;">Cliente</th>
+            <th style="width: 150px;">Método</th>
+            <th>Abonado a</th>
+            <th class="num" style="width: 130px;">Monto</th>
+            <th class="text-end" style="width: 100px;">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr><td colspan="7" class="vacio">Cargando…</td></tr>
+          }
+          @for (c of cobrosFiltrados(); track c.id) {
+            <tr [class.cobro-anulado]="c.estado === 'ANULADO'">
               <td><span class="badge">#{{ c.id }}</span></td>
-              <td>{{ c.fecha }}</td>
+              <td class="fecha">{{ c.fecha }}
+                @if (c.registradoPor) { <div class="muted">por {{ c.registradoPor }}</div> }</td>
               <td><strong>{{ c.clienteNombre }}</strong>
-                @if (c.notas) { <div class="muted">{{ c.notas }}</div> }</td>
+                @if (c.notas) { <div class="muted">{{ c.notas }}</div> }
+                @if (c.estado === 'ANULADO') {
+                  <div class="motivo-anulacion"><span class="badge badge-danger">Anulado</span>
+                    {{ c.fechaAnulacion }} por {{ c.anuladoPor }}: {{ c.motivoAnulacion }}</div>
+                }</td>
               <td>{{ etiquetaMetodo(c.metodoPago) }}
                 @if (c.referencia) { <div class="muted">{{ c.referencia }}</div> }</td>
               <td>
@@ -124,21 +228,33 @@
                   <div>Venta #{{ a.ventaId }}: {{ simbolo(c.moneda) }} {{ a.monto | number: '1.2-2' }}</div>
                 }
               </td>
-              <td class="num"><strong>{{ simbolo(c.moneda) }} {{ c.montoTotal | number: '1.2-2' }}</strong></td>
+              <td class="num"><strong class="monto-cobro">{{ simbolo(c.moneda) }} {{ c.montoTotal | number: '1.2-2' }}</strong></td>
+              <td class="text-end">
+                @if (c.estado === 'VIGENTE' && esAdmin()) {
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="abrirAnulacion(c)"
+                          title="Para un cobro mal registrado: deja de contar en el saldo de sus ventas">Anular</button>
+                }
+              </td>
             </tr>
           } @empty {
             @if (!loading()) {
-              <tr><td colspan="6" class="vacio">Aún no hay cobros registrados.</td></tr>
+              <tr><td colspan="7" class="vacio">
+                {{ cobros().length === 0 ? 'Aún no hay cobros registrados.' : 'Ningún cobro coincide con el filtro.' }}
+              </td></tr>
             }
           }
         </tbody>
       </table>
-    } @else {
+    </div>
+  </div>
+} @else {
+  <div class="card">
+    <div class="table-responsive">
       <table class="table">
         <thead>
           <tr>
             <th style="width: 90px;">Venta</th>
-            <th>Cliente</th>
+            <th style="min-width: 200px;">Cliente</th>
             <th class="text-center" style="width: 130px;">Anulada el</th>
             <th class="num" style="width: 130px;">Por devolver</th>
             <th style="width: 220px;">Devolución</th>
@@ -179,9 +295,9 @@
           }
         </tbody>
       </table>
-    }
+    </div>
   </div>
-</div>
+}
 
 <!-- ── Diálogo: registrar cobro (formulario reactivo: cabecera + FormArray de abonos) ── -->
 @if (dialogo(); as d) {
@@ -233,7 +349,7 @@
           </select>
         </div>
         <div>
-          <label class="form-label" for="cRef">N° de operación (opcional)</label>
+          <label class="form-label" for="cRef">{{ etiquetaReferencia() }}</label>
           <input id="cRef" type="text" class="form-control" maxlength="100" formControlName="referencia">
         </div>
       </div>
@@ -248,6 +364,38 @@
         <button type="button" class="btn btn-secondary" (click)="cerrar()" [disabled]="guardando()">Cancelar</button>
         <button type="submit" class="btn btn-primary" [disabled]="guardando() || totalCobro() <= 0">
           {{ guardando() ? 'Registrando…' : 'Registrar ' + simbolo(d.moneda) + ' ' + (totalCobro() | number: '1.2-2') }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ── Diálogo: anular un cobro ─────────────────────────── -->
+@if (anulacionAbierta(); as c) {
+  <div class="dialogo-fondo" (click)="cerrarAnulacion()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloAnulacion"
+          (ngSubmit)="confirmarAnulacion()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tituloAnulacion" style="margin: 0 0 4px 0; font-weight: 600;">Anular el cobro #{{ c.id }}</h3>
+      <p class="muted" style="margin: 0 0 16px 0;">
+        {{ c.clienteNombre }} · {{ simbolo(c.moneda) }} {{ c.montoTotal | number: '1.2-2' }} del {{ c.fecha }}
+        ({{ etiquetaMetodo(c.metodoPago) }}@if (c.referencia) { · {{ c.referencia }} }).
+        Ese monto vuelve al saldo de
+        @for (a of c.abonos; track a.ventaId; let ultimo = $last) { la venta #{{ a.ventaId }}{{ ultimo ? '' : ',' }} }.
+        El cobro no se borra: queda en el historial como anulado.
+      </p>
+      <label class="form-label" for="aMotivo">Motivo</label>
+      <input id="aMotivo" type="text" class="form-control" maxlength="300" [formControl]="motivoAnulacion"
+             placeholder="Ej.: pago registrado dos veces, cheque rechazado por el banco"
+             [class.is-invalid]="motivoAnulacion.touched && motivoAnulacion.invalid">
+
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarAnulacion()" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-danger" [disabled]="guardando()">
+          {{ guardando() ? 'Anulando…' : 'Anular cobro' }}
         </button>
       </div>
     </form>

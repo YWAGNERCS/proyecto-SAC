@@ -6,6 +6,7 @@ import {
   ValidationErrors, ValidatorFn, Validators,
 } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { CobranzaService } from './cobranza-service';
 import { Cobro, CuentaPorCobrar, Devolucion, METODOS_PAGO, MetodoPago, MonedaCobro } from './cobranza.model';
@@ -48,6 +49,13 @@ export class CobranzaListComponent implements OnInit {
 
   vista = signal<Vista>('POR_COBRAR');
   clienteId: number | null = null;
+
+  // Filtros que se aplican en pantalla (sin volver a pedir al servidor)
+  busqueda = signal('');
+  soloVencidas = signal(false);
+  desde = signal('');
+  hasta = signal('');
+  metodo = signal<MetodoPago | ''>('');
   clientes = signal<Cliente[]>([]);
   cuentas = signal<CuentaPorCobrar[]>([]);
   cobros = signal<Cobro[]>([]);
@@ -72,6 +80,60 @@ export class CobranzaListComponent implements OnInit {
   );
 
   readonly hoy = this.isoHoy();
+  private readonly inicioMes = this.hoy.slice(0, 8) + '01';
+
+  /** Cuentas por cobrar con la búsqueda (cliente, N° de venta o comprobante) y "solo vencidas". */
+  readonly cuentasFiltradas = computed(() => {
+    const texto = this.busqueda().trim().toLowerCase();
+    return this.cuentas().filter((c) =>
+      (!this.soloVencidas() || c.diasAtraso > 0) &&
+      (!texto || c.clienteNombre.toLowerCase().includes(texto) || String(c.ventaId).includes(texto)
+        || (c.comprobante ?? '').toLowerCase().includes(texto)));
+  });
+
+  readonly cuentasVencidas = computed(() => this.cuentas().filter((c) => c.diasAtraso > 0).length);
+
+  /** Antigüedad de saldos: cuánto se debe según los días de atraso, por moneda. */
+  readonly antiguedad = computed(() => {
+    const tramos = [
+      { etiqueta: 'Al día', desde: -Infinity, hasta: 0 },
+      { etiqueta: '1 a 30 días', desde: 1, hasta: 30 },
+      { etiqueta: '31 a 60 días', desde: 31, hasta: 60 },
+      { etiqueta: 'Más de 60 días', desde: 61, hasta: Infinity },
+    ];
+    return tramos.map((t, i) => {
+      const enTramo = this.cuentas().filter((c) => c.diasAtraso >= t.desde && c.diasAtraso <= t.hasta);
+      const suma = (m: MonedaCobro) => enTramo.filter((c) => c.moneda === m).reduce((s, c) => s + Number(c.saldo), 0);
+      return { etiqueta: t.etiqueta, nivel: i, cantidad: enTramo.length, soles: suma('SOLES'), dolares: suma('DOLARES') };
+    });
+  });
+
+  /** Lo cobrado en el mes en curso (fecha del pago), por moneda. */
+  readonly cobradoMes = computed(() => {
+    const delMes = this.cobros().filter((c) => c.estado !== 'ANULADO' && c.fecha >= this.inicioMes);
+    const suma = (m: MonedaCobro) => delMes.filter((c) => c.moneda === m).reduce((s, c) => s + Number(c.montoTotal), 0);
+    return { cantidad: delMes.length, soles: suma('SOLES'), dolares: suma('DOLARES') };
+  });
+
+  /** Devoluciones todavía no entregadas al cliente, por moneda. */
+  readonly porDevolver = computed(() => {
+    const pendientes = this.devoluciones().filter((d) => d.estado === 'PENDIENTE');
+    const suma = (m: MonedaCobro) => pendientes.filter((d) => d.moneda === m).reduce((s, d) => s + Number(d.monto), 0);
+    return { cantidad: pendientes.length, soles: suma('SOLES'), dolares: suma('DOLARES') };
+  });
+
+  /** Historial con el rango de fechas y el método elegidos, y su total por moneda. */
+  readonly cobrosFiltrados = computed(() =>
+    this.cobros().filter((c) =>
+      (!this.desde() || c.fecha >= this.desde()) && (!this.hasta() || c.fecha <= this.hasta())
+      && (!this.metodo() || c.metodoPago === this.metodo())));
+
+  readonly totalHistorial = computed(() => {
+    const suma = (m: MonedaCobro) => this.cobrosFiltrados().filter((c) => c.moneda === m && c.estado !== 'ANULADO')
+      .reduce((s, c) => s + Number(c.montoTotal), 0);
+    return { soles: suma('SOLES'), dolares: suma('DOLARES') };
+  });
+
   guardando = signal(false);
   errorDialogo = signal('');
 
@@ -116,34 +178,65 @@ export class CobranzaListComponent implements OnInit {
     this.cargar();
   }
 
+  /** Las tres pestañas ya están cargadas: cambiar de pestaña no vuelve a pedir datos. */
   cambiarVista(v: Vista) {
     this.vista.set(v);
-    this.cargar();
   }
 
+  /** Carga a la vez lo por cobrar, el historial y las devoluciones (del cliente elegido o de todos). */
   cargar() {
     this.loading.set(true);
     this.error.set('');
-    const fallo = (err: HttpErrorResponse) => {
-      this.loading.set(false);
-      this.error.set(this.mensajeDeError(err, 'No se pudo cargar la cobranza.'));
-    };
-    if (this.vista() === 'POR_COBRAR') {
-      this.cobranzaService.porCobrar(this.clienteId).subscribe({
-        next: (data) => { this.cuentas.set(data); this.loading.set(false); },
-        error: fallo,
-      });
-    } else if (this.vista() === 'HISTORIAL') {
-      this.cobranzaService.historial(this.clienteId).subscribe({
-        next: (data) => { this.cobros.set(data); this.loading.set(false); },
-        error: fallo,
-      });
-    } else {
-      this.cobranzaService.devoluciones(this.clienteId).subscribe({
-        next: (data) => { this.devoluciones.set(data); this.loading.set(false); },
-        error: fallo,
-      });
-    }
+    forkJoin({
+      cuentas: this.cobranzaService.porCobrar(this.clienteId),
+      cobros: this.cobranzaService.historial(this.clienteId),
+      devoluciones: this.cobranzaService.devoluciones(this.clienteId),
+    }).subscribe({
+      next: (r) => {
+        this.cuentas.set(r.cuentas);
+        this.cobros.set(r.cobros);
+        this.devoluciones.set(r.devoluciones);
+        this.loading.set(false);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.loading.set(false);
+        this.error.set(this.mensajeDeError(err, 'No se pudo cargar la cobranza.'));
+      },
+    });
+  }
+
+  /** Saldo por cobrar (o la parte vencida) de una moneda; 0 si no hay ventas en ella. */
+  totalMoneda(moneda: MonedaCobro, campo: 'porCobrar' | 'vencido'): number {
+    return this.totales().find((t) => t.moneda === moneda)?.[campo] ?? 0;
+  }
+
+  limpiarFiltrosHistorial() {
+    this.desde.set('');
+    this.hasta.set('');
+    this.metodo.set('');
+  }
+
+  /** Parte de la venta ya cobrada (0 a 100), para la barra de avance. */
+  avance(c: CuentaPorCobrar): number {
+    return Number(c.total) > 0 ? Math.min(100, (Number(c.cobrado) / Number(c.total)) * 100) : 0;
+  }
+
+  /**
+   * Enlace de WhatsApp con el recordatorio ya escrito, o null si el cliente no tiene teléfono.
+   * Lo envía la persona desde su WhatsApp: el sistema no manda nada por su cuenta.
+   */
+  enlaceRecordatorio(c: CuentaPorCobrar): string | null {
+    const telefono = (this.clientes().find((x) => x.id === c.clienteId)?.telefono ?? '').replace(/\D/g, '');
+    if (telefono.length < 9) return null;
+    const numero = telefono.length === 9 ? '51' + telefono : telefono;
+    const documento = c.comprobante ? `del comprobante ${c.comprobante}` : `de la venta #${c.ventaId}`;
+    const vence = c.diasAtraso > 0
+      ? `venció el ${c.fechaLimitePago} (${c.diasAtraso} día(s) de atraso)`
+      : `vence el ${c.fechaLimitePago}`;
+    const texto = `Hola, ${c.clienteNombre}. Le saludamos de JD Refrigeración. Le recordamos que el saldo de `
+      + `${this.simbolo(c.moneda)} ${Number(c.saldo).toFixed(2)} ${documento} ${vence}. `
+      + `Si ya realizó el pago, por favor envíenos el comprobante. ¡Gracias!`;
+    return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
   }
 
   // ── Diálogo de cobro ───────────────────────────────────────
@@ -153,19 +246,30 @@ export class CobranzaListComponent implements OnInit {
    * pendiente del cliente en esa moneda; la elegida viene con su saldo completo (se puede bajar
    * para un abono parcial) y ninguna línea acepta más que su propio saldo.
    */
-  abrirCobro(cuenta: CuentaPorCobrar) {
+  abrirCobro(cuenta: CuentaPorCobrar, deduccion = false) {
     this.cobroForm.reset();
     this.abonos.clear();
     this.cuentasDialogo = this.cuentas().filter((c) => c.clienteId === cuenta.clienteId && c.moneda === cuenta.moneda);
     for (const c of this.cuentasDialogo) {
       this.abonos.push(this.fb.group({
         ventaId: this.fb.nonNullable.control(c.ventaId),
-        monto: this.fb.control<number | null>(c.ventaId === cuenta.ventaId ? Number(c.saldo) : null,
+        monto: this.fb.control<number | null>(
+          c.ventaId !== cuenta.ventaId ? null : deduccion ? Number(c.deduccionPendiente) : Number(c.netoPorCobrar) || Number(c.saldo),
           [Validators.min(0.01), Validators.max(Number(c.saldo))]),
       }));
     }
+    // Detracción o retención: el "pago" es la constancia o el comprobante que entrega el cliente
+    if (deduccion) {
+      this.cobroForm.controls.metodoPago.setValue(cuenta.tipoDeduccion === 'DETRACCION' ? 'DETRACCION' : 'RETENCION');
+    }
     this.errorDialogo.set('');
     this.dialogo.set({ clienteNombre: cuenta.clienteNombre, clienteId: cuenta.clienteId, moneda: cuenta.moneda });
+  }
+
+  /** Etiqueta del N° de operación según el método (constancia, comprobante o voucher). */
+  etiquetaReferencia(): string {
+    const m = this.cobroForm.controls.metodoPago.value;
+    return m === 'DETRACCION' ? 'N° de constancia de depósito' : m === 'RETENCION' ? 'N° de comprobante de retención' : 'N° de operación (opcional)';
   }
 
   cerrar() {
@@ -226,6 +330,45 @@ export class CobranzaListComponent implements OnInit {
     if (this.abonos.hasError('sinAbonos')) return 'Indique el monto abonado en al menos una venta.';
     if (this.cobroForm.controls.fecha.invalid) return 'Indique la fecha del pago (no puede ser futura).';
     return 'Revise los datos del cobro.';
+  }
+
+  // ── Anulación de un cobro (solo ADMIN; el backend lo vuelve a exigir con 403) ──
+  anulacionAbierta = signal<Cobro | null>(null);
+  readonly motivoAnulacion = this.fb.nonNullable.control('', [Validators.required, Validators.minLength(5), Validators.maxLength(300)]);
+
+  abrirAnulacion(c: Cobro) {
+    this.motivoAnulacion.reset();
+    this.errorDialogo.set('');
+    this.anulacionAbierta.set(c);
+  }
+
+  cerrarAnulacion() {
+    if (!this.guardando()) this.anulacionAbierta.set(null);
+  }
+
+  confirmarAnulacion() {
+    const c = this.anulacionAbierta();
+    if (!c) return;
+    if (this.motivoAnulacion.invalid) {
+      this.motivoAnulacion.markAsTouched();
+      this.errorDialogo.set('Indique el motivo de la anulación (al menos 5 caracteres).');
+      return;
+    }
+    this.guardando.set(true);
+    this.errorDialogo.set('');
+    this.cobranzaService.anular(c.id, this.motivoAnulacion.value.trim()).subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.anulacionAbierta.set(null);
+        this.mensaje.set(`Cobro #${c.id} anulado: ${this.simbolo(c.moneda)} ${Number(c.montoTotal).toFixed(2)} vuelve al saldo de `
+          + c.abonos.map((a) => `la venta #${a.ventaId}`).join(', ') + '.');
+        this.cargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.guardando.set(false);
+        this.errorDialogo.set(this.mensajeDeError(err, 'No se pudo anular el cobro.'));
+      },
+    });
   }
 
   // ── Devoluciones ────────────────────────────────────────────

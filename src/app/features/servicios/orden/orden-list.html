@@ -1,0 +1,89 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Órdenes de trabajo</h1>
+    <p class="page-sub">Instalaciones, mantenimientos, reparaciones y visitas técnicas en el local del cliente</p>
+  </div>
+  <a routerLink="/servicios/ordenes/nueva" class="btn btn-primary">+ Nueva orden</a>
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+
+<div class="card">
+  <div class="barra-filtros">
+    <div>
+      <label class="form-label" for="oEstado">Estado</label>
+      <select id="oEstado" class="form-select" [(ngModel)]="estado" (change)="cargar()">
+        <option value="">Todas</option>
+        <option value="PROGRAMADA">Programadas</option>
+        <option value="REALIZADA">Realizadas</option>
+        <option value="CANCELADA">Canceladas</option>
+      </select>
+    </div>
+    <div style="min-width: 240px;">
+      <label class="form-label" for="oCliente">Cliente</label>
+      <select id="oCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+        <option [ngValue]="null">Todos</option>
+        @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="oTecnico">Técnico</label>
+      <input id="oTecnico" type="search" class="form-control" [(ngModel)]="tecnico" (keyup.enter)="cargar()" placeholder="Nombre">
+    </div>
+    <div>
+      <label class="form-label" for="oDesde">Desde</label>
+      <input id="oDesde" type="date" class="form-control" [(ngModel)]="desde">
+    </div>
+    <div>
+      <label class="form-label" for="oHasta">Hasta</label>
+      <input id="oHasta" type="date" class="form-control" [(ngModel)]="hasta">
+    </div>
+    <button type="button" class="btn btn-secondary" (click)="cargar()">Buscar</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="limpiar()">Limpiar</button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 80px;">N°</th>
+          <th style="width: 120px;">Fecha</th>
+          <th>Cliente y lugar</th>
+          <th>Trabajo</th>
+          <th style="width: 160px;">Técnico</th>
+          <th style="width: 120px;">Estado</th>
+          <th class="text-end" style="width: 100px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="7" class="vacio">Cargando…</td></tr>
+        }
+        @for (o of ordenes(); track o.id) {
+          <tr>
+            <td><span class="badge">#{{ o.id }}</span></td>
+            <td style="white-space: nowrap;">{{ o.fechaProgramada }}
+              @if (o.fechaRealizada) { <div class="muted">hecho el {{ o.fechaRealizada }}</div> }</td>
+            <td><strong>{{ o.clienteNombre }}</strong>
+              @if (o.sedeNombre) { <div class="muted">Sede {{ o.sedeNombre }}</div> }
+              @if (o.direccion) { <div class="muted">{{ o.direccion }}</div> }</td>
+            <td><span class="badge">{{ etiquetaTipo(o.tipo) }}</span>
+              <div>{{ o.descripcion }}</div>
+              @if (o.equipoNombre) { <div class="muted">{{ o.equipoNombre }}</div> }</td>
+            <td>{{ o.tecnico }}</td>
+            <td><span [class]="claseEstado(o.estado)">{{ o.estado }}</span>
+              @if (o.ventaFacturadaId) { <div class="muted">Facturada: venta #{{ o.ventaFacturadaId }}</div> }
+              @else if (o.estado === 'REALIZADA') { <div class="muted">Por facturar</div> }</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" [routerLink]="['/servicios/ordenes', o.id]">Ver</a></td>
+          </tr>
+        } @empty {
+          @if (!loading()) {
+            <tr><td colspan="7" class="vacio">No hay órdenes con estos filtros.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

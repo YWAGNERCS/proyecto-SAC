@@ -102,7 +102,12 @@
             <td class="text-center">
               <span class="badge" [class]="getEstadoPagoClass(v.estadoPago)">{{ v.estadoPago }}</span>
             </td>
-            <td style="text-align: right; font-weight: 700;">{{ simbolo(v.moneda) }} {{ v.total | number: '1.2-2' }}</td>
+            <td style="text-align: right; font-weight: 700;">{{ simbolo(v.moneda) }} {{ v.total | number: '1.2-2' }}
+              @if (v.tipoDeduccion !== 'NINGUNA') {
+                <div class="muted" style="font-weight: 400;">{{ v.tipoDeduccion === 'DETRACCION' ? 'Detracción' : 'Retención' }}
+                  {{ v.porcentajeDeduccion | number: '1.0-2' }} %</div>
+              }
+            </td>
             <td class="text-center acciones">
               @if (v.comprobanteId) {
                 <button class="btn btn-sm btn-outline-secondary" (click)="descargarComprobante(v)" title="Descargar factura o boleta en PDF">PDF</button>
@@ -139,6 +144,15 @@
                     </tr>
                   }
                   <tr class="pie"><td colspan="4" class="num">Subtotal / IGV</td><td class="num">{{ v.subtotal | number: '1.2-2' }} / {{ v.igv | number: '1.2-2' }}</td></tr>
+                  @if (v.tipoDeduccion !== 'NINGUNA') {
+                    <tr class="pie">
+                      <td colspan="4" class="num">
+                        {{ v.tipoDeduccion === 'DETRACCION' ? 'Detracción (la deposita el cliente en el Banco de la Nación)' : 'Retención del IGV (la retiene el cliente)' }}
+                        {{ v.porcentajeDeduccion | number: '1.0-2' }} % / Neto a cobrar
+                      </td>
+                      <td class="num">{{ v.montoDeduccion | number: '1.2-2' }} / <strong>{{ v.netoACobrar | number: '1.2-2' }}</strong></td>
+                    </tr>
+                  }
                 </tbody>
               </table>
             </td>

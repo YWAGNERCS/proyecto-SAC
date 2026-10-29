@@ -1,0 +1,175 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Equipos instalados</h1>
+    <p class="page-sub">Equipos de JD en los locales de sus clientes: serie, garantía y plan de mantenimiento</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="registrar()">+ Registrar equipo</button>
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
+
+<div class="card">
+  <div class="barra-filtros">
+    <div style="min-width: 260px;">
+      <label class="form-label" for="eCliente">Cliente</label>
+      <select id="eCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+        <option [ngValue]="null">Todos</option>
+        @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="eEstado">Estado</label>
+      <select id="eEstado" class="form-select" [(ngModel)]="estado" (change)="cargar()">
+        <option value="ACTIVO">Activos</option>
+        <option value="RETIRADO">Retirados</option>
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="eGarantia">Garantía</label>
+      <select id="eGarantia" class="form-select" [(ngModel)]="garantia" (change)="cargar()">
+        <option value="">Todas</option>
+        <option value="SI">En garantía</option>
+        <option value="NO">Garantía vencida</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="min-width: 220px;">Equipo</th>
+          <th style="min-width: 190px;">Cliente y sede</th>
+          <th style="width: 130px;">Instalado</th>
+          <th style="width: 140px;">Garantía</th>
+          <th style="width: 170px;">Mantenimiento</th>
+          <th class="text-end" style="width: 170px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="6" class="vacio">Cargando…</td></tr>
+        }
+        @for (e of equipos(); track e.id) {
+          <tr>
+            <td><strong>{{ e.productoNombre }}</strong>
+              <div class="muted">{{ e.numeroSerie ? 'Serie ' + e.numeroSerie : 'Sin serie' }}{{ e.ubicacion ? ' · ' + e.ubicacion : '' }}</div>
+              @if (e.estado === 'RETIRADO') { <span class="badge badge-danger">Retirado</span> }</td>
+            <td>{{ e.clienteNombre }}<div class="muted">{{ e.sedeNombre ? 'Sede ' + e.sedeNombre : 'Sin sede' }}</div></td>
+            <td style="white-space: nowrap;">{{ e.fechaInstalacion }}
+              @if (e.ordenTrabajoId) { <div><a [routerLink]="['/servicios/ordenes', e.ordenTrabajoId]">Orden #{{ e.ordenTrabajoId }}</a></div> }</td>
+            <td>
+              @if (e.enGarantia) { <span class="badge badge-success">Hasta {{ e.garantiaHasta }}</span> }
+              @else { <span class="badge badge-danger">Venció {{ e.garantiaHasta }}</span> }
+            </td>
+            <td>{{ etiquetaFrecuencia(e.frecuenciaMeses) }}
+              @if (e.proximoMantenimiento) { <div class="muted">próximo {{ e.proximoMantenimiento }}</div> }</td>
+            <td class="acciones-fila">
+              @if (e.estado === 'ACTIVO') {
+                <a class="btn btn-sm btn-outline-secondary" [routerLink]="['/servicios/ordenes/nueva']"
+                   [queryParams]="{ clienteId: e.clienteId }" title="Programar una reparación o visita">Orden</a>
+                <button type="button" class="btn btn-sm btn-secondary" (click)="editar(e)">Editar</button>
+                @if (esAdmin()) {
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="abrirRetiro(e)">Retirar</button>
+                }
+              }
+            </td>
+          </tr>
+        } @empty {
+          @if (!loading()) {
+            <tr><td colspan="6" class="vacio">No hay equipos con estos filtros.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Diálogo: registrar / editar ── -->
+@if (editando() !== null) {
+  <div class="dialogo-fondo" (click)="cerrarDialogo()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tEquipo"
+          [formGroup]="form" (ngSubmit)="guardar()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tEquipo">{{ editando() ? 'Editar equipo' : 'Registrar equipo instalado' }}</h3>
+      <p class="muted" style="margin: 0 0 14px;">
+        {{ editando() ? 'El cliente, el modelo y la fecha no cambian: para eso se retira y se registra otro.'
+          : 'Para equipos instalados antes del sistema o por otro proveedor. Los nuevos se registran al cerrar la orden de instalación.' }}
+      </p>
+      <div class="campos">
+        <div style="grid-column: span 2;">
+          <label class="form-label" for="dCliente">Cliente *</label>
+          <select id="dCliente" class="form-select" formControlName="clienteId">
+            <option [ngValue]="null">-- Seleccione --</option>
+            @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="dSede">Sede</label>
+          <select id="dSede" class="form-select" formControlName="sedeId">
+            <option [ngValue]="null">Sin sede</option>
+            @for (s of sedesDialogo(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
+          </select>
+        </div>
+      </div>
+      <div class="campos">
+        <div style="grid-column: span 2;">
+          <label class="form-label" for="dProducto">Equipo *</label>
+          <select id="dProducto" class="form-select" formControlName="productoId">
+            <option [ngValue]="null">-- Equipo del catálogo --</option>
+            @for (p of equiposCatalogo(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="dSerie">N° de serie</label>
+          <input id="dSerie" class="form-control" formControlName="numeroSerie" maxlength="60">
+        </div>
+      </div>
+      <div class="campos">
+        <div><label class="form-label" for="dUbic">Ubicación</label>
+          <input id="dUbic" class="form-control" formControlName="ubicacion" maxlength="100" placeholder="Ej.: cámara de carnes"></div>
+        <div><label class="form-label" for="dFecha">Instalado el *</label>
+          <input id="dFecha" type="date" class="form-control" formControlName="fechaInstalacion" [max]="hoy"></div>
+        <div><label class="form-label" for="dGar">Garantía (meses)</label>
+          <input id="dGar" type="number" min="0" max="120" class="form-control" formControlName="mesesGarantia"></div>
+        <div><label class="form-label" for="dFrec">Mantenimiento</label>
+          <select id="dFrec" class="form-select" formControlName="frecuenciaMeses">
+            @for (f of frecuencias; track f.valor) { <option [ngValue]="f.valor">{{ f.etiqueta }}</option> }
+          </select></div>
+      </div>
+      <label class="form-label" for="dNotas">Notas</label>
+      <input id="dNotas" class="form-control" formControlName="notas" maxlength="300">
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">{{ editando() ? 'Guardar cambios' : 'Registrar' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ── Diálogo: retirar (solo administrador) ── -->
+@if (retirando(); as e) {
+  <div class="dialogo-fondo" (click)="cerrarDialogo()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tRetiro"
+          (ngSubmit)="confirmarRetiro()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tRetiro">Retirar {{ e.productoNombre }}</h3>
+      <p class="muted" style="margin: 0 0 14px;">Queda en el historial del cliente y sus visitas pendientes se cancelan.</p>
+      <label class="form-label" for="rMotivo">Motivo</label>
+      <input id="rMotivo" class="form-control" [formControl]="motivo" maxlength="200" placeholder="Ej.: reemplazado por un equipo nuevo">
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Volver</button>
+        <button type="submit" class="btn btn-danger" [disabled]="guardando()">Retirar equipo</button>
+      </div>
+    </form>
+  </div>
+}

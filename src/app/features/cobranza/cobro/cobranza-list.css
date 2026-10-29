@@ -1,50 +1,247 @@
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+/* ── Filtro de cliente en la cabecera ── */
+.filtro-cliente {
+  width: 300px;
 }
 
-.kpi {
+/* ── Indicadores: cada tarjeta es un botón que lleva a su pestaña ── */
+.kpis-cobranza {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+  transition: opacity 0.2s ease;
+}
+
+.kpis-cobranza.cargando {
+  opacity: 0.5;
+}
+
+.kpi-c {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 16px;
-  margin: 0;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  font-family: inherit;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
 }
 
-.kpi span {
+.kpi-c:hover {
+  border-color: var(--border-focus);
+}
+
+.kpi-c strong {
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.kpi-c-titulo {
+  font-size: 0.8rem;
   color: var(--text-muted);
-  font-size: 0.85rem;
 }
 
-.kpi strong {
-  font-size: 1.35rem;
+.kpi-c-pie {
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
-.kpi-alerta {
+.kpi-c-alerta {
   border-color: #FECACA;
-  background-color: var(--danger-light, #FEF2F2);
 }
 
-.kpi-alerta strong {
-  color: #B91C1C;
+.kpi-c-alerta strong {
+  color: var(--danger);
 }
 
-.filtros {
+.kpi-c-aviso {
+  border-color: #FDE68A;
+}
+
+.kpi-c-aviso strong {
+  color: var(--warning);
+}
+
+/* ── Pestañas con contador ── */
+.pestanas {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pestana {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pestana:hover {
+  color: var(--text-main);
+}
+
+.pestana.activa {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.contador {
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  font-size: 0.72rem;
+  line-height: 18px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.activa .contador {
+  background: var(--primary-light);
+  border-color: #E0E7FF;
+  color: var(--primary);
+}
+
+.contador-aviso {
+  background: var(--warning-light);
+  border-color: #FDE68A;
+  color: #B45309;
+}
+
+/* ── Antigüedad de saldos ── */
+.antiguedad {
+  padding: 16px 18px;
+}
+
+.antiguedad h2 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.tramos {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tramo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--success);
+  background: var(--surface-muted);
+}
+
+.tramo[data-nivel="1"] { border-left-color: #FBBF24; }
+.tramo[data-nivel="2"] { border-left-color: #F97316; }
+.tramo[data-nivel="3"] { border-left-color: var(--danger); }
+
+.tramo strong {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.tramo-etiqueta,
+.tramo-pie {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* ── Barra sobre la tabla: búsqueda y filtros ── */
+.barra-tabla {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.pestanas {
-  display: flex;
-  flex-wrap: wrap;
+.buscador {
+  max-width: 360px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  margin-right: auto;
+  height: 40px;
+  font-size: 0.87rem;
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+}
+
+.campo-corto {
+  width: 170px;
+}
+
+.campo-corto .form-label {
+  margin-bottom: 4px;
+}
+
+.total-periodo {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.total-periodo strong {
+  font-size: 1.05rem;
+  color: var(--text-main);
+}
+
+/* ── Avance de lo cobrado ── */
+.avance {
+  height: 6px;
+  border-radius: 999px;
+  background: #EEF0F3;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.avance-barra {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--success);
+}
+
+.acciones {
+  white-space: nowrap;
+}
+
+.acciones .btn + .btn,
+.acciones .btn + button {
+  margin-left: 6px;
+}
+
+.deshabilitado {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .num {
@@ -107,39 +304,49 @@
   padding: 24px;
 }
 
-/* ── Celular: filtros a todo el ancho, indicadores en dos columnas ── */
+/* ── Tablet y celular ── */
+@media (max-width: 1100px) {
+  .kpis-cobranza { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .tramos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filtro-cliente { width: 100%; }
+  .total-periodo { margin-left: 0; align-items: flex-start; }
+}
+
 @media (max-width: 640px) {
-  .filtros {
-    padding: 14px;
-    gap: 10px;
-  }
+  .kpis-cobranza { gap: 8px; }
+  .kpi-c { padding: 12px 14px; }
+  .kpi-c strong { font-size: 1.1rem; }
+  .pestanas { overflow-x: auto; }
+  .pestana { padding: 9px 10px; white-space: nowrap; }
+  .buscador, .campo-corto { max-width: none; width: 100%; }
+  .dialogo { padding: 18px; }
+}
 
-  .filtros > div {
-    flex: 1 1 100%;
-  }
+.fecha {
+  white-space: nowrap;
+}
 
-  .filtros .form-select {
-    width: 100%;
-  }
+/* Montos dentro de tarjetas y bajo la barra de avance: alineados a la izquierda */
+.tramo .num,
+td .muted.num {
+  text-align: left;
+}
 
-  .pestanas {
-    margin-right: 0;
-  }
+/* Cobro anulado: queda en el historial, atenuado y con su monto tachado */
+.cobro-anulado td {
+  color: var(--text-muted);
+}
 
-  .pestanas .btn {
-    flex: 1 1 auto;
-  }
+.cobro-anulado .monto-cobro {
+  text-decoration: line-through;
+  font-weight: 400;
+}
 
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .kpi strong {
-    font-size: 1.1rem;
-  }
-
-  .dialogo {
-    padding: 18px;
-  }
+.motivo-anulacion {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #991B1B;
 }

@@ -71,6 +71,19 @@
         </div>
       </div>
 
+      @if (esEmpresa()) {
+        <label class="d-flex gap-2" style="align-items: flex-start; cursor: pointer;">
+          <input type="checkbox" formControlName="agenteRetencion" style="margin-top: 4px;">
+          <span>
+            <strong>Agente de retención del IGV</strong>
+            <span class="texto-muted" style="display: block; font-size: 0.85rem;">
+              Designado por SUNAT (p. ej. supermercados y grandes empresas): al pagar retiene el 3 % de las facturas de más de S/ 700
+              y entrega el comprobante de retención. Las ventas a este cliente lo descuentan del monto por cobrar.
+            </span>
+          </span>
+        </label>
+      }
+
       <div class="d-flex justify-content-end gap-2 mt-4">
         <a routerLink="/clientes" class="btn btn-outline-secondary">Cancelar</a>
         <button type="submit" class="btn btn-primary" [disabled]="loading()">
@@ -80,3 +93,8 @@
     </form>
   </div>
 </div>
+
+<!-- Las sedes se agregan una vez guardado el cliente -->
+@if (id(); as clienteId) {
+  <app-sedes-cliente [clienteId]="clienteId" />
+}

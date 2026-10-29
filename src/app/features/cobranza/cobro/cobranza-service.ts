@@ -27,6 +27,11 @@ export class CobranzaService {
   }
 
   /** Cuánto pagó el cliente de una venta: se avisa antes de anularla. */
+  /** Anula un cobro mal registrado (solo ADMIN): deja de contar en el saldo de sus ventas. */
+  anular(id: number, motivo: string) {
+    return this.http.post<Cobro>(this.api.buildUrl(`${this.endpoint}/cobros/${id}/anular`), { motivo });
+  }
+
   pagadoDeVenta(ventaId: number) {
     return this.http.get<PagadoDeVenta>(this.api.buildUrl(`${this.endpoint}/ventas/${ventaId}/pagado`));
   }

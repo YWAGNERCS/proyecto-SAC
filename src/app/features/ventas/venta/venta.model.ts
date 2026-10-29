@@ -25,6 +25,12 @@ export interface VentaResponse {
   subtotal: number;
   igv: number;
   total: number;
+  /** Detracción (SPOT) o retención del IGV calculada al registrar la venta. */
+  tipoDeduccion: 'NINGUNA' | 'DETRACCION' | 'RETENCION';
+  porcentajeDeduccion: number | null;
+  montoDeduccion: number | null;
+  /** Lo que el cliente le paga directamente a JD (total − deducción). */
+  netoACobrar: number;
   /** null si la venta aún no tiene factura/boleta emitida. */
   comprobanteId: number | null;
   detalles: DetalleVentaResponse[];

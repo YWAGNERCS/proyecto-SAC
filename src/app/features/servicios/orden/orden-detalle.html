@@ -1,0 +1,272 @@
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-info" role="status">{{ mensaje() }}</div>
+}
+
+@if (orden(); as o) {
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Orden de trabajo #{{ o.id }}</h1>
+      <p class="page-sub">{{ etiquetaTipo(o.tipo) }} · {{ o.clienteNombre }}@if (o.sedeNombre) { · sede {{ o.sedeNombre }} }</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a routerLink="/servicios/ordenes" class="btn btn-outline-secondary">Volver</a>
+      @if (o.estado === 'PROGRAMADA') {
+        @if (esAdmin()) { <button type="button" class="btn btn-outline-secondary" (click)="abrirCancelar()">Cancelar orden</button> }
+        <a [routerLink]="['/servicios/ordenes', o.id, 'editar']" class="btn btn-secondary">Editar</a>
+        <button type="button" class="btn btn-primary" (click)="abrirCerrar()">Cerrar orden</button>
+      } @else if (o.estado === 'REALIZADA' && !o.ventaFacturadaId) {
+        <button type="button" class="btn btn-primary" (click)="abrirFacturar()">Facturar servicio</button>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="campos">
+        <div><span class="muted">Estado</span><div>
+          <span class="badge" [class.badge-success]="o.estado === 'REALIZADA'" [class.badge-danger]="o.estado === 'CANCELADA'"
+                [class.badge-warning]="o.estado === 'PROGRAMADA'">{{ o.estado }}</span></div></div>
+        <div><span class="muted">Fecha programada</span><div>{{ o.fechaProgramada }}</div></div>
+        <div><span class="muted">Técnico</span><div>{{ o.tecnico }}</div></div>
+        <div><span class="muted">Contacto</span><div>{{ o.clienteTelefono ?? '—' }}</div></div>
+      </div>
+      <div class="campos">
+        <div><span class="muted">Dirección</span><div>{{ o.direccion ?? '—' }}</div></div>
+        <div><span class="muted">Origen</span><div>
+          @if (o.ventaId) { Venta #{{ o.ventaId }} }
+          @if (o.mantenimientoId) { Visita de mantenimiento #{{ o.mantenimientoId }} }
+          @if (!o.ventaId && !o.mantenimientoId) { — }</div></div>
+        <div><span class="muted">Equipo</span><div>{{ o.equipoNombre ?? '—' }}</div></div>
+        <div><span class="muted">Registró</span><div>{{ o.registradoPor ?? '—' }}</div></div>
+      </div>
+      <span class="muted">Trabajo a realizar</span>
+      <p style="margin: 2px 0 0;">{{ o.descripcion }}</p>
+
+      @if (o.estado === 'REALIZADA') {
+        <hr>
+        <div class="campos">
+          <div><span class="muted">Realizado el</span><div>{{ o.fechaRealizada }}</div></div>
+          <div><span class="muted">Recibido por</span><div>{{ o.recibidoPor }}</div></div>
+          <div><span class="muted">Cerró</span><div>{{ o.cerradoPor ?? '—' }}</div></div>
+          <div><span class="muted">Facturación</span><div>
+            @if (o.ventaFacturadaId) { Venta #{{ o.ventaFacturadaId }} } @else { <span class="badge badge-warning">Por facturar</span> }</div></div>
+        </div>
+        <span class="muted">Trabajo realizado</span>
+        <p style="margin: 2px 0 0;">{{ o.trabajoRealizado }}</p>
+        @if (o.observaciones) { <p class="muted" style="margin-top: 6px;">Observaciones: {{ o.observaciones }}</p> }
+      }
+      @if (o.estado === 'CANCELADA') {
+        <hr><p class="muted">Cancelada: {{ o.motivoCancelacion }}</p>
+      }
+    </div>
+  </div>
+
+  @if (o.materiales.length > 0) {
+    <div class="card">
+      <div class="card-header"><h2>Materiales usados</h2><p>Se descontaron del stock al cerrar la orden (salen en el kardex)</p></div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Material</th><th class="text-end">Cantidad</th><th class="text-end">Costo unit.</th><th class="text-end">Costo</th></tr></thead>
+          <tbody>
+            @for (m of o.materiales; track m.productoId) {
+              <tr><td>{{ m.productoNombre }}</td><td class="text-end">{{ m.cantidad }}</td>
+                <td class="text-end">{{ m.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ m.costoUnitario | number: '1.2-2' }}</td>
+                <td class="text-end">{{ m.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ m.costoUnitario * m.cantidad | number: '1.2-2' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @if (o.equiposInstalados.length > 0) {
+    <div class="card">
+      <div class="card-header"><h2>Equipos instalados</h2><p>Quedaron registrados con su garantía y su plan de mantenimiento</p></div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Equipo</th><th>Serie</th><th>Ubicación</th><th>Garantía hasta</th><th>Mantenimiento</th></tr></thead>
+          <tbody>
+            @for (e of o.equiposInstalados; track e.id) {
+              <tr><td>{{ e.productoNombre }}</td><td>{{ e.numeroSerie ?? '—' }}</td><td>{{ e.ubicacion ?? '—' }}</td>
+                <td>{{ e.garantiaHasta }}</td>
+                <td>{{ etiquetaFrecuencia(e.frecuenciaMeses) }}@if (e.proximoMantenimiento) { <div class="muted">próximo {{ e.proximoMantenimiento }}</div> }</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+}
+
+<!-- ── Diálogo: cerrar la orden (cabecera + materiales + equipos) ── -->
+@if (dialogo() === 'CERRAR') {
+  <div class="dialogo-fondo" (click)="cerrarDialogo()">
+    <form class="card dialogo dialogo-ancho" role="dialog" aria-modal="true" aria-labelledby="tCerrar"
+          [formGroup]="cierreForm" (ngSubmit)="confirmarCierre()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tCerrar">Cerrar la orden #{{ orden()?.id }}</h3>
+      <p class="muted" style="margin: 0 0 14px;">Registre lo que se hizo y quién lo recibió. Los materiales se descuentan del stock.</p>
+
+      <div class="campos">
+        <div>
+          <label class="form-label" for="cFecha">Fecha del trabajo</label>
+          <input id="cFecha" type="date" class="form-control" formControlName="fechaRealizada" [max]="hoy">
+        </div>
+        <div style="grid-column: span 2;">
+          <label class="form-label" for="cRecibido">Recibido por (nombre y cargo) *</label>
+          <input id="cRecibido" type="text" class="form-control" formControlName="recibidoPor" maxlength="100"
+                 [class.is-invalid]="cierreForm.controls.recibidoPor.touched && cierreForm.controls.recibidoPor.invalid">
+        </div>
+      </div>
+      <label class="form-label" for="cTrabajo">Trabajo realizado *</label>
+      <textarea id="cTrabajo" class="form-control" formControlName="trabajoRealizado" rows="2" maxlength="1000"
+                [class.is-invalid]="cierreForm.controls.trabajoRealizado.touched && cierreForm.controls.trabajoRealizado.invalid"></textarea>
+      <label class="form-label" for="cObs" style="margin-top: 10px;">Observaciones (opcional)</label>
+      <input id="cObs" type="text" class="form-control" formControlName="observaciones" maxlength="500">
+
+      <div class="d-flex justify-content-between align-items-center" style="margin-top: 18px;">
+        <strong>Materiales usados</strong>
+        <button type="button" class="btn btn-sm btn-secondary" (click)="agregarMaterial()">+ Material</button>
+      </div>
+      <table class="table" formArrayName="materiales">
+        <tbody>
+          @for (g of materiales.controls; track $index; let i = $index) {
+            <tr [formGroupName]="i">
+              <td>
+                <select class="form-select" formControlName="productoId" [attr.aria-label]="'Material ' + (i + 1)">
+                  <option [ngValue]="null">-- Material --</option>
+                  @for (p of materialesDisponibles(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} (stock {{ p.stockActual }})</option> }
+                </select>
+              </td>
+              <td style="width: 120px;"><input type="number" min="1" class="form-control text-end" formControlName="cantidad"
+                     [attr.aria-label]="'Cantidad del material ' + (i + 1)"></td>
+              <td style="width: 50px;"><button type="button" class="btn btn-sm btn-outline-secondary" (click)="materiales.removeAt(i)" aria-label="Quitar material">✕</button></td>
+            </tr>
+          } @empty {
+            <tr><td class="muted">Sin materiales.</td></tr>
+          }
+        </tbody>
+      </table>
+
+      @if (orden()?.tipo === 'INSTALACION') {
+        <div class="d-flex justify-content-between align-items-center" style="margin-top: 8px;">
+          <strong>Equipos instalados</strong>
+          <button type="button" class="btn btn-sm btn-secondary" (click)="agregarEquipo()">+ Equipo</button>
+        </div>
+        <div formArrayName="equipos">
+          @for (g of equipos.controls; track $index; let i = $index) {
+            <div class="campos" [formGroupName]="i" style="border-top: 1px solid var(--border-color); padding-top: 10px;">
+              <div style="grid-column: span 2;">
+                <label class="form-label" [for]="'eq' + i">Equipo</label>
+                <select class="form-select" [id]="'eq' + i" formControlName="productoId">
+                  <option [ngValue]="null">-- Equipo --</option>
+                  @for (p of equiposCatalogo(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+                </select>
+              </div>
+              <div><label class="form-label" [for]="'se' + i">N° de serie</label>
+                <input class="form-control" [id]="'se' + i" formControlName="numeroSerie" maxlength="60"></div>
+              <div><label class="form-label" [for]="'ub' + i">Ubicación</label>
+                <input class="form-control" [id]="'ub' + i" formControlName="ubicacion" maxlength="100" placeholder="Ej.: sala de ventas"></div>
+              <div><label class="form-label" [for]="'ga' + i">Garantía (meses)</label>
+                <input type="number" min="0" max="120" class="form-control" [id]="'ga' + i" formControlName="mesesGarantia"></div>
+              <div><label class="form-label" [for]="'fr' + i">Mantenimiento</label>
+                <select class="form-select" [id]="'fr' + i" formControlName="frecuenciaMeses">
+                  @for (f of frecuencias; track f.valor) { <option [ngValue]="f.valor">{{ f.etiqueta }}</option> }
+                </select></div>
+              <div style="align-self: end;"><button type="button" class="btn btn-sm btn-outline-secondary" (click)="equipos.removeAt(i)">Quitar</button></div>
+            </div>
+          }
+        </div>
+        <p class="muted">Con plan de mantenimiento, las 4 visitas genéricas de la venta se reemplazan por el plan de cada equipo.</p>
+      }
+
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">{{ guardando() ? 'Cerrando…' : 'Cerrar orden' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ── Diálogo: facturar la mano de obra ── -->
+@if (dialogo() === 'FACTURAR') {
+  <div class="dialogo-fondo" (click)="cerrarDialogo()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tFacturar"
+          [formGroup]="facturaForm" (ngSubmit)="confirmarFactura()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tFacturar">Facturar la orden #{{ orden()?.id }}</h3>
+      <p class="muted" style="margin: 0 0 14px;">
+        Se crea una venta con la mano de obra (servicios). Los materiales ya se descontaron al cerrar la orden.
+        Si supera S/ 700, la venta incluye la detracción del 12 %.
+      </p>
+      <table class="table" formArrayName="items">
+        <tbody>
+          @for (g of items.controls; track $index; let i = $index) {
+            <tr [formGroupName]="i">
+              <td>
+                <select class="form-select" formControlName="productoId" (change)="recalcular()" [attr.aria-label]="'Servicio ' + (i + 1)">
+                  <option [ngValue]="null">-- Servicio --</option>
+                  @for (p of servicios(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} ({{ p.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ p.precioVenta | number: '1.2-2' }})</option> }
+                </select>
+              </td>
+              <td style="width: 110px;"><input type="number" min="1" class="form-control text-end" formControlName="cantidad" (input)="recalcular()"
+                     [attr.aria-label]="'Cantidad del servicio ' + (i + 1)"></td>
+              <td style="width: 50px;">@if (items.length > 1) {
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="items.removeAt(i); recalcular()" aria-label="Quitar">✕</button> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (servicios().length === 0) {
+        <p class="muted">No hay servicios en el catálogo: créelos en Productos con el sector "Servicio (mano de obra)".</p>
+      }
+      <button type="button" class="btn btn-sm btn-secondary" (click)="agregarServicio()">+ Servicio</button>
+      <div class="campos" style="margin-top: 12px;">
+        <div>
+          <label class="form-label" for="fPago">Pago</label>
+          <select id="fPago" class="form-select" formControlName="tipoPago">
+            <option value="CONTADO">Contado</option>
+            <option value="CREDITO">Crédito</option>
+          </select>
+        </div>
+        @if (facturaForm.controls.tipoPago.value === 'CREDITO') {
+          <div><label class="form-label" for="fDias">Días de crédito</label>
+            <input id="fDias" type="number" min="1" max="365" class="form-control" formControlName="diasCredito"></div>
+        }
+        <div><span class="form-label">Total aprox. (con IGV)</span>
+          <strong>{{ monedaFactura() === 'DOLARES' ? 'US$' : 'S/' }} {{ totalFactura() | number: '1.2-2' }}</strong>
+          @if (mezclaMonedas()) { <div class="muted">Hay servicios en soles y en dólares: la venta los convierte con el tipo de cambio del día.</div> }</div>
+      </div>
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">{{ guardando() ? 'Facturando…' : 'Crear venta' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ── Diálogo: cancelar (solo administrador) ── -->
+@if (dialogo() === 'CANCELAR') {
+  <div class="dialogo-fondo" (click)="cerrarDialogo()">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tCancelar"
+          (ngSubmit)="confirmarCancelacion()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tCancelar">Cancelar la orden #{{ orden()?.id }}</h3>
+      <label class="form-label" for="mot">Motivo</label>
+      <input id="mot" type="text" class="form-control" [formControl]="motivo" maxlength="300" placeholder="Ej.: el cliente reprogramó la visita">
+      @if (errorDialogo()) {
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+      }
+      <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Volver</button>
+        <button type="submit" class="btn btn-danger" [disabled]="guardando()">Cancelar orden</button>
+      </div>
+    </form>
+  </div>
+}

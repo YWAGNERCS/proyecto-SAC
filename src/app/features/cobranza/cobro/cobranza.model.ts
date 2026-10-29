@@ -1,5 +1,5 @@
 export type MonedaCobro = 'SOLES' | 'DOLARES';
-export type MetodoPago = 'EFECTIVO' | 'TRANSFERENCIA' | 'DEPOSITO' | 'YAPE_PLIN' | 'CHEQUE';
+export type MetodoPago = 'EFECTIVO' | 'TRANSFERENCIA' | 'DEPOSITO' | 'YAPE_PLIN' | 'CHEQUE' | 'DETRACCION' | 'RETENCION';
 
 export const METODOS_PAGO: { valor: MetodoPago; etiqueta: string }[] = [
   { valor: 'TRANSFERENCIA', etiqueta: 'Transferencia' },
@@ -7,6 +7,8 @@ export const METODOS_PAGO: { valor: MetodoPago; etiqueta: string }[] = [
   { valor: 'EFECTIVO', etiqueta: 'Efectivo' },
   { valor: 'YAPE_PLIN', etiqueta: 'Yape / Plin' },
   { valor: 'CHEQUE', etiqueta: 'Cheque' },
+  { valor: 'DETRACCION', etiqueta: 'Constancia de detracción' },
+  { valor: 'RETENCION', etiqueta: 'Comprobante de retención' },
 ];
 
 /** Venta a crédito con saldo pendiente. */
@@ -23,6 +25,12 @@ export interface CuentaPorCobrar {
   total: number;
   cobrado: number;
   saldo: number;
+  tipoDeduccion: 'NINGUNA' | 'DETRACCION' | 'RETENCION';
+  montoDeduccion: number | null;
+  /** Detracción o retención que falta acreditar con su constancia o comprobante. */
+  deduccionPendiente: number;
+  /** Lo que el cliente todavía debe pagarle directamente a JD. */
+  netoPorCobrar: number;
 }
 
 export interface CobroRequest {
@@ -46,6 +54,12 @@ export interface Cobro {
   notas: string | null;
   montoTotal: number;
   abonos: { ventaId: number; monto: number }[];
+  /** VIGENTE cuenta en el saldo; ANULADO queda solo como registro (con fecha, motivo y usuario). */
+  estado: 'VIGENTE' | 'ANULADO';
+  registradoPor: string | null;
+  fechaAnulacion: string | null;
+  motivoAnulacion: string | null;
+  anuladoPor: string | null;
 }
 
 /** Lo que el cliente pagó de una venta (al contado o con abonos): se le devuelve si se anula. */
