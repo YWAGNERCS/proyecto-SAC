@@ -22,6 +22,10 @@ public record VentaResponseDTO(
         BigDecimal total,
         Long comprobanteId,
         String registradoPor,
+        String tipoDeduccion,
+        BigDecimal porcentajeDeduccion,
+        BigDecimal montoDeduccion,
+        BigDecimal netoACobrar,
         List<DetalleResponseDTO> detalles
 ) {
     public record DetalleResponseDTO(
@@ -59,6 +63,10 @@ public record VentaResponseDTO(
                 v.calcularTotal(),
                 v.getComprobanteId(),
                 v.getVendedorNombre(),
+                v.getTipoDeduccion().name(),
+                v.getPorcentajeDeduccion(),
+                v.getMontoDeduccion(),
+                v.calcularNetoACobrar(),
                 detalles
         );
     }

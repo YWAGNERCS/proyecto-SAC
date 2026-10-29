@@ -2,6 +2,7 @@ package com.bomerp.ventas.venta.service;
 
 import com.bomerp.config.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
+import com.bomerp.config.tributos.DeduccionTributariaService;
 import java.math.BigDecimal;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.venta.entity.Venta;
@@ -44,6 +45,7 @@ public class VentaService {
     private final FacturacionService facturacionService;
     private final TipoCambioService tipoCambioService;
     private final TopeDescuentoService topeDescuentoService;
+    private final DeduccionTributariaService deduccionTributariaService;
     private final ApplicationEventPublisher eventos;
 
     public VentaService(VentaRepository ventaRepository,
@@ -54,6 +56,7 @@ public class VentaService {
                         FacturacionService facturacionService,
                         TipoCambioService tipoCambioService,
                         TopeDescuentoService topeDescuentoService,
+                        DeduccionTributariaService deduccionTributariaService,
                         ApplicationEventPublisher eventos) {
         this.ventaRepository = ventaRepository;
         this.proformaService = proformaService;
@@ -63,6 +66,7 @@ public class VentaService {
         this.facturacionService = facturacionService;
         this.tipoCambioService = tipoCambioService;
         this.topeDescuentoService = topeDescuentoService;
+        this.deduccionTributariaService = deduccionTributariaService;
         this.eventos = eventos;
     }
 
@@ -152,6 +156,7 @@ public class VentaService {
                     producto, item.getCantidad(), item.getPrecioUnitario(), item.getDescuentoPorcentaje()));
         }
 
+        deduccionTributariaService.aplicar(venta);
         Venta ventaGuardada = ventaRepository.save(venta);
         proformaService.marcarConvertida(proformaId, ventaGuardada.getId());
         mantenimientoService.programarParaVenta(ventaGuardada);
@@ -254,6 +259,7 @@ public class VentaService {
             venta.agregarDetalle(new DetalleVenta(producto, itemDTO.cantidad(), precio, descuentos.get(i)));
         }
 
+        deduccionTributariaService.aplicar(venta);
         Venta ventaGuardada = ventaRepository.save(venta);
         mantenimientoService.programarParaVenta(ventaGuardada);
 
@@ -318,6 +324,19 @@ public class VentaService {
         }
         venta.setEstadoPago(Venta.EstadoPago.PAGADO);
         return VentaResponseDTO.desdeEntidad(ventaRepository.save(venta));
+    }
+
+    /**
+     * Fachada para Cobranza: al anular un cobro, la venta que había quedado PAGADA por él
+     * vuelve a PENDIENTE (su saldo ya no está cubierto).
+     */
+    public void volverAPendiente(Long ventaId) {
+        Venta venta = obtenerPorId(ventaId);
+        if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
+            throw new ReglaNegocioException("La venta #" + ventaId + " está ANULADA: su dinero se resuelve en Devoluciones.");
+        }
+        venta.setEstadoPago(Venta.EstadoPago.PENDIENTE);
+        ventaRepository.save(venta);
     }
 
     /**

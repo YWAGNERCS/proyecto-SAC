@@ -98,6 +98,22 @@ public class Venta {
     @Column(name = "vendedor_nombre", length = 60)
     private String vendedorNombre;
 
+    /**
+     * Detracción (SPOT) o retención del IGV que corresponde a la venta, calculada al registrarla
+     * (ver DeduccionTributariaService). Ese monto no lo paga el cliente a JD: lo deposita en la cuenta
+     * de detracciones del Banco de la Nación o lo retiene y entrega el comprobante de retención.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_deduccion", nullable = false, length = 12)
+    private TipoDeduccion tipoDeduccion = TipoDeduccion.NINGUNA;
+
+    @Column(name = "porcentaje_deduccion", precision = 5, scale = 2)
+    private BigDecimal porcentajeDeduccion;
+
+    /** En la moneda de la venta. */
+    @Column(name = "monto_deduccion", precision = 12, scale = 2)
+    private BigDecimal montoDeduccion;
+
     /** Referencia al comprobante generado (se conecta con el módulo Facturación) */
     @Column(name = "comprobante_id")
     private Long comprobanteId;
@@ -116,6 +132,16 @@ public class Venta {
 
     public enum EstadoVenta {
         REGISTRADA, ANULADA
+    }
+
+    public enum TipoDeduccion {
+        NINGUNA, DETRACCION, RETENCION
+    }
+
+    /** Lo que el cliente le paga directamente a JD: total menos la detracción o retención. */
+    public BigDecimal calcularNetoACobrar() {
+        BigDecimal deduccion = montoDeduccion != null ? montoDeduccion : BigDecimal.ZERO;
+        return calcularTotal().subtract(deduccion);
     }
 
     public BigDecimal calcularSubtotal() {

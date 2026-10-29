@@ -17,12 +17,14 @@ public class MantenimientoScheduledService {
     private final MantenimientoRepository mantenimientoRepository;
     private final NotificadorCorreo notificadorCorreo;
 
-    // Hardcodeado temporalmente al correo de la secretaria/oficina
-    private final String correoOficina = "yoelwagnercs@gmail.com"; 
+    /** Correo de la oficina (app.notificaciones.correo-oficina); vacío = no se envía. */
+    private final String correoOficina;
 
-    public MantenimientoScheduledService(MantenimientoRepository mantenimientoRepository, NotificadorCorreo notificadorCorreo) {
+    public MantenimientoScheduledService(MantenimientoRepository mantenimientoRepository, NotificadorCorreo notificadorCorreo,
+                                         @Value("${app.notificaciones.correo-oficina:}") String correoOficina) {
         this.mantenimientoRepository = mantenimientoRepository;
         this.notificadorCorreo = notificadorCorreo;
+        this.correoOficina = correoOficina;
     }
 
     /**
@@ -53,8 +55,8 @@ public class MantenimientoScheduledService {
     }
 
     private boolean enviarAlertaAOficina(Mantenimiento mantenimiento) {
-        String nombreCliente = mantenimiento.getVenta().getCliente().getNombreORazonSocial();
-        String telefonoCliente = mantenimiento.getVenta().getCliente().getTelefono();
+        String nombreCliente = mantenimiento.getCliente().getNombreORazonSocial();
+        String telefonoCliente = mantenimiento.getCliente().getTelefono();
         
         String asunto = "¡Alerta de Mantenimiento! Cliente: " + nombreCliente;
         String cuerpoHtml = "<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;'>" +

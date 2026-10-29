@@ -6,6 +6,9 @@ import com.bomerp.compras.compra.entity.Compra;
 import com.bomerp.compras.compra.service.CompraService;
 import com.bomerp.compras.detallecompra.entity.DetalleCompra;
 import com.bomerp.config.exportacion.ExcelBuilder;
+import com.bomerp.servicios.orden.entity.MaterialOrden;
+import com.bomerp.servicios.orden.entity.OrdenTrabajo;
+import com.bomerp.servicios.orden.service.OrdenTrabajoService;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.service.VentaService;
@@ -21,7 +24,7 @@ import java.util.List;
 /**
  * Kardex (historial de movimientos de inventario) de un producto:
  *   ENTRADA    → compra a proveedor (suma stock)
- *   SALIDA     → venta (resta stock)
+ *   SALIDA     → venta, o material usado en una orden de trabajo (resta stock)
  *   DEVOLUCIÓN → anulación de una venta (devuelve el stock)
  *
  * El saldo solo aplica a productos que controlan stock (materiales). Para los equipos
@@ -37,11 +40,14 @@ public class KardexService {
     private final ProductoService productoService;
     private final CompraService compraService;
     private final VentaService ventaService;
+    private final OrdenTrabajoService ordenTrabajoService;
 
-    public KardexService(ProductoService productoService, CompraService compraService, VentaService ventaService) {
+    public KardexService(ProductoService productoService, CompraService compraService, VentaService ventaService,
+                         OrdenTrabajoService ordenTrabajoService) {
         this.productoService = productoService;
         this.compraService = compraService;
         this.ventaService = ventaService;
+        this.ordenTrabajoService = ordenTrabajoService;
     }
 
     public Kardex kardex(Long productoId, LocalDate desde, LocalDate hasta) {
@@ -68,6 +74,11 @@ public class KardexService {
                         TipoMovimiento.DEVOLUCION, "Anulación de venta #" + v.getId(),
                         v.getCliente().getNombreORazonSocial(), d.getCantidad(), d.getPrecioUnitario(), v.getMoneda().name(), null));
             }
+        }
+        for (MaterialOrden m : ordenTrabajoService.materialesUsadosDeProducto(productoId)) {
+            OrdenTrabajo o = m.getOrden();
+            todos.add(new Movimiento(o.getFechaRealizada(), TipoMovimiento.SALIDA, "Orden de trabajo #" + o.getId(),
+                    o.getCliente().getNombreORazonSocial(), m.getCantidad(), m.getCostoUnitario(), m.getMoneda(), null));
         }
         // Orden cronológico; el mismo día: entradas, luego salidas, luego devoluciones
         todos.sort(Comparator.comparing(Movimiento::fecha).thenComparing(Movimiento::tipo));

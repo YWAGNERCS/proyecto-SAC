@@ -45,6 +45,7 @@ public class ClienteService {
         cliente.setDireccion(datos.getDireccion());
         cliente.setTelefono(datos.getTelefono());
         cliente.setCorreo(datos.getCorreo());
+        cliente.setAgenteRetencion(datos.isAgenteRetencion());
         validar(cliente);
         return clienteRepository.save(cliente);
     }

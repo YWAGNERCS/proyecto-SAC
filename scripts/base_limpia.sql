@@ -3,19 +3,24 @@
 --
 --   @base_limpia.sql <MODO> <FIN>
 --   MODO  PRUEBA  : borra solo lo marcado "[Prueba]" (clientes, proveedores, productos,
---                   categorías) y todo lo que cuelga de ellos. Devuelve al stock lo que
---                   esas ventas y compras movieron. Lo demás queda igual.
+--                   categorías) y todo lo que cuelga de ellos (también sus sedes, equipos
+--                   instalados, contratos y órdenes de trabajo, y las órdenes que usaron un
+--                   producto [Prueba]). Devuelve al stock lo que esas ventas, compras y órdenes
+--                   movieron. Lo demás queda igual.
 --         ENTREGA : deja la base lista para el cliente: borra TODOS los movimientos
 --                   (proformas, ventas, comprobantes, notas de crédito, cobros, devoluciones, compras,
---                   mantenimientos), borra lo marcado "[Prueba]", reinicia las series de
---                   comprobantes y los contadores de id. Conserva catálogo, clientes y
---                   proveedores reales. El stock queda como está: se ajusta con el inventario físico.
+--                   mantenimientos, órdenes de trabajo, contratos y equipos instalados), borra lo
+--                   marcado "[Prueba]", reinicia las series de comprobantes y los contadores de id.
+--                   Conserva catálogo, clientes (con sus sedes) y proveedores reales. El stock queda
+--                   como está: se ajusta con el inventario físico.
 --   FIN   COMMIT o ROLLBACK (ROLLBACK = ensayo: muestra cuánto borraría y no cambia nada).
 --
 -- Orden de borrado según las llaves foráneas (de hijos a padres):
---   devoluciones → notas_credito → comprobantes → detalle_cobro → cobros → mantenimientos → detalle_venta
---   → ventas → items_proforma → proformas → detalle_compra → compras → productos → categorías,
---   clientes, proveedores.
+--   (se sueltan antes las referencias circulares orden ↔ equipo ↔ mantenimiento)
+--   devoluciones → notas_credito → comprobantes → detalle_cobro → cobros → mantenimientos
+--   → materiales_orden → ordenes_trabajo → equipos_instalados → contratos_mantenimiento
+--   → detalle_venta → ventas → items_proforma → proformas → detalle_compra → compras
+--   → sedes_cliente → productos → categorías, clientes, proveedores.
 whenever sqlerror exit failure rollback
 set serveroutput on feedback off verify off
 alter session set current_schema = JDREFRIGERACION;
@@ -28,6 +33,7 @@ declare
     v_cli  sys.odcinumberlist; v_prov sys.odcinumberlist; v_prod sys.odcinumberlist;
     v_cat  sys.odcinumberlist; v_pf   sys.odcinumberlist; v_ven  sys.odcinumberlist;
     v_cob  sys.odcinumberlist; v_com  sys.odcinumberlist; v_pf2 sys.odcinumberlist;
+    v_ord  sys.odcinumberlist; v_eq   sys.odcinumberlist; v_con  sys.odcinumberlist;
 
     procedure contar(t varchar2, n number) is
     begin dbms_output.put_line(rpad('  ' || t, 22) || lpad(n, 6)); end;
@@ -48,6 +54,9 @@ begin
         select id bulk collect into v_ven from ventas;
         select id bulk collect into v_cob from cobros;
         select id bulk collect into v_com from compras;
+        select id bulk collect into v_ord from ordenes_trabajo;
+        select id bulk collect into v_eq  from equipos_instalados;
+        select id bulk collect into v_con from contratos_mantenimiento;
     else
         -- proformas y ventas de un cliente [Prueba] o con algún producto [Prueba]
         select id bulk collect into v_pf from proformas p
@@ -75,8 +84,21 @@ begin
             or exists (select 1 from detalle_compra d where d.compra_id = c.id
                           and d.producto_id in (select column_value from table(v_prod)));
 
+        -- órdenes de un cliente [Prueba] o que usaron un material [Prueba]; equipos y contratos de esos clientes
+        -- o con un equipo [Prueba]
+        select id bulk collect into v_ord from ordenes_trabajo o
+         where o.cliente_id in (select column_value from table(v_cli))
+            or exists (select 1 from materiales_orden m where m.orden_id = o.id
+                          and m.producto_id in (select column_value from table(v_prod)));
+        select id bulk collect into v_eq from equipos_instalados e
+         where e.cliente_id in (select column_value from table(v_cli))
+            or e.producto_id in (select column_value from table(v_prod));
+        select id bulk collect into v_con from contratos_mantenimiento k
+         where k.cliente_id in (select column_value from table(v_cli));
+
         -- Devolver al stock (solo productos que se quedan y que controlan stock, como en VentaService):
-        -- una venta REGISTRADA lo descontó (una ANULADA ya lo devolvió) y una compra lo sumó.
+        -- una venta REGISTRADA lo descontó (una ANULADA ya lo devolvió), una compra lo sumó y una
+        -- orden REALIZADA descontó sus materiales.
         update productos p
            set stock_actual = nvl(stock_actual, 0)
                + nvl((select sum(d.cantidad) from detalle_venta d join ventas v on v.id = d.venta_id
@@ -85,6 +107,9 @@ begin
                - nvl((select sum(d.cantidad) from detalle_compra d
                        where d.producto_id = p.id
                          and d.compra_id in (select column_value from table(v_com))), 0)
+               + nvl((select sum(m.cantidad) from materiales_orden m join ordenes_trabajo o on o.id = m.orden_id
+                       where m.producto_id = p.id and o.estado = 'REALIZADA'
+                         and o.id in (select column_value from table(v_ord))), 0)
          where p.sector = 'MATERIAL_SERVICIO'
            and p.id not in (select column_value from table(v_prod));
         dbms_output.put_line('Modo PRUEBA: stock recalculado en ' || sql%rowcount || ' materiales.');
@@ -105,8 +130,32 @@ begin
     contar('detalle_cobro', sql%rowcount);
     delete from cobros where id in (select column_value from table(v_cob));
     contar('cobros', sql%rowcount);
-    delete from mantenimientos where venta_id in (select column_value from table(v_ven));
+    -- Servicios: primero se sueltan las referencias circulares (orden ↔ equipo ↔ mantenimiento ↔ venta)
+    -- de lo que se queda hacia lo que se borra
+    update mantenimientos set orden_trabajo_id = null where orden_trabajo_id in (select column_value from table(v_ord));
+    update equipos_instalados set orden_trabajo_id = null where orden_trabajo_id in (select column_value from table(v_ord));
+    update equipos_instalados set venta_id = null where venta_id in (select column_value from table(v_ven));
+    update ordenes_trabajo set equipo_id = null where equipo_id in (select column_value from table(v_eq));
+    update ordenes_trabajo set venta_id = null where venta_id in (select column_value from table(v_ven));
+    update ordenes_trabajo set venta_facturada_id = null where venta_facturada_id in (select column_value from table(v_ven));
+    update ordenes_trabajo set mantenimiento_id = null where mantenimiento_id in
+        (select id from mantenimientos where venta_id in (select column_value from table(v_ven))
+            or equipo_id in (select column_value from table(v_eq))
+            or contrato_id in (select column_value from table(v_con))
+            or cliente_id in (select column_value from table(v_cli)));
+    delete from mantenimientos where venta_id in (select column_value from table(v_ven))
+                                  or equipo_id in (select column_value from table(v_eq))
+                                  or contrato_id in (select column_value from table(v_con))
+                                  or cliente_id in (select column_value from table(v_cli));
     contar('mantenimientos', sql%rowcount);
+    delete from materiales_orden where orden_id in (select column_value from table(v_ord));
+    contar('materiales_orden', sql%rowcount);
+    delete from ordenes_trabajo where id in (select column_value from table(v_ord));
+    contar('ordenes_trabajo', sql%rowcount);
+    delete from equipos_instalados where id in (select column_value from table(v_eq));
+    contar('equipos_instalados', sql%rowcount);
+    delete from contratos_mantenimiento where id in (select column_value from table(v_con));
+    contar('contratos', sql%rowcount);
     delete from detalle_venta where venta_id in (select column_value from table(v_ven));
     contar('detalle_venta', sql%rowcount);
     delete from ventas where id in (select column_value from table(v_ven));
@@ -119,6 +168,9 @@ begin
     contar('detalle_compra', sql%rowcount);
     delete from compras where id in (select column_value from table(v_com));
     contar('compras', sql%rowcount);
+    -- Las sedes son datos del cliente: solo se borran las de un cliente [Prueba]
+    delete from sedes_cliente where cliente_id in (select column_value from table(v_cli));
+    contar('sedes_cliente', sql%rowcount);
     delete from productos where id in (select column_value from table(v_prod));
     contar('productos', sql%rowcount);
     -- una categoría [Prueba] solo se borra si ya no le queda ningún producto real
@@ -144,7 +196,8 @@ begin
             for t in (select column_value nombre from table(sys.odcivarchar2list(
                         'DEVOLUCIONES', 'NOTAS_CREDITO', 'COMPROBANTES', 'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS',
                         'DETALLE_VENTA', 'VENTAS', 'ITEMS_PROFORMA', 'PROFORMAS',
-                        'DETALLE_COMPRA', 'COMPRAS'))) loop
+                        'DETALLE_COMPRA', 'COMPRAS', 'MATERIALES_ORDEN', 'ORDENES_TRABAJO',
+                        'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO'))) loop
                 execute immediate 'alter table ' || t.nombre
                     || ' modify id generated always as identity (start with 1)';
             end loop;

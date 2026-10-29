@@ -10,6 +10,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record EmpresaProperties(
         String razonSocial,
         String ruc,
-        String direccion
+        String direccion,
+        /** Cuenta de detracciones en el Banco de la Nación (se imprime en facturas con detracción). */
+        String cuentaDetracciones
 ) {
 }

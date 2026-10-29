@@ -42,6 +42,13 @@ public class Cliente {
     @Column(length = 100)
     private String correo;
 
+    /**
+     * Designado por SUNAT como agente de retención del IGV (p. ej. supermercados y grandes empresas):
+     * al pagar retiene el 3 % de las facturas que superan S/ 700. Se marca a mano en la ficha del cliente.
+     */
+    @Column(name = "agente_retencion", nullable = false)
+    private boolean agenteRetencion = false;
+
     public enum TipoCliente {
         PERSONA_NATURAL, EMPRESA
     }

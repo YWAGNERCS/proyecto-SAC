@@ -33,7 +33,7 @@ public class Producto {
     @Column(length = 500)
     private String descripcion;
 
-    /** Sector: CLIMATIZACION, REFRIGERACION, VENTILACION_FORZADA */
+    /** Sector: equipos (CLIMATIZACION, REFRIGERACION, VENTILACION_FORZADA), MATERIAL_SERVICIO o SERVICIO (mano de obra) */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private Sector sector;
@@ -73,7 +73,9 @@ public class Producto {
     private Categoria categoria;
 
     public enum Sector {
-        CLIMATIZACION, REFRIGERACION, VENTILACION_FORZADA, MATERIAL_SERVICIO
+        CLIMATIZACION, REFRIGERACION, VENTILACION_FORZADA, MATERIAL_SERVICIO,
+        /** Mano de obra (instalación, mantenimiento, reparación): sin stock y sujeta a detracción. */
+        SERVICIO
     }
 
     public enum Moneda {
@@ -98,5 +100,20 @@ public class Producto {
      */
     public boolean controlaStock() {
         return sector == Sector.MATERIAL_SERVICIO;
+    }
+
+    /** Equipo que se instala en el local del cliente (puede registrarse como equipo instalado). */
+    public boolean esEquipo() {
+        return sector == Sector.CLIMATIZACION || sector == Sector.REFRIGERACION || sector == Sector.VENTILACION_FORZADA;
+    }
+
+    /** Equipo con mantenimiento preventivo (climatización y refrigeración). */
+    public boolean requiereMantenimiento() {
+        return sector == Sector.CLIMATIZACION || sector == Sector.REFRIGERACION;
+    }
+
+    /** Mano de obra: la operación está sujeta a detracción (SPOT). */
+    public boolean esServicio() {
+        return sector == Sector.SERVICIO;
     }
 }

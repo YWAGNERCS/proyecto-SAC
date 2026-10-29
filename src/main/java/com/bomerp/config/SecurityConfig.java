@@ -106,6 +106,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/clientes/**", "/api/v1/admin/proveedores/**").hasRole("ADMIN")
                 // Devolver dinero de una venta anulada lo registra quien anula (auditoría A8)
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/cobranza/devoluciones/**").hasRole("ADMIN")
+                // Anular un cobro mal registrado reabre el saldo de sus ventas: lo decide el dueño
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/cobranza/cobros/*/anular").hasRole("ADMIN")
+                // Servicios: contratar o cancelar un contrato, cancelar una orden y dar de baja un equipo
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/contratos", "/api/v1/admin/contratos/*/cancelar",
+                        "/api/v1/admin/ordenes/*/cancelar", "/api/v1/admin/equipos/*/retirar").hasRole("ADMIN")
 
                 // Resto del panel: cualquiera de los dos roles del negocio
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "ASISTENTE")

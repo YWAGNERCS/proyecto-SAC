@@ -16,7 +16,12 @@ public record CobroResponseDTO(
         String referencia,
         String notas,
         BigDecimal montoTotal,
-        List<AbonoResponseDTO> abonos
+        List<AbonoResponseDTO> abonos,
+        String estado,
+        String registradoPor,
+        LocalDate fechaAnulacion,
+        String motivoAnulacion,
+        String anuladoPor
 ) {
     public record AbonoResponseDTO(Long ventaId, BigDecimal monto) {}
 
@@ -33,6 +38,11 @@ public record CobroResponseDTO(
                 c.getMontoTotal(),
                 c.getDetalles().stream()
                         .map(d -> new AbonoResponseDTO(d.getVenta().getId(), d.getMonto()))
-                        .toList());
+                        .toList(),
+                c.getEstado().name(),
+                c.getRegistradoPor(),
+                c.getFechaAnulacion(),
+                c.getMotivoAnulacion(),
+                c.getAnuladoPor());
     }
 }

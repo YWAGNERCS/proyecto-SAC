@@ -3,6 +3,7 @@ package com.bomerp.facturacion.pdf.service;
 import com.bomerp.config.empresa.EmpresaProperties;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
+import com.bomerp.ventas.venta.entity.Venta;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
@@ -138,8 +139,33 @@ public class GeneradorPdfFacturacionService {
             
             agregarCeldaTotal(totalesTable, "IMPORTE TOTAL:", boldFont);
             agregarCeldaTotal(totalesTable, comprobante.getVenta().getMoneda() + " " + comprobante.getVenta().calcularTotal(), boldFont);
+
+            // Detracción (SPOT) o retención del IGV: lo que el cliente no le paga a JD directamente
+            Venta venta = comprobante.getVenta();
+            boolean conDeduccion = venta.getTipoDeduccion() != null && venta.getTipoDeduccion() != Venta.TipoDeduccion.NINGUNA;
+            if (conDeduccion) {
+                String nombre = venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION ? "DETRACCIÓN" : "RETENCIÓN";
+                agregarCeldaTotal(totalesTable, nombre + " (" + porcentaje(venta.getPorcentajeDeduccion()) + "):", normalFont);
+                agregarCeldaTotal(totalesTable, venta.getMoneda() + " " + venta.getMontoDeduccion(), normalFont);
+                agregarCeldaTotal(totalesTable, "NETO A PAGAR:", boldFont);
+                agregarCeldaTotal(totalesTable, venta.getMoneda() + " " + venta.calcularNetoACobrar(), boldFont);
+            }
             
             document.add(totalesTable);
+
+            if (conDeduccion && venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION) {
+                String cuenta = empresa.cuentaDetracciones() != null && !empresa.cuentaDetracciones().isBlank()
+                        ? empresa.cuentaDetracciones() : "(cuenta por confirmar)";
+                document.add(new Paragraph(" "));
+                document.add(new Paragraph("Operación sujeta al Sistema de Pago de Obligaciones Tributarias (SPOT): detracción de "
+                        + porcentaje(venta.getPorcentajeDeduccion()) + " por " + venta.getMoneda() + " " + venta.getMontoDeduccion()
+                        + ", a depositar en la cuenta de detracciones del Banco de la Nación N° " + cuenta + ".", smallFont));
+            } else if (conDeduccion) {
+                document.add(new Paragraph(" "));
+                document.add(new Paragraph("Operación sujeta a retención del IGV (" + porcentaje(venta.getPorcentajeDeduccion())
+                        + "): el cliente, agente de retención, entrega el comprobante de retención por "
+                        + venta.getMoneda() + " " + venta.getMontoDeduccion() + ".", smallFont));
+            }
             
             // Texto final
             document.add(new Paragraph(" "));

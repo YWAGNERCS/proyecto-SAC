@@ -9,6 +9,7 @@ import com.bomerp.cobranza.cobro.dto.PagadoDeVentaDTO;
 import com.bomerp.cobranza.cobro.entity.Cobro;
 import com.bomerp.cobranza.cobro.entity.DetalleCobro;
 import com.bomerp.cobranza.cobro.repository.CobroRepository;
+import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
 import com.bomerp.facturacion.facturacion.service.FacturacionService;
 import com.bomerp.ventas.venta.entity.Venta;
@@ -59,12 +60,15 @@ public class CobranzaService {
         }
         List<Venta> ventas = ventaService.listarPendientesDeCobro(clienteId);
         Map<Long, BigDecimal> cobrado = cobradoPorVenta(ventas);
+        Map<Long, BigDecimal> deducido = deduccionesPorVenta(ventas);
         LocalDate hoy = LocalDate.now();
         return ventas.stream()
                 .map(v -> {
                     BigDecimal pagado = cobrado.getOrDefault(v.getId(), BigDecimal.ZERO);
                     long atraso = v.getFechaLimitePago() != null && v.getFechaLimitePago().isBefore(hoy)
                             ? ChronoUnit.DAYS.between(v.getFechaLimitePago(), hoy) : 0;
+                    BigDecimal saldo = v.calcularTotal().subtract(pagado);
+                    BigDecimal deduccionPendiente = deduccionPendiente(v, deducido.getOrDefault(v.getId(), BigDecimal.ZERO));
                     return new CuentaPorCobrarDTO(
                             v.getId(),
                             facturacionService.numeroComprobanteDeVenta(v.getId()).orElse(null),
@@ -76,7 +80,11 @@ public class CobranzaService {
                             v.getMoneda().name(),
                             v.calcularTotal(),
                             pagado,
-                            v.calcularTotal().subtract(pagado));
+                            saldo,
+                            v.getTipoDeduccion().name(),
+                            v.getMontoDeduccion(),
+                            deduccionPendiente,
+                            saldo.subtract(deduccionPendiente).max(BigDecimal.ZERO));
                 })
                 .filter(c -> c.saldo().signum() > 0)
                 .sorted(Comparator.comparing(CuentaPorCobrarDTO::fechaLimitePago,
@@ -93,9 +101,12 @@ public class CobranzaService {
      * Registra un pago y lo reparte entre las ventas indicadas.
      *
      * Reglas: cada venta es del mismo cliente y moneda del pago, está REGISTRADA y sin pagar,
-     * aparece una sola vez y el abono no supera su saldo. Fecha: hoy por defecto, nunca futura.
+     * aparece una sola vez y el abono no supera su saldo. Fecha: hoy por defecto, nunca futura
+     * ni anterior a la venta. El mismo N° de operación (con el mismo método) no se registra dos veces.
+     *
+     * @param usuario preferred_username del token de quien registra (no viene del request)
      */
-    public CobroResponseDTO registrar(CobroRequestDTO dto) {
+    public CobroResponseDTO registrar(CobroRequestDTO dto, String usuario) {
         Cliente cliente = clienteService.obtenerPorId(dto.clienteId());
         LocalDate fecha = dto.fecha() != null ? dto.fecha() : LocalDate.now();
         if (fecha.isAfter(LocalDate.now())) {
@@ -109,6 +120,22 @@ public class CobranzaService {
         cobro.setMetodoPago(dto.metodoPago());
         cobro.setReferencia(vacioANulo(dto.referencia()));
         cobro.setNotas(vacioANulo(dto.notas()));
+        cobro.setRegistradoPor(usuario);
+        if (dto.metodoPago().esDeduccion() && cobro.getReferencia() == null) {
+            throw new IllegalArgumentException(dto.metodoPago() == Cobro.MetodoPago.DETRACCION
+                    ? "Indique el N° de la constancia de depósito de la detracción."
+                    : "Indique el N° del comprobante de retención.");
+        }
+
+        // El mismo voucher (método + N° de operación) no entra dos veces
+        if (cobro.getReferencia() != null) {
+            cobroRepository.vigentesConReferencia(dto.metodoPago(), cobro.getReferencia()).stream().findFirst()
+                    .ifPresent(previo -> {
+                        throw new ReglaNegocioException("El N° de operación " + cobro.getReferencia() + " ("
+                                + dto.metodoPago() + ") ya se registró en el cobro #" + previo.getId() + " del "
+                                + previo.getFecha() + ". Si es otro pago, revise el número; si el anterior estaba mal, anúlelo primero.");
+                    });
+        }
 
         Set<Long> vistas = new HashSet<>();
         Map<Long, BigDecimal> saldosFinales = new HashMap<>();
@@ -120,6 +147,13 @@ public class CobranzaService {
             Venta venta = ventaService.obtenerPorIdPublico(abono.ventaId());
             BigDecimal monto = abono.monto().setScale(2, RoundingMode.HALF_UP);
             validarAbono(venta, cliente, dto.moneda(), monto);
+            if (dto.metodoPago().esDeduccion()) {
+                validarDeduccion(venta, dto.metodoPago(), monto);
+            }
+            if (fecha.isBefore(venta.getFechaVenta())) {
+                throw new IllegalArgumentException("La fecha del cobro (" + fecha + ") es anterior a la venta #"
+                        + venta.getId() + " (" + venta.getFechaVenta() + ").");
+            }
 
             BigDecimal saldo = venta.calcularTotal().subtract(cobroRepository.totalCobradoDeVenta(venta.getId()));
             if (monto.compareTo(saldo) > 0) {
@@ -141,6 +175,48 @@ public class CobranzaService {
         });
         log.info("Cobro {} registrado: {} {} de {} en {} venta(s)", guardado.getId(), total, dto.moneda(),
                 cliente.getNombreORazonSocial(), saldosFinales.size());
+        return CobroResponseDTO.desdeEntidad(guardado);
+    }
+
+    /**
+     * Anula un cobro mal registrado (monto o venta equivocados, pago duplicado, cheque rechazado).
+     *
+     * El cobro no se borra: queda ANULADO con fecha, motivo y usuario, y deja de contar en el
+     * saldo de sus ventas; las que estaban PAGADAS por él vuelven a PENDIENTE. No se anula un cobro
+     * de una venta ya anulada: ese dinero se resuelve en Devoluciones.
+     *
+     * @param usuario preferred_username del token de quien anula
+     */
+    public CobroResponseDTO anular(Long cobroId, String motivo, String usuario) {
+        Cobro cobro = cobroRepository.findById(cobroId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No existe el cobro #" + cobroId));
+        if (cobro.getEstado() == Cobro.Estado.ANULADO) {
+            throw new ReglaNegocioException("El cobro #" + cobroId + " ya fue anulado el " + cobro.getFechaAnulacion() + ".");
+        }
+        String motivoLimpio = vacioANulo(motivo);
+        if (motivoLimpio == null || motivoLimpio.length() < 5) {
+            throw new IllegalArgumentException("Indique el motivo de la anulación (al menos 5 caracteres).");
+        }
+        for (DetalleCobro detalle : cobro.getDetalles()) {
+            if (detalle.getVenta().getEstado() == Venta.EstadoVenta.ANULADA) {
+                throw new ReglaNegocioException("El cobro #" + cobroId + " abonó a la venta #" + detalle.getVenta().getId()
+                        + ", que ya está ANULADA: ese dinero se resuelve en Cobranza › Devoluciones.");
+            }
+        }
+
+        cobro.setEstado(Cobro.Estado.ANULADO);
+        cobro.setFechaAnulacion(LocalDate.now());
+        cobro.setMotivoAnulacion(motivoLimpio);
+        cobro.setAnuladoPor(usuario);
+        Cobro guardado = cobroRepository.save(cobro);
+
+        // Sin este abono, ninguna de sus ventas queda cubierta: las que estaban PAGADAS vuelven a PENDIENTE
+        for (DetalleCobro detalle : guardado.getDetalles()) {
+            if (detalle.getVenta().getEstadoPago() == Venta.EstadoPago.PAGADO) {
+                ventaService.volverAPendiente(detalle.getVenta().getId());
+            }
+        }
+        log.info("Cobro {} anulado por {}: {}", cobroId, usuario, motivoLimpio);
         return CobroResponseDTO.desdeEntidad(guardado);
     }
 
@@ -187,6 +263,46 @@ public class CobranzaService {
         if (monto.signum() <= 0) {
             throw new IllegalArgumentException("El monto abonado debe ser mayor que 0.");
         }
+    }
+
+    /**
+     * Una constancia de detracción o un comprobante de retención solo se registra en una venta que tiene
+     * esa deducción, y por no más de lo que falta acreditar de ella.
+     */
+    private void validarDeduccion(Venta venta, Cobro.MetodoPago metodo, BigDecimal monto) {
+        Venta.TipoDeduccion esperado = metodo == Cobro.MetodoPago.DETRACCION
+                ? Venta.TipoDeduccion.DETRACCION : Venta.TipoDeduccion.RETENCION;
+        if (venta.getTipoDeduccion() != esperado) {
+            throw new IllegalArgumentException("La venta #" + venta.getId() + " no tiene "
+                    + (esperado == Venta.TipoDeduccion.DETRACCION ? "detracción" : "retención")
+                    + (venta.getTipoDeduccion() == Venta.TipoDeduccion.NINGUNA ? "." : " (tiene " + venta.getTipoDeduccion() + ")."));
+        }
+        BigDecimal registrada = deduccionesPorVenta(List.of(venta)).getOrDefault(venta.getId(), BigDecimal.ZERO);
+        BigDecimal pendiente = deduccionPendiente(venta, registrada);
+        if (monto.compareTo(pendiente) > 0) {
+            throw new ReglaNegocioException("La " + (esperado == Venta.TipoDeduccion.DETRACCION ? "detracción" : "retención")
+                    + " pendiente de la venta #" + venta.getId() + " es " + pendiente + " " + venta.getMoneda()
+                    + " y se intenta registrar " + monto + ".");
+        }
+    }
+
+    /** Parte de la detracción o retención que todavía no se acreditó (0 si la venta no tiene). */
+    private static BigDecimal deduccionPendiente(Venta venta, BigDecimal registrada) {
+        if (venta.getMontoDeduccion() == null || venta.getTipoDeduccion() == Venta.TipoDeduccion.NINGUNA) {
+            return BigDecimal.ZERO;
+        }
+        return venta.getMontoDeduccion().subtract(registrada).max(BigDecimal.ZERO);
+    }
+
+    private Map<Long, BigDecimal> deduccionesPorVenta(List<Venta> ventas) {
+        Map<Long, BigDecimal> mapa = new HashMap<>();
+        if (ventas.isEmpty()) {
+            return mapa;
+        }
+        for (Object[] fila : cobroRepository.deduccionesRegistradasPorVenta(ventas.stream().map(Venta::getId).toList())) {
+            mapa.put((Long) fila[0], (BigDecimal) fila[1]);
+        }
+        return mapa;
     }
 
     private Map<Long, BigDecimal> cobradoPorVenta(List<Venta> ventas) {

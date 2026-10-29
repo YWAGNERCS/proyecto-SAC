@@ -2,6 +2,7 @@ package com.bomerp.inventario.inventario.service;
 
 import com.bomerp.catalogo.producto.entity.Producto;
 import com.bomerp.notificaciones.notificacion.service.NotificadorCorreo;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,11 +15,14 @@ public class InventarioScheduledService {
     private final InventarioService inventarioService;
     private final NotificadorCorreo notificadorCorreo;
 
-    private final String correoOficina = "yoelwagnercs@gmail.com";
+    /** Correo de la oficina (app.notificaciones.correo-oficina); vacío = no se envía. */
+    private final String correoOficina;
 
-    public InventarioScheduledService(InventarioService inventarioService, NotificadorCorreo notificadorCorreo) {
+    public InventarioScheduledService(InventarioService inventarioService, NotificadorCorreo notificadorCorreo,
+                                      @Value("${app.notificaciones.correo-oficina:}") String correoOficina) {
         this.inventarioService = inventarioService;
         this.notificadorCorreo = notificadorCorreo;
+        this.correoOficina = correoOficina;
     }
 
     /**
