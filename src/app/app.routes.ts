@@ -229,6 +229,13 @@ export const routes: Routes = [
           import('./features/proveedores/proveedor/proveedor-historial').then((m) => m.ProveedorHistorialComponent),
         title: 'Historial del proveedor — SGE-JD',
       },
+      // ── Configuración (engranaje del riel): cuenta, preferencias, tipo de cambio y ayuda ──
+      {
+        path: 'configuracion',
+        canActivate: [authGuard],
+        loadComponent: () => import('./core/configuracion/configuracion').then((m) => m.ConfiguracionComponent),
+        title: 'Configuración — SGE-JD',
+      },
       // Destino de rolGuard cuando el rol no alcanza
       {
         path: 'sin-permiso',

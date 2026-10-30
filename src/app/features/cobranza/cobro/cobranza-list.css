@@ -116,7 +116,7 @@
 
 .activa .contador {
   background: var(--primary-light);
-  border-color: #E0E7FF;
+  border-color: var(--primary-soft);
   color: var(--primary);
 }
 

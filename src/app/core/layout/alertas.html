@@ -1,0 +1,24 @@
+<div class="alertas">
+  <button type="button" class="boton-redondo" (click)="alternar()" [attr.aria-expanded]="abierto()"
+          [attr.aria-label]="urgentes() ? urgentes() + ' avisos por atender' : 'Avisos'">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconoCampana" /></svg>
+    @if (urgentes() > 0) { <span class="alertas-punto" aria-hidden="true">{{ urgentes() }}</span> }
+  </button>
+
+  @if (abierto()) {
+    <div class="alertas-panel" role="dialog" aria-label="Avisos">
+      <div class="alertas-cabecera">
+        <strong>Avisos</strong>
+        <span>{{ alertas().length ? alertas().length + ' por revisar' : 'Todo al día' }}</span>
+      </div>
+      @for (a of alertas(); track a.titulo) {
+        <a class="alerta" [routerLink]="a.ruta" [queryParams]="a.query ?? null" (click)="abierto.set(false)">
+          <span class="alerta-nivel" [attr.data-nivel]="a.nivel" aria-hidden="true"></span>
+          <span class="alerta-texto"><strong>{{ a.titulo }}</strong><small>{{ a.detalle }}</small></span>
+        </a>
+      } @empty {
+        <p class="alertas-vacio">No hay nada pendiente por ahora.</p>
+      }
+    </div>
+  }
+</div>

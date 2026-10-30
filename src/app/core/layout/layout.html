@@ -1,70 +1,106 @@
-<div class="shell" [class.con-sesion]="auth.autenticado()" [class.menu-abierto]="menuAbierto()">
+<div class="app" [class.con-sesion]="auth.autenticado()" [class.menu-abierto]="menuAbierto()">
 
-  <!-- Menú lateral: solo con sesión (sin sesión, Inicio es público). En pantallas angostas se despliega con ☰ -->
-  @if (auth.autenticado()) {
-  <aside class="sidebar" id="menu-principal" aria-label="Menú principal">
-    <a routerLink="/" class="marca" (click)="cerrarMenu()">
-      <span class="marca-icono">JD</span>
-      <span class="marca-texto">
-        <strong>SGE-JD</strong>
-        <small>JD Refrigeración</small>
-      </span>
+  <!-- ── Barra superior ── -->
+  <header class="barra">
+    <a routerLink="/" class="marca" aria-label="SGE-JD, ir al inicio">
+      <span class="marca-icono" aria-hidden="true">JD</span>
+      <span class="marca-texto">SGE-JD</span>
     </a>
 
-    <nav class="menu">
-      @for (grupo of grupos; track grupo.titulo) {
-        @if (grupo.titulo) { <p class="menu-grupo">{{ grupo.titulo }}</p> }
-        @for (op of grupo.opciones; track op.ruta) {
-          @if (!op.soloAdmin || auth.tieneRol('ADMIN')) {
-            <a [routerLink]="op.ruta" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: !!op.exacta }"
-               class="menu-opcion" [class.menu-opcion-admin]="op.soloAdmin"
-               [attr.title]="op.soloAdmin ? 'Solo administrador' : null" (click)="cerrarMenu()">
-              <svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="op.icono" /></svg>
-              <span>{{ op.texto }}</span>
-            </a>
-          }
+    @if (auth.autenticado()) {
+      <!-- Grupos del menú, en píldoras -->
+      <nav class="grupos" aria-label="Secciones">
+        @for (g of grupos; track g.id) {
+          <a [routerLink]="destinoDe(g)" class="grupo" [class.activo]="grupoActivo().id === g.id"
+             [attr.aria-current]="grupoActivo().id === g.id ? 'page' : null">{{ g.titulo }}</a>
+        }
+      </nav>
+
+      <div class="barra-derecha">
+        <app-buscador class="barra-buscador" />
+        <app-alertas />
+
+        <!-- Usuario: rol y cerrar sesión -->
+        @if (auth.usuario(); as u) {
+          <div class="usuario">
+            <button type="button" class="usuario-boton" (click)="alternarUsuario()" [attr.aria-expanded]="usuarioAbierto()"
+                    [attr.aria-label]="'Menú de ' + (u.nombre || u.username)">
+              <span class="avatar" aria-hidden="true">{{ iniciales(u.nombre || u.username) }}</span>
+              <svg class="usuario-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            @if (usuarioAbierto()) {
+              <div class="usuario-panel" role="menu">
+                <div class="usuario-datos">
+                  <span class="avatar avatar-grande" aria-hidden="true">{{ iniciales(u.nombre || u.username) }}</span>
+                  <span><strong>{{ u.nombre || u.username }}</strong>
+                    <small>{{ u.roles.includes('ADMIN') ? 'Administrador' : 'Asistente' }} · {{ u.username }}</small></span>
+                </div>
+                <a routerLink="/configuracion" class="usuario-opcion" role="menuitem">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.engranaje" /></svg> Configuración
+                </a>
+                <button id="btn-logout" type="button" class="usuario-salir" role="menuitem" (click)="logout()"
+                        title="Cerrar sesión (también en Keycloak)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.salir" /></svg> Cerrar sesión
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        <button type="button" class="boton-redondo barra-menu" (click)="alternarMenu()"
+                [attr.aria-expanded]="menuAbierto()" aria-controls="menu-completo"
+                [attr.aria-label]="menuAbierto() ? 'Cerrar menú' : 'Abrir menú'">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.menu" /></svg>
+        </button>
+      </div>
+    } @else {
+      <button type="button" class="btn btn-primary barra-login" (click)="auth.iniciarLogin('/')">Iniciar sesión</button>
+    }
+  </header>
+
+  @if (auth.autenticado()) {
+    <!-- ── Riel izquierdo: módulos del grupo activo ── -->
+    <aside class="riel" [attr.aria-label]="'Módulos de ' + grupoActivo().titulo">
+      <nav class="riel-grupo">
+        @for (op of opcionesRiel(); track op.ruta) {
+          <a [routerLink]="op.ruta" class="riel-opcion" [class.activo]="activa(op.ruta)" [class.riel-opcion-admin]="op.soloAdmin"
+             [attr.data-tooltip]="op.texto + (op.soloAdmin ? ' (administrador)' : '')" [attr.aria-label]="op.texto">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="op.icono" /></svg>
+          </a>
+        }
+      </nav>
+      <div class="riel-grupo">
+        <a routerLink="/configuracion" class="riel-opcion" [class.activo]="activa('/configuracion')"
+           data-tooltip="Configuración" aria-label="Configuración">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.engranaje" /></svg>
+        </a>
+        <button type="button" class="riel-opcion" data-tooltip="Cerrar sesión" aria-label="Cerrar sesión" (click)="logout()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.salir" /></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Menú completo (tablet y celular) ── -->
+    <div class="menu-fondo" (click)="menuAbierto.set(false)" aria-hidden="true"></div>
+    <nav class="menu-completo" id="menu-completo" aria-label="Menú principal">
+      @for (g of grupos; track g.id) {
+        <p class="menu-titulo">{{ g.titulo }}</p>
+        @for (op of visibles(g); track op.ruta) {
+          <a [routerLink]="op.ruta" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }" class="menu-opcion">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="op.icono" /></svg>
+            <span>{{ op.texto }}</span>
+          </a>
         }
       }
+      <p class="menu-titulo">Cuenta</p>
+      <a routerLink="/configuracion" routerLinkActive="activo" class="menu-opcion">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.engranaje" /></svg>
+        <span>Configuración</span>
+      </a>
     </nav>
-
-    @if (auth.usuario(); as u) {
-    <div class="usuario">
-      <span class="avatar" aria-hidden="true">{{ iniciales(u.nombre || u.username) }}</span>
-      <span class="usuario-datos" [title]="u.nombre || u.username">
-        <strong>{{ u.nombre || u.username }}</strong>
-        <small>{{ u.roles.includes('ADMIN') ? 'Administrador' : 'Asistente' }}</small>
-      </span>
-      <button id="btn-logout" class="btn-salir" (click)="logout()" title="Cerrar sesión (también en Keycloak)"
-              aria-label="Cerrar sesión">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9" /></svg>
-      </button>
-    </div>
-    }
-  </aside>
-  <div class="sidebar-fondo" (click)="cerrarMenu()" aria-hidden="true"></div>
   }
 
-  <div class="contenido">
-    <header class="topbar">
-      @if (auth.autenticado()) {
-        <button type="button" class="topbar-menu" (click)="alternarMenu()"
-                [attr.aria-expanded]="menuAbierto()" aria-controls="menu-principal"
-                [attr.aria-label]="menuAbierto() ? 'Cerrar menú' : 'Abrir menú'">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16 M4 12h16 M4 18h16" /></svg>
-        </button>
-        <span class="topbar-titulo">{{ titulo() }}</span>
-        <span class="topbar-fecha">{{ hoy }}</span>
-      } @else {
-        <a routerLink="/" class="marca">
-          <span class="marca-icono">JD</span>
-          <span class="marca-texto"><strong>SGE-JD</strong><small>JD Refrigeración</small></span>
-        </a>
-        <button type="button" class="btn btn-primary btn-sm topbar-login" (click)="auth.iniciarLogin('/')">Iniciar sesión</button>
-      }
-    </header>
-
-    <main class="main-container">
-      <router-outlet></router-outlet>
-    </main>
-  </div>
+  <main class="main-container">
+    <router-outlet></router-outlet>
+  </main>
 </div>

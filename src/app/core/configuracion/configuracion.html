@@ -1,0 +1,108 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Configuración</h1>
+    <p class="page-sub">Su cuenta, sus preferencias en esta computadora y datos de referencia del sistema</p>
+  </div>
+</div>
+
+<div class="ajustes">
+  <!-- Mi cuenta -->
+  @if (auth.usuario(); as u) {
+    <section class="tarjeta">
+      <div class="titulo-con-icono">
+        <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.clientes" /></svg></span>
+        <div><h2>Mi cuenta</h2><p>Datos de su usuario en Keycloak</p></div>
+      </div>
+      <div class="cuenta">
+        <span class="avatar-cuenta" aria-hidden="true">{{ iniciales(u.nombre || u.username) }}</span>
+        <div>
+          <strong>{{ u.nombre || u.username }}</strong>
+          <span class="muted">Usuario {{ u.username }}</span>
+        </div>
+      </div>
+      <dl class="datos">
+        <div><dt>Rol</dt><dd><span class="badge">{{ u.roles.includes('ADMIN') ? 'Administrador' : 'Asistente' }}</span></dd></div>
+        <div><dt>Descuento máximo por línea</dt><dd>{{ tope() === null ? '…' : tope() + ' %' }}</dd></div>
+        <div><dt>Puede</dt><dd>{{ u.roles.includes('ADMIN')
+          ? 'todo: además anular ventas y cobros, editar el catálogo, eliminar, cancelar órdenes y contratos'
+          : 'vender, cobrar, cotizar, comprar y programar servicios; no anula ni edita el catálogo' }}</dd></div>
+      </dl>
+      <div class="acciones">
+        <a class="btn btn-secondary" [href]="urlCuenta" target="_blank" rel="noopener">Cambiar mi contraseña</a>
+        <button type="button" class="btn btn-outline-secondary" (click)="auth.cerrarSesion()">Cerrar sesión</button>
+      </div>
+    </section>
+  }
+
+  <!-- Preferencias -->
+  <section class="tarjeta">
+    <div class="titulo-con-icono">
+      <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.engranaje" /></svg></span>
+      <div><h2>Preferencias</h2><p>Se guardan en este navegador</p></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="pPeriodo">El tablero de Inicio abre con</label>
+      <select id="pPeriodo" class="form-select" [value]="preferencias.periodoTablero()" (change)="cambiarPeriodo($any($event.target).value)">
+        @for (p of periodos; track p.valor) { <option [value]="p.valor">{{ p.etiqueta }}</option> }
+      </select>
+    </div>
+    <div class="form-group mb-0">
+      <span class="form-label">Tamaño de letra</span>
+      <div class="interruptor" role="group" aria-label="Tamaño de letra">
+        <button type="button" [class.activo]="preferencias.tamanoLetra() === 'NORMAL'" (click)="cambiarLetra('NORMAL')">Normal</button>
+        <button type="button" [class.activo]="preferencias.tamanoLetra() === 'GRANDE'" (click)="cambiarLetra('GRANDE')">Grande</button>
+      </div>
+      <p class="muted" style="margin-top: 8px;">Más grande para leer cómodo en una laptop pequeña o con la vista cansada.</p>
+    </div>
+  </section>
+
+  <!-- Tipo de cambio -->
+  <section class="tarjeta">
+    <div class="titulo-con-icono">
+      <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.cobranza" /></svg></span>
+      <div><h2>Tipo de cambio de hoy</h2><p>SUNAT · soles por dólar; las ventas en dólares lo usan por defecto</p></div>
+    </div>
+    @if (tipoCambio(); as tc) {
+      <div class="cambio">
+        <div><span class="muted">Compra</span><strong class="cifra">S/ {{ tc.compra | number: '1.3-3' }}</strong></div>
+        <div><span class="muted">Venta</span><strong class="cifra">S/ {{ tc.venta | number: '1.3-3' }}</strong></div>
+      </div>
+      <p class="muted">Fecha {{ tc.fecha }} · fuente {{ tc.origen }}</p>
+    } @else if (errorTipoCambio()) {
+      <div class="alert alert-danger">SUNAT no respondió. En las ventas en dólares se puede escribir el tipo de cambio a mano.
+        <button type="button" class="btn btn-sm btn-secondary" (click)="cargarTipoCambio()">Reintentar</button></div>
+    } @else {
+      <p class="muted">Consultando…</p>
+    }
+  </section>
+
+  <!-- Administración: solo ADMIN -->
+  @if (auth.tieneRol('ADMIN')) {
+    <section class="tarjeta">
+      <div class="titulo-con-icono">
+        <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.proveedores" /></svg></span>
+        <div><h2>Usuarios y permisos</h2><p>Solo el administrador</p></div>
+      </div>
+      <p class="texto">Los usuarios, sus roles (ADMIN y ASISTENTE) y sus contraseñas se administran en Keycloak, no en SGE-JD:
+        así el sistema nunca guarda contraseñas. Para dar de alta a un nuevo asistente, créelo en la consola y asígnele el rol ASISTENTE.</p>
+      <a class="btn btn-primary" [href]="urlAdministracion" target="_blank" rel="noopener">Abrir la consola de Keycloak</a>
+    </section>
+  }
+
+  <!-- Ayuda -->
+  <section class="tarjeta">
+    <div class="titulo-con-icono">
+      <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.proformas" /></svg></span>
+      <div><h2>Ayuda</h2><p>Atajos y documentación</p></div>
+    </div>
+    <ul class="atajos">
+      <li><kbd>Ctrl</kbd> + <kbd>K</kbd><span>Buscar un cliente, producto, orden o pantalla</span></li>
+      <li><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd><span>Elegir y abrir un resultado de la búsqueda</span></li>
+      <li><kbd>Esc</kbd><span>Cerrar el buscador, los avisos o un menú</span></li>
+    </ul>
+    <div class="acciones">
+      <a class="btn btn-secondary" [href]="urlManual" target="_blank" rel="noopener">Manual de usuario</a>
+      <a class="btn btn-outline-secondary" [href]="urlDocumentacion" target="_blank" rel="noopener">Documentación</a>
+    </div>
+  </section>
+</div>

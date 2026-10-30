@@ -1,13 +1,33 @@
 @if (auth.autenticado()) {
-<!-- ── Tablero ── -->
-<div class="page-header">
-  <div>
-    <h1 class="page-title">{{ saludo() }}, {{ primerNombre() }}</h1>
-    <p class="page-sub">Así va JD Refrigeración en {{ mesActual }}.</p>
-  </div>
-  <div class="d-flex gap-2">
-    <a routerLink="/proformas/nueva" class="btn btn-secondary">Nueva proforma</a>
-    <a routerLink="/ventas/nueva" class="btn btn-primary">Nueva venta</a>
+<!-- ── Saludo, rango de fechas y acción principal ── -->
+<div class="cabecera">
+  <h1 class="saludo">{{ saludo() }}, <span>{{ primerNombre() }}</span></h1>
+  <div class="cabecera-acciones">
+    <div class="rango">
+      <button type="button" class="pildora" (click)="selectorAbierto.set(!selectorAbierto())" [attr.aria-expanded]="selectorAbierto()"
+              aria-label="Elegir el periodo del tablero">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.contratos" /></svg>
+        {{ textoRango() }}
+        <svg class="flechita" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      @if (selectorAbierto()) {
+        <div class="rango-panel" role="dialog" aria-label="Periodo">
+          @for (p of presets; track p.valor) {
+            <button type="button" class="rango-opcion" [class.activo]="preset() === p.valor" (click)="elegirPreset(p.valor)">{{ p.etiqueta }}</button>
+          }
+          <div class="rango-fechas">
+            <label>Desde<input type="date" class="form-control" [value]="desde()" [max]="hasta()" (change)="fijarFecha('desde', $any($event.target).value)"></label>
+            <label>Hasta<input type="date" class="form-control" [value]="hasta()" (change)="fijarFecha('hasta', $any($event.target).value)"></label>
+          </div>
+        </div>
+      }
+    </div>
+    <a routerLink="/servicios/ordenes/nueva" class="pildora">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.nuevo" /></svg> Nueva orden
+    </a>
+    <a routerLink="/ventas/nueva" class="btn btn-primary">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-btn"><path [attr.d]="iconos.nuevo" /></svg> Nueva venta
+    </a>
   </div>
 </div>
 
@@ -16,149 +36,176 @@
     <button type="button" class="btn btn-sm btn-secondary" (click)="cargar()">Reintentar</button></div>
 }
 
-<!-- Indicadores -->
-<section class="tablero-kpis" [class.cargando]="cargando()" aria-label="Indicadores">
-  <a routerLink="/ventas" class="tarjeta-kpi">
-    <span class="kpi-titulo">Ventas del mes</span>
-    <strong class="kpi-valor num">S/ {{ ventasMes().soles | number: '1.2-2' }}</strong>
-    <span class="kpi-pie">
-      {{ ventasMes().cantidad }} {{ ventasMes().cantidad === 1 ? 'venta' : 'ventas' }}
-      @if (ventasMes().dolares > 0) { · US$ {{ ventasMes().dolares | number: '1.2-2' }} }
-    </span>
-  </a>
+<div class="tablero" [class.cargando]="cargando()">
 
-  <a routerLink="/cobranza" class="tarjeta-kpi">
-    <span class="kpi-titulo">Por cobrar</span>
-    <strong class="kpi-valor num">S/ {{ cobranza().soles | number: '1.2-2' }}</strong>
-    <span class="kpi-pie">
-      @if (cobranza().dolares > 0) { US$ {{ cobranza().dolares | number: '1.2-2' }} · }
-      @if (cobranza().vencidas > 0) {
-        <span class="pie-alerta">{{ cobranza().vencidas }} {{ cobranza().vencidas === 1 ? 'vencida' : 'vencidas' }}</span>
-      } @else { al día }
-    </span>
-  </a>
-
-  <a routerLink="/postventa" class="tarjeta-kpi">
-    <span class="kpi-titulo">Mantenimientos</span>
-    <strong class="kpi-valor num">{{ postventa()?.proximos7 ?? 0 }} <small>esta semana</small></strong>
-    <span class="kpi-pie">
-      @if ((postventa()?.vencidos ?? 0) > 0) {
-        <span class="pie-alerta">{{ postventa()?.vencidos }} sin atender</span>
-      } @else { ninguno atrasado }
-      · {{ postventa()?.proximos30 ?? 0 }} en 30 días
-    </span>
-  </a>
-
-  <a routerLink="/proformas" class="tarjeta-kpi">
-    <span class="kpi-titulo">Proformas pendientes</span>
-    <strong class="kpi-valor num">{{ proformasPendientes() }}</strong>
-    <span class="kpi-pie">esperando respuesta del cliente</span>
-  </a>
-</section>
-
-<div class="tablero-rejilla">
-  <!-- Ventas de la semana -->
-  <section class="card panel">
-    <div class="panel-cabecera">
-      <div>
-        <h2>Ventas de los últimos 7 días</h2>
-        <p>En soles, sin anuladas</p>
+  <!-- Ventas del periodo: la tarjeta verde -->
+  <section class="tarjeta zona-ventas">
+    <div class="tarjeta-cabecera">
+      <div><h2>Ventas del periodo</h2><p>Sin anuladas, en soles</p></div>
+      <a routerLink="/ventas" class="ir" aria-label="Ir a Ventas"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.flecha" /></svg></a>
+    </div>
+    <div class="destacada">
+      <div class="destacada-fila">
+        <span class="destacada-marca">JD Refrigeración</span>
+        <span class="destacada-icono" aria-hidden="true">❄</span>
       </div>
-      <strong class="num panel-total">S/ {{ totalSemana() | number: '1.2-2' }}</strong>
-    </div>
-    <div class="grafico" role="img"
-         [attr.aria-label]="'Ventas en soles de los últimos 7 días, total S/ ' + (totalSemana() | number: '1.2-2')">
-      @for (d of semana(); track d.fecha) {
-        <div class="grafico-col" [title]="d.cantidad + (d.cantidad === 1 ? ' venta' : ' ventas') + ' · S/ ' + (d.total | number: '1.2-2')">
-          <span class="grafico-valor num">{{ d.total > 0 ? (d.total | number: '1.0-0') : '' }}</span>
-          <div class="grafico-barra-zona">
-            <div class="grafico-barra" [class.grafico-barra-hoy]="$last" [style.height.%]="alturaBarra(d.total)"></div>
-          </div>
-          <span class="grafico-dia" [class.grafico-dia-hoy]="$last">{{ $last ? 'Hoy' : d.etiqueta }}</span>
-        </div>
-      }
-    </div>
-  </section>
-
-  <!-- Stock bajo -->
-  <section class="card panel">
-    <div class="panel-cabecera">
-      <div>
-        <h2>Stock bajo</h2>
-        <p>Materiales en o bajo su mínimo</p>
+      <span class="destacada-etiqueta">{{ ventasPeriodo().cantidad }} {{ ventasPeriodo().cantidad === 1 ? 'venta' : 'ventas' }}</span>
+      <strong class="cifra cifra-destacada">S/ {{ partes(ventasPeriodo().total).entero }}<span>{{ partes(ventasPeriodo().total).decimales }}</span></strong>
+      <div class="destacada-fila destacada-pie">
+        <span>Ticket promedio S/ {{ ventasPeriodo().ticket | number: '1.0-0' }}</span>
+        @if (variacion(ventasPeriodo().variacion); as v) { <span class="destacada-variacion">{{ v }} vs. periodo anterior</span> }
       </div>
-      <span class="badge" [class.badge-danger]="stockBajo().length > 0" [class.badge-success]="stockBajo().length === 0">
-        {{ stockBajo().length }}
-      </span>
     </div>
-    @if (stockBajo().length === 0) {
-      <p class="panel-vacio">Todos los materiales están sobre su stock mínimo.</p>
-    } @else {
-      <ul class="lista">
-        @for (p of stockBajo().slice(0, 5); track p.id) {
-          <li>
-            <a [routerLink]="['/catalogo/productos', p.id, 'kardex']" class="lista-nombre">{{ p.nombre }}</a>
-            <span class="num lista-dato"><strong class="texto-alerta">{{ p.stockActual ?? 0 }}</strong> / mín. {{ p.stockMinimo ?? 0 }}</span>
-          </li>
-        }
-      </ul>
-      @if (stockBajo().length > 5) {
-        <a routerLink="/catalogo/productos" class="panel-enlace">Ver los {{ stockBajo().length }} materiales →</a>
-      }
+    @if (ventasPeriodo().dolares > 0) {
+      <p class="nota">Incluye US$ {{ ventasPeriodo().dolares | number: '1.2-2' }} convertidos al tipo de cambio de cada venta.</p>
     }
   </section>
-</div>
 
-<!-- Últimas ventas -->
-<section class="card">
-  <div class="panel-cabecera panel-cabecera-tabla">
+  <!-- Cobrado en la semana -->
+  <section class="tarjeta zona-semana">
     <div>
-      <h2>Últimas ventas</h2>
-      <p>Las 6 más recientes</p>
+      <p class="mini-titulo">Cobrado en los últimos 7 días</p>
+      <strong class="cifra">+S/ {{ partes(cobradoSemana().total).entero }}<span>{{ partes(cobradoSemana().total).decimales }}</span></strong>
     </div>
-    <a routerLink="/ventas" class="btn btn-sm btn-outline-secondary">Ver todas</a>
-  </div>
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr><th>N°</th><th>Cliente</th><th>Fecha</th><th>Pago</th><th>Estado</th><th class="text-end">Total</th></tr>
-      </thead>
-      <tbody>
-        @for (v of ultimasVentas(); track v.id) {
-          <tr>
-            <td class="num texto-muted">#{{ v.id }}</td>
-            <td class="celda-cliente">{{ v.clienteNombre }}</td>
-            <td class="num texto-muted">{{ v.fechaVenta }}</td>
-            <td>{{ v.tipoPago === 'CREDITO' ? 'Crédito' : 'Contado' }}</td>
-            <td>
-              @if (v.estado === 'ANULADA') {
-                <span class="badge badge-danger">Anulada</span>
-              } @else if (v.estadoPago === 'PAGADO') {
-                <span class="badge badge-success">Pagada</span>
-              } @else if (v.estadoPago === 'ATRASADO') {
-                <span class="badge badge-danger">Atrasada</span>
-              } @else {
-                <span class="badge badge-warning">Por cobrar</span>
-              }
-            </td>
-            <td class="text-end num"><strong>{{ simbolo(v.moneda) }} {{ v.total | number: '1.2-2' }}</strong></td>
-          </tr>
-        } @empty {
-          <tr><td colspan="6" class="text-center texto-muted">{{ cargando() ? 'Cargando…' : 'Todavía no hay ventas.' }}</td></tr>
+    @if (variacion(cobradoSemana().variacion); as v) {
+      <span class="variacion" [class.negativa]="(cobradoSemana().variacion ?? 0) < 0">{{ v }}</span>
+    }
+  </section>
+
+  <!-- Ventas por mes o por año -->
+  <section class="tarjeta zona-barras">
+    <div class="tarjeta-cabecera">
+      <div class="titulo-con-icono">
+        <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.comercial" /></svg></span>
+        <div><h2>Ventas por {{ modoBarras() === 'MENSUAL' ? 'mes' : 'año' }}</h2><p>En soles, sin anuladas</p></div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <div class="interruptor" role="group" aria-label="Agrupar ventas">
+          <button type="button" [class.activo]="modoBarras() === 'MENSUAL'" (click)="modoBarras.set('MENSUAL')">Mensual</button>
+          <button type="button" [class.activo]="modoBarras() === 'ANUAL'" (click)="modoBarras.set('ANUAL')">Anual</button>
+        </div>
+        <a routerLink="/ventas" class="ir" aria-label="Ir al reporte de ventas"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.flecha" /></svg></a>
+      </div>
+    </div>
+    <div class="grafico" role="img"
+         [attr.aria-label]="descripcionBarras()">
+      <div class="grafico-eje" aria-hidden="true">
+        @for (t of ejeBarras(); track $index) { <span>{{ compacto(t) }}</span> }
+      </div>
+      <div class="grafico-barras">
+        @for (b of barras(); track b.etiqueta; let ultima = $last) {
+          <div class="columna" [title]="b.cantidad + (b.cantidad === 1 ? ' venta' : ' ventas') + ' · S/ ' + (b.total | number: '1.2-2')">
+            <div class="columna-zona">
+              <div class="barra-grafico" [class.barra-activa]="ultima" [style.height.%]="alturaBarra(b.total)">
+                @if (ultima) {
+                  <span class="barra-globo">{{ variacion(variacionUltimaBarra()) ?? ('S/ ' + compacto(b.total)) }}</span>
+                  <span class="barra-punto" aria-hidden="true"></span>
+                }
+              </div>
+            </div>
+            <span class="columna-etiqueta" [class.activa]="ultima">{{ b.etiqueta }}</span>
+          </div>
         }
-      </tbody>
-    </table>
-  </div>
-</section>
+      </div>
+    </div>
+  </section>
+
+  <!-- Por cobrar y curva de cobros -->
+  <section class="tarjeta zona-cobrar">
+    <div class="tarjeta-cabecera">
+      <div><h2>Por cobrar</h2><p>{{ porCobrar().cuentas }} {{ porCobrar().cuentas === 1 ? 'venta a crédito' : 'ventas a crédito' }}</p></div>
+      <a routerLink="/cobranza" class="ir" aria-label="Ir a Cobranza"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.flecha" /></svg></a>
+    </div>
+    <p class="centrado mini-titulo">Saldo total</p>
+    <strong class="cifra cifra-grande centrado">S/ {{ partes(porCobrar().total).entero }}<span>{{ partes(porCobrar().total).decimales }}</span></strong>
+    <svg class="curva" viewBox="0 0 300 110" preserveAspectRatio="none" role="img" aria-label="Cobrado por semana en las últimas 10 semanas">
+      <defs>
+        <linearGradient id="relleno-curva" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#00B4D7" stop-opacity="0.28" />
+          <stop offset="100%" stop-color="#00B4D7" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path [attr.d]="curva().area" fill="url(#relleno-curva)" />
+      <path [attr.d]="curva().linea" fill="none" stroke="#0078B7" stroke-width="2.2" vector-effect="non-scaling-stroke" />
+    </svg>
+    <p class="nota centrado">Cobrado por semana · últimas 10 semanas</p>
+    <div class="acciones-tarjeta">
+      <a routerLink="/cobranza" class="btn btn-primary">Registrar cobro</a>
+      <a routerLink="/cobranza" [queryParams]="{ vencidas: 1 }" class="pildora">Ver vencidas</a>
+    </div>
+  </section>
+
+  <!-- Últimos cobros -->
+  <section class="tarjeta zona-historial">
+    <div class="tarjeta-cabecera">
+      <div><h2>Últimos cobros</h2><p>Pagos recibidos más recientes</p></div>
+      <a routerLink="/cobranza" class="ir" aria-label="Ir al historial de cobros"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.flecha" /></svg></a>
+    </div>
+    <div class="table-responsive">
+      <table class="tabla-suave">
+        <thead><tr><th>Cliente</th><th>Fecha</th><th>Método</th><th>Estado</th><th class="text-end">Monto</th></tr></thead>
+        <tbody>
+          @for (c of ultimosCobros(); track c.id) {
+            <tr>
+              <td>
+                <div class="persona">
+                  <span class="avatar-mini" [style.background]="tonoAvatar(c.clienteNombre)" aria-hidden="true">{{ iniciales(c.clienteNombre) }}</span>
+                  <span><strong>{{ c.clienteNombre }}</strong><small>Cobro #{{ c.id }}{{ c.registradoPor ? ' · ' + c.registradoPor : '' }}</small></span>
+                </div>
+              </td>
+              <td class="sin-salto">{{ c.fecha }}</td>
+              <td>{{ etiquetaMetodo(c.metodoPago) }}</td>
+              <td><span class="estado" [class.estado-anulado]="c.estado === 'ANULADO'">{{ c.estado === 'ANULADO' ? 'Anulado' : 'Recibido' }}</span></td>
+              <td class="text-end sin-salto"><strong>{{ simbolo(c.moneda) }} {{ c.montoTotal | number: '1.2-2' }}</strong></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="vacio">{{ cargando() ? 'Cargando…' : 'Todavía no hay cobros.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Crédito vencido y órdenes de hoy -->
+  <section class="tarjeta zona-vencido">
+    <div class="titulo-con-icono">
+      <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.cobranza" /></svg></span>
+      <div><h2>Crédito vencido</h2><p>{{ porCobrar().vencidas ? 'La más atrasada: ' + porCobrar().masAtrasada + ' día(s)' : 'Ninguna cuenta vencida' }}</p></div>
+    </div>
+    <div class="vencido-cifra">
+      <strong class="cifra cifra-grande">S/ {{ partes(porCobrar().vencido).entero }}<span>{{ partes(porCobrar().vencido).decimales }}</span></strong>
+      <span class="variacion" [class.negativa]="porCobrar().vencidas > 0">{{ porCobrar().vencidas }} {{ porCobrar().vencidas === 1 ? 'cuenta' : 'cuentas' }}</span>
+    </div>
+    @if (porCobrar().deduccion > 0) {
+      <p class="nota">Detracción o retención por acreditar: S/ {{ porCobrar().deduccion | number: '1.2-2' }}</p>
+    }
+
+    <a routerLink="/servicios/ordenes" class="subtarjeta">
+      <div class="tarjeta-cabecera">
+        <div><h3>Órdenes de trabajo hoy</h3>
+          <p>{{ ordenesHoy().length ? ordenesHoy().length + (ordenesHoy().length === 1 ? ' orden programada' : ' órdenes programadas') : 'Sin órdenes para hoy' }}</p></div>
+        <span class="ir" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.flecha" /></svg></span>
+      </div>
+      @if (tecnicosHoy().length) {
+        <div class="avatares" [attr.aria-label]="'Técnicos: ' + tecnicosHoy().join(', ')">
+          @for (t of tecnicosHoy().slice(0, 4); track t) {
+            <span class="avatar-tecnico" [style.background]="tonoAvatar(t)" [title]="t">{{ iniciales(t) }}</span>
+          }
+          @if (tecnicosHoy().length > 4) { <span class="avatar-tecnico avatar-mas">+{{ tecnicosHoy().length - 4 }}</span> }
+        </div>
+      } @else {
+        <p class="nota" style="margin: 0;">Programe una visita desde Postventa o con "Nueva orden".</p>
+      }
+    </a>
+  </section>
+</div>
 
 } @else {
 <!-- ── Sin sesión: bienvenida ── -->
 <section class="bienvenida">
-  <span class="bienvenida-icono" aria-hidden="true">
-    <svg viewBox="0 0 24 24"><path d="M12 2v20 M4.9 6l14.2 12 M19.1 6 4.9 18 M9 3.5l3 2 3-2 M9 20.5l3-2 3 2" /></svg>
-  </span>
+  <span class="bienvenida-icono" aria-hidden="true">❄</span>
   <h1>Bienvenido a SGE-JD</h1>
-  <p>Sistema de Gestión Empresarial de JD Refrigeración: proformas, ventas, cobranza, compras y postventa en un solo lugar.</p>
+  <p>Sistema de Gestión Empresarial de JD Refrigeración: proformas, ventas, cobranza, servicios técnicos y postventa en un solo lugar.</p>
   <button type="button" class="btn btn-primary" (click)="auth.iniciarLogin('/')">Iniciar sesión</button>
 </section>
 }

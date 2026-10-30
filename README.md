@@ -71,8 +71,9 @@ src/app/
 │   ├── auth/            AuthService (PKCE, callback, refresco, logout), pkce.ts, jwt.ts, auth-callback, authGuard, rolGuard
 │   ├── interceptors/    jwt-auth (Authorization: Bearer; ante 401 refresca una vez y reintenta), trace-id (X-Trace-ID)
 │   ├── sin-permiso/     destino de rolGuard
-│   ├── layout/          menú lateral por grupos (desplegable con ☰ en pantallas angostas), barra superior con el título, usuario, rol y "Salir"
-│   ├── inicio/          tablero: indicadores del mes, ventas de la semana, stock bajo y últimas ventas (sin sesión: bienvenida)
+│   ├── layout/          barra superior (grupos en píldoras, buscador global Ctrl+K, avisos y menú del usuario) y riel de íconos con los módulos del grupo; menu.ts define grupos y módulos
+│   ├── configuracion/   engranaje del riel: mi cuenta (rol, tope de descuento, cambiar contraseña en Keycloak), preferencias en el navegador (periodo del tablero, letra grande), tipo de cambio del día, usuarios (ADMIN) y ayuda
+│   ├── inicio/          tablero con rango de fechas: ventas del periodo y su variación, cobrado en 7 días, ventas por mes o año, por cobrar con curva de cobros, crédito vencido, últimos cobros y órdenes de hoy (sin sesión: bienvenida)
 │   └── services/        ApiService, DescargaService, TipoCambioService, DescuentoService
 ├── features/            un directorio por módulo de negocio
 │   ├── catalogo/        categoria/, producto/
@@ -91,7 +92,7 @@ src/app/
 - Los montos que calcula el formulario son una **vista previa**: el backend calcula los definitivos y la SPA solo envía ids y cantidades.
 - Los errores del backend se muestran por código: `400` datos inválidos · `404` no existe · `409` regla de negocio o stock insuficiente.
 
-**Diseño responsivo:** los estilos globales (`src/styles.css`) tienen tres cortes: hasta 640 px (celular: una columna, botones y encabezados que bajan de línea, tablas con desplazamiento horizontal dentro de su tarjeta), hasta 900 px (tablet) y hasta 1024 px (el menú lateral pasa a desplegable con ☰). El estilo es de tablero moderno y minimalista: superficies planas, un solo color de acento (índigo) y sin degradados. Cada pantalla ajusta lo suyo en su `.css`; por ejemplo, el detalle de Nueva venta se muestra como tarjetas en el celular para no recortar el buscador de productos.
+**Diseño responsivo:** los estilos globales (`src/styles.css`) tienen tres cortes: hasta 640 px (celular: una columna, botones y encabezados que bajan de línea, tablas con desplazamiento horizontal dentro de su tarjeta), hasta 900 px (tablet: el riel de íconos pasa a un menú desplegable con ☰) y hasta 1100 px (los grupos de la barra se ocultan). El estilo sigue la referencia de tablero "Quixotic": azul marino como acento (`#102A43`, `#081B2C`) con la escala azul-celeste `#03045E` · `#033E8A` · `#0078B7` · `#0096C8` · `#00B4D7` · `#48CAE4` · `#91E0EF` (las superficies grandes usan tintes muy claros), tarjetas blancas muy redondeadas sobre fondo celeste claro, botones y filtros en píldora, y cifras en Outfit con los decimales más claros. Las piezas del tablero (`.tarjeta`, `.cifra`, `.pildora`, `.variacion`, `.interruptor`, `.tabla-suave`, avatares) están en `styles.css` para reutilizarlas. Cada pantalla ajusta lo suyo en su `.css`; por ejemplo, el detalle de Nueva venta se muestra como tarjetas en el celular para no recortar el buscador de productos.
 
 **Seguridad (Keycloak, S10b + S11):**
 - **Login:** `AuthService.iniciarLogin()` genera `code_verifier`, `code_challenge` (S256) y `state`, y redirige a Keycloak; `/auth/callback` comprueba el `state` y canjea el código con el verifier. La SPA nunca ve la contraseña. El cliente `bomerp-frontend` exige PKCE y no permite *Direct access grants*.

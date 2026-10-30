@@ -1,0 +1,25 @@
+<div class="buscador" role="search">
+  <svg class="buscador-icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconoBuscar" /></svg>
+  <input #campo type="search" class="buscador-campo" placeholder="Buscar cliente, producto, orden…"
+         aria-label="Buscar en el sistema" autocomplete="off"
+         [value]="texto()" (input)="escribir(campo.value)" (focus)="enfocar()" (keydown)="tecla($event)"
+         role="combobox" [attr.aria-expanded]="abierto() && resultados().length > 0" aria-controls="buscador-lista">
+  <kbd class="buscador-atajo" aria-hidden="true">Ctrl K</kbd>
+
+  @if (abierto() && texto().trim().length > 0) {
+    <div class="buscador-panel" id="buscador-lista" role="listbox">
+      @if (cargando()) {
+        <p class="buscador-vacio">Cargando…</p>
+      } @else if (resultados().length === 0) {
+        <p class="buscador-vacio">Sin resultados para "{{ texto() }}".</p>
+      }
+      @for (r of resultados(); track r.tipo + r.ruta.join('/'); let i = $index) {
+        <button type="button" class="buscador-item" role="option" [class.activo]="i === seleccion()"
+                [attr.aria-selected]="i === seleccion()" (click)="ir(r)" (mouseenter)="seleccion.set(i)">
+          <span class="buscador-item-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="r.icono" /></svg></span>
+          <span class="buscador-item-texto"><strong>{{ r.texto }}</strong><small>{{ r.tipo }} · {{ r.detalle }}</small></span>
+        </button>
+      }
+    </div>
+  }
+</div>

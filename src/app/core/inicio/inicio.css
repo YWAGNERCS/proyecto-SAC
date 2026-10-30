@@ -1,220 +1,371 @@
-/* ── Indicadores ── */
-.tablero-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 18px;
-  transition: opacity 0.2s ease;
-}
-
-.tablero-kpis.cargando {
-  opacity: 0.5;
-}
-
-.tarjeta-kpi {
+/* ── Cabecera: saludo grande, rango y acciones ── */
+.cabecera {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 16px 18px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 6px 0 22px;
+}
+
+.saludo {
+  margin: 0;
+  font-family: var(--font-cifras);
+  font-size: 2.35rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.saludo span {
+  font-weight: 300;
+}
+
+.cabecera-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.flechita {
+  width: 14px !important;
+  height: 14px !important;
+  color: var(--text-muted);
+}
+
+/* Selector del periodo */
+.rango {
+  position: relative;
+}
+
+.rango-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 290px;
+  padding: 8px;
   background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  text-decoration: none;
-  color: var(--text-main);
-  transition: border-color 0.15s ease;
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(8, 27, 44, 0.14);
+  z-index: 100;
 }
 
-.tarjeta-kpi:hover {
-  border-color: var(--border-focus);
+.rango-opcion {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font-family: inherit;
+  font-size: 0.87rem;
+  text-align: left;
+  cursor: pointer;
 }
 
-.kpi-titulo {
-  font-size: 0.8rem;
-  color: var(--text-muted);
+.rango-opcion:hover {
+  background: var(--bg-color);
 }
 
-.kpi-valor {
-  font-size: 1.55rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
-}
-
-.kpi-valor small {
-  font-size: 0.8rem;
-  font-weight: 400;
-  color: var(--text-muted);
-  letter-spacing: 0;
-}
-
-.kpi-pie {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.pie-alerta,
-.texto-alerta {
-  color: var(--danger);
+.rango-opcion.activo {
+  background: var(--primary-light);
+  color: var(--primary-text);
   font-weight: 500;
 }
 
-/* ── Paneles ── */
-.tablero-rejilla {
+.rango-fechas {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 6px 4px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-color);
 }
 
-.panel {
-  padding: 18px 20px 20px;
+.rango-fechas label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
-.panel-cabecera {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.panel-cabecera-tabla {
-  padding: 18px 20px 14px;
-  margin-bottom: 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.panel-cabecera h2 {
-  margin: 0;
-  font-size: 0.98rem;
-  font-weight: 600;
-}
-
-.panel-cabecera p {
-  margin: 2px 0 0;
+.rango-fechas .form-control {
+  height: 36px;
+  padding: 4px 8px;
+  margin-top: 4px;
   font-size: 0.8rem;
-  color: var(--text-muted);
 }
 
-.panel-total {
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.panel-vacio {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-  font-size: 0.87rem;
-}
-
-.panel-enlace {
-  display: inline-block;
-  margin-top: 10px;
-  font-size: 0.83rem;
-  text-decoration: none;
-}
-
-/* ── Gráfico de barras de la semana ── */
-.grafico {
+/* ── Rejilla del tablero (como la referencia) ── */
+.tablero {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
-  height: 190px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, 1fr);
+  grid-template-areas:
+    "ventas barras cobrar"
+    "semana barras cobrar"
+    "historial historial vencido";
+  gap: 18px;
+  transition: opacity 0.2s ease;
 }
 
-.grafico-col {
+.tablero.cargando {
+  opacity: 0.55;
+}
+
+.zona-ventas { grid-area: ventas; }
+.zona-semana { grid-area: semana; }
+.zona-barras { grid-area: barras; }
+.zona-cobrar { grid-area: cobrar; }
+.zona-historial { grid-area: historial; }
+.zona-vencido { grid-area: vencido; }
+
+/* Cifras grandes con decimales más claros */
+
+/* ── Tarjeta verde (ventas del periodo) ── */
+.destacada {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 6px;
-  min-width: 0;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #102A43 0%, #033E8A 100%);
+  color: #FFFFFF;
 }
 
-.grafico-valor {
-  height: 16px;
-  font-size: 0.7rem;
-  color: var(--text-muted);
+.destacada-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.destacada-marca {
+  font-family: var(--font-cifras);
+  font-weight: 600;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.destacada-icono {
+  font-size: 1.1rem;
+  opacity: 0.85;
+}
+
+.destacada-etiqueta {
+  font-size: 0.76rem;
+  opacity: 0.8;
+}
+
+.cifra-destacada {
+  color: #FFFFFF;
+  font-size: 2.1rem;
+  font-weight: 400;
+}
+
+.cifra-destacada span {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.destacada-pie {
+  font-size: 0.74rem;
+  opacity: 0.9;
+}
+
+.destacada-variacion {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
   white-space: nowrap;
 }
 
-.grafico-barra-zona {
+/* ── Cobrado en la semana ── */
+.zona-semana {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.zona-semana .cifra {
+  font-size: 1.45rem;
+}
+
+/* ── Gráfico de barras ── */
+
+.grafico {
+  display: flex;
+  gap: 12px;
+  height: 300px;
+  padding-top: 26px;
+}
+
+.grafico-eje {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 28px;
+  font-size: 0.72rem;
+  color: var(--text-soft);
+  text-align: right;
+  min-width: 30px;
+}
+
+.grafico-barras {
+  flex: 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.columna {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.columna-zona {
   flex: 1;
   width: 100%;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  border-bottom: 1px solid var(--border-color);
 }
 
-.grafico-barra {
-  width: min(36px, 70%);
-  border-radius: 6px 6px 0 0;
-  background: #C7D2FE;
-  transition: height 0.3s ease;
+.barra-grafico {
+  position: relative;
+  width: min(56px, 100%);
+  border-radius: 999px;
+  background: repeating-linear-gradient(135deg, #A9E7F3 0 6px, #91E0EF 6px 12px);
+  transition: height 0.35s ease;
 }
 
-.grafico-barra-hoy {
+.barra-activa {
+  background: repeating-linear-gradient(135deg, #102A43 0 6px, #0C2238 6px 12px);
+  box-shadow: 0 0 0 4px var(--primary-light);
+}
+
+.barra-globo {
+  position: absolute;
+  bottom: calc(100% + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
   background: var(--primary);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.grafico-dia {
+.barra-punto {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 3px solid var(--primary);
+}
+
+.columna-etiqueta {
+  margin-top: 10px;
   font-size: 0.74rem;
   color: var(--text-muted);
-  text-transform: capitalize;
+  text-transform: uppercase;
 }
 
-.grafico-dia-hoy {
+.columna-etiqueta.activa {
   color: var(--text-main);
   font-weight: 500;
 }
 
-/* ── Lista de stock bajo ── */
-.lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ── Por cobrar ── */
+.zona-cobrar {
+  display: flex;
+  flex-direction: column;
 }
 
-.lista li {
+.curva {
+  width: calc(100% + 44px);
+  margin: 14px -22px 0;
+  height: 130px;
+}
+
+.acciones-tarjeta {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.acciones-tarjeta .pildora {
+  background: var(--suave);
+  box-shadow: none;
+}
+
+/* ── Últimos cobros ── */
+
+/* ── Crédito vencido y órdenes de hoy ── */
+.zona-vencido {
+  display: flex;
+  flex-direction: column;
+}
+
+.vencido-cifra {
+  display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid #F0F1F3;
-  font-size: 0.86rem;
+  flex-wrap: wrap;
+  margin-top: 18px;
 }
 
-.lista li:last-child {
-  border-bottom: none;
-}
-
-.lista-nombre {
-  color: var(--text-main);
+.subtarjeta {
+  display: block;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--suave);
   text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--text-main);
 }
 
-.lista-nombre:hover {
-  color: var(--primary);
+.subtarjeta:hover {
+  background: var(--primary-light);
 }
 
-.lista-dato {
-  color: var(--text-muted);
-  white-space: nowrap;
+.subtarjeta .tarjeta-cabecera {
+  margin-bottom: 12px;
 }
 
-.celda-cliente {
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.avatares {
+  display: flex;
+}
+
+.avatar-tecnico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -8px;
+  border: 3px solid var(--suave);
+  border-radius: 50%;
+  color: #FFFFFF;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.avatar-mas {
+  background: var(--primary);
 }
 
 /* ── Bienvenida (sin sesión) ── */
 .bienvenida {
-  max-width: 520px;
+  max-width: 560px;
   margin: 10vh auto 0;
   text-align: center;
 }
@@ -223,28 +374,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: var(--primary-light);
-  color: var(--primary);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #FFFFFF;
+  font-size: 1.8rem;
   margin-bottom: 18px;
-}
-
-.bienvenida-icono svg {
-  width: 28px;
-  height: 28px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .bienvenida h1 {
   margin: 0 0 8px;
-  font-size: 1.75rem;
-  font-weight: 600;
+  font-size: 2.2rem;
 }
 
 .bienvenida p {
@@ -253,18 +394,48 @@
 }
 
 /* ── Responsivo ── */
-@media (max-width: 1100px) {
-  .tablero-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1200px) {
+  .tablero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "ventas cobrar"
+      "semana cobrar"
+      "barras barras"
+      "historial historial"
+      "vencido vencido";
+  }
 }
 
-@media (max-width: 900px) {
-  .tablero-rejilla { grid-template-columns: 1fr; }
-}
+@media (max-width: 700px) {
+  .tablero {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "ventas" "semana" "cobrar" "barras" "historial" "vencido";
+    gap: 14px;
+  }
 
-@media (max-width: 640px) {
-  .tablero-kpis { gap: 10px; }
-  .tarjeta-kpi { padding: 12px 14px; }
-  .kpi-valor { font-size: 1.2rem; }
-  .grafico { height: 160px; gap: 6px; }
-  .grafico-valor { display: none; }
+  .saludo {
+    font-size: 1.75rem;
+  }
+
+  .cabecera-acciones {
+    width: 100%;
+  }
+
+  .grafico {
+    height: 240px;
+  }
+
+  .grafico-barras {
+    gap: 8px;
+  }
+
+  .tarjeta {
+    border-radius: 22px;
+    padding: 18px;
+  }
+
+  .curva {
+    width: calc(100% + 36px);
+    margin: 14px -18px 0;
+  }
 }

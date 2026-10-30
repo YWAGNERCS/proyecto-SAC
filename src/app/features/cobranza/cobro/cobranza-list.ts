@@ -174,6 +174,8 @@ export class CobranzaListComponent implements OnInit {
     this.clienteId = id > 0 ? id : null;
     // Desde Ventas, después de anular una venta pagada, se llega con ?vista=DEVOLUCIONES
     if (this.route.snapshot.queryParamMap.get('vista') === 'DEVOLUCIONES') this.vista.set('DEVOLUCIONES');
+    // Desde los avisos de la barra, con ?vencidas=1, se abre filtrado a las cuentas vencidas
+    if (this.route.snapshot.queryParamMap.get('vencidas') === '1') this.soloVencidas.set(true);
     this.clienteService.listarTodos().subscribe({ next: (data: Cliente[]) => this.clientes.set(data) });
     this.cargar();
   }

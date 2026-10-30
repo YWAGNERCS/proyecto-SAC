@@ -1,0 +1,129 @@
+.ajustes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.ajustes .titulo-con-icono {
+  margin-bottom: 18px;
+}
+
+.cuenta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cuenta strong {
+  display: block;
+  font-family: var(--font-cifras);
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.avatar-cuenta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #FFFFFF;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.datos {
+  margin: 0 0 18px;
+}
+
+.datos div {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.87rem;
+}
+
+.datos dt {
+  color: var(--text-muted);
+}
+
+.datos dd {
+  margin: 0;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cambio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.cambio > div {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--suave);
+}
+
+.cambio .cifra {
+  font-size: 1.6rem;
+}
+
+.texto {
+  font-size: 0.88rem !important;
+  color: var(--text-main) !important;
+  line-height: 1.6;
+  margin: 0 0 16px !important;
+}
+
+.atajos {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+}
+
+.atajos li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.86rem;
+}
+
+.atajos span {
+  margin-left: 8px;
+  color: var(--text-muted);
+}
+
+kbd {
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 0.76rem;
+}
+
+@media (max-width: 640px) {
+  .ajustes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .datos div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

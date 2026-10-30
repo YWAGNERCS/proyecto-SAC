@@ -17,7 +17,7 @@
 .search-input::placeholder { color: var(--text-soft); }
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
+  box-shadow: 0 0 0 3px var(--primary-ring);
 }
 
 .table-wrapper {
@@ -74,5 +74,5 @@
 
 .badge-empresa {
   background: var(--primary-light);
-  color: #3730A3;
+  color: var(--primary-text);
 }
