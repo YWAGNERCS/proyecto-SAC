@@ -802,7 +802,7 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 
 **Antes de entregar el sistema al cliente**
 
-1. Respaldo y luego `base_limpia.bat -Entrega`: borra lo marcado `[Prueba]` y todos los movimientos de prueba (35).
+1. ~~Borrar los datos de prueba~~ ✅ hecho el 30/10/2026: la base está vacía (35). Lisandro carga su catálogo, clientes y proveedores.
 2. Stock inicial con un conteo físico: Inventario › Ajustes de inventario › "+ Conteo físico".
 3. Lisandro y Lucy cambian su contraseña (Configuración › "Cambiar mi contraseña").
 4. Activar el respaldo automático (cuando esté elegida la carpeta).
@@ -895,7 +895,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 34c. **Dependencias:** (el `console.log` que `categoria-form.ts` arrastraba del ejemplo de ciclo de vida de la S07 se quitó el 26/10/2026) `npm audit` marca 2 avisos altos en `@angular/router` (solo afecta a SSR, que no se usa) y `zod`, ambos con actualización menor.
 
 ### Operación
-35. **Datos de prueba en la base.** Los recorridos como Lisandro y Lucy dejaron registros marcados `[Prueba]` (15 clientes, 6 productos, 6 proveedores, 3 categorías y los movimientos que cuelgan de ellos). Se dejaron a propósito; antes de entregar, `base_limpia.bat` (o `-Entrega`).
+35. ~~**Datos de prueba en la base.**~~ ✅ **Resuelto (30/10/2026):** la base se vació por completo para entregarla (también catálogo, clientes y proveedores); quedan solo las 3 series de comprobantes en 0 y los contadores de id en 1. Lo anterior está en `respaldos/sgejd_antes_de_entrega_20261030_2224.dmp` (`restaurar_sgejd.bat` para volver a él). Las cuentas `lisandro` y `lucy` de Keycloak se conservan.
 36. **Respaldo automático sin activar (⏳ pendiente).** Los scripts están listos desde el 31/10/2026 (`programar_respaldo.bat`, RNF-08), pero la tarea diaria **no está programada**: falta que Lisandro elija la carpeta fuera de la PC para la copia (USB, OneDrive o Google Drive de la empresa, o una carpeta de red). Mientras tanto, respaldo manual con `respaldar_sgejd.bat` al menos una vez por semana. Al decidir: `programar_respaldo.bat -Destino "<carpeta>"`.
 37. **Un error 500 sin explicar (25/10/2026).** Crear una venta falló una vez, sin guardar nada, en un backend que se había encendido justo después de cambiar las contraseñas de la base; no se pudo reproducir. Si vuelve a pasar, revisar la ventana "SGE-JD · Backend".
 38. **Tabla `USUARIOS` sin uso** (ver modelo de datos): conserva 2 filas con contraseñas cifradas de antes de Keycloak; se puede borrar.

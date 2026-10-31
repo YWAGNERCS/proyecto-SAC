@@ -42,7 +42,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 - **Búsqueda por RUC o DNI:** el servicio gratuito que usamos no deja hacer muchas búsquedas seguidas. Si aparece "servicio ocupado", esperen unos segundos y vuelvan a intentar, o escriban los datos a mano.
 - **Tipo de cambio:** se carga solo el del día de SUNAT; si no hay internet, hay que escribirlo.
 - **Contraseñas:** las de `lisandro` y `lucy` las puso el equipo de desarrollo. **Al recibir el sistema, cada uno debe cambiar la suya** (nosotros les mostramos cómo). Después de 5 intentos fallidos, la cuenta espera unos minutos antes de dejar intentar de nuevo.
-- **Datos de prueba:** la base tiene clientes, productos y ventas marcados "[Prueba]" que hicimos para probar. Antes de empezar se borran con `base_limpia.bat` (hace un respaldo antes de borrar).
+- **La base empieza vacía (30/10/2026):** se borró todo lo que usamos para probar: clientes, proveedores, productos, categorías, proformas, ventas, compras, cobros y mantenimientos. Las facturas y boletas empiezan en el número 1. Si algún dato de prueba les sirve, está guardado en el respaldo `sgejd_antes_de_entrega_20261030_2224.dmp`.
 - **El stock inicial** hay que ponerlo una vez con un conteo físico del almacén: Inventario › Ajustes de inventario › "+ Conteo físico", material por material.
 - **Rentabilidad de ventas antiguas:** desde el 31/10/2026 cada venta guarda el costo del momento. En las anteriores se usó el costo que tenía el producto ese día, así que su ganancia es aproximada.
 - **Compras anteriores:** las compras registradas antes del 31/10/2026 quedaron como pagadas al contado. Si alguna se debe todavía, avísennos para pasarla a crédito.
@@ -62,11 +62,12 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 
 ## 5. Antes de empezar a usarlo
 
-1. Sacar un respaldo y borrar los datos de prueba con `base_limpia.bat -Entrega` (lo hacemos con ustedes).
-2. Cargar el stock real: Inventario › Ajustes de inventario › "+ Conteo físico", material por material.
-3. Cada uno cambia su contraseña: Configuración › "Cambiar mi contraseña".
-4. Activar el respaldo automático en la carpeta que elijan (punto 6).
-5. Configurar el correo de la empresa (punto 8).
+1. ~~Borrar los datos de prueba~~ ✅ hecho: la base está vacía.
+2. Crear las categorías y los productos (Inventario › Productos), y luego cargar el stock real con Inventario › Ajustes de inventario › "+ Conteo físico", material por material.
+3. Registrar sus clientes y proveedores (con el RUC o DNI se completan solos).
+4. Cada uno cambia su contraseña: Configuración › "Cambiar mi contraseña".
+5. Activar el respaldo automático en la carpeta que elijan (punto 6).
+6. Configurar el correo de la empresa (punto 8).
 
 ---
 
