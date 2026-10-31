@@ -1,5 +1,6 @@
 package com.bomerp.config.descuento;
 
+import com.bomerp.config.permisos.Permiso;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,7 +10,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Descuento por línea (proformas y ventas) con un tope según el rol de quien lo registra.
+ * Descuento por línea (proformas y ventas) con un tope según el rol (o el permiso DESCUENTO_AMPLIADO) de quien lo registra.
  * Los topes se configuran en application.properties (app.descuentos.*).
  * Sin usuario identificado se aplica el tope más bajo (el de asistente).
  */
@@ -28,9 +29,11 @@ public class TopeDescuentoService {
     /** Tope (%) del usuario de la petición actual. */
     public BigDecimal topeActual() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean esAdmin = auth != null && auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-        return esAdmin ? topeAdmin : topeAsistente;
+        // El tope del administrador lo tiene el ADMIN y quien recibió el permiso DESCUENTO_AMPLIADO
+        boolean ampliado = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())
+                        || ("ROLE_" + Permiso.DESCUENTO_AMPLIADO.rol()).equals(a.getAuthority()));
+        return ampliado ? topeAdmin : topeAsistente;
     }
 
     /**

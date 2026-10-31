@@ -1,5 +1,8 @@
 package com.bomerp.config;
 
+import com.bomerp.auditoria.AuditoriaFilter;
+import com.bomerp.auditoria.service.AuditoriaService;
+import com.bomerp.config.permisos.Permiso;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -42,6 +46,11 @@ public class SecurityConfig {
     /** Orígenes permitidos por CORS, separados por coma (app.cors.allowed-origins). */
     @Value("${app.cors.allowed-origins:http://localhost:4200}")
     private String allowedOrigins;
+
+    /** Roles que habilitan una operación del dueño: ADMIN o el permiso delegado (sin el prefijo ROLE_). */
+    private static String[] conPermiso(Permiso permiso) {
+        return new String[]{"ADMIN", permiso.rol()};
+    }
 
     /**
      * Lee los roles de realm_access.roles (claim de Keycloak) como ROLE_ADMIN / ROLE_ASISTENTE.
@@ -83,7 +92,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter,
-                                           ObjectMapper objectMapper) throws Exception {
+                                           ObjectMapper objectMapper, AuditoriaService auditoriaService) throws Exception {
         http
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())   // API stateless con Bearer: no hay cookie de sesión que proteger
@@ -95,22 +104,25 @@ public class SecurityConfig {
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                         "/images/**", "/error").permitAll()
 
-                // Catálogo (módulo no transaccional): consultar = cualquier usuario; modificar = ADMIN
-                .requestMatchers(HttpMethod.GET, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").hasRole("ADMIN")
+                // Solo el dueño: quién puede qué (permisos) y el historial de cambios. No se delega.
+                .requestMatchers("/api/v1/admin/permisos/**", "/api/v1/admin/auditoria/**").hasRole("ADMIN")
 
-                // Operaciones que solo decide el dueño (auditoría C2)
-                .requestMatchers(HttpMethod.PATCH, "/api/v1/admin/ventas/*/anular").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/clientes/**", "/api/v1/admin/proveedores/**").hasRole("ADMIN")
-                // Devolver dinero de una venta anulada lo registra quien anula (auditoría A8)
-                .requestMatchers(HttpMethod.POST, "/api/v1/admin/cobranza/devoluciones/**").hasRole("ADMIN")
-                // Anular un cobro mal registrado reabre el saldo de sus ventas: lo decide el dueño
-                .requestMatchers(HttpMethod.POST, "/api/v1/admin/cobranza/cobros/*/anular").hasRole("ADMIN")
+                // Operaciones del dueño (auditoría C2). Cada una acepta además su permiso delegable
+                // (Permiso.rol(), p. ej. PERM_ANULAR_VENTAS): Lisandro puede dárselo a un asistente sin hacerlo ADMIN.
+                // Catálogo (módulo no transaccional): consultar = cualquier usuario; modificar = ADMIN o PERM_CATALOGO
+                .requestMatchers(HttpMethod.GET, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").hasAnyRole(conPermiso(Permiso.CATALOGO))
+                .requestMatchers(HttpMethod.PUT, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").hasAnyRole(conPermiso(Permiso.CATALOGO))
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/productos/**", "/api/v1/admin/categorias/**").hasAnyRole(conPermiso(Permiso.CATALOGO))
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/admin/ventas/*/anular").hasAnyRole(conPermiso(Permiso.ANULAR_VENTAS))
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/clientes/**", "/api/v1/admin/proveedores/**").hasAnyRole(conPermiso(Permiso.ELIMINAR))
+                // Devolver dinero de una venta anulada (auditoría A8)
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/cobranza/devoluciones/**").hasAnyRole(conPermiso(Permiso.DEVOLUCIONES))
+                // Anular un cobro mal registrado reabre el saldo de sus ventas
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/cobranza/cobros/*/anular").hasAnyRole(conPermiso(Permiso.ANULAR_COBROS))
                 // Servicios: contratar o cancelar un contrato, cancelar una orden y dar de baja un equipo
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/contratos", "/api/v1/admin/contratos/*/cancelar",
-                        "/api/v1/admin/ordenes/*/cancelar", "/api/v1/admin/equipos/*/retirar").hasRole("ADMIN")
+                        "/api/v1/admin/ordenes/*/cancelar", "/api/v1/admin/equipos/*/retirar").hasAnyRole(conPermiso(Permiso.SERVICIOS))
 
                 // Resto del panel: cualquiera de los dos roles del negocio
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "ASISTENTE")
@@ -123,6 +135,8 @@ public class SecurityConfig {
                         "Falta el token o no es válido (inicie sesión de nuevo)."))
                 .accessDeniedHandler((req, res, ex) -> escribir(res, objectMapper, HttpStatus.FORBIDDEN,
                         "Su usuario no tiene permiso para esta operación.")))
+            // Historial de cambios: después de leer el token (conoce al usuario) y antes de autorizar (ve los 403)
+            .addFilterAfter(new AuditoriaFilter(auditoriaService, objectMapper), BearerTokenAuthenticationFilter.class)
             .exceptionHandling(e -> e
                 .authenticationEntryPoint((req, res, ex) -> escribir(res, objectMapper, HttpStatus.UNAUTHORIZED,
                         "Falta el token o no es válido (inicie sesión de nuevo)."))

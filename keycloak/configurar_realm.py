@@ -13,10 +13,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-KC = "http://localhost:38080"
+# 127.0.0.1 y no localhost: en Windows "localhost" prueba IPv6 primero y cada llamada tarda ~2 s
+# (el token de admin dura 60 s y el script no alcanzaba a terminar)
+KC = "http://127.0.0.1:38080"
 REALM = "bomerp"
 CLIENTE = "bomerp-frontend"
 CLIENTE_PRUEBAS = "sgejd-pruebas"
+CLIENTE_BACKEND = "sgejd-backend"
 SPA = "http://localhost:4200"
 
 # Roles reales del negocio (auditoría C2): Lisandro administra, Lucy registra.
@@ -24,6 +27,19 @@ ROLES = {
     "ADMIN": "Dueño (Lisandro): todo, incluido anular ventas, editar precios y eliminar",
     "ASISTENTE": "Asistente (Lucy): registra proformas, ventas, compras, clientes y cobros",
 }
+# Permisos delegables (Permiso.java): el dueño se los da a un asistente desde
+# Configuración › Usuarios y permisos sin hacerlo ADMIN. ADMIN ya los tiene todos.
+PERMISOS = {
+    "PERM_ANULAR_VENTAS": "Puede anular ventas",
+    "PERM_ANULAR_COBROS": "Puede anular cobros mal registrados",
+    "PERM_DEVOLUCIONES": "Puede registrar devoluciones de dinero",
+    "PERM_CATALOGO": "Puede crear, editar y eliminar productos y categorías",
+    "PERM_ELIMINAR": "Puede eliminar clientes, proveedores y sedes",
+    "PERM_SERVICIOS": "Puede gestionar contratos, cancelar órdenes y dar de baja equipos",
+    "PERM_DESCUENTO_AMPLIADO": "Puede aplicar el tope de descuento del administrador",
+}
+# Lo mínimo que necesita la cuenta de servicio del backend (cliente realm-management)
+ROLES_BACKEND = ["view-users", "manage-users", "view-realm", "view-events"]
 # Correos .test: dominio reservado, no reales. Las contraseñas NO están aquí: salen de .env
 # (variables SGEJD_CLAVE_<USUARIO> y KC_ADMIN_PASSWORD; plantilla en .env.example).
 USUARIOS = [
@@ -99,7 +115,7 @@ def main():
     })
 
     # 3.1 Roles de realm (viajan en realm_access.roles)
-    for nombre, desc in ROLES.items():
+    for nombre, desc in {**ROLES, **PERMISOS}.items():
         st, _ = pedir("POST", f"/admin/realms/{REALM}/roles", t, {"name": nombre, "description": desc})
         print("rol", nombre, "creado" if st == 201 else "ya existía")
 
@@ -120,6 +136,25 @@ def main():
         "clientId": CLIENTE_PRUEBAS, "name": "Scripts de prueba (solo desarrollo)", "protocol": "openid-connect",
         "publicClient": True, "standardFlowEnabled": False, "directAccessGrantsEnabled": True,
     })
+
+    # Cuenta de servicio del backend (confidencial, solo client_credentials): lee usuarios, cambia
+    # sus permisos PERM_* y lee los eventos de sesión. El secreto sale de .env (KC_BACKEND_SECRET).
+    guardar_cliente(t, {
+        "clientId": CLIENTE_BACKEND, "name": "Backend SGE-JD (cuenta de servicio)", "protocol": "openid-connect",
+        "publicClient": False, "serviceAccountsEnabled": True, "standardFlowEnabled": False,
+        "directAccessGrantsEnabled": False, "implicitFlowEnabled": False,
+        "clientAuthenticatorType": "client-secret", "secret": secreto("KC_BACKEND_SECRET"),
+    })
+    _, lista = pedir("GET", f"/admin/realms/{REALM}/clients?clientId={CLIENTE_BACKEND}", t)
+    _, cuenta = pedir("GET", f"/admin/realms/{REALM}/clients/{lista[0]['id']}/service-account-user", t)
+    _, gestion = pedir("GET", f"/admin/realms/{REALM}/clients?clientId=realm-management", t)
+    gid = gestion[0]["id"]
+    roles = []
+    for nombre in ROLES_BACKEND:
+        _, rol = pedir("GET", f"/admin/realms/{REALM}/clients/{gid}/roles/{nombre}", t)
+        roles.append({"id": rol["id"], "name": rol["name"]})
+    pedir("POST", f"/admin/realms/{REALM}/users/{cuenta['id']}/role-mappings/clients/{gid}", t, roles)
+    print("  cuenta de servicio con", ", ".join(ROLES_BACKEND))
 
     # 5. Usuarios semilla con su rol
     for u in USUARIOS:

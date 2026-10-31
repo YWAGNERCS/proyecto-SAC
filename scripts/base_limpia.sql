@@ -9,7 +9,8 @@
 --                   movieron. Lo demás queda igual.
 --         ENTREGA : deja la base lista para el cliente: borra TODOS los movimientos
 --                   (proformas, ventas, comprobantes, notas de crédito, cobros, devoluciones, compras,
---                   mantenimientos, órdenes de trabajo, contratos y equipos instalados), borra lo
+--                   mantenimientos, órdenes de trabajo, contratos y equipos instalados) y el historial
+--                   de cambios, borra lo
 --                   marcado "[Prueba]", reinicia las series de comprobantes y los contadores de id.
 --                   Conserva catálogo, clientes (con sus sedes) y proveedores reales. El stock queda
 --                   como está: se ajusta con el inventario físico.
@@ -185,6 +186,10 @@ begin
     if modo = 'ENTREGA' then
         update series_comprobante set ultimo_numero = 0;
         contar('series reiniciadas', sql%rowcount);
+        -- El historial de cambios de las pruebas no le sirve al cliente: arranca vacío.
+        -- (En modo PRUEBA se conserva: es el registro de seguridad.)
+        delete from historial_cambios;
+        contar('historial_cambios', sql%rowcount);
     end if;
 
     if fin = 'COMMIT' then
@@ -197,7 +202,7 @@ begin
                         'DEVOLUCIONES', 'NOTAS_CREDITO', 'COMPROBANTES', 'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS',
                         'DETALLE_VENTA', 'VENTAS', 'ITEMS_PROFORMA', 'PROFORMAS',
                         'DETALLE_COMPRA', 'COMPRAS', 'MATERIALES_ORDEN', 'ORDENES_TRABAJO',
-                        'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO'))) loop
+                        'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO', 'HISTORIAL_CAMBIOS'))) loop
                 execute immediate 'alter table ' || t.nombre
                     || ' modify id generated always as identity (start with 1)';
             end loop;
