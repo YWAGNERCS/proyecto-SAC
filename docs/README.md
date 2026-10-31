@@ -243,6 +243,7 @@ estándar en `docs/diagramas/` (`.bpmn`, se abre y edita en [Camunda Modeler](ht
 | JSON | Jackson 3 (`tools.jackson`), con su configuración por defecto |
 | Otras | OpenPDF 1.3.32, Lombok, driver `ojdbc11`; H2 incluido como dependencia (sin perfil configurado) |
 | Frontend | Angular 22 (standalone, signals, zoneless), en `bomerp-frontend` |
+| Íconos | Trazos SVG de línea en `ICONOS` (`menu.ts`) y el componente `<app-icono>`; basados en **Feather Icons** (MIT, © Cole Bemis) y **Lucide** (ISC, © Lucide Contributors), varios tomados o adaptados de ellos. Licencias en `bomerp-frontend/LICENCIAS-TERCEROS.md` |
 
 ### Migración a Spring Boot 4.0.7 (22/10/2026)
 
