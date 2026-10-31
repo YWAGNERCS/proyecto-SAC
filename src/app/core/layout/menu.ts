@@ -4,6 +4,9 @@ import { Permiso } from '../auth/auth.service';
  * Menú de SGE-JD: grupos (píldoras de la barra superior) y sus módulos (íconos del riel izquierdo).
  * Lo usan la barra, el riel, el menú del celular y el buscador global ("ir a…").
  * `icono` es el trazo SVG de 24×24 en estilo línea.
+ *
+ * Créditos: los íconos siguen el estilo de Feather Icons (MIT, © Cole Bemis) y Lucide (ISC, © Lucide
+ * Contributors), y varios trazados están tomados o adaptados de ellos. Licencias en LICENCIAS-TERCEROS.md.
  */
 export interface OpcionMenu {
   ruta: string;
