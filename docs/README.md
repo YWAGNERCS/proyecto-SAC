@@ -767,6 +767,47 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
 | 13 | Mantenimiento y evolución | ✅ Git/GitHub (`YWAGNERCS/proyecto-SAC`, con topics) y publicación automática de la documentación |
 
+### Pendientes (al 31/10/2026)
+
+Resumen de lo que falta, según de quién depende. El detalle de cada punto está en [5. Por verificar](#por-verificar) (n.º entre paréntesis).
+
+**Depende del cliente (decisiones o contrataciones de Lisandro)**
+
+| Pendiente | Qué hace falta | Ref. |
+|---|---|---|
+| Facturación electrónica real | Elegir y contratar un OSE (por ejemplo Nubefact) y conectar su cuenta; hoy los comprobantes no tienen validez tributaria | (13b) |
+| Acceso desde otra PC o desde el celular | Contratar un servidor o VPS con HTTPS; al instalarlo, eliminar el cliente `sgejd-pruebas` de Keycloak | — |
+| Respaldo automático diario | Elegir la carpeta fuera de la PC (USB, OneDrive o Google Drive de la empresa, red) y ejecutar `programar_respaldo.bat -Destino` | (36) |
+| AS-IS de los procesos | Confirmar los supuestos [S1]–[S9] de los diagramas BPMN | *Modelado de procesos* |
+| Correo de la empresa | Cuenta para enviar proformas y facturas (hoy sale con la Gmail de prueba de Aron) y correo de la oficina para el resumen diario | — |
+| WhatsApp real | Cuenta de WhatsApp Business API (pagada); hoy el envío de proformas por WhatsApp es simulado | (13) |
+| Topes de descuento | Confirmar 30 % (Lisandro) y 10 % (Lucy) | (25b) |
+| Costos visibles para Lucy | Decidir si Lucy debe ver costo y margen en la lista de productos | — |
+| Mantenimiento de ventilación forzada | Confirmar si también lleva mantenimiento preventivo | (14) |
+| Datos impresos | Teléfono y correo de la empresa para facturas y proformas | — |
+
+**Depende del equipo (se puede hacer sin esperar al cliente)**
+
+| Pendiente | Qué hace falta | Ref. |
+|---|---|---|
+| ⚠️ Credenciales en el historial de git | Cambiar la contraseña de aplicación de Gmail y regenerar el token de Decolecta (siguen en commits antiguos) | (2) |
+| Spring Modulith y límites entre módulos | Implementar `ModularityTests` (ADR-002) y que Facturación y Reportes no usen repositorios de Ventas y Proformas | (20), (21) |
+| Pruebas de seguridad en JUnit | `@WebMvcTest` por rol y permiso (hoy solo `pruebas-seguridad/05_matriz.ps1`) | (28) |
+| DTO en todos los controladores | Categoría, Cliente y Proveedor todavía responden la entidad | (34) |
+| Logger en vez de `System.out` | 5 clases | (33) |
+| Perfil de pruebas con H2 | Configurarlo o quitar la dependencia del `pom.xml` | (29) |
+| Tabla `USUARIOS` | Borrarla (sin uso desde Keycloak) | (38) |
+| Dependencias del frontend | Revisar los 2 avisos de `npm audit` | (34c) |
+| Esquemas Oracle por módulo | Decidir si se separa `JDREFRIGERACION` en esquemas como propone el curso | (22) |
+
+**Antes de entregar el sistema al cliente**
+
+1. Respaldo y luego `base_limpia.bat -Entrega`: borra lo marcado `[Prueba]` y todos los movimientos de prueba (35).
+2. Stock inicial con un conteo físico: Inventario › Ajustes de inventario › "+ Conteo físico".
+3. Lisandro y Lucy cambian su contraseña (Configuración › "Cambiar mi contraseña").
+4. Activar el respaldo automático (cuando esté elegida la carpeta).
+5. Configurar el correo de la empresa en `application-local.properties`.
+
 ### Equipo y responsables
 
 Equipo **CherryTree**.
@@ -804,7 +845,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 
 ### Seguridad
 1. ~~**La API está abierta sin login.**~~ ✅ **Resuelto (18/10/2026, S10b):** toda `/api/v1/admin/**` exige un JWT válido de Keycloak; se retiró `app.security.admin-requiere-login`. Solo quedan abiertos el catálogo público y Swagger.
-2. **Credenciales en el historial de git.** La contraseña de aplicación de Gmail y el token de Decolecta ya no están en `application.properties`, pero siguen en commits anteriores. **Confirmar** que la contraseña se revocó en Google y que el token se regeneró.
+2. **Credenciales en el historial de git (⏳ pendiente, prioridad alta).** La contraseña de aplicación de Gmail y el token de Decolecta ya no están en `application.properties`, pero siguen en commits anteriores y el repositorio se publica en GitHub. Borrarlos del historial no basta: hay que **revocar la contraseña de aplicación en Google y regenerar el token de Decolecta**, y poner los nuevos solo en `application-local.properties`.
 3. ~~**Roles sin efecto (RF-02).**~~ ✅ **Resuelto (18/10/2026):** ver RF-02. **Por confirmar con Lisandro:** si Lucy debe ver costo y margen de los productos (hoy los ve).
 4. ~~**Usuarios de prueba.**~~ ✅ **Resuelto en parte (18/10/2026):** cuentas `lisandro` y `lucy` en Keycloak (correos `.test`; contraseñas en `.env`, ver 6b). Cada venta guarda quién la registró (`vendedor_id` = `sub`, `vendedor_nombre`). Falta registrar el autor en compras, cobros y anulaciones.
 5. ~~**La SPA guarda el token Basic en `localStorage`**~~ ✅ **Resuelto (18-19/10/2026):** login Authorization Code + PKCE (S256); el access token (5 min) y el refresh token viven en memoria con una copia en `sessionStorage` (sobrevive un F5, se borra al cerrar la pestaña) y se renuevan solos. *Direct access grants* desactivado en `bomerp-frontend`; los scripts de prueba usan su propio cliente, `sgejd-pruebas`. Nota: Spring acepta 60 s de tolerancia de reloj sobre el `exp`.

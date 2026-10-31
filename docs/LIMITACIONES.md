@@ -57,6 +57,16 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 5. **Facturación electrónica real:** ¿con qué proveedor (OSE) quieren trabajar?
 6. **Respaldo automático:** ¿en qué carpeta fuera de la PC se guarda la copia diaria (un USB, el OneDrive o Google Drive de la empresa)?
 7. **Servidor:** para entrar desde otra PC o desde el celular hay que instalar el sistema en un servidor en internet (tiene costo mensual). ¿Lo quieren?
+8. **Correo de la empresa:** ¿con qué cuenta salen las proformas y facturas, y a qué correo de la oficina llega el resumen diario de mantenimientos?
+9. **Cómo trabajan hoy:** para la documentación del proyecto necesitamos confirmar cómo hacen hoy las cotizaciones, el control de stock, la facturación, la agenda de los técnicos y las deudas (son 9 preguntas cortas; se las llevamos impresas).
+
+## 5. Antes de empezar a usarlo
+
+1. Sacar un respaldo y borrar los datos de prueba con `base_limpia.bat -Entrega` (lo hacemos con ustedes).
+2. Cargar el stock real: Inventario › Ajustes de inventario › "+ Conteo físico", material por material.
+3. Cada uno cambia su contraseña: Configuración › "Cambiar mi contraseña".
+4. Activar el respaldo automático en la carpeta que elijan (punto 6).
+5. Configurar el correo de la empresa (punto 8).
 
 ---
 

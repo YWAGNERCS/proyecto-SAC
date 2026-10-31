@@ -13,7 +13,7 @@ Universidad Peruana Unión, construido sobre la base académica BomERP.
 | [1. Documentación funcional](funcional.md) | Objetivo, alcance, módulos, requerimientos (RF y RNF) y casos de uso |
 | [2. Documentación técnica](tecnica.md) | Stack, migración a Spring Boot 4.0.7, arquitectura, modelo de datos, API, instalación y uso diario |
 | [3. Manual de usuario](manual.md) | Cómo se opera cada pantalla y preguntas frecuentes |
-| [4. Estado y trazabilidad](estado.md) | Fases del proyecto, equipo y avance por sesión de LP2 |
+| [4. Estado y trazabilidad](estado.md) | Fases del proyecto, **pendientes**, equipo y avance por sesión de LP2 |
 | [5. Por verificar](por-verificar.md) | Lo que falta o no coincide, ordenado por importancia |
 | [Producto de la Unidad II (LP2)](lp2-demo.md) | La SPA segura: evidencias, casos de prueba, integración y rúbrica |
 | [Qué hace hoy y qué todavía no](limitaciones.md) | Para Lisandro y Lucy: lo que funciona de verdad, lo simulado y las decisiones pendientes |
