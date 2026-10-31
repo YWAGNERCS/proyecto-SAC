@@ -1,0 +1,117 @@
+<div class="page-header">
+  <div>
+    <a routerLink="/configuracion" class="volver">← Configuración</a>
+    <h1 class="page-title">Historial de cambios</h1>
+    <p class="page-sub">Quién hizo qué y cuándo, incluidos los intentos sin permiso</p>
+  </div>
+  <div class="interruptor" role="tablist" aria-label="Qué ver">
+    <button type="button" role="tab" [class.activo]="pestana() === 'CAMBIOS'" [attr.aria-selected]="pestana() === 'CAMBIOS'"
+            (click)="cambiarPestana('CAMBIOS')">Cambios</button>
+    <button type="button" role="tab" [class.activo]="pestana() === 'SESIONES'" [attr.aria-selected]="pestana() === 'SESIONES'"
+            (click)="cambiarPestana('SESIONES')">Inicios de sesión</button>
+  </div>
+</div>
+
+@if (error()) { <div class="alert alert-danger">{{ error() }}</div> }
+
+@if (pestana() === 'CAMBIOS') {
+  <div class="filtros">
+    <select class="form-select" aria-label="Usuario" [value]="filtro().usuario ?? ''" (change)="filtrar('usuario', $any($event.target).value)">
+      <option value="">Todos los usuarios</option>
+      @for (u of historial()?.usuarios ?? []; track u) { <option [value]="u">{{ u }}</option> }
+    </select>
+    <select class="form-select" aria-label="Módulo" [value]="filtro().modulo ?? ''" (change)="filtrar('modulo', $any($event.target).value)">
+      <option value="">Todos los módulos</option>
+      @for (m of historial()?.modulos ?? []; track m) { <option [value]="m">{{ m }}</option> }
+    </select>
+    <select class="form-select" aria-label="Resultado" [value]="filtro().resultado ?? ''" (change)="filtrar('resultado', $any($event.target).value)">
+      <option value="">Cualquier resultado</option>
+      @for (r of resultados; track r.valor) { <option [value]="r.valor">{{ r.etiqueta }}</option> }
+    </select>
+    <label class="fecha"><span>Desde</span>
+      <input type="date" class="form-control" [value]="filtro().desde ?? ''" (change)="filtrar('desde', $any($event.target).value)" /></label>
+    <label class="fecha"><span>Hasta</span>
+      <input type="date" class="form-control" [value]="filtro().hasta ?? ''" (change)="filtrar('hasta', $any($event.target).value)" /></label>
+    @if (hayFiltro()) { <button type="button" class="btn btn-outline-secondary" (click)="limpiar()">Quitar filtros</button> }
+  </div>
+
+  @if (historial(); as h) {
+    <p class="resumen muted">
+      {{ h.registros.length }} {{ h.registros.length === 1 ? 'acción' : 'acciones' }}
+      @if (denegados() > 0) { · <span class="texto-denegado">{{ denegados() }} sin permiso</span> }
+      @if (h.truncado) { · se muestran las 500 más recientes: filtre por fecha para ver más atrás }
+    </p>
+    <section class="tarjeta sin-relleno">
+      @if (h.registros.length === 0) {
+        <p class="muted vacio">{{ hayFiltro() ? 'Nada con esos filtros.' : 'Todavía no hay cambios registrados.' }}</p>
+      } @else {
+        <div class="tabla-desplazable">
+          <table class="tabla-suave">
+            <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Resultado</th></tr></thead>
+            <tbody>
+              @for (r of h.registros; track r.id) {
+                <tr class="fila" [class.fila-denegada]="r.resultado === 'DENEGADO'" (click)="alternarFila(r.id)"
+                    [attr.aria-expanded]="abierto() === r.id" tabindex="0" (keydown.enter)="alternarFila(r.id)">
+                  <td class="nowrap">{{ r.fechaHora | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
+                  <td>{{ r.usuario }}</td>
+                  <td>{{ r.modulo }}</td>
+                  <td>{{ r.accion }}</td>
+                  <td><span class="badge" [class]="'badge resultado-' + r.resultado">{{ etiquetaResultado[r.resultado] }}</span></td>
+                </tr>
+                @if (abierto() === r.id) {
+                  <tr class="detalle"><td colspan="5">
+                    <dl>
+                      @if (r.detalle) { <div><dt>Detalle</dt><dd>{{ r.detalle }}</dd></div> }
+                      <div><dt>Rol y permisos</dt><dd>{{ r.roles || '—' }}</dd></div>
+                      <div><dt>Operación</dt><dd><code>{{ r.metodo }} {{ r.ruta }}</code> · HTTP {{ r.estadoHttp }}</dd></div>
+                      <div><dt>IP</dt><dd>{{ r.ip || '—' }}</dd></div>
+                    </dl>
+                  </td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  } @else if (cargando()) {
+    <p class="muted">Cargando…</p>
+  }
+  <p class="muted pie">Se registra todo lo que crea, modifica, anula o elimina algo; las consultas no. El historial no se puede editar
+    ni borrar desde el sistema.</p>
+} @else {
+  @if (sesiones(); as lista) {
+    <p class="resumen muted">
+      {{ lista.length }} eventos de los últimos 7 días
+      @if (fallidos() > 0) { · <span class="texto-denegado">{{ fallidos() }} {{ fallidos() === 1 ? 'intento fallido' : 'intentos fallidos' }}</span> }
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cargarSesiones()">Actualizar</button>
+    </p>
+    <section class="tarjeta sin-relleno">
+      @if (lista.length === 0) {
+        <p class="muted vacio">Keycloak no tiene inicios de sesión registrados en los últimos 7 días.</p>
+      } @else {
+        <div class="tabla-desplazable">
+          <table class="tabla-suave">
+            <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Evento</th><th>IP</th></tr></thead>
+            <tbody>
+              @for (s of lista; track $index) {
+                <tr [class.fila-denegada]="s.tipo === 'LOGIN_ERROR'">
+                  <td class="nowrap">{{ s.fechaHora | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
+                  <td>{{ s.usuario }}</td>
+                  <td>
+                    <span class="badge" [class]="'badge sesion-' + s.tipo">{{ etiquetaSesion[s.tipo] }}</span>
+                    @if (s.error) { <small class="muted"> {{ s.error === 'invalid_user_credentials' ? 'contraseña incorrecta' : s.error === 'user_not_found' ? 'usuario no existe' : s.error }}</small> }
+                  </td>
+                  <td>{{ s.ip || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+    <p class="muted pie">Tras 5 contraseñas erradas seguidas, Keycloak hace esperar al usuario (1 minuto, hasta 15).</p>
+  } @else if (cargando()) {
+    <p class="muted">Consultando Keycloak…</p>
+  }
+}

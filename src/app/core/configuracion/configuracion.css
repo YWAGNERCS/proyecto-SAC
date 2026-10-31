@@ -31,7 +31,7 @@
   height: 56px;
   border-radius: 50%;
   background: var(--primary);
-  color: #FFFFFF;
+  color: var(--sobre-primary);
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -126,4 +126,13 @@ kbd {
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+.badge-permiso {
+  margin: 0 6px 6px 0;
+}
+
+.nota-keycloak {
+  margin: 14px 0 0;
+  font-size: 0.82rem;
 }

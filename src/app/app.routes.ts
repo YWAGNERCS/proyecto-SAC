@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
-import { rolGuard } from './core/auth/rol.guard';
+import { permisoGuard, rolGuard } from './core/auth/rol.guard';
 
 export const routes: Routes = [
   // ── Retorno de Keycloak (Authorization Code + PKCE): fuera del layout y sin guard ──
@@ -13,7 +13,7 @@ export const routes: Routes = [
   { path: 'login', redirectTo: '' },
 
   // ── Panel: Inicio es público; cada pantalla exige sesión (authGuard) y,
-  //    las de escritura del catálogo, además el rol ADMIN (rolGuard), igual que SecurityConfig ──
+  //    las de escritura del catálogo, además ADMIN o el permiso CATALOGO (permisoGuard), igual que SecurityConfig ──
   {
     path: '',
     loadComponent: () => import('./core/layout/layout').then((m) => m.Layout),
@@ -33,14 +33,14 @@ export const routes: Routes = [
       },
       {
         path: 'catalogo/categorias/nueva',
-        canActivate: [authGuard, rolGuard('ADMIN')],
+        canActivate: [authGuard, permisoGuard('CATALOGO')],
         loadComponent: () =>
           import('./features/catalogo/categoria/categoria-form').then((m) => m.CategoriaForm),
         title: 'Nueva categoría — SGE-JD',
       },
       {
         path: 'catalogo/categorias/:id/editar',
-        canActivate: [authGuard, rolGuard('ADMIN')],
+        canActivate: [authGuard, permisoGuard('CATALOGO')],
         loadComponent: () =>
           import('./features/catalogo/categoria/categoria-form').then((m) => m.CategoriaForm),
         title: 'Editar categoría — SGE-JD',
@@ -54,14 +54,14 @@ export const routes: Routes = [
       },
       {
         path: 'catalogo/productos/nuevo',
-        canActivate: [authGuard, rolGuard('ADMIN')],
+        canActivate: [authGuard, permisoGuard('CATALOGO')],
         loadComponent: () =>
           import('./features/catalogo/producto/producto-form').then((m) => m.ProductoForm),
         title: 'Nuevo producto — SGE-JD',
       },
       {
         path: 'catalogo/productos/:id/editar',
-        canActivate: [authGuard, rolGuard('ADMIN')],
+        canActivate: [authGuard, permisoGuard('CATALOGO')],
         loadComponent: () =>
           import('./features/catalogo/producto/producto-form').then((m) => m.ProductoForm),
         title: 'Editar producto — SGE-JD',
@@ -235,6 +235,19 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () => import('./core/configuracion/configuracion').then((m) => m.ConfiguracionComponent),
         title: 'Configuración — SGE-JD',
+      },
+      // Solo el dueño: quién puede qué y el historial de cambios (no se delega, como en SecurityConfig)
+      {
+        path: 'configuracion/permisos',
+        canActivate: [authGuard, rolGuard('ADMIN')],
+        loadComponent: () => import('./core/configuracion/permisos').then((m) => m.PermisosComponent),
+        title: 'Usuarios y permisos — SGE-JD',
+      },
+      {
+        path: 'configuracion/historial',
+        canActivate: [authGuard, rolGuard('ADMIN')],
+        loadComponent: () => import('./core/configuracion/historial').then((m) => m.HistorialComponent),
+        title: 'Historial de cambios — SGE-JD',
       },
       // Destino de rolGuard cuando el rol no alcanza
       {

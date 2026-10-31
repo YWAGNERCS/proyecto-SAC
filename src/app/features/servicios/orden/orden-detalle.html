@@ -14,7 +14,7 @@
     <div class="d-flex gap-2">
       <a routerLink="/servicios/ordenes" class="btn btn-outline-secondary">Volver</a>
       @if (o.estado === 'PROGRAMADA') {
-        @if (esAdmin()) { <button type="button" class="btn btn-outline-secondary" (click)="abrirCancelar()">Cancelar orden</button> }
+        @if (puedeServicios()) { <button type="button" class="btn btn-outline-secondary" (click)="abrirCancelar()">Cancelar orden</button> }
         <a [routerLink]="['/servicios/ordenes', o.id, 'editar']" class="btn btn-secondary">Editar</a>
         <button type="button" class="btn btn-primary" (click)="abrirCerrar()">Cerrar orden</button>
       } @else if (o.estado === 'REALIZADA' && !o.ventaFacturadaId) {

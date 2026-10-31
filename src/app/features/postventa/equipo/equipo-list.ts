@@ -27,7 +27,9 @@ export class EquipoListComponent implements OnInit {
   private readonly clienteService = inject(ClienteService);
   private readonly sedeService = inject(SedeService);
   private readonly productoService = inject(ProductoService);
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso SERVICIOS delegado (el backend exige lo mismo). */
+  readonly puedeServicios = computed(() => this.auth.puede('SERVICIOS'));
 
   readonly equipos = signal<Equipo[]>([]);
   readonly clientes = signal<Cliente[]>([]);

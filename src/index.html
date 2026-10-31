@@ -1,11 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <title>SGE-JD · JD Refrigeración</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    // Tema antes de que cargue Angular, para no ver un destello claro al abrir en modo oscuro
+    // (misma regla que PreferenciasService; si falla, Angular lo aplica igual al iniciar)
+    try {
+      var tema = (JSON.parse(localStorage.getItem('sgejd.preferencias') || '{}').tema) || 'SISTEMA';
+      var oscuro = tema === 'OSCURO' || (tema === 'SISTEMA' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = oscuro ? 'oscuro' : 'claro';
+    } catch (e) {}
+  </script>
 </head>
 <body>
   <app-root></app-root>

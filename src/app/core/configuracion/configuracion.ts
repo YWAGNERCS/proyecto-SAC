@@ -1,20 +1,22 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService, NOMBRE_PERMISO } from '../auth/auth.service';
 import { DescuentoService } from '../services/descuento-service';
 import { TipoCambio, TipoCambioService } from '../services/tipo-cambio-service';
-import { PeriodoTablero, PreferenciasService, TamanoLetra } from '../services/preferencias-service';
+import { PeriodoTablero, PreferenciasService, TamanoLetra, Tema } from '../services/preferencias-service';
 import { ICONOS, iniciales } from '../layout/menu';
 import { environment } from '../../../environments/environment';
 
 /**
  * Configuración (el engranaje del riel): datos de la cuenta, preferencias personales de esta
- * computadora, tipo de cambio del día, administración de usuarios (solo ADMIN) y ayuda.
+ * computadora (tema, letra, tablero), tipo de cambio del día, administración (solo ADMIN: permisos
+ * e historial de cambios) y ayuda.
  * Las contraseñas y los usuarios viven en Keycloak: desde aquí solo se enlaza a su consola.
  */
 @Component({
   selector: 'app-configuracion',
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, RouterLink],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.css',
 })
@@ -23,6 +25,15 @@ export class ConfiguracionComponent {
   readonly preferencias = inject(PreferenciasService);
   readonly iconos = ICONOS;
   readonly iniciales = iniciales;
+
+  /** Permisos que el dueño le delegó a este usuario, en palabras. */
+  readonly permisosDelegados = computed(() => this.auth.permisos().map((p) => NOMBRE_PERMISO[p] ?? p));
+
+  readonly temas: { valor: Tema; etiqueta: string }[] = [
+    { valor: 'CLARO', etiqueta: 'Claro' },
+    { valor: 'OSCURO', etiqueta: 'Oscuro' },
+    { valor: 'SISTEMA', etiqueta: 'Como el sistema' },
+  ];
 
   readonly tope = signal<number | null>(null);
   readonly tipoCambio = signal<TipoCambio | null>(null);
@@ -60,6 +71,10 @@ export class ConfiguracionComponent {
 
   cambiarPeriodo(valor: string) {
     this.preferencias.periodoTablero.set(valor as PeriodoTablero);
+  }
+
+  cambiarTema(valor: Tema) {
+    this.preferencias.tema.set(valor);
   }
 
   cambiarLetra(valor: TamanoLetra) {

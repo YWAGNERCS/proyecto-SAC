@@ -1,3 +1,5 @@
+import { Permiso } from '../auth/auth.service';
+
 /**
  * Menú de SGE-JD: grupos (píldoras de la barra superior) y sus módulos (íconos del riel izquierdo).
  * Lo usan la barra, el riel, el menú del celular y el buscador global ("ir a…").
@@ -7,8 +9,8 @@ export interface OpcionMenu {
   ruta: string;
   texto: string;
   icono: string;
-  /** Solo ADMIN: misma regla que SecurityConfig y rolGuard. */
-  soloAdmin?: boolean;
+  /** Solo ADMIN o quien tenga este permiso delegado: misma regla que SecurityConfig y permisoGuard. */
+  permiso?: Permiso;
   /** Rutas extra que también pertenecen a este módulo (para saber qué está activo). */
   prefijos?: string[];
 }
@@ -45,6 +47,10 @@ export const ICONOS = {
   campana: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
   menu: 'M4 6h16 M4 12h16 M4 18h16',
   flecha: 'M7 17L17 7 M7 7h10v10',
+  sol: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z M12 1v2 M12 21v2 M4.2 4.2l1.4 1.4 M18.4 18.4l1.4 1.4 M1 12h2 M21 12h2 M4.2 19.8l1.4-1.4 M18.4 5.6l1.4-1.4',
+  luna: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
+  escudo: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
+  historial: 'M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5 M12 7v5l4 2',
 };
 
 export const GRUPOS: GrupoMenu[] = [
@@ -82,7 +88,7 @@ export const GRUPOS: GrupoMenu[] = [
       { ruta: '/compras', texto: 'Compras', icono: ICONOS.compras },
       { ruta: '/catalogo/productos', texto: 'Productos', icono: ICONOS.productos },
       { ruta: '/catalogo/categorias', texto: 'Categorías', icono: ICONOS.categorias },
-      { ruta: '/catalogo/productos/nuevo', texto: 'Nuevo producto', icono: ICONOS.nuevo, soloAdmin: true },
+      { ruta: '/catalogo/productos/nuevo', texto: 'Nuevo producto', icono: ICONOS.nuevo, permiso: 'CATALOGO' },
     ],
   },
   {

@@ -230,7 +230,7 @@
               </td>
               <td class="num"><strong class="monto-cobro">{{ simbolo(c.moneda) }} {{ c.montoTotal | number: '1.2-2' }}</strong></td>
               <td class="text-end">
-                @if (c.estado === 'VIGENTE' && esAdmin()) {
+                @if (c.estado === 'VIGENTE' && puedeAnularCobros()) {
                   <button type="button" class="btn btn-sm btn-outline-secondary" (click)="abrirAnulacion(c)"
                           title="Para un cobro mal registrado: deja de contar en el saldo de sus ventas">Anular</button>
                 }
@@ -281,7 +281,7 @@
                 }
               </td>
               <td class="text-center">
-                @if (d.estado === 'PENDIENTE' && esAdmin()) {
+                @if (d.estado === 'PENDIENTE' && puedeDevolver()) {
                   <button class="btn btn-sm btn-primary" (click)="abrirDevolucion(d)">Registrar devolución</button>
                 } @else if (d.estado === 'PENDIENTE') {
                   <span class="muted">La registra el administrador</span>

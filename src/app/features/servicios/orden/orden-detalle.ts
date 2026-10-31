@@ -34,7 +34,9 @@ export class OrdenDetalleComponent {
   private readonly fb = inject(FormBuilder);
   private readonly ordenService = inject(OrdenService);
   private readonly productoService = inject(ProductoService);
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso SERVICIOS delegado (el backend exige lo mismo). */
+  readonly puedeServicios = computed(() => this.auth.puede('SERVICIOS'));
 
   readonly orden = signal<OrdenTrabajo | null>(null);
   readonly productos = signal<Producto[]>([]);

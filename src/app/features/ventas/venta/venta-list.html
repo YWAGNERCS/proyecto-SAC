@@ -92,7 +92,7 @@
               @if (v.proformaOrigenId) {
                 <span class="badge" style="background-color: var(--primary-light); color: var(--primary);">Prof #{{ v.proformaOrigenId }}</span>
               } @else {
-                <span class="badge" style="background-color: #F1F5F9; color: var(--text-muted);">Directa</span>
+                <span class="badge" style="background-color: var(--suave); color: var(--text-muted);">Directa</span>
               }
             </td>
             <td class="text-center">{{ getTipoPagoLabel(v.tipoPago) }}</td>
@@ -117,7 +117,7 @@
                   <a class="btn btn-sm btn-primary" routerLink="/cobranza" [queryParams]="{ clienteId: v.clienteId }"
                      title="Registrar un abono parcial o total en Cobranza">Cobrar</a>
                 }
-                @if (esAdmin()) {
+                @if (puedeAnular()) {
                   <button class="btn btn-sm btn-danger" (click)="anular(v)" title="Anular venta">Anular</button>
                 }
               } @else {

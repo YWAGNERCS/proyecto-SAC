@@ -74,7 +74,7 @@
                 <a class="btn btn-sm btn-outline-secondary" [routerLink]="['/servicios/ordenes/nueva']"
                    [queryParams]="{ clienteId: e.clienteId }" title="Programar una reparación o visita">Orden</a>
                 <button type="button" class="btn btn-sm btn-secondary" (click)="editar(e)">Editar</button>
-                @if (esAdmin()) {
+                @if (puedeServicios()) {
                   <button type="button" class="btn btn-sm btn-outline-secondary" (click)="abrirRetiro(e)">Retirar</button>
                 }
               }

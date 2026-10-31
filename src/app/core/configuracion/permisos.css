@@ -1,0 +1,133 @@
+.volver {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.usuarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.quien {
+  flex: 1;
+  min-width: 0;
+}
+
+.quien strong,
+.quien span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quien span {
+  font-size: 0.82rem;
+}
+
+.nota {
+  margin: 0 0 10px;
+  font-size: 0.84rem;
+}
+
+.lista-permisos {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-permisos li {
+  border-top: 1px solid var(--linea-suave);
+}
+
+.lista-permisos label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.lista-permisos label.bloqueado {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.lista-permisos strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.lista-permisos small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Casilla con forma de interruptor */
+.interruptor-check {
+  flex: none;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin: 1px 0 0;
+  border-radius: 999px;
+  background: var(--border-strong);
+  appearance: none;
+  cursor: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.interruptor-check::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 0.15s ease;
+}
+
+.interruptor-check:checked {
+  background: var(--primary);
+}
+
+.interruptor-check:checked::after {
+  transform: translateX(16px);
+}
+
+.interruptor-check:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.pie {
+  margin-top: 18px;
+  font-size: 0.84rem;
+}
+
+@media (max-width: 480px) {
+  .usuarios {
+    grid-template-columns: 1fr;
+  }
+}

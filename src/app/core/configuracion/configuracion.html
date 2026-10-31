@@ -25,7 +25,13 @@
         <div><dt>Descuento máximo por línea</dt><dd>{{ tope() === null ? '…' : tope() + ' %' }}</dd></div>
         <div><dt>Puede</dt><dd>{{ u.roles.includes('ADMIN')
           ? 'todo: además anular ventas y cobros, editar el catálogo, eliminar, cancelar órdenes y contratos'
-          : 'vender, cobrar, cotizar, comprar y programar servicios; no anula ni edita el catálogo' }}</dd></div>
+          : 'vender, cobrar, cotizar, comprar y programar servicios' }}</dd></div>
+        @if (!u.roles.includes('ADMIN')) {
+          <div><dt>Permisos adicionales</dt><dd>
+            @for (p of permisosDelegados(); track p) { <span class="badge badge-permiso">{{ p }}</span> }
+            @empty { <span class="muted">Ninguno. El administrador puede dárselos desde Configuración.</span> }
+          </dd></div>
+        }
       </dl>
       <div class="acciones">
         <a class="btn btn-secondary" [href]="urlCuenta" target="_blank" rel="noopener">Cambiar mi contraseña</a>
@@ -39,6 +45,15 @@
     <div class="titulo-con-icono">
       <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.engranaje" /></svg></span>
       <div><h2>Preferencias</h2><p>Se guardan en este navegador</p></div>
+    </div>
+    <div class="form-group">
+      <span class="form-label">Tema</span>
+      <div class="interruptor" role="group" aria-label="Tema">
+        @for (t of temas; track t.valor) {
+          <button type="button" [class.activo]="preferencias.tema() === t.valor" (click)="cambiarTema(t.valor)">{{ t.etiqueta }}</button>
+        }
+      </div>
+      <p class="muted" style="margin-top: 8px;">"Como el sistema" sigue al modo claro u oscuro de Windows. También con el botón sol/luna de la barra.</p>
     </div>
     <div class="form-group">
       <label class="form-label" for="pPeriodo">El tablero de Inicio abre con</label>
@@ -80,12 +95,17 @@
   @if (auth.tieneRol('ADMIN')) {
     <section class="tarjeta">
       <div class="titulo-con-icono">
-        <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.proveedores" /></svg></span>
-        <div><h2>Usuarios y permisos</h2><p>Solo el administrador</p></div>
+        <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.escudo" /></svg></span>
+        <div><h2>Usuarios y seguridad</h2><p>Solo el administrador</p></div>
       </div>
-      <p class="texto">Los usuarios, sus roles (ADMIN y ASISTENTE) y sus contraseñas se administran en Keycloak, no en SGE-JD:
-        así el sistema nunca guarda contraseñas. Para dar de alta a un nuevo asistente, créelo en la consola y asígnele el rol ASISTENTE.</p>
-      <a class="btn btn-primary" [href]="urlAdministracion" target="_blank" rel="noopener">Abrir la consola de Keycloak</a>
+      <p class="texto">Dele a un asistente permisos puntuales (anular ventas, editar el catálogo…) sin hacerlo administrador,
+        y revise quién hizo cada cambio en el sistema y quién inició sesión.</p>
+      <div class="acciones">
+        <a class="btn btn-primary" routerLink="/configuracion/permisos">Usuarios y permisos</a>
+        <a class="btn btn-secondary" routerLink="/configuracion/historial">Historial de cambios</a>
+      </div>
+      <p class="muted nota-keycloak">Las cuentas y contraseñas viven en Keycloak (SGE-JD nunca guarda contraseñas). Para crear un
+        asistente nuevo, hágalo en la <a [href]="urlAdministracion" target="_blank" rel="noopener">consola de Keycloak</a> con el rol ASISTENTE.</p>
     </section>
   }
 

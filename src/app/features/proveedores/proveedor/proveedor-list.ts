@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -15,7 +15,9 @@ import { Proveedor } from './proveedor.model';
 })
 export class ProveedorListComponent implements OnInit {
   /** Solo ADMIN modifica/elimina/anula (el backend lo vuelve a exigir con 403). */
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso ELIMINAR delegado (el backend exige lo mismo). */
+  readonly puedeEliminar = computed(() => this.auth.puede('ELIMINAR'));
 
   proveedores = signal<Proveedor[]>([]);
   cargando = signal(true);

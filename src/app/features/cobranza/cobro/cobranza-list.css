@@ -54,7 +54,7 @@
 }
 
 .kpi-c-alerta {
-  border-color: #FECACA;
+  border-color: var(--borde-peligro);
 }
 
 .kpi-c-alerta strong {
@@ -62,7 +62,7 @@
 }
 
 .kpi-c-aviso {
-  border-color: #FDE68A;
+  border-color: var(--borde-aviso);
 }
 
 .kpi-c-aviso strong {
@@ -122,8 +122,8 @@
 
 .contador-aviso {
   background: var(--warning-light);
-  border-color: #FDE68A;
-  color: #B45309;
+  border-color: var(--borde-aviso);
+  color: var(--texto-aviso);
 }
 
 /* ── Antigüedad de saldos ── */
@@ -219,7 +219,7 @@
 .avance {
   height: 6px;
   border-radius: 999px;
-  background: #EEF0F3;
+  background: var(--suave);
   overflow: hidden;
   margin-bottom: 4px;
 }
@@ -288,7 +288,7 @@
 .dialogo-fondo {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--fondo-velo);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -348,5 +348,5 @@ td .muted.num {
 .motivo-anulacion {
   margin-top: 4px;
   font-size: 0.8rem;
-  color: #991B1B;
+  color: var(--texto-peligro);
 }

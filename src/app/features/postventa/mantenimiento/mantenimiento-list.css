@@ -28,12 +28,12 @@
 }
 
 .kpi-alerta {
-  border-color: #FECACA;
+  border-color: var(--borde-peligro);
   background-color: var(--danger-light, #FEF2F2);
 }
 
 .kpi-alerta strong {
-  color: #B91C1C;
+  color: var(--texto-peligro);
 }
 
 .filtros {
@@ -93,7 +93,7 @@
 .dialogo-fondo {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--fondo-velo);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -48,8 +48,90 @@
   --shadow-sm: 0 1px 3px rgba(8, 27, 44, 0.04);
   --shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
   --shadow-lg: 0 8px 24px rgba(17, 24, 39, 0.08);
+  /* Texto sobre el color de acento (botones primarios, avatares, opción activa) */
+  --sobre-primary: #FFFFFF;
+  --barra-fondo: rgba(255, 255, 255, 0.92);
+  --fila-hover: #FAFAFB;
+  --linea-tabla: #F0F1F3;
+  --linea-suave: #E8F3F8;
+  --borde-tarjeta: #E2F0F6;
+  --texto-etiqueta: #374151;
+  --texto-peligro: #991B1B;
+  --texto-exito: #047857;
+  --texto-aviso: #B45309;
+  --borde-peligro: #FECACA;
+  --borde-aviso: #FDE68A;
+  --fondo-velo: rgba(17, 24, 39, 0.4);
+  --sombra-panel: 0 12px 32px rgba(8, 27, 44, 0.14);
+  --tooltip-fondo: #081B2C;
+  --destacada-fondo: linear-gradient(135deg, #102A43 0%, #033E8A 100%);
+  --grafico-barra: repeating-linear-gradient(135deg, #A9E7F3 0 6px, #91E0EF 6px 12px);
+  --grafico-barra-activa: repeating-linear-gradient(135deg, #102A43 0 6px, #0C2238 6px 12px);
   --riel-ancho: 76px;
   --topbar-alto: 76px;
+}
+
+/* ══ Tema oscuro (Configuración › Tema, o el botón sol/luna de la barra) ══
+   Escala de grises neutros: #111827 (fondo) · #9AA3AF (texto secundario) · #D1D5DB · #F3F4F6
+   (texto y acento) · #FFFFFF. Las superficies son el mismo #111827 aclarado unos puntos con blanco
+   (#1B2130, #222836, #292F3D, #3A404D) para separar tarjetas, filas y bordes sin salir de la escala.
+   El acento es #F3F4F6 con texto #111827 encima. Rojo, verde y ámbar solo para alertas y estados. */
+[data-theme='oscuro'] {
+  color-scheme: dark;
+  --primary: #F3F4F6;
+  --primary-hover: #FFFFFF;
+  --primary-light: rgba(243, 244, 246, 0.08);
+  --primary-soft: rgba(243, 244, 246, 0.14);
+  --primary-pastel: #D1D5DB;
+  --primary-text: #F3F4F6;
+  --secundario: #D1D5DB;
+  --suave: #292F3D;
+  --celeste: #9AA3AF;
+  --celeste-medio: #D1D5DB;
+  --primary-ring: rgba(209, 213, 219, 0.3);
+  --success: #34D399;
+  --success-light: rgba(52, 211, 153, 0.12);
+  --danger: #F87171;
+  --danger-hover: #EF4444;
+  --danger-light: rgba(248, 113, 113, 0.12);
+  --warning: #FBBF24;
+  --warning-light: rgba(251, 191, 36, 0.12);
+  --bg-color: #111827;
+  --surface: #1B2130;
+  --surface-muted: #222836;
+  --text-main: #F3F4F6;
+  --text-muted: #9AA3AF;
+  --text-soft: #6B7383;
+  --border-color: #292F3D;
+  --border: #292F3D;
+  --border-strong: #3A404D;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --sobre-primary: #111827;
+  --barra-fondo: rgba(17, 24, 39, 0.9);
+  --fila-hover: #222836;
+  --linea-tabla: #292F3D;
+  --linea-suave: #292F3D;
+  --borde-tarjeta: #292F3D;
+  --texto-etiqueta: #D1D5DB;
+  --texto-peligro: #FCA5A5;
+  --texto-exito: #6EE7B7;
+  --texto-aviso: #FCD34D;
+  --borde-peligro: rgba(248, 113, 113, 0.35);
+  --borde-aviso: rgba(251, 191, 36, 0.35);
+  --fondo-velo: rgba(0, 0, 0, 0.6);
+  --sombra-panel: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --tooltip-fondo: #3A404D;
+  --destacada-fondo: linear-gradient(135deg, #292F3D 0%, #1B2130 100%);
+  --grafico-barra: repeating-linear-gradient(135deg, #3A404D 0 6px, #333946 6px 12px);
+  --grafico-barra-activa: repeating-linear-gradient(135deg, #D1D5DB 0 6px, #C2C7CF 6px 12px);
+}
+
+/* Avatares de clientes y técnicos: su tono azul va en línea (tonoAvatar); en oscuro, gris de la escala */
+[data-theme='oscuro'] :is(.avatar-mini, .avatar-tecnico) {
+  background: #3A404D !important;
+  color: #F3F4F6 !important;
 }
 
 * {
@@ -124,7 +206,7 @@ a {
 .card {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  border: 1px solid #E2F0F6;
+  border: 1px solid var(--borde-tarjeta);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
   margin-bottom: 1.25rem;
@@ -166,7 +248,7 @@ a {
   font-size: 0.83rem;
   font-weight: 500;
   margin-bottom: 6px;
-  color: #374151;
+  color: var(--texto-etiqueta);
 }
 
 .form-control, .form-select {
@@ -232,8 +314,14 @@ textarea.form-control {
 
 .alert-danger {
   background-color: var(--danger-light);
-  border-color: #FECACA;
-  color: #991B1B;
+  border-color: var(--borde-peligro);
+  color: var(--texto-peligro);
+}
+
+.alert-success {
+  background-color: var(--success-light);
+  border-color: var(--success-light);
+  color: var(--texto-exito);
 }
 
 .alert-info {
@@ -273,7 +361,7 @@ textarea.form-control {
 
 .btn-primary {
   background: var(--primary);
-  color: #FFFFFF;
+  color: var(--sobre-primary);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -384,7 +472,7 @@ hr {
 
 .table td {
   padding: 13px 18px;
-  border-bottom: 1px solid #F0F1F3;
+  border-bottom: 1px solid var(--linea-tabla);
   color: var(--text-main);
   font-size: 0.89rem;
   vertical-align: middle;
@@ -395,7 +483,7 @@ hr {
 }
 
 .table tbody tr:hover {
-  background-color: #FAFAFB;
+  background-color: var(--fila-hover);
 }
 
 /* ── Etiquetas de estado ── */
@@ -415,17 +503,17 @@ hr {
 
 .badge-success {
   background-color: var(--success-light);
-  color: #047857;
+  color: var(--texto-exito);
 }
 
 .badge-danger {
   background-color: var(--danger-light);
-  color: #B91C1C;
+  color: var(--texto-peligro);
 }
 
 .badge-warning {
   background-color: var(--warning-light);
-  color: #B45309;
+  color: var(--texto-aviso);
 }
 
 .badge-success-btn,
@@ -514,7 +602,7 @@ hr {
 .dialogo-fondo {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.4);
+  background: var(--fondo-velo);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -733,7 +821,7 @@ hr {
   padding: 3px 10px;
   border-radius: 999px;
   background: var(--primary);
-  color: #FFFFFF;
+  color: var(--sobre-primary);
   font-size: 0.74rem;
   font-weight: 500;
   white-space: nowrap;
@@ -764,7 +852,7 @@ hr {
 
 .interruptor button.activo {
   background: var(--primary);
-  color: #FFFFFF;
+  color: var(--sobre-primary);
 }
 
 .tabla-suave {
@@ -787,7 +875,7 @@ hr {
 .tabla-suave td {
   padding: 10px;
   font-size: 0.86rem;
-  border-top: 1px solid #E8F3F8;
+  border-top: 1px solid var(--linea-suave);
 }
 
 .tabla-suave tbody tr:hover {
@@ -822,7 +910,7 @@ hr {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  color: #FFFFFF;
+  color: #FFFFFF;   /* el fondo es un tono oscuro fijo (tonoAvatar) en ambos temas */
   font-size: 0.74rem;
   font-weight: 600;
   flex-shrink: 0;

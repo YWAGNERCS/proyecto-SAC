@@ -29,6 +29,30 @@ export interface UsuarioSesion {
 }
 
 const ROLES_SISTEMA = ['ADMIN', 'ASISTENTE'];
+
+/**
+ * Permisos que el dueño puede delegar a un asistente (Configuración › Usuarios y permisos).
+ * Viajan en el token como roles PERM_<código>; ADMIN los tiene todos. Mismo catálogo que Permiso.java.
+ */
+export type Permiso =
+  | 'ANULAR_VENTAS'
+  | 'ANULAR_COBROS'
+  | 'DEVOLUCIONES'
+  | 'CATALOGO'
+  | 'ELIMINAR'
+  | 'SERVICIOS'
+  | 'DESCUENTO_AMPLIADO';
+
+/** Cómo se le dice a cada permiso en pantalla (el backend envía además la descripción larga). */
+export const NOMBRE_PERMISO: Record<Permiso, string> = {
+  ANULAR_VENTAS: 'Anular ventas',
+  ANULAR_COBROS: 'Anular cobros',
+  DEVOLUCIONES: 'Registrar devoluciones',
+  CATALOGO: 'Editar el catálogo',
+  ELIMINAR: 'Eliminar clientes y proveedores',
+  SERVICIOS: 'Contratos, cancelar órdenes y dar de baja equipos',
+  DESCUENTO_AMPLIADO: 'Descuento del administrador',
+};
 const CLAVE_CODE_VERIFIER = 'sgejd_pkce_code_verifier';
 const CLAVE_STATE = 'sgejd_pkce_state';
 const CLAVE_DESTINO = 'sgejd_pkce_destino';
@@ -73,6 +97,19 @@ export class AuthService {
 
   /** Solo el dueño anula ventas, modifica el catálogo y elimina clientes/proveedores (el backend lo vuelve a exigir). */
   readonly esAdmin = computed(() => this.roles().includes('ADMIN'));
+
+  /** Permisos delegados que trae el token (sin el prefijo PERM_). */
+  readonly permisos = computed<Permiso[]>(() =>
+    this.roles().filter((r) => r.startsWith('PERM_')).map((r) => r.slice(5) as Permiso),
+  );
+
+  /**
+   * ¿Puede hacer esta operación del dueño? ADMIN siempre; un asistente solo si se le delegó.
+   * Solo decide qué botones mostrar: el backend vuelve a exigir lo mismo (403).
+   */
+  puede(permiso: Permiso): boolean {
+    return this.esAdmin() || this.roles().includes('PERM_' + permiso);
+  }
 
   tieneRol(...rolesPermitidos: string[]): boolean {
     return rolesPermitidos.some((rol) => this.roles().includes(rol));

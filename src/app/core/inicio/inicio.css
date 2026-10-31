@@ -46,7 +46,7 @@
   padding: 8px;
   background: var(--surface);
   border-radius: 20px;
-  box-shadow: 0 12px 32px rgba(8, 27, 44, 0.14);
+  box-shadow: var(--sombra-panel);
   z-index: 100;
 }
 
@@ -126,7 +126,7 @@
   gap: 6px;
   padding: 18px 20px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #102A43 0%, #033E8A 100%);
+  background: var(--destacada-fondo);
   color: #FFFFFF;
 }
 
@@ -235,12 +235,12 @@
   position: relative;
   width: min(56px, 100%);
   border-radius: 999px;
-  background: repeating-linear-gradient(135deg, #A9E7F3 0 6px, #91E0EF 6px 12px);
+  background: var(--grafico-barra);
   transition: height 0.35s ease;
 }
 
 .barra-activa {
-  background: repeating-linear-gradient(135deg, #102A43 0 6px, #0C2238 6px 12px);
+  background: var(--grafico-barra-activa);
   box-shadow: 0 0 0 4px var(--primary-light);
 }
 
@@ -252,7 +252,7 @@
   padding: 3px 10px;
   border-radius: 999px;
   background: var(--primary);
-  color: #FFFFFF;
+  color: var(--sobre-primary);
   font-size: 0.72rem;
   font-weight: 500;
   white-space: nowrap;
@@ -378,7 +378,7 @@
   height: 64px;
   border-radius: 50%;
   background: var(--primary);
-  color: #FFFFFF;
+  color: var(--sobre-primary);
   font-size: 1.8rem;
   margin-bottom: 18px;
 }

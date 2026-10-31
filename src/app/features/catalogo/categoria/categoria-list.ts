@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
@@ -12,7 +12,9 @@ import { Categoria } from './categoria.model';
 })
 export class CategoriaList implements OnInit {
   /** Solo ADMIN modifica/elimina/anula (el backend lo vuelve a exigir con 403). */
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso CATALOGO delegado (el backend exige lo mismo). */
+  readonly puedeCatalogo = computed(() => this.auth.puede('CATALOGO'));
 
   private readonly categoriaService = inject(CategoriaService);
 

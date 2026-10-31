@@ -13,7 +13,7 @@ import { GRUPOS, GrupoMenu, ICONOS, grupoDeUrl, iniciales } from './menu';
  *  - Riel izquierdo: los módulos del grupo activo, como íconos con su nombre al pasar el mouse.
  *  - En tablet y celular el riel se oculta y ☰ abre el menú completo con texto.
  * Inicio es público; el resto del menú aparece solo con sesión. Las opciones solo ADMIN
- * siguen la misma regla que SecurityConfig y rolGuard.
+ * siguen la misma regla que SecurityConfig y permisoGuard.
  */
 @Component({
   selector: 'app-layout',
@@ -27,7 +27,7 @@ export class Layout {
   private readonly router = inject(Router);
   private readonly host = inject(ElementRef<HTMLElement>);
   /** Se crea al arrancar para aplicar el tamaño de letra guardado. */
-  private readonly preferencias = inject(PreferenciasService);
+  readonly preferencias = inject(PreferenciasService);
 
   readonly grupos = GRUPOS;
   readonly iconos = ICONOS;
@@ -37,7 +37,7 @@ export class Layout {
   /** Grupo de la pantalla actual: su píldora queda activa y el riel muestra sus módulos. */
   readonly grupoActivo = computed<GrupoMenu>(() => grupoDeUrl(this.url()));
   readonly opcionesRiel = computed(() =>
-    this.grupoActivo().opciones.filter((o) => !o.soloAdmin || this.auth.tieneRol('ADMIN')));
+    this.grupoActivo().opciones.filter((o) => !o.permiso || this.auth.puede(o.permiso)));
 
   /** Menú completo desplegado (tablet y celular). */
   readonly menuAbierto = signal(false);
@@ -55,11 +55,11 @@ export class Layout {
 
   /** Primera opción visible del grupo (a donde lleva su píldora). */
   destinoDe(g: GrupoMenu): string {
-    return g.opciones.find((o) => !o.soloAdmin || this.auth.tieneRol('ADMIN'))?.ruta ?? '/';
+    return g.opciones.find((o) => !o.permiso || this.auth.puede(o.permiso))?.ruta ?? '/';
   }
 
   visibles(g: GrupoMenu) {
-    return g.opciones.filter((o) => (!o.soloAdmin || this.auth.tieneRol('ADMIN')) && !(g.id === 'inicio' && o.ruta !== '/'));
+    return g.opciones.filter((o) => (!o.permiso || this.auth.puede(o.permiso)) && !(g.id === 'inicio' && o.ruta !== '/'));
   }
 
   /** La opción del riel está activa si la URL es suya (las rutas más cortas no "ganan" a las largas). */

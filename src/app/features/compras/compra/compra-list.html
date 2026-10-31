@@ -38,7 +38,7 @@
 </div>
 
 @if (errorMessage()) {
-  <div style="background-color: #FEE2E2; color: #991B1B; padding: 12px 16px; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #FCA5A5; font-size: 0.9rem;">
+  <div style="background-color: var(--danger-light); color: var(--texto-peligro); padding: 12px 16px; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--borde-peligro); font-size: 0.9rem;">
     {{ errorMessage() }}
   </div>
 }
@@ -80,7 +80,7 @@
               }
             </td>
             <td class="text-center">
-              <span class="badge" style="background-color: #F1F5F9; color: var(--text-main);">
+              <span class="badge" style="background-color: var(--suave); color: var(--text-main);">
                 {{ c.moneda }}
               </span>
             </td>

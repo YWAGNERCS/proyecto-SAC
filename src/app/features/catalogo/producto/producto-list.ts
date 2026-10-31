@@ -19,7 +19,9 @@ type FiltroCategoria = 'TODAS' | 'SIN_CATEGORIA' | number;
 })
 export class ProductoList implements OnInit {
   /** Solo ADMIN modifica/elimina/anula (el backend lo vuelve a exigir con 403). */
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso CATALOGO delegado (el backend exige lo mismo). */
+  readonly puedeCatalogo = computed(() => this.auth.puede('CATALOGO'));
 
   private readonly productoService = inject(ProductoService);
   private readonly categoriaService = inject(CategoriaService);

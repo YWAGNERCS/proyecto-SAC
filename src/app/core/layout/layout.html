@@ -18,6 +18,12 @@
 
       <div class="barra-derecha">
         <app-buscador class="barra-buscador" />
+        <!-- Tema: el contrario del que se ve; en Configuración se elige también "como el sistema" -->
+        <button type="button" class="boton-redondo" (click)="preferencias.alternarTema()"
+                [attr.aria-label]="preferencias.oscuro() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+                [title]="preferencias.oscuro() ? 'Tema claro' : 'Tema oscuro'">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="preferencias.oscuro() ? iconos.sol : iconos.luna" /></svg>
+        </button>
         <app-alertas />
 
         <!-- Usuario: rol y cerrar sesión -->
@@ -38,6 +44,14 @@
                 <a routerLink="/configuracion" class="usuario-opcion" role="menuitem">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.engranaje" /></svg> Configuración
                 </a>
+                @if (u.roles.includes('ADMIN')) {
+                  <a routerLink="/configuracion/permisos" class="usuario-opcion" role="menuitem">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.escudo" /></svg> Usuarios y permisos
+                  </a>
+                  <a routerLink="/configuracion/historial" class="usuario-opcion" role="menuitem">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.historial" /></svg> Historial de cambios
+                  </a>
+                }
                 <button id="btn-logout" type="button" class="usuario-salir" role="menuitem" (click)="logout()"
                         title="Cerrar sesión (también en Keycloak)">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos.salir" /></svg> Cerrar sesión
@@ -63,8 +77,8 @@
     <aside class="riel" [attr.aria-label]="'Módulos de ' + grupoActivo().titulo">
       <nav class="riel-grupo">
         @for (op of opcionesRiel(); track op.ruta) {
-          <a [routerLink]="op.ruta" class="riel-opcion" [class.activo]="activa(op.ruta)" [class.riel-opcion-admin]="op.soloAdmin"
-             [attr.data-tooltip]="op.texto + (op.soloAdmin ? ' (administrador)' : '')" [attr.aria-label]="op.texto">
+          <a [routerLink]="op.ruta" class="riel-opcion" [class.activo]="activa(op.ruta)" [class.riel-opcion-admin]="!!op.permiso"
+             [attr.data-tooltip]="op.texto + (op.permiso ? ' (requiere permiso)' : '')" [attr.aria-label]="op.texto">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="op.icono" /></svg>
           </a>
         }

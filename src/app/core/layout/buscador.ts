@@ -62,7 +62,7 @@ export class BuscadorComponent {
     // Pantallas del menú (respeta las solo para ADMIN)
     for (const g of GRUPOS) {
       for (const o of g.opciones) {
-        if (o.soloAdmin && !this.auth.tieneRol('ADMIN')) continue;
+        if (o.permiso && !this.auth.puede(o.permiso)) continue;
         if (normalizar(o.texto).includes(q) && !salida.some((r) => r.ruta[0] === o.ruta)) {
           salida.push({ tipo: 'Pantalla', texto: o.texto, detalle: g.titulo, ruta: [o.ruta], icono: o.icono });
         }

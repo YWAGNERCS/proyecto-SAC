@@ -25,7 +25,9 @@ interface Agregado {
 })
 export class VentaListComponent implements OnInit {
   /** Solo ADMIN modifica/elimina/anula (el backend lo vuelve a exigir con 403). */
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso ANULAR_VENTAS delegado (el backend exige lo mismo). */
+  readonly puedeAnular = computed(() => this.auth.puede('ANULAR_VENTAS'));
 
   private ventaService = inject(VentaService);
   private descargaService = inject(DescargaService);

@@ -1,0 +1,59 @@
+<div class="page-header">
+  <div>
+    <a routerLink="/configuracion" class="volver">← Configuración</a>
+    <h1 class="page-title">Usuarios y permisos</h1>
+    <p class="page-sub">Dele a un asistente operaciones del dueño sin hacerlo administrador</p>
+  </div>
+</div>
+
+@if (error()) { <div class="alert alert-danger">{{ error() }}</div> }
+@if (aviso()) { <div class="alert alert-success" role="status">{{ aviso() }}</div> }
+
+@if (cargando()) {
+  <p class="muted">Cargando usuarios…</p>
+} @else {
+  <div class="usuarios">
+    @for (u of usuarios(); track u.username) {
+      <section class="tarjeta">
+        <div class="cabecera">
+          <span class="avatar-mini" [style.background]="tonoAvatar(u.username)" aria-hidden="true">{{ iniciales(u.nombre) }}</span>
+          <div class="quien">
+            <strong>{{ u.nombre }}</strong>
+            <span class="muted">{{ u.username }}{{ u.email ? ' · ' + u.email : '' }}</span>
+          </div>
+          <span class="badge" [class.badge-success]="u.rol === 'ADMIN'">{{ u.rol === 'ADMIN' ? 'Administrador' : u.rol === 'ASISTENTE' ? 'Asistente' : 'Sin rol' }}</span>
+          @if (!u.habilitado) { <span class="badge badge-danger">Deshabilitado</span> }
+        </div>
+
+        @if (u.rol === 'ADMIN') {
+          <p class="muted nota">Es administrador: ya puede todo. Su rol se cambia en la consola de Keycloak.</p>
+        }
+
+        <ul class="lista-permisos">
+          @for (p of catalogo(); track p.codigo) {
+            <li>
+              <label [class.bloqueado]="u.rol === 'ADMIN'">
+                <input type="checkbox" class="interruptor-check" [checked]="marcado(u, p.codigo)"
+                       [disabled]="u.rol === 'ADMIN' || guardando() === u.username" (change)="alternar(u, p.codigo)" />
+                <span><strong>{{ p.nombre }}</strong><small>{{ p.descripcion }}</small></span>
+              </label>
+            </li>
+          }
+        </ul>
+
+        @if (u.rol !== 'ADMIN') {
+          <div class="acciones">
+            <button type="button" class="btn btn-primary" [disabled]="!hayCambios(u) || guardando() === u.username" (click)="guardar(u)">
+              {{ guardando() === u.username ? 'Guardando…' : 'Guardar permisos' }}
+            </button>
+            @if (hayCambios(u)) {
+              <button type="button" class="btn btn-outline-secondary" (click)="descartar(u)">Descartar</button>
+            }
+          </div>
+        }
+      </section>
+    }
+  </div>
+  <p class="muted pie">Cada cambio queda en el <a routerLink="/configuracion/historial">historial de cambios</a>.
+    El sistema vuelve a comprobar el permiso en cada operación: ocultar un botón no basta para saltárselo.</p>
+}

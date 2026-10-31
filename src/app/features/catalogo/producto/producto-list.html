@@ -5,7 +5,7 @@
       Equipos y materiales del catálogo, cada uno con su categoría
     </p>
   </div>
-  @if (esAdmin()) {
+  @if (puedeCatalogo()) {
     <a routerLink="/catalogo/productos/nuevo" class="btn btn-primary">+ Nuevo Producto</a>
   }
 </div>
@@ -57,7 +57,7 @@
             <td>
               <strong style="color: var(--text-main);">{{ p.nombre }}</strong>
               @if (!p.visibleEnCatalogo) {
-                <span class="badge" style="margin-left: 6px; background-color: #F1F5F9; color: var(--text-muted);">Oculto</span>
+                <span class="badge" style="margin-left: 6px; background-color: var(--suave); color: var(--text-muted);">Oculto</span>
               }
             </td>
             <td>
@@ -81,7 +81,7 @@
             </td>
             <td style="text-align: right; white-space: nowrap;">
               <a class="btn btn-secondary btn-sm" [routerLink]="['/catalogo/productos', p.id, 'kardex']">Kardex</a>
-              @if (esAdmin()) {
+              @if (puedeCatalogo()) {
                 <a class="btn btn-outline-secondary btn-sm" style="margin-left: 6px;" [routerLink]="['/catalogo/productos', p.id, 'editar']">Editar</a>
                 <button class="btn btn-danger btn-sm" style="margin-left: 8px;" (click)="eliminar(p)">Eliminar</button>
               }

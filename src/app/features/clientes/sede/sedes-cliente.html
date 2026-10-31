@@ -57,7 +57,7 @@
                 <td>{{ s.contacto ?? '—' }}@if (s.telefono) { <div class="texto-muted">{{ s.telefono }}</div> }</td>
                 <td class="text-end" style="white-space: nowrap;">
                   <button type="button" class="btn btn-sm btn-outline-secondary" (click)="editar(s)">Editar</button>
-                  @if (esAdmin()) {
+                  @if (puedeEliminar()) {
                     <button type="button" class="btn btn-sm btn-danger" style="margin-left: 6px;" (click)="eliminar(s)">Eliminar</button>
                   }
                 </td>

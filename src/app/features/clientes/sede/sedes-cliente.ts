@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, signal, computed } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -17,7 +17,9 @@ import { Sede } from './sede.model';
 export class SedesClienteComponent {
   private readonly fb = inject(FormBuilder);
   private readonly sedeService = inject(SedeService);
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso ELIMINAR delegado (el backend exige lo mismo). */
+  readonly puedeEliminar = computed(() => this.auth.puede('ELIMINAR'));
 
   readonly clienteId = input.required<number>();
 

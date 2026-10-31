@@ -5,7 +5,7 @@
       Administre las categorías disponibles para clasificar productos
     </p>
   </div>
-  @if (esAdmin()) {
+  @if (puedeCatalogo()) {
     <a routerLink="/catalogo/categorias/nueva" class="btn btn-primary">
       + Nueva Categoría
     </a>
@@ -32,7 +32,7 @@
               <span style="color: var(--text-muted);">{{ cat.descripcion || 'Sin descripción' }}</span>
             </td>
             <td style="text-align: right;">
-              @if (esAdmin()) {
+              @if (puedeCatalogo()) {
                 <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/catalogo/categorias', cat.id, 'editar']">
                   Editar
                 </a>

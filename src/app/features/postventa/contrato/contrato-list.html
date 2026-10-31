@@ -3,7 +3,7 @@
     <h1 class="page-title">Contratos de mantenimiento</h1>
     <p class="page-sub">Visitas periódicas pactadas con el cliente; cada visita se programa en Postventa y se ejecuta con una orden</p>
   </div>
-  @if (esAdmin()) {
+  @if (puedeServicios()) {
     <button type="button" class="btn btn-primary" (click)="nuevo()">+ Nuevo contrato</button>
   }
 </div>
@@ -63,7 +63,7 @@
             <td>{{ k.visitasRealizadas }} hecha(s)<div class="muted">{{ k.visitasPendientes }} pendiente(s)</div></td>
             <td class="acciones-fila">
               <a class="btn btn-sm btn-outline-secondary" routerLink="/postventa" title="Ver sus visitas en Postventa">Visitas</a>
-              @if (esAdmin() && k.estado === 'VIGENTE') {
+              @if (puedeServicios() && k.estado === 'VIGENTE') {
                 <button type="button" class="btn btn-sm btn-outline-secondary" (click)="abrirCancelacion(k)">Cancelar</button>
               }
             </td>

@@ -44,7 +44,10 @@ export class CobranzaListComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   /** Registrar una devolución es solo de ADMIN (el backend lo vuelve a exigir con 403). */
-  readonly esAdmin = inject(AuthService).esAdmin;
+  private readonly auth = inject(AuthService);
+  /** ADMIN o asistente con el permiso delegado (el backend exige lo mismo). */
+  readonly puedeAnularCobros = computed(() => this.auth.puede('ANULAR_COBROS'));
+  readonly puedeDevolver = computed(() => this.auth.puede('DEVOLUCIONES'));
   readonly metodos = METODOS_PAGO;
 
   vista = signal<Vista>('POR_COBRAR');
