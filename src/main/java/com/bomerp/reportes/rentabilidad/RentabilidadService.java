@@ -3,10 +3,10 @@ package com.bomerp.reportes.rentabilidad;
 import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.servicios.orden.entity.MaterialOrden;
 import com.bomerp.servicios.orden.entity.OrdenTrabajo;
-import com.bomerp.servicios.orden.repository.OrdenTrabajoRepository;
+import com.bomerp.servicios.orden.service.OrdenTrabajoService;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.entity.Venta;
-import com.bomerp.ventas.venta.repository.VentaRepository;
+import com.bomerp.ventas.venta.service.VentaService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,14 +32,14 @@ public class RentabilidadService {
 
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
 
-    private final VentaRepository ventaRepository;
-    private final OrdenTrabajoRepository ordenRepository;
+    private final VentaService ventaService;
+    private final OrdenTrabajoService ordenService;
     private final TipoCambioService tipoCambioService;
 
-    public RentabilidadService(VentaRepository ventaRepository, OrdenTrabajoRepository ordenRepository,
+    public RentabilidadService(VentaService ventaService, OrdenTrabajoService ordenService,
                                TipoCambioService tipoCambioService) {
-        this.ventaRepository = ventaRepository;
-        this.ordenRepository = ordenRepository;
+        this.ventaService = ventaService;
+        this.ordenService = ordenService;
         this.tipoCambioService = tipoCambioService;
     }
 
@@ -79,7 +79,7 @@ public class RentabilidadService {
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
         }
-        List<DetalleVenta> lineas = ventaRepository.lineasVendidas(desde, hasta);
+        List<DetalleVenta> lineas = ventaService.lineasVendidas(desde, hasta);
 
         Map<Long, Suma> porVenta = new LinkedHashMap<>();
         Map<Long, Boolean> incompleta = new HashMap<>();
@@ -136,14 +136,14 @@ public class RentabilidadService {
     }
 
     private List<TecnicoFila> porTecnico(LocalDate desde, LocalDate hasta) {
-        List<OrdenTrabajo> ordenes = ordenRepository.realizadasEntre(desde, hasta);
+        List<OrdenTrabajo> ordenes = ordenService.realizadasEntre(desde, hasta);
         Set<Long> idsVentas = new HashSet<>();
         ordenes.forEach(o -> {
             if (o.getVentaFacturadaId() != null) idsVentas.add(o.getVentaFacturadaId());
         });
         Map<Long, List<DetalleVenta>> lineasDeVenta = new HashMap<>();
         if (!idsVentas.isEmpty()) {
-            for (DetalleVenta d : ventaRepository.lineasDeVentas(idsVentas)) {
+            for (DetalleVenta d : ventaService.lineasDeVentas(idsVentas)) {
                 lineasDeVenta.computeIfAbsent(d.getVenta().getId(), k -> new ArrayList<>()).add(d);
             }
         }

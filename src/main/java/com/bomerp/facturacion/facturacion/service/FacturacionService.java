@@ -15,7 +15,8 @@ import java.util.Optional;
 
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.ventas.venta.entity.Venta;
-import com.bomerp.ventas.venta.repository.VentaRepository;
+import com.bomerp.ventas.venta.service.ComprobantesDeVenta;
+import com.bomerp.ventas.venta.service.VentaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,20 +24,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Slf4j
-public class FacturacionService {
+public class FacturacionService implements ComprobantesDeVenta {
 
     private final ComprobanteRepository comprobanteRepository;
-    private final VentaRepository ventaRepository;
+    private final VentaService ventaService;
     private final OseClient oseClient;
     private final com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo;
     private final GeneradorPdfFacturacionService generadorPdfFacturacionService;
     private final NotaCreditoRepository notaCreditoRepository;
     private final CorrelativoService correlativoService;
 
-    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaRepository ventaRepository, OseClient oseClient, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
+    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, OseClient oseClient, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
                               CorrelativoService correlativoService) {
         this.comprobanteRepository = comprobanteRepository;
-        this.ventaRepository = ventaRepository;
+        this.ventaService = ventaService;
         this.oseClient = oseClient;
         this.notificadorCorreo = notificadorCorreo;
         this.generadorPdfFacturacionService = generadorPdfFacturacionService;
@@ -46,8 +47,7 @@ public class FacturacionService {
 
     @Transactional
     public Comprobante emitirComprobanteParaVenta(Long ventaId) {
-        Venta venta = ventaRepository.findById(ventaId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Venta no encontrada: " + ventaId));
+        Venta venta = ventaService.obtenerPorIdPublico(ventaId);   // 404 si no existe
 
         // Verificamos si ya tiene comprobante
         if (comprobanteRepository.findByVentaId(ventaId).isPresent()) {
@@ -74,8 +74,7 @@ public class FacturacionService {
         Comprobante comprobanteGuardado = comprobanteRepository.save(comprobante);
 
         // Actualizamos la venta
-        venta.setComprobanteId(comprobanteGuardado.getId());
-        ventaRepository.save(venta);
+        ventaService.asignarComprobante(ventaId, comprobanteGuardado.getId());
 
         // 3. Enviamos al OSE (Nubefact)
         OseClient.RespuestaOse respuesta = oseClient.emitir(comprobanteGuardado);
@@ -138,12 +137,14 @@ public class FacturacionService {
     }
 
     /** Fachada para Ventas (reportes y Excel): número "SERIE-NUMERO" del comprobante de una venta. */
+    @Override
     @Transactional(readOnly = true)
     public Optional<String> numeroComprobanteDeVenta(Long ventaId) {
         return comprobanteRepository.findByVentaId(ventaId).map(c -> c.getSerie() + "-" + c.getNumero());
     }
 
     /** Número de la nota de crédito que anuló el comprobante de una venta, si existe. */
+    @Override
     @Transactional(readOnly = true)
     public Optional<String> numeroNotaCreditoDeVenta(Long ventaId) {
         return comprobanteRepository.findByVentaId(ventaId)

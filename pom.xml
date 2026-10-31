@@ -19,6 +19,7 @@
 
     <properties>
         <java.version>21</java.version>
+        <spring-modulith.version>2.0.7</spring-modulith.version>
         <maven.compiler.proc>full</maven.compiler.proc>
     </properties>
 
@@ -111,7 +112,37 @@
             <artifactId>spring-boot-starter-data-jpa-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Anotaciones de Spring Modulith (@NamedInterface en package-info): solo marcan la API de cada módulo -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-api</artifactId>
+        </dependency>
+        <!-- Spring Modulith (ADR-002): verifica en una prueba que ningún módulo use lo interno de otro
+             y genera el diagrama de módulos. Solo en pruebas: no cambia nada en producción. -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-docs</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>

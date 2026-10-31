@@ -1,6 +1,6 @@
 package com.bomerp.proformas.proforma.service;
 import com.bomerp.config.ReglaNegocioException;
-import com.bomerp.config.descuento.TopeDescuentoService;
+import com.bomerp.seguridad.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.proformas.proformarequest.entity.ProformaRequest;
 import com.bomerp.proformas.pdf.service.GeneradorPdfService;
@@ -63,6 +63,12 @@ public class ProformaService {
                 .sorted(java.util.Comparator.comparing(Proforma::getId).reversed())
                 .map(ProformaResponseDTO::desdeEntidad)
                 .toList();
+    }
+
+    /** Fachada para Reportes: proformas PENDIENTES (entidades, con su cliente e ítems). */
+    @Transactional(readOnly = true)
+    public List<Proforma> pendientes() {
+        return proformaRepository.findByEstado(Proforma.EstadoProforma.PENDIENTE);
     }
 
     /**

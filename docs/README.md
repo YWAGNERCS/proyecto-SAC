@@ -284,6 +284,90 @@ Monolito modular: **un solo proyecto Maven y un solo ejecutable Spring Boot**. C
 
 Errores: `GlobalExceptionHandler` traduce excepciones a 400 (validación), 404 (`RecursoNoEncontradoException`), 409 (`ReglaNegocioException`, `StockInsuficienteException`) y 500 sin filtrar detalles.
 
+#### Límites entre módulos (ADR-002, verificado con Spring Modulith)
+
+Cada paquete directo de `com.bomerp` es un **módulo**. Un módulo solo puede usar de otro su **API**: los paquetes
+`service`, `entity`, `dto` y `event` (marcados con `@NamedInterface` en su `package-info.java`) y las piezas
+compartidas de `config` (`empresa`, `exportacion`, `tipocambio`) y de `seguridad` (`descuento`). Sus `repository` y
+`controller` son internos. Tampoco se permiten ciclos entre módulos.
+
+`ModularityTests` lo verifica en cada `mvn test` con **Spring Modulith 2.0.7**: si alguien usa el repositorio de otro
+módulo o crea un ciclo, la prueba falla y dice qué clase lo hizo. Al activarlo (31/10/2026) había 1 143 avisos; se
+resolvieron así:
+
+- **Eventos en vez de llamadas directas:** al registrar una venta, `VentaService` publica `VentaRegistradaEvent` y
+  **Facturación** (emite el comprobante) y **Postventa** (programa los mantenimientos) reaccionan; al anularla,
+  `VentaAnuladaEvent` lo escuchan Postventa (cancela visitas), Facturación (nota de crédito) y Cobranza (devolución).
+  Corren en la misma transacción: si un oyente falla, la venta no se guarda (igual que antes).
+- **Inversión de dependencias:** el reporte de ventas necesita el número de comprobante; Ventas define la interfaz
+  `ComprobantesDeVenta` y Facturación la implementa, así Ventas no depende de Facturación.
+- **Fachadas en vez de repositorios ajenos:** Facturación, Reportes y Rentabilidad piden los datos a `VentaService`,
+  `ProformaService` y `OrdenTrabajoService` (`registradasEntre`, `pendientesVencidasAl`, `lineasVendidas`,
+  `pendientes`, `realizadasEntre`, `asignarComprobante`).
+- **Cada cosa en su módulo:** la detracción pasó de `config` a `ventas/tributos`, y la seguridad (`SecurityConfig`,
+  permisos, tope de descuento e historial de cambios) a un módulo nuevo `seguridad`. `config` quedó como
+  infraestructura compartida que no depende de nadie.
+- **API de cada módulo:** 73 `package-info.java` con `@NamedInterface`.
+
+Dependencias entre módulos (generado por `ModularityTests` en `target/spring-modulith-docs/`, junto con los diagramas
+PlantUML de Spring Modulith):
+
+```mermaid
+flowchart LR
+    catalogo --> config
+    clientes --> config
+    cobranza --> clientes
+    cobranza --> config
+    cobranza --> facturacion
+    cobranza --> ventas
+    compras --> catalogo
+    compras --> config
+    compras --> proveedores
+    facturacion --> catalogo
+    facturacion --> clientes
+    facturacion --> config
+    facturacion --> notificaciones
+    facturacion --> ventas
+    inventario --> catalogo
+    inventario --> clientes
+    inventario --> compras
+    inventario --> config
+    inventario --> notificaciones
+    inventario --> proveedores
+    inventario --> servicios
+    inventario --> ventas
+    postventa --> catalogo
+    postventa --> clientes
+    postventa --> config
+    postventa --> notificaciones
+    postventa --> ventas
+    proformas --> catalogo
+    proformas --> clientes
+    proformas --> config
+    proformas --> notificaciones
+    proformas --> seguridad
+    proveedores --> clientes
+    proveedores --> config
+    reportes --> catalogo
+    reportes --> clientes
+    reportes --> cobranza
+    reportes --> config
+    reportes --> proformas
+    reportes --> servicios
+    reportes --> ventas
+    seguridad --> config
+    servicios --> catalogo
+    servicios --> clientes
+    servicios --> config
+    servicios --> postventa
+    servicios --> ventas
+    ventas --> catalogo
+    ventas --> clientes
+    ventas --> config
+    ventas --> proformas
+    ventas --> seguridad
+```
+
 ### Estructura del código
 
 ```text
@@ -292,17 +376,18 @@ src/main/java/com/bomerp/
 ├── catalogo/        categoria/, producto/, productocatalogo/ (catálogo público, DTO sin costo ni margen)
 ├── clientes/        cliente/, consultaruc/ (RUC/DNI), general/ (entidad Cliente)
 ├── cobranza/        cobro/: Cobro–DetalleCobro, saldos y abonos · devolucion/: devoluciones de ventas anuladas
-├── compras/         compra/, detallecompra/
-├── config/          SecurityConfig (seguridad + CORS), GlobalExceptionHandler, excepciones, descuento/ (tope por rol), empresa/ (datos de JD), tipocambio/, exportacion/
+├── compras/         compra/, detallecompra/, pago/ (cuentas por pagar)
+├── config/          infraestructura compartida: GlobalExceptionHandler, excepciones, empresa/ (datos de JD), tipocambio/, exportacion/ (Excel)
 ├── proformas/       proforma/, itemproforma/, proformarequest/, pdf/ (antes cotizaciones/)
 ├── facturacion/     comprobante/, facturacion/, nubefact/, ose/, pdf/, serie/ (correlativo por serie)
-├── inventario/      alertas y tarea programada de stock mínimo
-├── postventa/       mantenimiento/: programación y alertas
+├── inventario/      alertas de stock mínimo, kardex/, ajuste/ (ajustes de inventario)
+├── postventa/       mantenimiento/ (programación y alertas), equipo/ (equipos instalados), contrato/
 ├── notificaciones/  correo (real) y WhatsApp (simulado)
 ├── proveedores/     proveedor/
-├── reportes/        TRANSITORIO: consultas por repartir a ventas/ y proformas/
-├── (seguridad)      RETIRADO en S10b: la identidad la maneja Keycloak; quedan config/SecurityConfig y config/PerfilController
-└── ventas/          venta/ (con event/VentaAnuladaEvent), detalleventa/
+├── reportes/        reportes/ (resúmenes de ventas, cobranza y proformas), rentabilidad/
+├── seguridad/       SecurityConfig (JWT de Keycloak + CORS), PerfilController, permisos/ (delegables, Keycloak), descuento/ (tope por rol), auditoria/ (historial de cambios)
+├── servicios/       orden/: órdenes de trabajo y agenda de técnicos
+└── ventas/          venta/ (event/: VentaRegistradaEvent y VentaAnuladaEvent), detalleventa/, tributos/ (detracción y retención), reporte/
 ```
 
 Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el sitio MkDocs), `scripts/` (arranque, respaldo, restauración y base limpia), `keycloak/` (realm y `configurar_realm.py`), `pruebas-seguridad/` (matriz de permisos), los `migracion_*.sql` y `.github/workflows/docs.yml` (publica esta documentación).
@@ -616,7 +701,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **64 pruebas** (31/10/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **66 pruebas** (31/10/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. `ProductoCrudTest` es de integración y
 sí necesita Oracle encendido (revierte lo que guarda).
 
@@ -632,6 +717,7 @@ sí necesita Oracle encendido (revierte lo que guarda).
 | `DeduccionTributariaServiceTest` | Detracción 12 % (soles enteros), retención 3 %, umbral S/ 700, dólares con tipo de cambio | 5 |
 | `VentaCostoTest` | Costo guardado en cada línea y su conversión de moneda; subtotal, IGV y total | 5 |
 | `RentabilidadServiceTest` | Ganancia en soles, líneas sin costo, rentabilidad por técnico | 4 |
+| `ModularityTests` (Spring Modulith) | Límites entre módulos y ausencia de ciclos (ADR-002); genera el diagrama de módulos | 2 |
 | `ProductoCrudTest` (integración, Oracle) | Guardar, buscar y actualizar un producto | 3 |
 
 La seguridad por rol y permiso se prueba además de punta a punta con `pruebas-seguridad/05_matriz.ps1` (14 casos,
@@ -791,7 +877,6 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 | Pendiente | Qué hace falta | Ref. |
 |---|---|---|
 | ⚠️ Credenciales en el historial de git | Cambiar la contraseña de aplicación de Gmail y regenerar el token de Decolecta (siguen en commits antiguos) | (2) |
-| Spring Modulith y límites entre módulos | Implementar `ModularityTests` (ADR-002) y que Facturación y Reportes no usen repositorios de Ventas y Proformas | (20), (21) |
 | Pruebas de seguridad en JUnit | `@WebMvcTest` por rol y permiso (hoy solo `pruebas-seguridad/05_matriz.ps1`) | (28) |
 | DTO en todos los controladores | Categoría, Cliente y Proveedor todavía responden la entidad | (34) |
 | Logger en vez de `System.out` | 5 clases | (33) |
@@ -870,8 +955,8 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 
 ### Arquitectura y alineamiento con el curso
 19. **Versión de Spring Boot.** ✅ Migrado de 3.3.4 a **4.0.7** (22/10/2026), la versión que fija la guía del curso (ADR-003). Ver *Migración a Spring Boot 4.0.7* en la sección 2.
-20. **Spring Modulith no está implementado** (ADR-002) ni hay `ModularityTests`. La regla de módulos solo está documentada.
-21. **Límites entre módulos incumplidos:** `FacturacionService` usa `VentaRepository`, y `ReportesService` usa `VentaRepository` y `ProformaRepository`. Se resuelve en parte con la decisión de **reportes por módulo**: mover `ventas-resumen` y `cobranza` a `ventas`, y `proformas-pendientes` a `proformas`.
+20. ~~**Spring Modulith no está implementado.**~~ ✅ **Resuelto (31/10/2026):** Spring Modulith 2.0.7 y `ModularityTests` verifican los límites entre módulos y la ausencia de ciclos en cada `mvn test` (ver *Límites entre módulos* en la sección 2).
+21. ~~**Límites entre módulos incumplidos.**~~ ✅ **Resuelto (31/10/2026):** Facturación, Reportes y Rentabilidad usan fachadas de servicio en vez de repositorios ajenos; Ventas avisa a Facturación y Postventa con eventos. Queda como opción repartir los reportes por módulo.
 22. **Esquemas Oracle por módulo.** El curso propone esquemas `BOM_CATALOGO`, `BOM_VENTAS`, etc.; aquí todo está en un solo esquema (`JDREFRIGERACION`), y `CONTEXTO.md` mencionaba un prefijo `JD_<MODULO>` que no se usa.
 23. **Paquete raíz.** Documentaciones anteriores decían `com.jdrefrigeracion` o `pe.edu.upeu.sgejd`; el real es `com.bomerp`.
 24. ~~**Seguridad con Keycloak sin responsable.**~~ ✅ **Hecho (18/10/2026):** Keycloak 26.8 + Postgres en `docker-compose.yml`, backend como Resource Server y SPA adaptada. **Confirmar con el docente** que la ruta S10b es válida para la evaluación de S10 (la guía S10b dice que no se evalúa). S11 hecho (19/10/2026): login con redirección y PKCE, y *Direct access grants* desactivado (ver punto 5).

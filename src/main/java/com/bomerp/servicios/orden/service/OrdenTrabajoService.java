@@ -210,6 +210,12 @@ public class OrdenTrabajoService {
         return aDto(ordenRepository.save(o));
     }
 
+    /** Fachada para Rentabilidad: órdenes REALIZADAS en el periodo, con sus materiales. */
+    @Transactional(readOnly = true)
+    public List<OrdenTrabajo> realizadasEntre(LocalDate desde, LocalDate hasta) {
+        return ordenRepository.realizadasEntre(desde, hasta);
+    }
+
     /** Fachada para el kardex: materiales del producto usados en órdenes REALIZADAS. */
     @Transactional(readOnly = true)
     public List<MaterialOrden> materialesUsadosDeProducto(Long productoId) {

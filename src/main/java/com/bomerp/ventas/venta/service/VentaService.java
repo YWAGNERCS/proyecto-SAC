@@ -1,12 +1,13 @@
 package com.bomerp.ventas.venta.service;
 
-import com.bomerp.config.descuento.TopeDescuentoService;
+import com.bomerp.seguridad.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
-import com.bomerp.config.tributos.DeduccionTributariaService;
+import com.bomerp.ventas.tributos.DeduccionTributariaService;
 import java.math.BigDecimal;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.event.VentaAnuladaEvent;
+import com.bomerp.ventas.venta.event.VentaRegistradaEvent;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.repository.VentaRepository;
 
@@ -20,8 +21,6 @@ import com.bomerp.proformas.itemproforma.entity.ItemProforma;
 import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
 import com.bomerp.config.StockInsuficienteException;
-import com.bomerp.postventa.mantenimiento.service.MantenimientoService;
-import com.bomerp.facturacion.facturacion.service.FacturacionService;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -41,8 +40,6 @@ public class VentaService {
     private final ProformaService proformaService;
     private final ClienteService clienteService;
     private final ProductoService productoService;
-    private final MantenimientoService mantenimientoService;
-    private final FacturacionService facturacionService;
     private final TipoCambioService tipoCambioService;
     private final TopeDescuentoService topeDescuentoService;
     private final DeduccionTributariaService deduccionTributariaService;
@@ -52,8 +49,6 @@ public class VentaService {
                         ProformaService proformaService,
                         ClienteService clienteService,
                         ProductoService productoService,
-                        MantenimientoService mantenimientoService,
-                        FacturacionService facturacionService,
                         TipoCambioService tipoCambioService,
                         TopeDescuentoService topeDescuentoService,
                         DeduccionTributariaService deduccionTributariaService,
@@ -62,8 +57,6 @@ public class VentaService {
         this.proformaService = proformaService;
         this.clienteService = clienteService;
         this.productoService = productoService;
-        this.mantenimientoService = mantenimientoService;
-        this.facturacionService = facturacionService;
         this.tipoCambioService = tipoCambioService;
         this.topeDescuentoService = topeDescuentoService;
         this.deduccionTributariaService = deduccionTributariaService;
@@ -159,9 +152,8 @@ public class VentaService {
         deduccionTributariaService.aplicar(venta);
         Venta ventaGuardada = ventaRepository.save(venta);
         proformaService.marcarConvertida(proformaId, ventaGuardada.getId());
-        mantenimientoService.programarParaVenta(ventaGuardada);
-
-        emitirFactura(ventaGuardada);
+        // Postventa programa los mantenimientos y Facturación emite el comprobante (ADR-002)
+        eventos.publishEvent(new VentaRegistradaEvent(ventaGuardada.getId()));
 
         log.info("Transaccion exitosa: Venta registrada con ID {}", ventaGuardada.getId());
         return VentaResponseDTO.desdeEntidad(ventaGuardada);
@@ -261,9 +253,8 @@ public class VentaService {
 
         deduccionTributariaService.aplicar(venta);
         Venta ventaGuardada = ventaRepository.save(venta);
-        mantenimientoService.programarParaVenta(ventaGuardada);
-
-        emitirFactura(ventaGuardada);
+        // Postventa programa los mantenimientos y Facturación emite el comprobante (ADR-002)
+        eventos.publishEvent(new VentaRegistradaEvent(ventaGuardada.getId()));
 
         log.info("Transaccion exitosa: Venta registrada con ID {} en {} (tipo de cambio {})",
                 ventaGuardada.getId(), moneda, tc);
@@ -348,9 +339,8 @@ public class VentaService {
      *  - Efectos colaterales, en la misma transacción:
      *    1) se devuelve al inventario lo vendido de los productos con controlaStock() = true
      *       (los equipos no se almacenan, no se restauran);
-     *    2) Postventa cancela los mantenimientos aún pendientes de esa venta;
-     *    3) Facturación emite la nota de crédito que anula el comprobante aceptado;
-     *    4) Cobranza deja pendiente la devolución de lo que el cliente ya pagó (VentaAnuladaEvent).
+     *    2) con VentaAnuladaEvent: Postventa cancela los mantenimientos aún pendientes, Facturación
+     *       emite la nota de crédito y Cobranza deja pendiente la devolución de lo ya pagado.
      */
     public VentaResponseDTO anular(Long ventaId) {
         Venta venta = obtenerPorId(ventaId);
@@ -369,17 +359,10 @@ public class VentaService {
         venta.setEstado(Venta.EstadoVenta.ANULADA);
         venta.setFechaAnulacion(LocalDate.now());
 
-        int mantenimientosCancelados = mantenimientoService.cancelarPendientesDeVenta(ventaId);
-        String notaCredito = facturacionService
-                .emitirNotaCreditoPorAnulacion(ventaId, "Anulación de la operación (venta #" + ventaId + ")")
-                .map(nc -> nc.getSerie() + "-" + nc.getNumero())
-                .orElse("no requerida");
-
         Venta anulada = ventaRepository.save(venta);
         eventos.publishEvent(new VentaAnuladaEvent(ventaId));
 
-        log.info("Venta {} anulada: stock restaurado, {} mantenimientos cancelados, nota de crédito {}",
-                ventaId, mantenimientosCancelados, notaCredito);
+        log.info("Venta {} anulada: stock restaurado", ventaId);
         return VentaResponseDTO.desdeEntidad(anulada);
     }
 
@@ -398,6 +381,36 @@ public class VentaService {
         return obtenerPorId(ventaId);
     }
 
+    /** Fachada para Facturación: guarda en la venta el comprobante que se le emitió. */
+    public void asignarComprobante(Long ventaId, Long comprobanteId) {
+        obtenerPorId(ventaId).setComprobanteId(comprobanteId);
+    }
+
+    /** Fachada para Reportes: ventas REGISTRADAS (no anuladas) entre dos fechas. */
+    @Transactional(readOnly = true)
+    public List<Venta> registradasEntre(LocalDate desde, LocalDate hasta) {
+        return ventaRepository.findByEstadoAndFechaVentaBetween(Venta.EstadoVenta.REGISTRADA, desde, hasta);
+    }
+
+    /** Fachada para Reportes: ventas REGISTRADAS sin pagar cuya fecha límite ya pasó. */
+    @Transactional(readOnly = true)
+    public List<Venta> pendientesVencidasAl(LocalDate dia) {
+        return ventaRepository.findByEstadoAndEstadoPagoAndFechaLimitePagoBefore(
+                Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE, dia);
+    }
+
+    /** Fachada para Rentabilidad: líneas de las ventas no anuladas del periodo (con venta, cliente y producto). */
+    @Transactional(readOnly = true)
+    public List<DetalleVenta> lineasVendidas(LocalDate desde, LocalDate hasta) {
+        return ventaRepository.lineasVendidas(desde, hasta);
+    }
+
+    /** Fachada para Rentabilidad: líneas de unas ventas (las que facturaron órdenes de trabajo). */
+    @Transactional(readOnly = true)
+    public List<DetalleVenta> lineasDeVentas(java.util.Collection<Long> ids) {
+        return ventaRepository.lineasDeVentas(ids);
+    }
+
     private Venta obtenerPorId(Long ventaId) {
         return ventaRepository.findById(ventaId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada: " + ventaId));
@@ -405,28 +418,6 @@ public class VentaService {
 
     /** descuentoPorcentaje: opcional, % negociado de la línea (0 a tope del rol). */
     public record ItemVentaDTO(Long productoId, Integer cantidad, BigDecimal descuentoPorcentaje) {}
-
-    /** Emite y envía la factura electrónica; los errores no abortan la venta. */
-    private void emitirFactura(Venta venta) {
-        com.bomerp.facturacion.comprobante.entity.Comprobante comp;
-        try {
-            comp = facturacionService.emitirComprobanteParaVenta(venta.getId());
-        } catch (Exception e) {
-            log.error("Error al emitir el comprobante de la Venta {}: {}", venta.getId(), e.getMessage());
-            return;
-        }
-        // Sin correo no es un error: el comprobante queda emitido y se descarga o reenvía desde Ventas
-        String correo = venta.getCliente().getCorreo();
-        if (correo == null || correo.isBlank()) {
-            log.info("Comprobante de la Venta {} emitido; no se envía por correo: el cliente no tiene correo", venta.getId());
-            return;
-        }
-        try {
-            facturacionService.enviarFacturaCorreo(comp.getId());
-        } catch (Exception e) {
-            log.warn("Comprobante de la Venta {} emitido, pero no se pudo enviar por correo: {}", venta.getId(), e.getMessage());
-        }
-    }
 
     /**
      * Contado: la venta queda PAGADA. Crédito: queda pendiente con fecha límite

@@ -1,9 +1,9 @@
 package com.bomerp.reportes.reportes.service;
 
 import com.bomerp.proformas.proforma.entity.Proforma;
-import com.bomerp.proformas.proforma.repository.ProformaRepository;
+import com.bomerp.proformas.proforma.service.ProformaService;
 import com.bomerp.ventas.venta.entity.Venta;
-import com.bomerp.ventas.venta.repository.VentaRepository;
+import com.bomerp.ventas.venta.service.VentaService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,14 +18,14 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class ReportesService {
 
-    private final VentaRepository ventaRepository;
-    private final ProformaRepository proformaRepository;
+    private final VentaService ventaService;
+    private final ProformaService proformaService;
     private final com.bomerp.cobranza.cobro.service.CobranzaService cobranzaService;
 
-    public ReportesService(VentaRepository ventaRepository, ProformaRepository proformaRepository,
+    public ReportesService(VentaService ventaService, ProformaService proformaService,
                            com.bomerp.cobranza.cobro.service.CobranzaService cobranzaService) {
-        this.ventaRepository = ventaRepository;
-        this.proformaRepository = proformaRepository;
+        this.ventaService = ventaService;
+        this.proformaService = proformaService;
         this.cobranzaService = cobranzaService;
     }
 
@@ -38,8 +38,7 @@ public class ReportesService {
         LocalDate fin = hasta != null ? hasta : LocalDate.now();
 
         // Una venta ANULADA no es ingreso ni cuenta como venta del periodo
-        List<Venta> ventasDelPeriodo = ventaRepository.findByEstadoAndFechaVentaBetween(
-                Venta.EstadoVenta.REGISTRADA, inicio, fin);
+        List<Venta> ventasDelPeriodo = ventaService.registradasEntre(inicio, fin);
 
         long cantidadVentas = ventasDelPeriodo.size();
         BigDecimal totalIngresosSoles = BigDecimal.ZERO;
@@ -75,10 +74,8 @@ public class ReportesService {
         LocalDate hoy = LocalDate.now();
 
         // Una venta ANULADA ya no se cobra: se excluye de pendientes y atrasadas
-        List<Venta> ventasPendientesGeneral = ventaRepository.findByEstadoAndEstadoPago(
-                Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE);
-        List<Venta> ventasAtrasadas = ventaRepository.findByEstadoAndEstadoPagoAndFechaLimitePagoBefore(
-                Venta.EstadoVenta.REGISTRADA, Venta.EstadoPago.PENDIENTE, hoy);
+        List<Venta> ventasPendientesGeneral = ventaService.listarPendientesDeCobro(null);
+        List<Venta> ventasAtrasadas = ventaService.pendientesVencidasAl(hoy);
 
         // Comparamos por ID, no por igualdad de objeto: dos consultas separadas
         // pueden devolver instancias distintas de Java para la misma fila,
@@ -100,7 +97,7 @@ public class ReportesService {
 
     /** RF: "Proformas pendientes" — expuesto explícitamente como reporte */
     public Map<String, Object> obtenerReporteProformasPendientes() {
-        List<Proforma> pendientes = proformaRepository.findByEstado(Proforma.EstadoProforma.PENDIENTE);
+        List<Proforma> pendientes = proformaService.pendientes();
 
         Map<String, Object> reporte = new HashMap<>();
         reporte.put("cantidad", pendientes.size());

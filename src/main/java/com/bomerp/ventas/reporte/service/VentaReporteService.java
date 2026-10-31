@@ -3,7 +3,7 @@ package com.bomerp.ventas.reporte.service;
 import com.bomerp.clientes.cliente.service.ClienteService;
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.config.exportacion.ExcelBuilder;
-import com.bomerp.facturacion.facturacion.service.FacturacionService;
+import com.bomerp.ventas.venta.service.ComprobantesDeVenta;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.venta.entity.Venta;
@@ -28,10 +28,10 @@ public class VentaReporteService {
 
     private final VentaService ventaService;
     private final ClienteService clienteService;
-    private final FacturacionService facturacionService;
+    private final ComprobantesDeVenta facturacionService;
 
     public VentaReporteService(VentaService ventaService, ClienteService clienteService,
-                               FacturacionService facturacionService) {
+                               ComprobantesDeVenta facturacionService) {
         this.ventaService = ventaService;
         this.clienteService = clienteService;
         this.facturacionService = facturacionService;

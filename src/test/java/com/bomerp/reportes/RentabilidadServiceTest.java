@@ -6,10 +6,10 @@ import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.reportes.rentabilidad.RentabilidadService;
 import com.bomerp.servicios.orden.entity.MaterialOrden;
 import com.bomerp.servicios.orden.entity.OrdenTrabajo;
-import com.bomerp.servicios.orden.repository.OrdenTrabajoRepository;
+import com.bomerp.servicios.orden.service.OrdenTrabajoService;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.entity.Venta;
-import com.bomerp.ventas.venta.repository.VentaRepository;
+import com.bomerp.ventas.venta.service.VentaService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,8 +33,8 @@ import static org.mockito.Mockito.when;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class RentabilidadServiceTest {
 
-    @Mock VentaRepository ventaRepository;
-    @Mock OrdenTrabajoRepository ordenRepository;
+    @Mock VentaService ventaService;
+    @Mock OrdenTrabajoService ordenService;
     @Mock TipoCambioService tipoCambioService;
     @InjectMocks RentabilidadService service;
 
@@ -73,8 +73,8 @@ class RentabilidadServiceTest {
 
         List<DetalleVenta> lineas = new ArrayList<>(enSoles.getDetalles());
         lineas.addAll(enDolares.getDetalles());
-        when(ventaRepository.lineasVendidas(any(), any())).thenReturn(lineas);
-        when(ordenRepository.realizadasEntre(any(), any())).thenReturn(List.of());
+        when(ventaService.lineasVendidas(any(), any())).thenReturn(lineas);
+        when(ordenService.realizadasEntre(any(), any())).thenReturn(List.of());
 
         RentabilidadService.Rentabilidad r = service.calcular(null, null);
 
@@ -92,8 +92,8 @@ class RentabilidadServiceTest {
         Producto gas = producto(1, "Gas", Producto.Sector.MATERIAL_SERVICIO, Producto.Moneda.SOLES, "80");
         Venta v = venta(3, Venta.Moneda.DOLARES, null, "Cliente C");   // en dólares y sin tipo de cambio
         v.agregarDetalle(new DetalleVenta(gas, 1, new BigDecimal("30")));
-        when(ventaRepository.lineasVendidas(any(), any())).thenReturn(new ArrayList<>(v.getDetalles()));
-        when(ordenRepository.realizadasEntre(any(), any())).thenReturn(List.of());
+        when(ventaService.lineasVendidas(any(), any())).thenReturn(new ArrayList<>(v.getDetalles()));
+        when(ordenService.realizadasEntre(any(), any())).thenReturn(List.of());
 
         RentabilidadService.Rentabilidad r = service.calcular(null, null);
 
@@ -106,8 +106,8 @@ class RentabilidadServiceTest {
         Producto manoObra = producto(5, "Mantenimiento", Producto.Sector.SERVICIO, Producto.Moneda.SOLES, "60");
         Venta factura = venta(7, Venta.Moneda.SOLES, null, "Cliente D");
         factura.agregarDetalle(new DetalleVenta(manoObra, 1, new BigDecimal("150")));
-        when(ventaRepository.lineasVendidas(any(), any())).thenReturn(List.of());
-        when(ventaRepository.lineasDeVentas(any())).thenReturn(new ArrayList<>(factura.getDetalles()));
+        when(ventaService.lineasVendidas(any(), any())).thenReturn(List.of());
+        when(ventaService.lineasDeVentas(any())).thenReturn(new ArrayList<>(factura.getDetalles()));
 
         OrdenTrabajo o = new OrdenTrabajo();
         o.setId(1L);
@@ -118,7 +118,7 @@ class RentabilidadServiceTest {
         m.setCostoUnitario(new BigDecimal("15"));
         m.setMoneda("SOLES");
         o.getMateriales().add(m);
-        when(ordenRepository.realizadasEntre(any(), any())).thenReturn(List.of(o));
+        when(ordenService.realizadasEntre(any(), any())).thenReturn(List.of(o));
 
         RentabilidadService.TecnicoFila t = service.calcular(null, null).porTecnico().get(0);
 
