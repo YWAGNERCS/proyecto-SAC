@@ -855,6 +855,6 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 
 ### Operación
 35. **Datos de prueba en la base.** Los recorridos como Lisandro y Lucy dejaron registros marcados `[Prueba]` (15 clientes, 6 productos, 6 proveedores, 3 categorías y los movimientos que cuelgan de ellos). Se dejaron a propósito; antes de entregar, `base_limpia.bat` (o `-Entrega`).
-36. ~~**Respaldos manuales.**~~ ✅ **Resuelto (31/10/2026):** `programar_respaldo.bat` crea la tarea diaria con copia fuera de la PC (RNF-08). **Pendiente:** que Lisandro elija la carpeta de copia (USB, OneDrive de la empresa o red).
+36. **Respaldo automático sin activar (⏳ pendiente).** Los scripts están listos desde el 31/10/2026 (`programar_respaldo.bat`, RNF-08), pero la tarea diaria **no está programada**: falta que Lisandro elija la carpeta fuera de la PC para la copia (USB, OneDrive o Google Drive de la empresa, o una carpeta de red). Mientras tanto, respaldo manual con `respaldar_sgejd.bat` al menos una vez por semana. Al decidir: `programar_respaldo.bat -Destino "<carpeta>"`.
 37. **Un error 500 sin explicar (25/10/2026).** Crear una venta falló una vez, sin guardar nada, en un backend que se había encendido justo después de cambiar las contraseñas de la base; no se pudo reproducir. Si vuelve a pasar, revisar la ventana "SGE-JD · Backend".
 38. **Tabla `USUARIOS` sin uso** (ver modelo de datos): conserva 2 filas con contraseñas cifradas de antes de Keycloak; se puede borrar.
