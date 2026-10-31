@@ -36,6 +36,32 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, Long
             """)
     List<MaterialOrden> materialesUsadosDeProducto(@Param("productoId") Long productoId);
 
+    /** Rentabilidad por técnico: órdenes REALIZADAS en el periodo, con sus materiales. */
+    @Query("""
+            SELECT DISTINCT o FROM OrdenTrabajo o LEFT JOIN FETCH o.materiales m LEFT JOIN FETCH m.producto
+            WHERE o.estado = com.bomerp.servicios.orden.entity.OrdenTrabajo.Estado.REALIZADA
+              AND (CAST(:desde AS LocalDate) IS NULL OR o.fechaRealizada >= :desde)
+              AND (CAST(:hasta AS LocalDate) IS NULL OR o.fechaRealizada <= :hasta)
+            """)
+    List<OrdenTrabajo> realizadasEntre(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
+
+    /** Agenda: órdenes no canceladas entre dos fechas, con cliente y sede. */
+    @Query("""
+            SELECT o FROM OrdenTrabajo o JOIN FETCH o.cliente LEFT JOIN FETCH o.sede
+            WHERE o.estado <> com.bomerp.servicios.orden.entity.OrdenTrabajo.Estado.CANCELADA
+              AND o.fechaProgramada BETWEEN :desde AND :hasta
+            ORDER BY o.fechaProgramada, o.horaInicio, o.id
+            """)
+    List<OrdenTrabajo> agenda(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
+
+    /** Órdenes PROGRAMADAS de un técnico en un día (para detectar cruces de horario). */
+    @Query("""
+            SELECT o FROM OrdenTrabajo o JOIN FETCH o.cliente
+            WHERE o.estado = com.bomerp.servicios.orden.entity.OrdenTrabajo.Estado.PROGRAMADA
+              AND LOWER(TRIM(o.tecnico)) = LOWER(TRIM(:tecnico)) AND o.fechaProgramada = :fecha
+            """)
+    List<OrdenTrabajo> programadasDelTecnico(@Param("tecnico") String tecnico, @Param("fecha") LocalDate fecha);
+
     /** Técnicos que ya tienen órdenes (para sugerirlos al programar una nueva). */
     @Query("SELECT DISTINCT o.tecnico FROM OrdenTrabajo o ORDER BY o.tecnico")
     List<String> tecnicos();

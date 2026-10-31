@@ -124,6 +124,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/contratos", "/api/v1/admin/contratos/*/cancelar",
                         "/api/v1/admin/ordenes/*/cancelar", "/api/v1/admin/equipos/*/retirar").hasAnyRole(conPermiso(Permiso.SERVICIOS))
 
+                // Anular un pago a proveedor: mismo permiso que anular un cobro
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/cuentas-por-pagar/pagos/*/anular").hasAnyRole(conPermiso(Permiso.ANULAR_COBROS))
+                // Ajustes de inventario: consultar cualquiera; registrar ADMIN o AJUSTAR_INVENTARIO
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/inventario/ajustes/**").hasAnyRole(conPermiso(Permiso.AJUSTAR_INVENTARIO))
+                // Costos y márgenes: ADMIN o VER_RENTABILIDAD
+                .requestMatchers("/api/v1/admin/reportes/rentabilidad/**").hasAnyRole(conPermiso(Permiso.VER_RENTABILIDAD))
+
                 // Resto del panel: cualquiera de los dos roles del negocio
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "ASISTENTE")
                 .anyRequest().authenticated()

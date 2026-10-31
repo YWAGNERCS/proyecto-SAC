@@ -37,6 +37,8 @@ PERMISOS = {
     "PERM_ELIMINAR": "Puede eliminar clientes, proveedores y sedes",
     "PERM_SERVICIOS": "Puede gestionar contratos, cancelar órdenes y dar de baja equipos",
     "PERM_DESCUENTO_AMPLIADO": "Puede aplicar el tope de descuento del administrador",
+    "PERM_AJUSTAR_INVENTARIO": "Puede registrar ajustes de inventario (conteo físico, mermas, dañados)",
+    "PERM_VER_RENTABILIDAD": "Puede ver costos, márgenes y el reporte de rentabilidad",
 }
 # Lo mínimo que necesita la cuenta de servicio del backend (cliente realm-management)
 ROLES_BACKEND = ["view-users", "manage-users", "view-realm", "view-events"]

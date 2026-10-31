@@ -1,5 +1,10 @@
 package com.bomerp.compras.compra.controller;
 
+import com.bomerp.compras.pago.service.CuentasPorPagarService;
+import java.math.BigDecimal;
+import java.util.Map;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import com.bomerp.compras.reporte.service.CompraReporteService;
 import com.bomerp.config.exportacion.ExcelBuilder;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -22,10 +27,13 @@ public class CompraController {
 
     private final CompraService compraService;
     private final CompraReporteService compraReporteService;
+    private final CuentasPorPagarService cuentasPorPagarService;
 
-    public CompraController(CompraService compraService, CompraReporteService compraReporteService) {
+    public CompraController(CompraService compraService, CompraReporteService compraReporteService,
+                            CuentasPorPagarService cuentasPorPagarService) {
         this.compraService = compraService;
         this.compraReporteService = compraReporteService;
+        this.cuentasPorPagarService = cuentasPorPagarService;
     }
 
     /** Compras con filtros opcionales: rango de fechas (yyyy-MM-dd) y proveedor. */
@@ -34,8 +42,11 @@ public class CompraController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) Long proveedorId) {
-        return compraService.buscar(desde, hasta, proveedorId).stream()
-                .map(CompraResponseDTO::desdeEntidad)
+        List<Compra> compras = compraService.buscar(desde, hasta, proveedorId);
+        Map<Long, BigDecimal> pagado = cuentasPorPagarService.pagadoPorCompra(compras);
+        return compras.stream()
+                .map(c -> CompraResponseDTO.desdeEntidad(c, c.getTipoPago() == Compra.TipoPago.CREDITO
+                        ? pagado.getOrDefault(c.getId(), BigDecimal.ZERO) : c.getTotal()))
                 .toList();
     }
 
@@ -58,14 +69,20 @@ public class CompraController {
     @GetMapping("/{id}")
     public ResponseEntity<CompraResponseDTO> buscarPorId(@PathVariable Long id) {
         return compraService.buscarPorId(id)
-                .map(CompraResponseDTO::desdeEntidad)
+                .map(c -> CompraResponseDTO.desdeEntidad(c, c.getTipoPago() == Compra.TipoPago.CREDITO
+                        ? cuentasPorPagarService.pagadoPorCompra(List.of(c)).getOrDefault(c.getId(), BigDecimal.ZERO)
+                        : c.getTotal()))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<CompraResponseDTO> registrarCompra(@Valid @RequestBody CompraRequestDTO requestDTO) {
-        Compra compraGuardada = compraService.registrarCompra(requestDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(CompraResponseDTO.desdeEntidad(compraGuardada));
+    public ResponseEntity<CompraResponseDTO> registrarCompra(@Valid @RequestBody CompraRequestDTO requestDTO,
+                                                             @AuthenticationPrincipal Jwt jwt) {
+        Compra compraGuardada = compraService.registrarCompra(requestDTO,
+                jwt != null ? jwt.getClaimAsString("preferred_username") : null);
+        // Recién creada: a crédito todavía no tiene pagos
+        return ResponseEntity.status(HttpStatus.CREATED).body(CompraResponseDTO.desdeEntidad(compraGuardada,
+                compraGuardada.getTipoPago() == Compra.TipoPago.CREDITO ? BigDecimal.ZERO : compraGuardada.getTotal()));
     }
 }

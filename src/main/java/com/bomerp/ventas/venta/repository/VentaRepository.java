@@ -40,6 +40,25 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             """)
     List<com.bomerp.ventas.detalleventa.entity.DetalleVenta> detallesDeProducto(@Param("productoId") Long productoId);
 
+    /** Rentabilidad: líneas de las ventas no anuladas del periodo, con venta, cliente y producto. */
+    @Query("""
+            SELECT d FROM DetalleVenta d JOIN FETCH d.venta v JOIN FETCH v.cliente JOIN FETCH d.producto p
+            LEFT JOIN FETCH p.categoria
+            WHERE v.estado <> com.bomerp.ventas.venta.entity.Venta.EstadoVenta.ANULADA
+              AND (CAST(:desde AS LocalDate) IS NULL OR v.fechaVenta >= :desde)
+              AND (CAST(:hasta AS LocalDate) IS NULL OR v.fechaVenta <= :hasta)
+            ORDER BY v.fechaVenta, v.id
+            """)
+    List<com.bomerp.ventas.detalleventa.entity.DetalleVenta> lineasVendidas(@Param("desde") LocalDate desde,
+                                                                          @Param("hasta") LocalDate hasta);
+
+    /** Rentabilidad por técnico: líneas de las ventas que facturaron órdenes de trabajo. */
+    @Query("""
+            SELECT d FROM DetalleVenta d JOIN FETCH d.venta v JOIN FETCH d.producto
+            WHERE v.id IN :ids AND v.estado <> com.bomerp.ventas.venta.entity.Venta.EstadoVenta.ANULADA
+            """)
+    List<com.bomerp.ventas.detalleventa.entity.DetalleVenta> lineasDeVentas(@Param("ids") java.util.Collection<Long> ids);
+
     // Evita convertir dos veces la misma proforma en venta
     boolean existsByProformaOrigenId(Long proformaId);
 }

@@ -12,12 +12,14 @@ import java.util.Optional;
 public enum Permiso {
 
     ANULAR_VENTAS("Anular ventas", "Anula una venta: devuelve el stock, emite la nota de crédito y deja la devolución pendiente"),
-    ANULAR_COBROS("Anular cobros", "Anula un cobro mal registrado: su monto vuelve al saldo de la venta"),
+    ANULAR_COBROS("Anular cobros", "Anula un cobro mal registrado (o un pago a proveedor): su monto vuelve al saldo"),
     DEVOLUCIONES("Registrar devoluciones", "Registra que se devolvió el dinero de una venta anulada"),
     CATALOGO("Editar el catálogo", "Crea, edita y elimina productos y categorías (costos, márgenes y precios)"),
     ELIMINAR("Eliminar clientes, proveedores y sedes", "Elimina registros que no tienen movimientos"),
     SERVICIOS("Administrar servicios", "Crea y cancela contratos, cancela órdenes de trabajo y retira equipos"),
-    DESCUENTO_AMPLIADO("Descuento ampliado", "Usa el tope de descuento del administrador en proformas y ventas");
+    DESCUENTO_AMPLIADO("Descuento ampliado", "Usa el tope de descuento del administrador en proformas y ventas"),
+    AJUSTAR_INVENTARIO("Ajustar inventario", "Registra conteos físicos, mermas, material dañado o perdido y stock inicial"),
+    VER_RENTABILIDAD("Ver rentabilidad", "Ve costos, márgenes y ganancia por venta, cliente, producto y técnico");
 
     public static final String PREFIJO = "PERM_";
 

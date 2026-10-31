@@ -9,7 +9,8 @@
 --                   movieron. Lo demás queda igual.
 --         ENTREGA : deja la base lista para el cliente: borra TODOS los movimientos
 --                   (proformas, ventas, comprobantes, notas de crédito, cobros, devoluciones, compras,
---                   mantenimientos, órdenes de trabajo, contratos y equipos instalados) y el historial
+--                   mantenimientos, órdenes de trabajo, contratos, equipos instalados, pagos a proveedores
+--                   y ajustes de inventario) y el historial
 --                   de cambios, borra lo
 --                   marcado "[Prueba]", reinicia las series de comprobantes y los contadores de id.
 --                   Conserva catálogo, clientes (con sus sedes) y proveedores reales. El stock queda
@@ -20,7 +21,8 @@
 --   (se sueltan antes las referencias circulares orden ↔ equipo ↔ mantenimiento)
 --   devoluciones → notas_credito → comprobantes → detalle_cobro → cobros → mantenimientos
 --   → materiales_orden → ordenes_trabajo → equipos_instalados → contratos_mantenimiento
---   → detalle_venta → ventas → items_proforma → proformas → detalle_compra → compras
+--   → detalle_venta → ventas → items_proforma → proformas → pagos_proveedor → detalle_compra → compras
+--   → ajustes_inventario
 --   → sedes_cliente → productos → categorías, clientes, proveedores.
 whenever sqlerror exit failure rollback
 set serveroutput on feedback off verify off
@@ -165,6 +167,8 @@ begin
     contar('items_proforma', sql%rowcount);
     delete from proformas where id in (select column_value from table(v_pf));
     contar('proformas', sql%rowcount);
+    delete from pagos_proveedor where compra_id in (select column_value from table(v_com));
+    contar('pagos_proveedor', sql%rowcount);
     delete from detalle_compra where compra_id in (select column_value from table(v_com));
     contar('detalle_compra', sql%rowcount);
     delete from compras where id in (select column_value from table(v_com));
@@ -172,6 +176,13 @@ begin
     -- Las sedes son datos del cliente: solo se borran las de un cliente [Prueba]
     delete from sedes_cliente where cliente_id in (select column_value from table(v_cli));
     contar('sedes_cliente', sql%rowcount);
+    -- Ajustes de inventario: en ENTREGA todos (son movimientos); en PRUEBA los de productos [Prueba]
+    if modo = 'ENTREGA' then
+        delete from ajustes_inventario;
+    else
+        delete from ajustes_inventario where producto_id in (select column_value from table(v_prod));
+    end if;
+    contar('ajustes_inventario', sql%rowcount);
     delete from productos where id in (select column_value from table(v_prod));
     contar('productos', sql%rowcount);
     -- una categoría [Prueba] solo se borra si ya no le queda ningún producto real
@@ -201,7 +212,7 @@ begin
             for t in (select column_value nombre from table(sys.odcivarchar2list(
                         'DEVOLUCIONES', 'NOTAS_CREDITO', 'COMPROBANTES', 'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS',
                         'DETALLE_VENTA', 'VENTAS', 'ITEMS_PROFORMA', 'PROFORMAS',
-                        'DETALLE_COMPRA', 'COMPRAS', 'MATERIALES_ORDEN', 'ORDENES_TRABAJO',
+                        'DETALLE_COMPRA', 'COMPRAS', 'PAGOS_PROVEEDOR', 'AJUSTES_INVENTARIO', 'MATERIALES_ORDEN', 'ORDENES_TRABAJO',
                         'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO', 'HISTORIAL_CAMBIOS'))) loop
                 execute immediate 'alter table ' || t.nombre
                     || ' modify id generated always as identity (start with 1)';

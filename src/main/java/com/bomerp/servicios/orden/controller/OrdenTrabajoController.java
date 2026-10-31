@@ -34,6 +34,14 @@ public class OrdenTrabajoController {
     }
 
     /** Técnicos que ya tienen órdenes, para sugerirlos al programar. */
+    /** Agenda semanal de técnicos (fechas yyyy-MM-dd, hasta 6 semanas). */
+    @GetMapping("/agenda")
+    public List<OrdenDTO.Response> agenda(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate desde,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate hasta) {
+        return ordenService.agenda(desde, hasta);
+    }
+
     @GetMapping("/tecnicos")
     public List<String> tecnicos() {
         return ordenService.tecnicos();

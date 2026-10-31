@@ -1,5 +1,6 @@
 package com.bomerp.compras.compra.dto;
 
+import com.bomerp.compras.compra.entity.Compra;
 import com.bomerp.catalogo.producto.entity.Producto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -22,6 +23,10 @@ public record CompraRequestDTO(
         @NotBlank(message = "El N° de factura del proveedor es obligatorio") String numeroFactura,
         @NotNull Producto.Moneda moneda,
         BigDecimal total,
+        /** CONTADO (por defecto) o CREDITO: a crédito queda en Cuentas por pagar hasta pagarse. */
+        Compra.TipoPago tipoPago,
+        /** Solo a crédito: 1 a 365 días desde la fecha de compra. */
+        Integer diasCredito,
         @NotEmpty(message = "La compra debe tener al menos un producto") List<@Valid DetalleCompraRequestDTO> detalles
 ) {
     public record DetalleCompraRequestDTO(

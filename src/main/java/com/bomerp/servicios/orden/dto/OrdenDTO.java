@@ -1,5 +1,6 @@
 package com.bomerp.servicios.orden.dto;
 
+import jakarta.validation.constraints.Pattern;
 import com.bomerp.postventa.equipo.dto.EquipoDTO;
 import com.bomerp.servicios.orden.entity.OrdenTrabajo;
 import com.bomerp.ventas.venta.entity.Venta;
@@ -31,6 +32,12 @@ public final class OrdenDTO {
             Long mantenimientoId,
             Long equipoId,
             @NotNull(message = "Indique la fecha") LocalDate fechaProgramada,
+            /** Hora de inicio "HH:mm", opcional (sin hora = en el día). */
+            @Pattern(regexp = "^([01][0-9]|2[0-3]):[0-5][0-9]$", message = "La hora debe tener el formato HH:mm (por ejemplo 09:30)")
+            String horaInicio,
+            /** Duración estimada en minutos (15 a 720); sin dato, 2 horas. */
+            @Min(value = 15, message = "La duración mínima es 15 minutos") @Max(value = 720, message = "La duración máxima es 12 horas")
+            Integer duracionMinutos,
             @NotBlank(message = "Indique el técnico") @Size(max = 100) String tecnico,
             @Size(max = 200) String direccion,
             @NotBlank(message = "Describa el trabajo a realizar") @Size(max = 500) String descripcion
@@ -92,6 +99,8 @@ public final class OrdenDTO {
             Long equipoId,
             String equipoNombre,
             LocalDate fechaProgramada,
+            String horaInicio,
+            Integer duracionMinutos,
             String tecnico,
             String direccion,
             String descripcion,
@@ -122,6 +131,8 @@ public final class OrdenDTO {
                     o.getEquipo() != null ? o.getEquipo().getProducto().getNombre()
                             + (o.getEquipo().getNumeroSerie() != null ? " (serie " + o.getEquipo().getNumeroSerie() + ")" : "") : null,
                     o.getFechaProgramada(),
+                    o.getHoraInicio(),
+                    o.getDuracionMinutos() != null ? o.getDuracionMinutos() : OrdenTrabajo.DURACION_POR_DEFECTO,
                     o.getTecnico(),
                     o.getDireccion(),
                     o.getDescripcion(),

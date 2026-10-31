@@ -218,6 +218,45 @@ public class OrdenTrabajoService {
 
     // ── Ayudas ──────────────────────────────────────────────────
 
+    /**
+     * Agenda: un técnico no tiene dos visitas que se crucen el mismo día (409 con la orden que choca).
+     * Solo se compara entre órdenes PROGRAMADAS que tienen hora; sin hora no hay cruce que detectar.
+     */
+    private void validarHorario(OrdenTrabajo o) {
+        Integer inicio = o.minutoInicio();
+        if (inicio == null) return;
+        int fin = inicio + o.duracion();
+        if (fin > 24 * 60) {
+            throw new IllegalArgumentException("La visita terminaría después de medianoche: revise la hora o la duración.");
+        }
+        for (OrdenTrabajo otra : ordenRepository.programadasDelTecnico(o.getTecnico(), o.getFechaProgramada())) {
+            if (otra.getId().equals(o.getId()) || otra.minutoInicio() == null) continue;
+            int otraInicio = otra.minutoInicio();
+            int otraFin = otraInicio + otra.duracion();
+            if (inicio < otraFin && otraInicio < fin) {
+                throw new ReglaNegocioException(o.getTecnico() + " ya tiene la orden #" + otra.getId() + " ("
+                        + otra.getCliente().getNombreORazonSocial() + ") el " + otra.getFechaProgramada() + " de "
+                        + otra.getHoraInicio() + " a " + hhmm(otraFin) + ". Elija otra hora u otro técnico.");
+            }
+        }
+    }
+
+    private static String hhmm(int minutos) {
+        return String.format("%02d:%02d", minutos / 60, minutos % 60);
+    }
+
+    /** Agenda de técnicos: órdenes no canceladas entre dos fechas (máximo 6 semanas). */
+    @Transactional(readOnly = true)
+    public List<OrdenDTO.Response> agenda(LocalDate desde, LocalDate hasta) {
+        if (desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
+        }
+        if (desde.plusDays(42).isBefore(hasta)) {
+            throw new IllegalArgumentException("La agenda muestra hasta 6 semanas a la vez.");
+        }
+        return ordenRepository.agenda(desde, hasta).stream().map(this::aDto).toList();
+    }
+
     private void aplicar(OrdenTrabajo o, OrdenDTO.Request dto) {
         Cliente cliente = clienteService.obtenerPorId(dto.clienteId());
         SedeCliente sede = dto.sedeId() != null ? sedeService.obtenerDeCliente(cliente.getId(), dto.sedeId()) : null;
@@ -266,6 +305,9 @@ public class OrdenTrabajoService {
         o.setMantenimientoId(dto.mantenimientoId());
         o.setFechaProgramada(dto.fechaProgramada());
         o.setTecnico(dto.tecnico().trim());
+        o.setHoraInicio(vacioANulo(dto.horaInicio()));
+        o.setDuracionMinutos(dto.duracionMinutos());
+        validarHorario(o);
         o.setDescripcion(dto.descripcion().trim());
         String direccion = vacioANulo(dto.direccion());
         if (direccion == null) {

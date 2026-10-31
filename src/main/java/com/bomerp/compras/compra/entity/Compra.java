@@ -45,6 +45,33 @@ public class Compra {
     @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleCompra> detalles = new ArrayList<>();
 
+    /** Cuentas por pagar: al contado queda PAGADA; a crédito, PENDIENTE hasta cubrir el total con pagos. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_pago", nullable = false, length = 10)
+    private TipoPago tipoPago = TipoPago.CONTADO;
+
+    @Column(name = "dias_credito")
+    private Integer diasCredito;
+
+    @Column(name = "fecha_vencimiento")
+    private LocalDate fechaVencimiento;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_pago", nullable = false, length = 10)
+    private EstadoPago estadoPago = EstadoPago.PAGADA;
+
+    /** Usuario de Keycloak que la registró (null en las anteriores). */
+    @Column(name = "registrado_por", length = 100)
+    private String registradoPor;
+
+    public enum TipoPago {
+        CONTADO, CREDITO
+    }
+
+    public enum EstadoPago {
+        PAGADA, PENDIENTE
+    }
+
     public void addDetalle(DetalleCompra detalle) {
         detalles.add(detalle);
         detalle.setCompra(this);

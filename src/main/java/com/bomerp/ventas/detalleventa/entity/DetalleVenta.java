@@ -42,6 +42,14 @@ public class DetalleVenta {
     @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
     private BigDecimal descuentoPorcentaje;
 
+    /**
+     * Costo unitario del producto al vender, en la moneda de la venta (rentabilidad). Lo pone
+     * Venta.agregarDetalle; en ventas anteriores a la migración es el costo de ese momento.
+     * Null si no se pudo convertir (venta en otra moneda sin tipo de cambio).
+     */
+    @Column(name = "costo_unitario", precision = 12, scale = 2)
+    private BigDecimal costoUnitario;
+
     public DetalleVenta(Producto producto, Integer cantidad, BigDecimal precioUnitario) {
         this(producto, cantidad, precioUnitario, BigDecimal.ZERO);
     }

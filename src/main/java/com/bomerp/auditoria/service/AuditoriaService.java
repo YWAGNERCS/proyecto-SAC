@@ -55,6 +55,9 @@ public class AuditoriaService {
             r("POST", "/cobranza/cobros", "Cobranza", "Registró el cobro #{nuevo}"),
             r("POST", "/cobranza/devoluciones/{n}/registrar", "Cobranza", "Registró la devolución #{id}"),
             r("POST", "/compras", "Compras", "Registró la compra #{nuevo}"),
+            r("POST", "/cuentas-por-pagar/pagos/{n}/anular", "Compras", "Anuló el pago a proveedor #{id}"),
+            r("POST", "/cuentas-por-pagar/pagos", "Compras", "Registró el pago a proveedor #{nuevo}"),
+            r("POST", "/inventario/ajustes", "Inventario", "Ajustó el inventario (ajuste #{nuevo})"),
             r("POST", "/facturacion/emitir/{n}", "Facturación", "Emitió el comprobante de la venta #{id}"),
             r("POST", "/facturacion/{n}/enviar", "Facturación", "Envió el comprobante #{id}"),
             r("POST", "/productos", "Catálogo", "Creó el producto #{nuevo}"),
@@ -110,7 +113,7 @@ public class AuditoriaService {
             Map.entry("Abrió", "abrir"), Map.entry("Cerró", "cerrar"),
             Map.entry("Canceló", "cancelar"), Map.entry("Facturó", "facturar"),
             Map.entry("Dio", "dar"), Map.entry("Reprogramó", "reprogramar"),
-            Map.entry("Cambió", "cambiar"));
+            Map.entry("Cambió", "cambiar"), Map.entry("Ajustó", "ajustar"));
 
     private static String intento(String accion) {
         int espacio = accion.indexOf(' ');

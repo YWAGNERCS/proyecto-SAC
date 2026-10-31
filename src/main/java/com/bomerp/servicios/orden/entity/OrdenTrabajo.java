@@ -62,6 +62,14 @@ public class OrdenTrabajo {
     @Column(name = "fecha_programada", nullable = false)
     private LocalDate fechaProgramada;
 
+    /** Hora de inicio "HH:mm" (opcional: sin hora la visita es "en el día"). Para la agenda de técnicos. */
+    @Column(name = "hora_inicio", length = 5)
+    private String horaInicio;
+
+    /** Cuánto se calcula que dura, en minutos (agenda y cruces de horario). Null = 120. */
+    @Column(name = "duracion_minutos")
+    private Integer duracionMinutos;
+
     @Column(nullable = false, length = 100)
     private String tecnico;
 
@@ -102,6 +110,19 @@ public class OrdenTrabajo {
 
     @Column(name = "motivo_cancelacion", length = 300)
     private String motivoCancelacion;
+
+    /** Duración que se asume si la orden no la indica (minutos). */
+    public static final int DURACION_POR_DEFECTO = 120;
+
+    /** Minuto del día en que empieza, o null si no tiene hora. */
+    public Integer minutoInicio() {
+        if (horaInicio == null) return null;
+        return Integer.parseInt(horaInicio.substring(0, 2)) * 60 + Integer.parseInt(horaInicio.substring(3, 5));
+    }
+
+    public int duracion() {
+        return duracionMinutos != null ? duracionMinutos : DURACION_POR_DEFECTO;
+    }
 
     public enum Tipo {
         INSTALACION, MANTENIMIENTO, REPARACION, VISITA_TECNICA

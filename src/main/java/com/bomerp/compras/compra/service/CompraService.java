@@ -60,6 +60,26 @@ public class CompraService {
         return compraRepository.detallesDeProducto(productoId);
     }
 
+    /**
+     * Contado: PAGADA. Crédito: PENDIENTE, vence fecha de compra + días (1 a 365); queda en Cuentas por pagar.
+     */
+    private static void aplicarFormaPago(Compra compra, Compra.TipoPago tipoPago, Integer diasCredito) {
+        Compra.TipoPago tipo = tipoPago == null ? Compra.TipoPago.CONTADO : tipoPago;
+        compra.setTipoPago(tipo);
+        if (tipo == Compra.TipoPago.CREDITO) {
+            if (diasCredito == null || diasCredito < 1 || diasCredito > 365) {
+                throw new IllegalArgumentException("Una compra a crédito necesita los días de crédito (1 a 365).");
+            }
+            compra.setDiasCredito(diasCredito);
+            compra.setFechaVencimiento(compra.getFechaCompra().plusDays(diasCredito));
+            compra.setEstadoPago(Compra.EstadoPago.PENDIENTE);
+        } else {
+            compra.setDiasCredito(null);
+            compra.setFechaVencimiento(null);
+            compra.setEstadoPago(Compra.EstadoPago.PAGADA);
+        }
+    }
+
     /** Serie de 4 caracteres (F001, E001, FA01…) + guion + número de hasta 8 dígitos. */
     private static final Pattern FACTURA = Pattern.compile("^([A-Z0-9]{4})-(\\d{1,8})$");
 
@@ -85,6 +105,11 @@ public class CompraService {
      * y el total lo calcula el servidor con las líneas.
      */
     public Compra registrarCompra(CompraRequestDTO dto) {
+        return registrarCompra(dto, null);
+    }
+
+    /** @param usuario preferred_username de quien la registra */
+    public Compra registrarCompra(CompraRequestDTO dto, String usuario) {
         Proveedor proveedor = proveedorService.obtenerPorId(dto.proveedorId());
         String numeroFactura = normalizarFactura(dto.numeroFactura());
         compraRepository.findFirstByProveedor_IdAndNumeroFactura(proveedor.getId(), numeroFactura)
@@ -99,6 +124,8 @@ public class CompraService {
         compra.setFechaCompra(dto.fechaCompra());
         compra.setNumeroFactura(numeroFactura);
         compra.setMoneda(dto.moneda());
+        compra.setRegistradoPor(usuario);
+        aplicarFormaPago(compra, dto.tipoPago(), dto.diasCredito());
         BigDecimal total = BigDecimal.ZERO;
 
         for (CompraRequestDTO.DetalleCompraRequestDTO detDto : dto.detalles()) {
