@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -46 3438 720" width="3438" font-family="Inter, Segoe UI, Arial, sans-serif" fill="#081B2C">
+<defs><marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#33475B"/></marker></defs>
+<rect x="-10" y="-46" width="3438" height="720" fill="#FFFFFF"/>
+<text x="0" y="-20" font-size="16" font-weight="600">TO-BE · Venta, instalación y cobro con SGE-JD</text>
+<rect x="0" y="0" width="3418" height="660" fill="none" stroke="#33475B" stroke-width="1.5"/>
+<rect x="30" y="0" width="3388" height="165" fill="#F6FBFD" stroke="#B5DCEA"/>
+<text transform="translate(19 82) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Cliente</text>
+<rect x="30" y="165" width="3388" height="165" fill="#FFFFFF" stroke="#B5DCEA"/>
+<text transform="translate(19 248) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Asistente (Lucy)</text>
+<rect x="30" y="330" width="3388" height="165" fill="#F6FBFD" stroke="#B5DCEA"/>
+<text transform="translate(19 412) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Técnico</text>
+<rect x="30" y="495" width="3388" height="165" fill="#FFFFFF" stroke="#B5DCEA"/>
+<text transform="translate(19 578) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">SGE-JD</text>
+<line x1="30" y1="0" x2="30" y2="660" stroke="#33475B" stroke-width="1.5"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="254,82 336,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="408,132 408,248 508,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="580,298 580,578 680,578"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="752,528 752,82 852,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="996,82 1071,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1121,82 1250,82"/>
+<text x="1129" y="76" font-size="11" font-weight="600" fill="#0078B7">No</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1096,108 1096,248 1196,248"/>
+<text x="1102" y="178" font-size="11" font-weight="600" fill="#0078B7">Sí</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1268,298 1268,578 1368,578"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1440,528 1440,248 1587,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1637,248 1712,248"/>
+<text x="1645" y="242" font-size="11" font-weight="600" fill="#0078B7">Sí</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1612,222 1612,181 2300,181 2300,222"/>
+<text x="1618" y="202" font-size="11" font-weight="600" fill="#0078B7">No</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1784,298 1784,578 1884,578"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1956,528 1956,412 2056,412"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2128,362 2128,248 2275,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2325,248 2447,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2472,272 2472,578 2572,578"/>
+<text x="2478" y="425" font-size="11" font-weight="600" fill="#0078B7">Sí</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2472,222 2472,181 3332,181 3332,230"/>
+<text x="2478" y="202" font-size="11" font-weight="600" fill="#0078B7">No</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2644,528 2644,82 2744,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2816,132 2816,248 2916,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2988,298 2988,578 3088,578"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="3160,528 3160,248 3314,248"/>
+<circle cx="236" cy="82" r="18.0" fill="#ECFDF5" stroke="#081B2C" stroke-width="1.5"/>
+<text x="236" y="116" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="236" y="116">Necesita un equipo o</tspan><tspan x="236" y="130">servicio</tspan></text>
+<rect x="336" y="32" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="343" y="46" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="408" y="88" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="408" y="88">Pide una cotización</tspan></text></g>
+<rect x="508" y="198" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="515" y="212" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="580" y="238" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="580" y="238">Registra la proforma</tspan><tspan x="580" y="252">(cliente por RUC/DNI,</tspan><tspan x="580" y="266">productos, descuento)</tspan></text></g>
+<rect x="680" y="528" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="687" y="542" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="752" y="554" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="752" y="554">Calcula precios e IGV,</tspan><tspan x="752" y="568">aplica el tope de</tspan><tspan x="752" y="582">descuento, genera el</tspan><tspan x="752" y="596">PDF y lo envía por</tspan><tspan x="752" y="610">correo</tspan></text></g>
+<rect x="852" y="32" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="859" y="46" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="924" y="88" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="924" y="88">Revisa la proforma</tspan></text></g>
+<polygon points="1096,58 1121,82 1096,108 1071,82" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="1096" y="84" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<text x="1067" y="54" text-anchor="end" font-size="10.5" font-weight="600">¿Acepta?</text>
+<circle cx="1268" cy="82" r="18.0" fill="#FEF2F2" stroke="#081B2C" stroke-width="4"/>
+<text x="1268" y="116" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1268" y="116">Proforma rechazada o</tspan><tspan x="1268" y="130">vencida</tspan></text>
+<rect x="1196" y="198" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="1203" y="212" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="1268" y="238" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1268" y="238">Convierte la proforma</tspan><tspan x="1268" y="252">en venta (contado o</tspan><tspan x="1268" y="266">crédito)</tspan></text></g>
+<rect x="1368" y="528" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="1375" y="542" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="1440" y="548" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1440" y="548">Valida y descuenta</tspan><tspan x="1440" y="562">stock, emite el</tspan><tspan x="1440" y="576">comprobante, calcula</tspan><tspan x="1440" y="590">detracción o retención</tspan><tspan x="1440" y="604">y programa</tspan><tspan x="1440" y="618">mantenimientos</tspan></text></g>
+<polygon points="1612,222 1637,248 1612,272 1587,248" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="1612" y="248" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<text x="1583" y="206" text-anchor="end" font-size="10.5" font-weight="600">¿Requiere</text>
+<text x="1583" y="218" text-anchor="end" font-size="10.5" font-weight="600">instalación?</text>
+<rect x="1712" y="198" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="1719" y="212" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="1784" y="238" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1784" y="238">Programa la orden de</tspan><tspan x="1784" y="252">trabajo (técnico, fecha</tspan><tspan x="1784" y="266">y hora)</tspan></text></g>
+<rect x="1884" y="528" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="1891" y="542" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="1956" y="568" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1956" y="568">Verifica que el técnico</tspan><tspan x="1956" y="582">no tenga otra visita a</tspan><tspan x="1956" y="596">esa hora (agenda)</tspan></text></g>
+<rect x="2056" y="362" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="2063" y="376" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="2128" y="404" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="2128" y="404">Instala y cierra la</tspan><tspan x="2128" y="418">orden (materiales</tspan><tspan x="2128" y="432">usados, quién recibió)</tspan></text></g>
+<polygon points="2300,222 2325,248 2300,272 2275,248" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="2300" y="248" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<polygon points="2472,222 2497,248 2472,272 2447,248" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="2472" y="248" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<text x="2443" y="218" text-anchor="end" font-size="10.5" font-weight="600">¿Es a crédito?</text>
+<rect x="2572" y="528" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="2579" y="542" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="2644" y="562" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="2644" y="562">Muestra el saldo, los</tspan><tspan x="2644" y="576">días de atraso y el</tspan><tspan x="2644" y="590">recordatorio por</tspan><tspan x="2644" y="604">WhatsApp</tspan></text></g>
+<rect x="2744" y="32" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="2751" y="46" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="2816" y="80" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="2816" y="80">Paga (transferencia,</tspan><tspan x="2816" y="94">depósito, Yape…)</tspan></text></g>
+<rect x="2916" y="198" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="2923" y="212" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="2988" y="246" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="2988" y="246">Registra el cobro con</tspan><tspan x="2988" y="260">su N° de operación</tspan></text></g>
+<rect x="3088" y="528" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="3095" y="542" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="3160" y="562" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="3160" y="562">Rechaza un voucher</tspan><tspan x="3160" y="576">repetido, actualiza el</tspan><tspan x="3160" y="590">saldo y al cubrirlo</tspan><tspan x="3160" y="604">marca la venta PAGADA</tspan></text></g>
+<circle cx="3332" cy="248" r="18.0" fill="#FEF2F2" stroke="#081B2C" stroke-width="4"/>
+<text x="3332" y="288" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="3332" y="288">Venta cobrada</tspan></text>
+<text x="34" y="670" font-size="10" fill="#5C6E7E">✋ tarea manual · 👤 tarea en SGE-JD · ⚙ lo hace el sistema solo · × decisión · generado por docs/diagramas/generar_bpmn.py</text>
+</svg>

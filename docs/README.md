@@ -120,6 +120,109 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - **CU-03 (Vender):** el vendedor registra una venta directa con varias líneas de producto, revisa el total y confirma; el sistema descuenta stock, programa mantenimientos y emite el comprobante.
 - **CU-04 (Anular venta):** el administrador anula una venta registrada; el sistema devuelve al inventario lo vendido, cancela los mantenimientos pendientes, emite la nota de crédito del comprobante y la venta deja de contar en los reportes. Si el cliente ya había pagado, queda una devolución pendiente que se registra cuando se le devuelve el dinero.
 - **CU-05 (Cobrar):** la asistente registra un pago del cliente y lo reparte entre sus ventas a crédito en esa moneda; ningún abono supera el saldo y la venta pasa a PAGADO al completarse.
+- **CU-06 (Anular cobro):** el administrador anula un cobro mal registrado indicando el motivo; el monto vuelve al saldo de sus ventas y el cobro queda en el historial como anulado.
+- **CU-07 (Programar y cerrar una orden de trabajo):** la asistente programa la visita con técnico, fecha y hora (el sistema rechaza un cruce en la agenda del técnico); al cerrarla registra lo hecho y los materiales usados, que descuentan stock.
+- **CU-08 (Comprar y pagar al proveedor):** la asistente registra la compra al contado o a crédito; las compras a crédito quedan en Cuentas por pagar hasta registrar sus pagos.
+- **CU-09 (Ajustar inventario):** el administrador (o quien tenga el permiso) registra un conteo físico o una merma; el sistema ajusta el stock y lo muestra en el kardex.
+- **CU-10 (Delegar permisos):** el administrador enciende o apaga, para un asistente, operaciones que normalmente son solo suyas.
+- **CU-11 (Revisar el historial y la rentabilidad):** el administrador consulta quién hizo cada cambio y cuánto se ganó por venta, cliente, producto y técnico.
+
+#### Diagrama de casos de uso (UML)
+
+El administrador hereda todo lo que hace la asistente (generalización de actores). Los casos marcados con 🔑 son del administrador y los puede delegar a una asistente con un permiso (RF-28).
+
+```mermaid
+flowchart LR
+    Asis(["👤 Asistente<br/>(Lucy)"])
+    Admin(["👤 Administrador<br/>(Lisandro)"])
+    Reloj(["⏰ Tiempo<br/>(tareas programadas)"])
+    Ext(["🌐 Sistemas externos<br/>SUNAT · RENIEC · correo · Keycloak"])
+    Admin -- "hereda de" --> Asis
+
+    subgraph SGE["SGE-JD"]
+        direction TB
+        cu1([Iniciar sesión])
+        cu2([Registrar cliente o proveedor])
+        cu3([Elaborar y enviar proforma])
+        cu4([Registrar venta])
+        cu5([Registrar cobro])
+        cu6([Programar y cerrar orden de trabajo])
+        cu7([Registrar compra y pago a proveedor])
+        cu8([Consultar kardex, reportes y agenda])
+        cu9([🔑 Anular venta o cobro])
+        cu10([🔑 Editar catálogo y eliminar registros])
+        cu11([🔑 Ajustar inventario])
+        cu12([🔑 Ver rentabilidad])
+        cu13([Delegar permisos])
+        cu14([Revisar historial de cambios])
+        cu15([Enviar alertas de mantenimiento y stock])
+        cu16([Calcular detracción o retención])
+    end
+
+    Asis --- cu1 & cu2 & cu3 & cu4 & cu5 & cu6 & cu7 & cu8
+    Admin --- cu9 & cu10 & cu11 & cu12 & cu13 & cu14
+    Reloj --- cu15
+    cu4 -. "«include»" .-> cu16
+    cu2 -. "consulta" .-> Ext
+    cu1 -. "autentica" .-> Ext
+```
+
+### Modelado de procesos (BPMN AS-IS y TO-BE)
+
+Dos procesos clave del negocio, como se hacen hoy (AS-IS) y con SGE-JD (TO-BE). Cada diagrama está en BPMN 2.0
+estándar en `docs/diagramas/` (`.bpmn`, se abre y edita en [Camunda Modeler](https://camunda.com/download/modeler/) o
+[demo.bpmn.io](https://demo.bpmn.io)) y como imagen (`.svg`). Se generan con `python docs/diagramas/generar_bpmn.py`.
+
+> ⚠️ **Los AS-IS son un borrador.** No hay un registro de cómo trabaja hoy la oficina: se armaron a partir de lo que
+> resuelven los requerimientos, y cada paso dudoso está marcado **[S1]–[S9]** (supuesto). Hay que confirmarlos con
+> Lisandro antes de presentarlos como el proceso real.
+
+#### Proceso 1 · Venta, instalación y cobro
+
+**AS-IS (borrador)**
+
+![AS-IS venta, instalación y cobro](diagramas/asis_venta_servicio.svg)
+
+**TO-BE (con SGE-JD)**
+
+![TO-BE venta, instalación y cobro](diagramas/tobe_venta_servicio.svg)
+
+#### Proceso 2 · Compra, pago al proveedor e inventario
+
+**AS-IS (borrador)**
+
+![AS-IS compra e inventario](diagramas/asis_compra_inventario.svg)
+
+**TO-BE (con SGE-JD)**
+
+![TO-BE compra, cuentas por pagar e inventario](diagramas/tobe_compra_inventario.svg)
+
+#### Supuestos del AS-IS por confirmar con Lisandro
+
+| # | Supuesto | Pregunta para confirmar |
+|---|---|---|
+| S1 | La proforma se arma a mano en Word o Excel | ¿Con qué arman hoy la cotización? ¿Hay una plantilla? |
+| S2 | Lisandro revisa precio y descuento de cada proforma | ¿Lucy puede cotizar sola o todo pasa por Lisandro? |
+| S3 | El stock se confirma mirando el almacén | ¿Llevan algún control de stock (Excel, cuaderno)? |
+| S4 | La factura se emite en el portal de SUNAT (SOL) | ¿Facturan en SUNAT SOL, con un sistema o con un contador? |
+| S5 | Las visitas de los técnicos se recuerdan de memoria o en una agenda | ¿Cómo asignan hoy al técnico y la hora? ¿Han tenido cruces? |
+| S6 | Las deudas de clientes se anotan en un cuaderno o Excel | ¿Cómo saben hoy quién debe y desde cuándo? |
+| S7 | Se nota que falta material cuando se va a usar | ¿Hay un mínimo de stock o un pedido periódico? |
+| S8 | La factura del proveedor se archiva y lo recibido se anota | ¿Dónde registran lo que entra al almacén? |
+| S9 | Las fechas de pago a proveedores se recuerdan | ¿Cómo controlan lo que deben a los proveedores? |
+
+#### Qué cambia del AS-IS al TO-BE
+
+| Problema (AS-IS) | Con SGE-JD (TO-BE) | RF |
+|---|---|---|
+| Precios y descuentos calculados a mano | Precio desde costo y margen, IGV y tope de descuento por usuario | RF-01, RF-19 |
+| Proforma sin seguimiento | Estados (enviada, aceptada, rechazada, vencida, convertida) y PDF por correo | RF-04 |
+| Stock incierto al vender | La venta valida y descuenta el stock; alerta de stock mínimo; ajustes con motivo | RF-07, RF-31 |
+| Facturación y detracción manuales | Comprobante con correlativo y cálculo de detracción o retención | RF-09, RF-24 |
+| Agenda de técnicos de memoria | Órdenes con hora y duración; no deja cruzar dos visitas | RF-25, RF-33 |
+| Deudas de clientes en un cuaderno | Saldo por venta, días de atraso, recordatorio y voucher único | RF-20, RF-23 |
+| Deudas con proveedores sin control | Cuentas por pagar con vencimiento y pagos parciales | RF-30 |
+| Sin saber cuánto se gana | Rentabilidad por venta, cliente, producto y técnico | RF-32 |
 
 ---
 
@@ -227,6 +330,209 @@ Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el
 | `ORDENES_TRABAJO` / `MATERIALES_ORDEN` | orden (tipo, estado, cliente, sede, venta, mantenimiento, equipo, fecha, técnico, dirección, descripción; al cerrar: fecha_realizada, trabajo_realizado, recibido_por; venta_facturada_id) y sus materiales (producto_id, cantidad, costo_unitario, moneda) |
 | `USUARIOS` | **Sin uso desde S10b** (usuarios y contraseñas viven en Keycloak). La tabla queda en las bases existentes; se puede borrar |
 
+### Diagrama de clases del dominio (UML)
+
+Entidades JPA principales (`@Entity`) con sus atributos y operaciones de negocio clave. Se omiten ids, getters y setters.
+Cardinalidades tal como están en el código (`@ManyToOne`, `@OneToMany`).
+
+```mermaid
+classDiagram
+    direction LR
+    class Categoria {
+        nombre
+    }
+    class Producto {
+        nombre
+        sector : Sector
+        costoBase : BigDecimal
+        margenPorcentaje : BigDecimal
+        moneda : Moneda
+        stockActual : int
+        stockMinimo : int
+        calcularPrecioVenta() BigDecimal
+        controlaStock() boolean
+        esEquipo() boolean
+        esServicio() boolean
+    }
+    class Sector {
+        <<enumeration>>
+        CLIMATIZACION
+        REFRIGERACION
+        VENTILACION_FORZADA
+        MATERIAL_SERVICIO
+        SERVICIO
+    }
+    class Cliente {
+        nombreORazonSocial
+        ruc
+        dni
+        agenteRetencion
+    }
+    class SedeCliente {
+        nombre
+        direccion
+    }
+    class Proveedor {
+        nombreORazonSocial
+        ruc
+    }
+    class Proforma {
+        fecha
+        moneda
+        estado
+        tipoCambio
+    }
+    class ItemProforma {
+        cantidad
+        precioUnitario
+        descuentoPorcentaje
+    }
+    class Venta {
+        fechaVenta
+        tipoPago : CONTADO/CREDITO
+        estado : REGISTRADA/ANULADA
+        estadoPago : PENDIENTE/PAGADO
+        moneda; tipoCambio
+        tipoDeduccion; montoDeduccion
+        calcularSubtotal() BigDecimal
+        calcularTotal() BigDecimal
+        agregarDetalle(DetalleVenta)
+    }
+    class DetalleVenta {
+        cantidad
+        precioUnitario
+        descuentoPorcentaje
+        costoUnitario
+        calcularSubtotalDetalle()
+    }
+    class Comprobante {
+        serie
+        numero
+        tipo
+    }
+    class NotaCredito {
+        serie
+        numero
+        motivo
+    }
+    class Cobro {
+        fecha
+        metodoPago
+        referencia
+        montoTotal
+        estado : VIGENTE/ANULADO
+    }
+    class DetalleCobro {
+        monto
+    }
+    class Devolucion {
+        monto
+        estado
+    }
+    class Compra {
+        fechaCompra
+        numeroFactura
+        total
+        tipoPago
+        fechaVencimiento
+        estadoPago
+    }
+    class DetalleCompra {
+        cantidad
+        precioUnitarioCompra
+    }
+    class PagoProveedor {
+        fechaPago
+        monto
+        metodo
+        numeroOperacion
+        estado
+    }
+    class AjusteInventario {
+        fecha
+        tipo : ENTRADA/SALIDA
+        cantidad
+        motivo
+        stockAnterior
+        stockNuevo
+    }
+    class OrdenTrabajo {
+        tipo
+        estado
+        fechaProgramada
+        horaInicio
+        duracionMinutos
+        tecnico
+        minutoInicio()
+    }
+    class MaterialOrden {
+        cantidad
+        costoUnitario
+    }
+    class EquipoInstalado {
+        numeroSerie
+        mesesGarantia
+        frecuenciaMeses
+        estado
+    }
+    class ContratoMantenimiento {
+        inicio
+        fin
+        frecuenciaMeses
+        montoPorVisita
+        estado
+    }
+    class Mantenimiento {
+        fechaProgramada
+        estado
+        origen
+    }
+    class RegistroCambio {
+        fechaHora
+        usuario
+        accion
+        resultado
+    }
+
+    Categoria "1" <-- "*" Producto
+    Producto ..> Sector
+    Cliente "1" <-- "*" SedeCliente
+    Cliente "1" <-- "*" Proforma
+    Proforma "1" *-- "1..*" ItemProforma
+    ItemProforma "*" --> "1" Producto
+    Proforma "0..1" <-- "0..1" Venta : origen
+    Cliente "1" <-- "*" Venta
+    Venta "1" *-- "1..*" DetalleVenta
+    DetalleVenta "*" --> "1" Producto
+    Venta "1" <-- "0..1" Comprobante
+    Comprobante "1" <-- "0..1" NotaCredito
+    Cliente "1" <-- "*" Cobro
+    Cobro "1" *-- "1..*" DetalleCobro
+    DetalleCobro "*" --> "1" Venta
+    Venta "1" <-- "0..1" Devolucion
+    Proveedor "1" <-- "*" Compra
+    Compra "1" *-- "1..*" DetalleCompra
+    DetalleCompra "*" --> "1" Producto
+    Compra "1" <-- "*" PagoProveedor
+    Producto "1" <-- "*" AjusteInventario
+    Cliente "1" <-- "*" OrdenTrabajo
+    OrdenTrabajo "*" --> "0..1" SedeCliente
+    OrdenTrabajo "*" --> "0..1" EquipoInstalado
+    OrdenTrabajo "1" *-- "*" MaterialOrden
+    MaterialOrden "*" --> "1" Producto
+    EquipoInstalado "*" --> "1" Producto
+    EquipoInstalado "*" --> "0..1" SedeCliente
+    ContratoMantenimiento "*" --> "1" Cliente
+    Mantenimiento "*" --> "0..1" Venta
+    Mantenimiento "*" --> "0..1" EquipoInstalado
+    Mantenimiento "*" --> "0..1" ContratoMantenimiento
+```
+
+**Patrones visibles en el diagrama:** cabecera-detalle con composición (`Venta`–`DetalleVenta`, `Compra`–`DetalleCompra`,
+`Cobro`–`DetalleCobro`, `OrdenTrabajo`–`MaterialOrden`); muchos a muchos resueltos con una entidad intermedia que guarda
+datos propios (ver la sección siguiente); y anulación lógica en lugar de borrado (`Venta.estado`, `Cobro.estado`,
+`PagoProveedor.estado`), para que el historial no pierda nada.
+
 ### Relaciones muchos a muchos
 
 Una venta lleva **varios productos** y un mismo producto aparece en **varias ventas**: eso es una relación muchos a muchos (N:M). En una base relacional no se guarda directo (una fila de `VENTAS` no puede tener "una lista de productos"), así que se pone una **tabla intermedia** donde **cada fila es una línea**: esta venta + este producto + sus datos propios. El N:M queda partido en dos relaciones uno a muchos.
@@ -307,6 +613,29 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 | Consultas *(transitorio, por mover a ventas, cobranza y proformas)* | `GET /reportes/ventas-resumen?desde=&hasta=` · `GET /reportes/cobranza` · `GET /reportes/proformas-pendientes` |
 
 *(Todas las rutas sin prefijo van bajo `/api/v1/admin`.)*
+
+### Pruebas automáticas (JUnit 5 + Mockito)
+
+`mvn test` corre **64 pruebas** (31/10/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+(Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. `ProductoCrudTest` es de integración y
+sí necesita Oracle encendido (revierte lo que guarda).
+
+| Clase de prueba | Qué protege | Pruebas |
+|---|---|---|
+| `CobranzaServiceTest` | Abono parcial y total, saldo, voucher duplicado, fechas, venta anulada; anular un cobro (motivo, dos veces, devoluciones) | 9 |
+| `CuentasPorPagarServiceTest` | Pagos a proveedores: saldo, contado, fechas, N° de operación, duplicado, compra PAGADA, anulación | 8 |
+| `AjusteInventarioServiceTest` | Conteo físico, merma, stock negativo, equipos, observación obligatoria | 7 |
+| `AuditoriaServiceTest` | Acción en palabras, "Intentó…" en lo denegado, módulo, resultado; nunca tumba la operación | 6 |
+| `PermisosServiceTest` | Permisos delegables: diferencia de roles, no a uno mismo ni a un ADMIN, permiso desconocido | 6 |
+| `AgendaHorarioTest` | Cruces de horario del técnico, bordes exactos, sin hora, medianoche, rango de la agenda | 6 |
+| `CompraServiceTest` | N° de factura, factura duplicada, stock solo de materiales, contado/crédito y vencimiento | 5 |
+| `DeduccionTributariaServiceTest` | Detracción 12 % (soles enteros), retención 3 %, umbral S/ 700, dólares con tipo de cambio | 5 |
+| `VentaCostoTest` | Costo guardado en cada línea y su conversión de moneda; subtotal, IGV y total | 5 |
+| `RentabilidadServiceTest` | Ganancia en soles, líneas sin costo, rentabilidad por técnico | 4 |
+| `ProductoCrudTest` (integración, Oracle) | Guardar, buscar y actualizar un producto | 3 |
+
+La seguridad por rol y permiso se prueba además de punta a punta con `pruebas-seguridad/05_matriz.ps1` (14 casos,
+con Keycloak y el backend encendidos).
 
 ### Guía de instalación
 
@@ -427,9 +756,9 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 1 | Inicio y planificación | ✅ Completo |
 | 2 | Levantamiento de información | ✅ Completo (pendiente confirmar con Lucy el formato exacto de envío a SUNAT) |
 | 3 | Análisis de requisitos | ✅ 16 RF originales + RF-17 a RF-33 (anulación, moneda, descuentos, cobranza, postventa, devoluciones, anulación de cobros, detracción y retención, órdenes de trabajo, equipos instalados, contratos, permisos delegables, historial de cambios, cuentas por pagar, ajustes de inventario, rentabilidad y agenda de técnicos) |
-| 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ⏳ Pendiente |
-| 5 | Análisis del sistema (casos de uso UML) | ⏳ Pendiente formalizar diagrama |
-| 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo (pendiente diagrama de clases UML formal) |
+| 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ✅ 2 procesos en BPMN 2.0 (`docs/diagramas/`); los AS-IS son borrador con supuestos S1–S9 por confirmar con el cliente |
+| 5 | Análisis del sistema (casos de uso UML) | ✅ CU-01 a CU-11 y diagrama de casos de uso |
+| 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo, con diagrama de clases del dominio (UML) |
 | 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos (S1–S11), con Spring Boot 4.0.7 y Keycloak. Simulados: OSE y WhatsApp; correo real por Gmail (configurado en la laptop de desarrollo el 26/10/2026). Pendiente repartir `reportes` entre sus módulos |
 | 8 | Pruebas y validación | 🔄 Recorridos completos por API como Lisandro y Lucy, matriz de seguridad 14/14 y pruebas de cada corrección de la auditoría; pruebas automatizadas mínimas (ver 5) |
 | 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Pendiente un ambiente accesible desde otras PC |
@@ -514,7 +843,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 - **Compras y stock de equipos (corregido 13/10/2026).** Las compras subían el stock de todos los productos, incluidos los equipos, mientras las ventas solo descontaban materiales. Ahora las compras también suben solo el stock de materiales.
 
 ### Pruebas y configuración
-28. **Pruebas automatizadas casi inexistentes.** Solo queda `ProductoCrudTest`, que necesita Oracle encendido. No hay pruebas de ventas, de rollback ni de módulos.
+28. ~~**Pruebas automatizadas casi inexistentes.**~~ ✅ **Resuelto (31/10/2026):** 61 pruebas unitarias de reglas de negocio (cobranza, cuentas por pagar, ajustes, detracción, agenda, permisos, historial, rentabilidad, compras) más `ProductoCrudTest`; ver "Pruebas automáticas" en la documentación técnica. **Pendiente:** pruebas de controladores (`@WebMvcTest`) para la seguridad por rol, hoy cubierta por `05_matriz.ps1`.
 29. **H2 incluido pero sin perfil.** La dependencia está en el `pom.xml`, pero no hay configuración H2 activa (se eliminó `application-test.properties`, que solo cambiaba el puerto).
 30. ~~**Paquete de arreglos 2 sin aplicar.**~~ Ya no existe la carpeta `Claude/arreglos2`. De lo que traía, el correlativo secuencial se hizo aparte (punto 12); siguen pendientes las pruebas de ventas (punto 28) y los límites entre módulos (punto 21).
 31. **Contenedor Docker:** la documentación anterior lo llamaba `SGE-DJ`; el real es **`SGE-JD`**. El volumen `sge-jd-oracle-data` está marcado como `external` en `docker-compose.yml`, así que debe existir antes de `docker compose up`.

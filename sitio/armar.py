@@ -71,6 +71,11 @@ def main():
     (destino / "index.md").write_text(inicio.replace("{{ENCABEZADO}}", enlaces(encabezado)), encoding="utf-8")
     (destino / "limitaciones.md").write_text(enlaces((FUENTE / "LIMITACIONES.md").read_text(encoding="utf-8")), encoding="utf-8")
     shutil.copyfile(args.lp2, destino / "lp2-demo.md")
+    # Diagramas BPMN (imagen para la página y archivo .bpmn para abrir en Camunda Modeler o bpmn.io)
+    (destino / "diagramas").mkdir(exist_ok=True)
+    for f in (FUENTE / "diagramas").glob("*"):
+        if f.suffix in (".svg", ".bpmn"):
+            shutil.copyfile(f, destino / "diagramas" / f.name)
 
     print("páginas:", ", ".join(sorted(p.name for p in destino.glob("*.md"))))
 

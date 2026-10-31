@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -46 1718 555" width="1718" font-family="Inter, Segoe UI, Arial, sans-serif" fill="#081B2C">
+<defs><marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#33475B"/></marker></defs>
+<rect x="-10" y="-46" width="1718" height="555" fill="#FFFFFF"/>
+<text x="0" y="-20" font-size="16" font-weight="600">AS-IS · Compra, pago al proveedor e inventario (BORRADOR: supuestos [S7]–[S9] por validar)</text>
+<rect x="0" y="0" width="1698" height="495" fill="none" stroke="#33475B" stroke-width="1.5"/>
+<rect x="30" y="0" width="1668" height="165" fill="#F6FBFD" stroke="#B5DCEA"/>
+<text transform="translate(19 82) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Oficina (Lucy)</text>
+<rect x="30" y="165" width="1668" height="165" fill="#FFFFFF" stroke="#B5DCEA"/>
+<text transform="translate(19 248) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Dueño (Lisandro)</text>
+<rect x="30" y="330" width="1668" height="165" fill="#F6FBFD" stroke="#B5DCEA"/>
+<text transform="translate(19 412) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Proveedor</text>
+<line x1="30" y1="0" x2="30" y2="495" stroke="#33475B" stroke-width="1.5"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="236,100 236,248 336,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="408,298 408,412 508,412"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="580,362 580,82 680,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="824,82 899,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="924,108 924,248 1024,248"/>
+<text x="930" y="178" font-size="11" font-weight="600" fill="#0078B7">Sí</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="924,58 924,16 1440,16 1440,58"/>
+<text x="930" y="37" font-size="11" font-weight="600" fill="#0078B7">No</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1168,248 1196,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1268,198 1268,82 1415,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1465,82 1594,82"/>
+<circle cx="236" cy="82" r="18.0" fill="#ECFDF5" stroke="#081B2C" stroke-width="1.5"/>
+<text x="236" y="116" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="236" y="116">Falta material al ir a</tspan><tspan x="236" y="130">usarlo [S7]</tspan></text>
+<rect x="336" y="198" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="343" y="212" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="408" y="246" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="408" y="246">Pide el material al</tspan><tspan x="408" y="260">proveedor</tspan></text></g>
+<rect x="508" y="362" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="515" y="376" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="580" y="410" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="580" y="410">Entrega la mercadería y</tspan><tspan x="580" y="424">la factura</tspan></text></g>
+<rect x="680" y="32" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="687" y="46" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="752" y="80" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="752" y="80">Archiva la factura y</tspan><tspan x="752" y="94">anota lo que llegó [S8]</tspan></text></g>
+<polygon points="924,58 949,82 924,108 899,82" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="924" y="84" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<text x="895" y="54" text-anchor="end" font-size="10.5" font-weight="600">¿Es a crédito?</text>
+<rect x="1024" y="198" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="1031" y="212" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="1096" y="246" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1096" y="246">Recuerda la fecha de</tspan><tspan x="1096" y="260">pago [S9]</tspan></text></g>
+<rect x="1196" y="198" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="1203" y="212" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="1268" y="252" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1268" y="252">Paga al proveedor</tspan></text></g>
+<polygon points="1440,58 1465,82 1440,108 1415,82" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="1440" y="84" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<circle cx="1612" cy="82" r="18.0" fill="#FEF2F2" stroke="#081B2C" stroke-width="4"/>
+<text x="1612" y="122" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1612" y="122">Material en almacén</tspan></text>
+<text x="34" y="505" font-size="10" fill="#5C6E7E">✋ tarea manual · 👤 tarea en SGE-JD · ⚙ lo hace el sistema solo · × decisión · generado por docs/diagramas/generar_bpmn.py</text>
+</svg>

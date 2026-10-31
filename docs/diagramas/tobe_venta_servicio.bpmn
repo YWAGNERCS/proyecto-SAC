@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Def_tobe_venta_servicio" targetNamespace="https://ywagnercs.github.io/proyecto-SAC/bpmn" exporter="SGE-JD generar_bpmn.py" exporterVersion="1">
+  <bpmn:collaboration id="Colab_tobe_venta_servicio">
+    <bpmn:participant id="Pool_tobe_venta_servicio" name="TO-BE · Venta, instalación y cobro con SGE-JD" processRef="Proceso_tobe_venta_servicio" />
+  </bpmn:collaboration>
+  <bpmn:process id="Proceso_tobe_venta_servicio" isExecutable="false">
+    <bpmn:laneSet id="Carriles">
+      <bpmn:lane id="Carril_cli" name="Cliente">
+        <bpmn:flowNodeRef>i</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>t1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>t3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>g1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>f0</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>t7</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Carril_asi" name="Asistente (Lucy)">
+        <bpmn:flowNodeRef>t2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>t4</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>g2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>t5</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>g3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>g4</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>t8</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>f1</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Carril_tec" name="Técnico">
+        <bpmn:flowNodeRef>t6</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Carril_sis" name="SGE-JD">
+        <bpmn:flowNodeRef>s1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>s2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>s3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>s4</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>s5</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="i" name="Necesita un equipo o servicio">
+      <bpmn:outgoing>Flujo_0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:manualTask id="t1" name="Pide una cotización">
+      <bpmn:incoming>Flujo_0</bpmn:incoming>
+      <bpmn:outgoing>Flujo_1</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:userTask id="t2" name="Registra la proforma (cliente por RUC/DNI, productos, descuento)">
+      <bpmn:incoming>Flujo_1</bpmn:incoming>
+      <bpmn:outgoing>Flujo_2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="s1" name="Calcula precios e IGV, aplica el tope de descuento, genera el PDF y lo envía por correo">
+      <bpmn:incoming>Flujo_2</bpmn:incoming>
+      <bpmn:outgoing>Flujo_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:manualTask id="t3" name="Revisa la proforma">
+      <bpmn:incoming>Flujo_3</bpmn:incoming>
+      <bpmn:outgoing>Flujo_4</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:exclusiveGateway id="g1" name="¿Acepta?">
+      <bpmn:incoming>Flujo_4</bpmn:incoming>
+      <bpmn:outgoing>Flujo_5</bpmn:outgoing>
+      <bpmn:outgoing>Flujo_6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="f0" name="Proforma rechazada o vencida">
+      <bpmn:incoming>Flujo_5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="t4" name="Convierte la proforma en venta (contado o crédito)">
+      <bpmn:incoming>Flujo_6</bpmn:incoming>
+      <bpmn:outgoing>Flujo_7</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="s2" name="Valida y descuenta stock, emite el comprobante, calcula detracción o retención y programa mantenimientos">
+      <bpmn:incoming>Flujo_7</bpmn:incoming>
+      <bpmn:outgoing>Flujo_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="g2" name="¿Requiere instalación?">
+      <bpmn:incoming>Flujo_8</bpmn:incoming>
+      <bpmn:outgoing>Flujo_9</bpmn:outgoing>
+      <bpmn:outgoing>Flujo_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="t5" name="Programa la orden de trabajo (técnico, fecha y hora)">
+      <bpmn:incoming>Flujo_9</bpmn:incoming>
+      <bpmn:outgoing>Flujo_11</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="s3" name="Verifica que el técnico no tenga otra visita a esa hora (agenda)">
+      <bpmn:incoming>Flujo_11</bpmn:incoming>
+      <bpmn:outgoing>Flujo_12</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="t6" name="Instala y cierra la orden (materiales usados, quién recibió)">
+      <bpmn:incoming>Flujo_12</bpmn:incoming>
+      <bpmn:outgoing>Flujo_13</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="g3" name="">
+      <bpmn:incoming>Flujo_10</bpmn:incoming>
+      <bpmn:incoming>Flujo_13</bpmn:incoming>
+      <bpmn:outgoing>Flujo_14</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="g4" name="¿Es a crédito?">
+      <bpmn:incoming>Flujo_14</bpmn:incoming>
+      <bpmn:outgoing>Flujo_15</bpmn:outgoing>
+      <bpmn:outgoing>Flujo_16</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="s4" name="Muestra el saldo, los días de atraso y el recordatorio por WhatsApp">
+      <bpmn:incoming>Flujo_15</bpmn:incoming>
+      <bpmn:outgoing>Flujo_17</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:manualTask id="t7" name="Paga (transferencia, depósito, Yape…)">
+      <bpmn:incoming>Flujo_17</bpmn:incoming>
+      <bpmn:outgoing>Flujo_18</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:userTask id="t8" name="Registra el cobro con su N° de operación">
+      <bpmn:incoming>Flujo_18</bpmn:incoming>
+      <bpmn:outgoing>Flujo_19</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="s5" name="Rechaza un voucher repetido, actualiza el saldo y al cubrirlo marca la venta PAGADA">
+      <bpmn:incoming>Flujo_19</bpmn:incoming>
+      <bpmn:outgoing>Flujo_20</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="f1" name="Venta cobrada">
+      <bpmn:incoming>Flujo_16</bpmn:incoming>
+      <bpmn:incoming>Flujo_20</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flujo_0" sourceRef="i" targetRef="t1" />
+    <bpmn:sequenceFlow id="Flujo_1" sourceRef="t1" targetRef="t2" />
+    <bpmn:sequenceFlow id="Flujo_2" sourceRef="t2" targetRef="s1" />
+    <bpmn:sequenceFlow id="Flujo_3" sourceRef="s1" targetRef="t3" />
+    <bpmn:sequenceFlow id="Flujo_4" sourceRef="t3" targetRef="g1" />
+    <bpmn:sequenceFlow id="Flujo_5" name="No" sourceRef="g1" targetRef="f0" />
+    <bpmn:sequenceFlow id="Flujo_6" name="Sí" sourceRef="g1" targetRef="t4" />
+    <bpmn:sequenceFlow id="Flujo_7" sourceRef="t4" targetRef="s2" />
+    <bpmn:sequenceFlow id="Flujo_8" sourceRef="s2" targetRef="g2" />
+    <bpmn:sequenceFlow id="Flujo_9" name="Sí" sourceRef="g2" targetRef="t5" />
+    <bpmn:sequenceFlow id="Flujo_10" name="No" sourceRef="g2" targetRef="g3" />
+    <bpmn:sequenceFlow id="Flujo_11" sourceRef="t5" targetRef="s3" />
+    <bpmn:sequenceFlow id="Flujo_12" sourceRef="s3" targetRef="t6" />
+    <bpmn:sequenceFlow id="Flujo_13" sourceRef="t6" targetRef="g3" />
+    <bpmn:sequenceFlow id="Flujo_14" sourceRef="g3" targetRef="g4" />
+    <bpmn:sequenceFlow id="Flujo_15" name="Sí" sourceRef="g4" targetRef="s4" />
+    <bpmn:sequenceFlow id="Flujo_16" name="No" sourceRef="g4" targetRef="f1" />
+    <bpmn:sequenceFlow id="Flujo_17" sourceRef="s4" targetRef="t7" />
+    <bpmn:sequenceFlow id="Flujo_18" sourceRef="t7" targetRef="t8" />
+    <bpmn:sequenceFlow id="Flujo_19" sourceRef="t8" targetRef="s5" />
+    <bpmn:sequenceFlow id="Flujo_20" sourceRef="s5" targetRef="f1" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagrama_tobe_venta_servicio">
+    <bpmndi:BPMNPlane id="Plano_tobe_venta_servicio" bpmnElement="Colab_tobe_venta_servicio">
+      <bpmndi:BPMNShape id="Pool_tobe_venta_servicio_di" bpmnElement="Pool_tobe_venta_servicio" isHorizontal="true">
+        <dc:Bounds x="0" y="0" width="3418" height="660" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Carril_cli_di" bpmnElement="Carril_cli" isHorizontal="true">
+        <dc:Bounds x="30" y="0" width="3388" height="165" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Carril_asi_di" bpmnElement="Carril_asi" isHorizontal="true">
+        <dc:Bounds x="30" y="165" width="3388" height="165" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Carril_tec_di" bpmnElement="Carril_tec" isHorizontal="true">
+        <dc:Bounds x="30" y="330" width="3388" height="165" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Carril_sis_di" bpmnElement="Carril_sis" isHorizontal="true">
+        <dc:Bounds x="30" y="495" width="3388" height="165" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="i_di" bpmnElement="i">
+        <dc:Bounds x="218" y="64" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="178" y="104" width="116" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t1_di" bpmnElement="t1">
+        <dc:Bounds x="336" y="32" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t2_di" bpmnElement="t2">
+        <dc:Bounds x="508" y="198" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s1_di" bpmnElement="s1">
+        <dc:Bounds x="680" y="528" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t3_di" bpmnElement="t3">
+        <dc:Bounds x="852" y="32" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g1_di" bpmnElement="g1" isMarkerVisible="true">
+        <dc:Bounds x="1071" y="58" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1031" y="112" width="130" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="f0_di" bpmnElement="f0">
+        <dc:Bounds x="1250" y="64" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1210" y="104" width="116" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t4_di" bpmnElement="t4">
+        <dc:Bounds x="1196" y="198" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s2_di" bpmnElement="s2">
+        <dc:Bounds x="1368" y="528" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g2_di" bpmnElement="g2" isMarkerVisible="true">
+        <dc:Bounds x="1587" y="222" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1547" y="276" width="130" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t5_di" bpmnElement="t5">
+        <dc:Bounds x="1712" y="198" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s3_di" bpmnElement="s3">
+        <dc:Bounds x="1884" y="528" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t6_di" bpmnElement="t6">
+        <dc:Bounds x="2056" y="362" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g3_di" bpmnElement="g3" isMarkerVisible="true">
+        <dc:Bounds x="2275" y="222" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g4_di" bpmnElement="g4" isMarkerVisible="true">
+        <dc:Bounds x="2447" y="222" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2407" y="276" width="130" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s4_di" bpmnElement="s4">
+        <dc:Bounds x="2572" y="528" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t7_di" bpmnElement="t7">
+        <dc:Bounds x="2744" y="32" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t8_di" bpmnElement="t8">
+        <dc:Bounds x="2916" y="198" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s5_di" bpmnElement="s5">
+        <dc:Bounds x="3088" y="528" width="144" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="f1_di" bpmnElement="f1">
+        <dc:Bounds x="3314" y="230" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="3274" y="270" width="116" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flujo_0_di" bpmnElement="Flujo_0">
+        <di:waypoint x="254" y="82" />
+        <di:waypoint x="336" y="82" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_1_di" bpmnElement="Flujo_1">
+        <di:waypoint x="408" y="132" />
+        <di:waypoint x="408" y="248" />
+        <di:waypoint x="508" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_2_di" bpmnElement="Flujo_2">
+        <di:waypoint x="580" y="298" />
+        <di:waypoint x="580" y="578" />
+        <di:waypoint x="680" y="578" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_3_di" bpmnElement="Flujo_3">
+        <di:waypoint x="752" y="528" />
+        <di:waypoint x="752" y="82" />
+        <di:waypoint x="852" y="82" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_4_di" bpmnElement="Flujo_4">
+        <di:waypoint x="996" y="82" />
+        <di:waypoint x="1071" y="82" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_5_di" bpmnElement="Flujo_5">
+        <di:waypoint x="1121" y="82" />
+        <di:waypoint x="1250" y="82" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_6_di" bpmnElement="Flujo_6">
+        <di:waypoint x="1096" y="108" />
+        <di:waypoint x="1096" y="248" />
+        <di:waypoint x="1196" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_7_di" bpmnElement="Flujo_7">
+        <di:waypoint x="1268" y="298" />
+        <di:waypoint x="1268" y="578" />
+        <di:waypoint x="1368" y="578" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_8_di" bpmnElement="Flujo_8">
+        <di:waypoint x="1440" y="528" />
+        <di:waypoint x="1440" y="248" />
+        <di:waypoint x="1587" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_9_di" bpmnElement="Flujo_9">
+        <di:waypoint x="1637" y="248" />
+        <di:waypoint x="1712" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_10_di" bpmnElement="Flujo_10">
+        <di:waypoint x="1612" y="222" />
+        <di:waypoint x="1612" y="181" />
+        <di:waypoint x="2300" y="181" />
+        <di:waypoint x="2300" y="222" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_11_di" bpmnElement="Flujo_11">
+        <di:waypoint x="1784" y="298" />
+        <di:waypoint x="1784" y="578" />
+        <di:waypoint x="1884" y="578" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_12_di" bpmnElement="Flujo_12">
+        <di:waypoint x="1956" y="528" />
+        <di:waypoint x="1956" y="412" />
+        <di:waypoint x="2056" y="412" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_13_di" bpmnElement="Flujo_13">
+        <di:waypoint x="2128" y="362" />
+        <di:waypoint x="2128" y="248" />
+        <di:waypoint x="2275" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_14_di" bpmnElement="Flujo_14">
+        <di:waypoint x="2325" y="248" />
+        <di:waypoint x="2447" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_15_di" bpmnElement="Flujo_15">
+        <di:waypoint x="2472" y="272" />
+        <di:waypoint x="2472" y="578" />
+        <di:waypoint x="2572" y="578" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_16_di" bpmnElement="Flujo_16">
+        <di:waypoint x="2472" y="222" />
+        <di:waypoint x="2472" y="181" />
+        <di:waypoint x="3332" y="181" />
+        <di:waypoint x="3332" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_17_di" bpmnElement="Flujo_17">
+        <di:waypoint x="2644" y="528" />
+        <di:waypoint x="2644" y="82" />
+        <di:waypoint x="2744" y="82" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_18_di" bpmnElement="Flujo_18">
+        <di:waypoint x="2816" y="132" />
+        <di:waypoint x="2816" y="248" />
+        <di:waypoint x="2916" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_19_di" bpmnElement="Flujo_19">
+        <di:waypoint x="2988" y="298" />
+        <di:waypoint x="2988" y="578" />
+        <di:waypoint x="3088" y="578" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flujo_20_di" bpmnElement="Flujo_20">
+        <di:waypoint x="3160" y="528" />
+        <di:waypoint x="3160" y="248" />
+        <di:waypoint x="3314" y="248" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

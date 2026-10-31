@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -46 2750 720" width="2750" font-family="Inter, Segoe UI, Arial, sans-serif" fill="#081B2C">
+<defs><marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#33475B"/></marker></defs>
+<rect x="-10" y="-46" width="2750" height="720" fill="#FFFFFF"/>
+<text x="0" y="-20" font-size="16" font-weight="600">TO-BE · Compra, cuentas por pagar e inventario con SGE-JD</text>
+<rect x="0" y="0" width="2730" height="660" fill="none" stroke="#33475B" stroke-width="1.5"/>
+<rect x="30" y="0" width="2700" height="165" fill="#F6FBFD" stroke="#B5DCEA"/>
+<text transform="translate(19 82) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">SGE-JD</text>
+<rect x="30" y="165" width="2700" height="165" fill="#FFFFFF" stroke="#B5DCEA"/>
+<text transform="translate(19 248) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Asistente (Lucy)</text>
+<rect x="30" y="330" width="2700" height="165" fill="#F6FBFD" stroke="#B5DCEA"/>
+<text transform="translate(19 412) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Administrador (Lisandro)</text>
+<rect x="30" y="495" width="2700" height="165" fill="#FFFFFF" stroke="#B5DCEA"/>
+<text transform="translate(19 578) rotate(-90)" text-anchor="middle" font-size="12" font-weight="600">Proveedor</text>
+<line x1="30" y1="0" x2="30" y2="660" stroke="#33475B" stroke-width="1.5"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="236,100 236,248 336,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="408,298 408,412 508,412"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="580,462 580,578 680,578"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="752,528 752,248 852,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="924,198 924,82 1024,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1096,132 1096,248 1243,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1268,222 1268,82 1368,82"/>
+<text x="1274" y="152" font-size="11" font-weight="600" fill="#0078B7">Sí</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1268,222 1268,181 2128,181 2128,222"/>
+<text x="1274" y="202" font-size="11" font-weight="600" fill="#0078B7">No</text>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1440,132 1440,412 1540,412"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1612,362 1612,248 1712,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1784,198 1784,82 1884,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="1956,132 1956,248 2103,248"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2128,272 2128,412 2228,412"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2300,362 2300,82 2400,82"/>
+<polyline fill="none" stroke="#33475B" stroke-width="1.4" marker-end="url(#flecha)" points="2544,82 2626,82"/>
+<circle cx="236" cy="82" r="18.0" fill="#ECFDF5" stroke="#081B2C" stroke-width="1.5"/>
+<text x="236" y="116" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="236" y="116">Alerta diaria de stock</tspan><tspan x="236" y="130">mínimo</tspan></text>
+<rect x="336" y="198" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="343" y="212" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="408" y="246" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="408" y="246">Revisa los materiales</tspan><tspan x="408" y="260">bajo el mínimo</tspan></text></g>
+<rect x="508" y="362" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="515" y="376" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="580" y="410" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="580" y="410">Pide el material al</tspan><tspan x="580" y="424">proveedor</tspan></text></g>
+<rect x="680" y="528" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="687" y="542" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="752" y="576" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="752" y="576">Entrega la mercadería y</tspan><tspan x="752" y="590">la factura</tspan></text></g>
+<rect x="852" y="198" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="859" y="212" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="924" y="238" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="924" y="238">Registra la compra (N°</tspan><tspan x="924" y="252">de factura, contado o</tspan><tspan x="924" y="266">crédito)</tspan></text></g>
+<rect x="1024" y="32" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="1031" y="46" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="1096" y="74" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1096" y="74">Rechaza una factura</tspan><tspan x="1096" y="88">repetida y sube el</tspan><tspan x="1096" y="102">stock de los materiales</tspan></text></g>
+<polygon points="1268,222 1293,248 1268,272 1243,248" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="1268" y="248" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<text x="1239" y="218" text-anchor="end" font-size="10.5" font-weight="600">¿Es a crédito?</text>
+<rect x="1368" y="32" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="1375" y="46" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="1440" y="74" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1440" y="74">La deja en Cuentas por</tspan><tspan x="1440" y="88">pagar con su</tspan><tspan x="1440" y="102">vencimiento</tspan></text></g>
+<rect x="1540" y="362" width="144" height="100" rx="10" fill="#FFFFFF" stroke="#5C6E7E" stroke-width="1.4"/>
+<text x="1547" y="376" font-size="10" fill="#081B2C">✋</text>
+<g fill="#081B2C"><text x="1612" y="418" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1612" y="418">Paga al proveedor</tspan></text></g>
+<rect x="1712" y="198" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="1719" y="212" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="1784" y="246" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1784" y="246">Registra el pago con su</tspan><tspan x="1784" y="260">N° de operación</tspan></text></g>
+<rect x="1884" y="32" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="1891" y="46" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="1956" y="74" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="1956" y="74">Actualiza el saldo y al</tspan><tspan x="1956" y="88">cubrirlo marca la</tspan><tspan x="1956" y="102">compra PAGADA</tspan></text></g>
+<polygon points="2128,222 2153,248 2128,272 2103,248" fill="#FFFBEB" stroke="#B45309" stroke-width="1.5"/>
+<text x="2128" y="248" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#B45309">×</text>
+<rect x="2228" y="362" width="144" height="100" rx="10" fill="#E0F3F9" stroke="#0078B7" stroke-width="1.4"/>
+<text x="2235" y="376" font-size="10" fill="#081B2C">👤</text>
+<g fill="#081B2C"><text x="2300" y="404" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="2300" y="404">Cuenta el almacén y</tspan><tspan x="2300" y="418">registra el conteo</tspan><tspan x="2300" y="432">físico o la merma</tspan></text></g>
+<rect x="2400" y="32" width="144" height="100" rx="10" fill="#102A43" stroke="#102A43" stroke-width="1.4"/>
+<text x="2407" y="46" font-size="10" fill="#FFFFFF">⚙</text>
+<g fill="#FFFFFF"><text x="2472" y="66" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="2472" y="66">Ajusta el stock, lo</tspan><tspan x="2472" y="80">muestra en el kardex y</tspan><tspan x="2472" y="94">lo guarda en el</tspan><tspan x="2472" y="108">historial</tspan></text></g>
+<circle cx="2644" cy="82" r="18.0" fill="#FEF2F2" stroke="#081B2C" stroke-width="4"/>
+<text x="2644" y="122" text-anchor="middle" dominant-baseline="middle" font-size="10.5" font-weight="400"><tspan x="2644" y="122">Inventario cuadrado</tspan></text>
+<text x="34" y="670" font-size="10" fill="#5C6E7E">✋ tarea manual · 👤 tarea en SGE-JD · ⚙ lo hace el sistema solo · × decisión · generado por docs/diagramas/generar_bpmn.py</text>
+</svg>
