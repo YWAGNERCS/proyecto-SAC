@@ -9,7 +9,7 @@ import { DescargaService } from '../../../core/services/descarga-service';
 /** Refleja KardexService.Kardex del backend. */
 interface Movimiento {
   fecha: string;
-  tipo: 'ENTRADA' | 'SALIDA' | 'DEVOLUCION';
+  tipo: 'ENTRADA' | 'SALIDA' | 'DEVOLUCION' | 'AJUSTE_ENTRADA' | 'AJUSTE_SALIDA';
   documento: string;
   tercero: string;
   cantidad: number;
@@ -92,8 +92,13 @@ export class ProductoKardexComponent {
       });
   }
 
+  /** Resta stock: venta, material de orden o ajuste de salida. */
+  protected resta(tipo: Movimiento['tipo']): boolean {
+    return tipo === 'SALIDA' || tipo === 'AJUSTE_SALIDA';
+  }
+
   protected etiqueta(tipo: Movimiento['tipo']): string {
-    return { ENTRADA: 'Entrada', SALIDA: 'Salida', DEVOLUCION: 'Devolución' }[tipo];
+    return { ENTRADA: 'Entrada', SALIDA: 'Salida', DEVOLUCION: 'Devolución', AJUSTE_ENTRADA: 'Ajuste +', AJUSTE_SALIDA: 'Ajuste −' }[tipo];
   }
 
   protected simbolo(moneda: string): string {

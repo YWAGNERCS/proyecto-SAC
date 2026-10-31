@@ -1,0 +1,58 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Agenda de técnicos</h1>
+    <p class="page-sub">{{ titulo() }} · {{ resumen().total }} {{ resumen().total === 1 ? 'visita' : 'visitas' }},
+      {{ resumen().programadas }} por hacer
+      @if (resumen().cruces > 0) { · <span class="texto-cruce">{{ resumen().cruces }} se cruzan de horario</span> }
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button type="button" class="btn btn-outline-secondary" (click)="mover(-1)" aria-label="Semana anterior">‹</button>
+    <button type="button" class="btn btn-secondary" (click)="irAHoy()">Esta semana</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="mover(1)" aria-label="Semana siguiente">›</button>
+    <a routerLink="/servicios/ordenes/nueva" class="btn btn-primary">+ Nueva orden</a>
+  </div>
+</div>
+
+@if (error()) { <div class="alert alert-danger">{{ error() }}</div> }
+
+<section class="tarjeta sin-relleno">
+  <div class="calendario">
+    <table class="semana">
+      <thead>
+        <tr>
+          <th class="col-tecnico">Técnico</th>
+          @for (d of dias(); track d.fecha) {
+            <th [class.hoy]="d.hoy"><span>{{ d.nombre }}</span> <strong>{{ d.numero }}</strong></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of tecnicos(); track t) {
+          <tr>
+            <th class="col-tecnico" scope="row">{{ t }}</th>
+            @for (d of dias(); track d.fecha) {
+              <td [class.hoy]="d.hoy" [class.pasado]="pasado(d)">
+                @for (o of visitas(t, d.fecha); track o.id) {
+                  <a [routerLink]="['/servicios/ordenes', o.id]" class="visita" [attr.data-estado]="o.estado"
+                     [class.cruce]="cruces().has(o.id)" [title]="o.descripcion">
+                    <span class="hora">{{ horario(o) }}</span>
+                    <strong>{{ o.clienteNombre }}</strong>
+                    <small>{{ etiqueta(o.tipo) }} · #{{ o.id }}{{ o.estado === 'REALIZADA' ? ' · hecha' : '' }}</small>
+                  </a>
+                }
+                @if (!pasado(d)) {
+                  <button type="button" class="libre" (click)="programar(t, d)" [attr.aria-label]="'Programar a ' + t + ' el ' + d.fecha">+</button>
+                }
+              </td>
+            }
+          </tr>
+        } @empty {
+          <tr><td colspan="8" class="vacio">{{ cargando() ? 'Cargando…' : 'No hay visitas programadas esta semana.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+<p class="muted nota">Las visitas en rojo se cruzan en horario con otra del mismo técnico. Al programar con hora, el sistema
+  no deja crear un cruce nuevo. "+" programa una orden para ese técnico y ese día.</p>

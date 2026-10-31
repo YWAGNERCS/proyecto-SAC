@@ -9,6 +9,7 @@
     <button class="btn btn-secondary" (click)="exportarExcel()" [disabled]="exportando()">
       {{ exportando() ? 'Generando…' : '⬇ Exportar a Excel' }}
     </button>
+    <a routerLink="/compras/por-pagar" class="btn btn-outline-secondary">Cuentas por pagar</a>
     <a routerLink="/compras/nueva" class="btn btn-primary">+ Nueva Compra</a>
   </div>
 </div>
@@ -55,6 +56,7 @@
           <th class="text-center" style="width: 110px;">Moneda</th>
           <th class="text-center" style="width: 100px;">Ítems</th>
           <th style="text-align: right; width: 140px;">Total</th>
+          <th class="text-center" style="width: 150px;">Pago</th>
         </tr>
       </thead>
       <tbody>
@@ -92,10 +94,20 @@
             <td style="text-align: right; font-weight: 700; color: var(--text-main);">
               {{ c.total | currency: (c.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}
             </td>
+            <td class="text-center">
+              @if (c.tipoPago === 'CREDITO' && c.estadoPago === 'PENDIENTE') {
+                <a routerLink="/compras/por-pagar" class="badge badge-warning" title="Ver en Cuentas por pagar">
+                  Debe {{ (c.saldo ?? c.total) | currency: (c.moneda === 'SOLES' ? 'S/ ' : 'US$ ') }}
+                </a>
+                @if (c.fechaVencimiento) { <small class="d-block muted">vence {{ c.fechaVencimiento | date: 'dd/MM/yyyy' }}</small> }
+              } @else {
+                <span class="badge badge-success">{{ c.tipoPago === 'CREDITO' ? 'Pagada' : 'Al contado' }}</span>
+              }
+            </td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
               No se encontraron compras registradas.
             </td>
           </tr>

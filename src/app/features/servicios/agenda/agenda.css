@@ -1,0 +1,124 @@
+.sin-relleno {
+  padding: 0;
+  overflow: hidden;
+}
+
+.calendario {
+  overflow-x: auto;
+}
+
+.semana {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.semana th,
+.semana td {
+  padding: 8px;
+  border-bottom: 1px solid var(--linea-tabla);
+  border-left: 1px solid var(--linea-tabla);
+  vertical-align: top;
+  text-align: left;
+}
+
+.semana thead th {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+}
+
+.semana thead th strong {
+  font-family: var(--font-cifras);
+  font-size: 1.05rem;
+  color: var(--text-main);
+}
+
+.semana .col-tecnico {
+  width: 140px;
+  border-left: 0;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.semana .hoy {
+  background: var(--primary-light);
+}
+
+.semana td.pasado {
+  background: var(--surface-muted);
+}
+
+.visita {
+  display: block;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--secundario);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-decoration: none;
+}
+
+.visita:hover {
+  background: var(--fila-hover);
+}
+
+.visita strong,
+.visita small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visita small {
+  color: var(--text-muted);
+}
+
+.visita .hora {
+  font-weight: 600;
+}
+
+.visita[data-estado='REALIZADA'] {
+  border-left-color: var(--success);
+  opacity: 0.75;
+}
+
+.visita.cruce {
+  border-left-color: var(--danger);
+  background: var(--danger-light);
+}
+
+.libre {
+  width: 100%;
+  padding: 2px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+td:hover .libre,
+.libre:focus-visible {
+  opacity: 1;
+}
+
+.texto-cruce {
+  color: var(--texto-peligro);
+  font-weight: 500;
+}
+
+.nota {
+  margin-top: 10px;
+  font-size: 0.82rem;
+}

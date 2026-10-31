@@ -47,6 +47,27 @@
 
       <div class="row">
         <div class="col-md-6 form-group">
+          <label class="form-label" for="hora">Hora de inicio</label>
+          <input id="hora" type="time" class="form-control" formControlName="horaInicio" step="900">
+          <small class="muted">Opcional. Con hora, el sistema avisa si el técnico ya tiene otra visita a esa hora.</small>
+        </div>
+        <div class="col-md-6 form-group">
+          <label class="form-label" for="duracion">Duración estimada</label>
+          <select id="duracion" class="form-select" formControlName="duracionMinutos">
+            <option [ngValue]="30">30 minutos</option>
+            <option [ngValue]="60">1 hora</option>
+            <option [ngValue]="90">1 h 30 min</option>
+            <option [ngValue]="120">2 horas</option>
+            <option [ngValue]="180">3 horas</option>
+            <option [ngValue]="240">4 horas</option>
+            <option [ngValue]="360">6 horas</option>
+            <option [ngValue]="480">Todo el día (8 h)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 form-group">
           <label class="form-label" for="venta">Venta de origen</label>
           <select id="venta" class="form-select" formControlName="ventaId">
             <option [ngValue]="null">{{ esInstalacion() ? 'Sin venta (equipos de otro origen)' : 'Ninguna' }}</option>

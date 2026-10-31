@@ -29,6 +29,9 @@ export interface OrdenTrabajo {
   equipoId: number | null;
   equipoNombre: string | null;
   fechaProgramada: string;
+  /** "HH:mm" o null (en el día). */
+  horaInicio: string | null;
+  duracionMinutos: number;
   tecnico: string;
   direccion: string | null;
   descripcion: string;
@@ -52,6 +55,8 @@ export interface OrdenRequest {
   mantenimientoId: number | null;
   equipoId: number | null;
   fechaProgramada: string;
+  horaInicio: string | null;
+  duracionMinutos: number | null;
   tecnico: string;
   direccion: string | null;
   descripcion: string;

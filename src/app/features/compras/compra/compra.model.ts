@@ -13,6 +13,10 @@ export interface CompraRequest {
   /** Referencial: el backend recalcula el total con las líneas. */
   total: number;
   detalles: DetalleCompraRequest[];
+  /** CONTADO (por defecto) o CREDITO: a crédito queda en Cuentas por pagar. */
+  tipoPago: 'CONTADO' | 'CREDITO';
+  /** Solo a crédito: 1 a 365. */
+  diasCredito: number | null;
 }
 
 export interface CompraResponse {
@@ -28,4 +32,12 @@ export interface CompraResponse {
     cantidad: number;
     precioUnitarioCompra: number;
   }[];
+  tipoPago: 'CONTADO' | 'CREDITO';
+  diasCredito: number | null;
+  fechaVencimiento: string | null;
+  estadoPago: 'PAGADA' | 'PENDIENTE';
+  /** Pagado al proveedor (al contado = total). */
+  pagado: number | null;
+  saldo: number | null;
+  registradoPor: string | null;
 }

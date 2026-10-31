@@ -68,12 +68,12 @@
             <tr>
               <td class="texto-muted">{{ m.fecha }}</td>
               <td>
-                <span class="badge" [class.badge-success]="m.tipo !== 'SALIDA'" [class.badge-danger]="m.tipo === 'SALIDA'">{{ etiqueta(m.tipo) }}</span>
+                <span class="badge" [class.badge-success]="!resta(m.tipo)" [class.badge-danger]="resta(m.tipo)">{{ etiqueta(m.tipo) }}</span>
               </td>
               <td>{{ m.documento }}</td>
               <td style="font-size: 0.88rem;">{{ m.tercero }}</td>
-              <td class="text-center" style="color: var(--success); font-weight: 600;">{{ m.tipo !== 'SALIDA' ? '+' + m.cantidad : '' }}</td>
-              <td class="text-center" style="color: var(--danger); font-weight: 600;">{{ m.tipo === 'SALIDA' ? '−' + m.cantidad : '' }}</td>
+              <td class="text-center" style="color: var(--success); font-weight: 600;">{{ !resta(m.tipo) ? '+' + m.cantidad : '' }}</td>
+              <td class="text-center" style="color: var(--danger); font-weight: 600;">{{ resta(m.tipo) ? '−' + m.cantidad : '' }}</td>
               <td class="text-center" style="font-weight: 700;">{{ m.saldo ?? '—' }}</td>
               <td style="text-align: right;">
                 @if (m.precioUnitario !== null) { {{ simbolo(m.moneda) }} {{ m.precioUnitario | number: '1.2-2' }} }

@@ -41,7 +41,9 @@ export type Permiso =
   | 'CATALOGO'
   | 'ELIMINAR'
   | 'SERVICIOS'
-  | 'DESCUENTO_AMPLIADO';
+  | 'DESCUENTO_AMPLIADO'
+  | 'AJUSTAR_INVENTARIO'
+  | 'VER_RENTABILIDAD';
 
 /** Cómo se le dice a cada permiso en pantalla (el backend envía además la descripción larga). */
 export const NOMBRE_PERMISO: Record<Permiso, string> = {
@@ -52,6 +54,8 @@ export const NOMBRE_PERMISO: Record<Permiso, string> = {
   ELIMINAR: 'Eliminar clientes y proveedores',
   SERVICIOS: 'Contratos, cancelar órdenes y dar de baja equipos',
   DESCUENTO_AMPLIADO: 'Descuento del administrador',
+  AJUSTAR_INVENTARIO: 'Ajustar inventario',
+  VER_RENTABILIDAD: 'Ver rentabilidad',
 };
 const CLAVE_CODE_VERIFIER = 'sgejd_pkce_code_verifier';
 const CLAVE_STATE = 'sgejd_pkce_state';

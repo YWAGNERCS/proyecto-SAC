@@ -64,7 +64,7 @@
         @for (o of ordenes(); track o.id) {
           <tr>
             <td><span class="badge">#{{ o.id }}</span></td>
-            <td style="white-space: nowrap;">{{ o.fechaProgramada }}
+            <td style="white-space: nowrap;">{{ o.fechaProgramada }}@if (o.horaInicio) { <span class="muted">{{ o.horaInicio }}</span> }
               @if (o.fechaRealizada) { <div class="muted">hecho el {{ o.fechaRealizada }}</div> }</td>
             <td><strong>{{ o.clienteNombre }}</strong>
               @if (o.sedeNombre) { <div class="muted">Sede {{ o.sedeNombre }}</div> }

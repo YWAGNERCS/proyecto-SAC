@@ -47,6 +47,10 @@ export const ICONOS = {
   campana: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
   menu: 'M4 6h16 M4 12h16 M4 18h16',
   flecha: 'M7 17L17 7 M7 7h10v10',
+  pagar: 'M2 7h20v12H2z M2 11h20 M6 15h4',
+  ajustes: 'M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M1 14h6 M9 8h6 M17 16h6',
+  rentabilidad: 'M22 7l-8.5 8.5-5-5L2 17 M16 7h6v6',
+  agenda: 'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M7 14h4 M7 18h7',
   sol: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z M12 1v2 M12 21v2 M4.2 4.2l1.4 1.4 M18.4 18.4l1.4 1.4 M1 12h2 M21 12h2 M4.2 19.8l1.4-1.4 M18.4 5.6l1.4-1.4',
   luna: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   escudo: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
@@ -71,11 +75,13 @@ export const GRUPOS: GrupoMenu[] = [
       { ruta: '/proformas', texto: 'Proformas', icono: ICONOS.proformas },
       { ruta: '/ventas', texto: 'Ventas', icono: ICONOS.ventas },
       { ruta: '/cobranza', texto: 'Cobranza', icono: ICONOS.cobranza },
+      { ruta: '/reportes/rentabilidad', texto: 'Rentabilidad', icono: ICONOS.rentabilidad, permiso: 'VER_RENTABILIDAD' },
     ],
   },
   {
     id: 'servicios', titulo: 'Servicios', icono: ICONOS.servicios,
     opciones: [
+      { ruta: '/servicios/agenda', texto: 'Agenda de técnicos', icono: ICONOS.agenda },
       { ruta: '/servicios/ordenes', texto: 'Órdenes de trabajo', icono: ICONOS.ordenes },
       { ruta: '/postventa', texto: 'Postventa', icono: ICONOS.postventa },
       { ruta: '/servicios/equipos', texto: 'Equipos instalados', icono: ICONOS.equipos },
@@ -86,6 +92,8 @@ export const GRUPOS: GrupoMenu[] = [
     id: 'inventario', titulo: 'Inventario', icono: ICONOS.inventario,
     opciones: [
       { ruta: '/compras', texto: 'Compras', icono: ICONOS.compras },
+      { ruta: '/compras/por-pagar', texto: 'Cuentas por pagar', icono: ICONOS.pagar },
+      { ruta: '/inventario/ajustes', texto: 'Ajustes de inventario', icono: ICONOS.ajustes },
       { ruta: '/catalogo/productos', texto: 'Productos', icono: ICONOS.productos },
       { ruta: '/catalogo/categorias', texto: 'Categorías', icono: ICONOS.categorias },
       { ruta: '/catalogo/productos/nuevo', texto: 'Nuevo producto', icono: ICONOS.nuevo, permiso: 'CATALOGO' },

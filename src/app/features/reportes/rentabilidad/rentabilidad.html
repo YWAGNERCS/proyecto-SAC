@@ -1,0 +1,112 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Rentabilidad</h1>
+    <p class="page-sub">Cuánto se ganó: precio sin IGV menos el costo de lo vendido, en soles</p>
+  </div>
+  <div class="periodo">
+    <div class="interruptor" role="group" aria-label="Periodo">
+      <button type="button" (click)="periodo('MES')">Este mes</button>
+      <button type="button" (click)="periodo('TRIMESTRE')">Trimestre</button>
+      <button type="button" (click)="periodo('ANIO')">Año</button>
+    </div>
+    <input type="date" class="form-control" aria-label="Desde" [(ngModel)]="desde" (change)="cargar()" />
+    <input type="date" class="form-control" aria-label="Hasta" [(ngModel)]="hasta" (change)="cargar()" />
+  </div>
+</div>
+
+@if (error()) { <div class="alert alert-danger">{{ error() }}</div> }
+
+@if (datos(); as d) {
+  <div class="indicadores">
+    <section class="tarjeta"><span class="muted">Vendido (sin IGV)</span>
+      <strong class="cifra">S/ {{ d.resumen.ingresos | number: '1.2-2' }}</strong>
+      <span class="muted">{{ d.resumen.ventas }} {{ d.resumen.ventas === 1 ? 'venta' : 'ventas' }}</span></section>
+    <section class="tarjeta"><span class="muted">Costo de lo vendido</span>
+      <strong class="cifra">S/ {{ d.resumen.costos | number: '1.2-2' }}</strong></section>
+    <section class="tarjeta destacado"><span>Ganancia bruta</span>
+      <strong class="cifra">S/ {{ d.resumen.margen | number: '1.2-2' }}</strong>
+      <span>{{ d.resumen.margenPorcentaje | number: '1.1-1' }} % del vendido</span></section>
+  </div>
+  @if (d.resumen.lineasSinCosto > 0) {
+    <p class="aviso muted">{{ d.resumen.lineasSinCosto }} {{ d.resumen.lineasSinCosto === 1 ? 'línea no tiene' : 'líneas no tienen' }} costo
+      (venta en dólares sin tipo de cambio) y no se sumaron.</p>
+  }
+
+  <section class="tarjeta sin-relleno">
+    <div class="pestanas">
+      <div class="interruptor" role="tablist" aria-label="Agrupar">
+        @for (v of vistas; track v.valor) {
+          <button type="button" role="tab" [class.activo]="vista() === v.valor" (click)="vista.set(v.valor)">{{ v.etiqueta }}</button>
+        }
+      </div>
+    </div>
+    <div class="table-responsive">
+      @switch (vista()) {
+        @case ('VENTA') {
+          <table class="tabla-suave">
+            <thead><tr><th>Venta</th><th>Cliente</th><th>Vendedor</th><th class="text-end">Vendido</th><th class="text-end">Costo</th>
+              <th class="text-end">Ganancia</th><th class="text-end">%</th></tr></thead>
+            <tbody>
+              @for (v of d.porVenta; track v.ventaId) {
+                <tr>
+                  <td>#{{ v.ventaId }}<small class="d-block muted">{{ v.fecha | date: 'dd/MM/yyyy' }}{{ v.moneda === 'DOLARES' ? ' · en US$' : '' }}</small></td>
+                  <td>{{ v.cliente }}</td>
+                  <td>{{ v.vendedor ?? '—' }}</td>
+                  <td class="text-end">{{ v.ingresos | number: '1.2-2' }}</td>
+                  <td class="text-end">{{ v.costos | number: '1.2-2' }}</td>
+                  <td class="text-end"><strong>{{ v.margen | number: '1.2-2' }}</strong>
+                    @if (v.incompleta) { <small class="d-block muted">líneas sin costo</small> }</td>
+                  <td class="text-end"><span class="badge" [class.badge-warning]="bajo(v.margenPorcentaje)">{{ v.margenPorcentaje | number: '1.1-1' }} %</span></td>
+                </tr>
+              } @empty { <tr><td colspan="7" class="vacio">No hay ventas en el periodo.</td></tr> }
+            </tbody>
+          </table>
+        }
+        @case ('TECNICO') {
+          <table class="tabla-suave">
+            <thead><tr><th>Técnico</th><th class="text-end">Órdenes</th><th class="text-end">Facturado</th>
+              <th class="text-end">Costo mano de obra</th><th class="text-end">Materiales</th><th class="text-end">Ganancia</th><th class="text-end">%</th></tr></thead>
+            <tbody>
+              @for (t of d.porTecnico; track t.tecnico) {
+                <tr>
+                  <td>{{ t.tecnico }}</td>
+                  <td class="text-end">{{ t.ordenes }}<small class="d-block muted">{{ t.facturadas }} facturadas</small></td>
+                  <td class="text-end">{{ t.ingresos | number: '1.2-2' }}</td>
+                  <td class="text-end">{{ t.costoManoObra | number: '1.2-2' }}</td>
+                  <td class="text-end">{{ t.costoMateriales | number: '1.2-2' }}</td>
+                  <td class="text-end"><strong>{{ t.margen | number: '1.2-2' }}</strong></td>
+                  <td class="text-end"><span class="badge" [class.badge-warning]="bajo(t.margenPorcentaje)">{{ t.margenPorcentaje | number: '1.1-1' }} %</span></td>
+                </tr>
+              } @empty { <tr><td colspan="7" class="vacio">No hay órdenes realizadas en el periodo.</td></tr> }
+            </tbody>
+          </table>
+          <p class="nota muted">Órdenes realizadas en el periodo. Facturado = la venta de mano de obra de la orden; los materiales usados restan aunque la orden no se haya facturado.</p>
+        }
+        @default {
+          <table class="tabla-suave">
+            <thead><tr><th>{{ vista() === 'CLIENTE' ? 'Cliente' : vista() === 'PRODUCTO' ? 'Producto' : 'Categoría' }}</th>
+              <th class="text-end">{{ vista() === 'CLIENTE' ? 'Ventas' : 'Unidades' }}</th><th class="text-end">Vendido</th>
+              <th class="text-end">Costo</th><th>Ganancia</th><th class="text-end">%</th></tr></thead>
+            <tbody>
+              @for (f of filas(); track f.clave) {
+                <tr>
+                  <td>{{ f.nombre }}@if (f.detalle) { <small class="d-block muted">{{ f.detalle }}</small> }</td>
+                  <td class="text-end">{{ f.cantidad }}</td>
+                  <td class="text-end">{{ f.ingresos | number: '1.2-2' }}</td>
+                  <td class="text-end">{{ f.costos | number: '1.2-2' }}</td>
+                  <td class="col-barra"><div class="barra"><span [style.width]="ancho(f.margen)" [class.negativa]="f.margen < 0"></span></div>
+                    <strong>{{ f.margen | number: '1.2-2' }}</strong></td>
+                  <td class="text-end"><span class="badge" [class.badge-warning]="bajo(f.margenPorcentaje)">{{ f.margenPorcentaje | number: '1.1-1' }} %</span></td>
+                </tr>
+              } @empty { <tr><td colspan="6" class="vacio">No hay ventas en el periodo.</td></tr> }
+            </tbody>
+          </table>
+        }
+      }
+    </div>
+  </section>
+  <p class="nota muted">Montos en soles; lo vendido en dólares se convierte al tipo de cambio de cada venta. Las ventas anteriores al
+    31/10/2026 usan el costo del producto de esa fecha. En ámbar: menos de 10 % de ganancia.</p>
+} @else if (cargando()) {
+  <p class="muted">Calculando…</p>
+}

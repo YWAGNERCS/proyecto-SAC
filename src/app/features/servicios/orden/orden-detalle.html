@@ -29,7 +29,7 @@
         <div><span class="muted">Estado</span><div>
           <span class="badge" [class.badge-success]="o.estado === 'REALIZADA'" [class.badge-danger]="o.estado === 'CANCELADA'"
                 [class.badge-warning]="o.estado === 'PROGRAMADA'">{{ o.estado }}</span></div></div>
-        <div><span class="muted">Fecha programada</span><div>{{ o.fechaProgramada }}</div></div>
+        <div><span class="muted">Fecha programada</span><div>{{ o.fechaProgramada }}@if (o.horaInicio) { · {{ o.horaInicio }} ({{ o.duracionMinutos / 60 }} h) }</div></div>
         <div><span class="muted">Técnico</span><div>{{ o.tecnico }}</div></div>
         <div><span class="muted">Contacto</span><div>{{ o.clienteTelefono ?? '—' }}</div></div>
       </div>

@@ -48,6 +48,8 @@ export class CompraFormComponent implements OnInit {
     fechaCompra: [this.hoy, [Validators.required]],
     numeroFactura: ['', [Validators.required, Validators.pattern(/^\s*[A-Za-z0-9]{4}-\d{1,8}\s*$/)]],
     moneda: ['SOLES' as 'SOLES' | 'DOLARES'],
+    tipoPago: ['CONTADO' as 'CONTADO' | 'CREDITO'],
+    diasCredito: [30, [Validators.min(1), Validators.max(365)]],
     detalles: this.fb.array<DetalleForm>([], [Validators.minLength(1)]),
   });
 
@@ -135,6 +137,10 @@ export class CompraFormComponent implements OnInit {
       this.mostrarError('Ingrese el N° de factura del proveedor con el formato SERIE-NÚMERO, por ejemplo F001-123.');
       return;
     }
+    if (v.tipoPago === 'CREDITO' && (!v.diasCredito || v.diasCredito < 1 || v.diasCredito > 365)) {
+      this.mostrarError('Una compra a crédito necesita los días de crédito (1 a 365).');
+      return;
+    }
     if (v.fechaCompra > this.hoy) {
       this.mostrarError('La fecha de compra no puede ser futura.');
       return;
@@ -147,6 +153,8 @@ export class CompraFormComponent implements OnInit {
       moneda: v.moneda,
       total: this.total(),
       detalles: v.detalles,
+      tipoPago: v.tipoPago,
+      diasCredito: v.tipoPago === 'CREDITO' ? v.diasCredito : null,
     };
 
     this.loading.set(true);

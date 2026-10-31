@@ -1,0 +1,148 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Cuentas por pagar</h1>
+    <p class="page-sub">Lo que JD le debe a sus proveedores por compras a crédito</p>
+  </div>
+  <div class="d-flex gap-2">
+    <div class="interruptor" role="tablist" aria-label="Qué ver">
+      <button type="button" role="tab" [class.activo]="pestana() === 'PENDIENTES'" (click)="cambiarPestana('PENDIENTES')">Por pagar</button>
+      <button type="button" role="tab" [class.activo]="pestana() === 'PAGOS'" (click)="cambiarPestana('PAGOS')">Pagos realizados</button>
+    </div>
+    <a routerLink="/compras/nueva" class="btn btn-primary">+ Nueva compra</a>
+  </div>
+</div>
+
+@if (pestana() === 'PENDIENTES' && resumen().length) {
+  <div class="resumenes">
+    @for (r of resumen(); track r.moneda) {
+      <section class="tarjeta indicador">
+        <span class="muted">Por pagar en {{ r.moneda === 'SOLES' ? 'soles' : 'dólares' }} · {{ r.compras }} {{ r.compras === 1 ? 'compra' : 'compras' }}</span>
+        <strong class="cifra">{{ simbolo(r.moneda) }} {{ r.porPagar | number: '1.2-2' }}</strong>
+        <span [class.texto-vencido]="r.vencido > 0">Vencido: {{ simbolo(r.moneda) }} {{ r.vencido | number: '1.2-2' }}</span>
+        <span class="muted">Vence en 7 días: {{ simbolo(r.moneda) }} {{ r.venceEnSieteDias | number: '1.2-2' }}</span>
+      </section>
+    }
+  </div>
+}
+
+<section class="tarjeta sin-relleno">
+  <div class="barra-filtros">
+    <div>
+      <label class="form-label" for="fProv">Proveedor</label>
+      <select id="fProv" class="form-select" [(ngModel)]="proveedorId" (ngModelChange)="cargar()">
+        <option [ngValue]="null">Todos</option>
+        @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.nombreORazonSocial }}</option> }
+      </select>
+    </div>
+    @if (pestana() === 'PENDIENTES') {
+      <label class="check"><input type="checkbox" [(ngModel)]="soloVencidas" (ngModelChange)="cargar()" /> Solo vencidas</label>
+    } @else {
+      <div><label class="form-label" for="fDesde">Desde</label>
+        <input id="fDesde" type="date" class="form-control" [(ngModel)]="desde" (change)="cargar()" /></div>
+      <div><label class="form-label" for="fHasta">Hasta</label>
+        <input id="fHasta" type="date" class="form-control" [(ngModel)]="hasta" (change)="cargar()" /></div>
+    }
+  </div>
+
+  @if (error()) { <div class="alert alert-danger margen">{{ error() }}</div> }
+
+  <div class="table-responsive">
+    @if (pestana() === 'PENDIENTES') {
+      <table class="tabla-suave">
+        <thead><tr><th>Compra</th><th>Proveedor</th><th>Vence</th><th class="text-end">Total</th>
+          <th class="text-end">Pagado</th><th class="text-end">Saldo</th><th></th></tr></thead>
+        <tbody>
+          @for (c of cuentas(); track c.compraId) {
+            <tr [class.fila-vencida]="c.diasAtraso > 0">
+              <td>#{{ c.compraId }}<small class="d-block muted">{{ c.numeroFactura }} · {{ c.fechaCompra | date: 'dd/MM/yyyy' }}</small></td>
+              <td>{{ c.proveedor }}@if (c.proveedorTelefono) { <small class="d-block muted">{{ c.proveedorTelefono }}</small> }</td>
+              <td>{{ c.fechaVencimiento | date: 'dd/MM/yyyy' }}
+                @if (c.diasAtraso > 0) { <small class="d-block texto-vencido">{{ c.diasAtraso }} {{ c.diasAtraso === 1 ? 'día' : 'días' }} vencida</small> }
+              </td>
+              <td class="text-end">{{ simbolo(c.moneda) }} {{ c.total | number: '1.2-2' }}</td>
+              <td class="text-end">{{ simbolo(c.moneda) }} {{ c.pagado | number: '1.2-2' }}</td>
+              <td class="text-end"><strong>{{ simbolo(c.moneda) }} {{ c.saldo | number: '1.2-2' }}</strong></td>
+              <td class="text-end"><button type="button" class="btn btn-sm btn-primary" (click)="abrirPago(c)">Pagar</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vacio">{{ cargando() ? 'Cargando…' : 'No hay compras por pagar.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <table class="tabla-suave">
+        <thead><tr><th>Fecha</th><th>Proveedor</th><th>Compra</th><th>Método</th><th class="text-end">Monto</th><th>Registró</th><th></th></tr></thead>
+        <tbody>
+          @for (p of pagos(); track p.id) {
+            <tr [class.anulado]="p.estado === 'ANULADO'">
+              <td>{{ p.fechaPago | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ p.proveedor }}</td>
+              <td>#{{ p.compraId }} <small class="muted">{{ p.numeroFactura }}</small></td>
+              <td>{{ etiquetaMetodo(p.metodo) }}@if (p.numeroOperacion) { <small class="d-block muted">{{ p.numeroOperacion }}</small> }</td>
+              <td class="text-end"><span class="monto">{{ simbolo(p.moneda) }} {{ p.monto | number: '1.2-2' }}</span>
+                @if (p.estado === 'ANULADO') { <small class="d-block texto-vencido" [title]="p.motivoAnulacion ?? ''">Anulado por {{ p.anuladoPor }}</small> }
+              </td>
+              <td>{{ p.registradoPor ?? '—' }}</td>
+              <td class="text-end">
+                @if (p.estado === 'VIGENTE' && puedeAnular()) {
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="abrirAnulacion(p)">Anular</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vacio">{{ cargando() ? 'Cargando…' : 'No hay pagos en ese periodo.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</section>
+
+@if (pagando(); as c) {
+  <div class="dialogo-fondo" (click)="pagando.set(null)">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloPago"
+          (ngSubmit)="confirmarPago()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tituloPago">Pagar la compra #{{ c.compraId }}</h3>
+      <p class="muted">{{ c.proveedor }} · factura {{ c.numeroFactura }} · saldo {{ simbolo(c.moneda) }} {{ c.saldo | number: '1.2-2' }}</p>
+      <div class="campos">
+        <div><label class="form-label" for="pFecha">Fecha</label>
+          <input id="pFecha" type="date" class="form-control" name="fecha" [(ngModel)]="pago.fechaPago" [min]="c.fechaCompra" [max]="hoy" /></div>
+        <div><label class="form-label" for="pMonto">Monto ({{ simbolo(c.moneda) }})</label>
+          <input id="pMonto" type="number" class="form-control" name="monto" [(ngModel)]="pago.monto" min="0.01" [max]="c.saldo" step="0.01" /></div>
+        <div><label class="form-label" for="pMetodo">Método</label>
+          <select id="pMetodo" class="form-select" name="metodo" [(ngModel)]="pago.metodo">
+            @for (m of metodos; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+          </select></div>
+        <div><label class="form-label" for="pOper">N° de operación</label>
+          <input id="pOper" type="text" class="form-control" name="oper" maxlength="50" [(ngModel)]="pago.numeroOperacion"
+                 [placeholder]="pago.metodo === 'EFECTIVO' ? 'Opcional' : 'Obligatorio'" /></div>
+      </div>
+      <label class="form-label" for="pObs">Observación</label>
+      <input id="pObs" type="text" class="form-control" name="obs" maxlength="300" [(ngModel)]="pago.observacion" />
+      @if (errorDialogo()) { <div class="alert alert-danger margen-arriba">{{ errorDialogo() }}</div> }
+      <div class="d-flex justify-content-end gap-2 margen-arriba">
+        <button type="button" class="btn btn-secondary" (click)="pagando.set(null)" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Registrar pago' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (anulando(); as p) {
+  <div class="dialogo-fondo" (click)="anulando.set(null)">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloAnular"
+          (ngSubmit)="confirmarAnulacion()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tituloAnular">Anular el pago #{{ p.id }}</h3>
+      <p class="muted">{{ p.proveedor }} · {{ simbolo(p.moneda) }} {{ p.monto | number: '1.2-2' }} del {{ p.fechaPago | date: 'dd/MM/yyyy' }}.
+        Ese monto vuelve al saldo de la compra #{{ p.compraId }}. El pago no se borra: queda como anulado.</p>
+      <label class="form-label" for="aMotivo">Motivo</label>
+      <input id="aMotivo" type="text" class="form-control" name="motivo" maxlength="300" [(ngModel)]="motivo"
+             placeholder="Ej.: pago registrado dos veces, transferencia rechazada" />
+      @if (errorDialogo()) { <div class="alert alert-danger margen-arriba">{{ errorDialogo() }}</div> }
+      <div class="d-flex justify-content-end gap-2 margen-arriba">
+        <button type="button" class="btn btn-secondary" (click)="anulando.set(null)" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-danger" [disabled]="guardando()">{{ guardando() ? 'Anulando…' : 'Anular pago' }}</button>
+      </div>
+    </form>
+  </div>
+}

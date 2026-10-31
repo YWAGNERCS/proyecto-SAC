@@ -121,6 +121,12 @@ export const routes: Routes = [
       },
       // ── Servicios técnicos: órdenes de trabajo, equipos instalados y contratos ──
       {
+        path: 'servicios/agenda',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/servicios/agenda/agenda').then((m) => m.AgendaComponent),
+        title: 'Agenda de técnicos — SGE-JD',
+      },
+      {
         path: 'servicios/ordenes',
         canActivate: [authGuard],
         loadComponent: () => import('./features/servicios/orden/orden-list').then((m) => m.OrdenListComponent),
@@ -163,6 +169,24 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/compras/compra/compra-list').then((m) => m.CompraListComponent),
         title: 'Compras — SGE-JD',
+      },
+      {
+        path: 'compras/por-pagar',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/compras/por-pagar/por-pagar').then((m) => m.PorPagarComponent),
+        title: 'Cuentas por pagar — SGE-JD',
+      },
+      {
+        path: 'inventario/ajustes',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/inventario/ajuste/ajuste-list').then((m) => m.AjusteListComponent),
+        title: 'Ajustes de inventario — SGE-JD',
+      },
+      {
+        path: 'reportes/rentabilidad',
+        canActivate: [authGuard, permisoGuard('VER_RENTABILIDAD')],
+        loadComponent: () => import('./features/reportes/rentabilidad/rentabilidad').then((m) => m.RentabilidadComponent),
+        title: 'Rentabilidad — SGE-JD',
       },
       {
         path: 'compras/nueva',

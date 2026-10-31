@@ -24,6 +24,12 @@ export class OrdenService {
     return this.http.get<OrdenTrabajo>(this.api.buildUrl(`${this.endpoint}/${id}`));
   }
 
+  /** Agenda de técnicos: órdenes no canceladas entre dos fechas (hasta 6 semanas). */
+  agenda(desde: string, hasta: string) {
+    const params = new HttpParams().set('desde', desde).set('hasta', hasta);
+    return this.http.get<OrdenTrabajo[]>(this.api.buildUrl(`${this.endpoint}/agenda`), { params });
+  }
+
   tecnicos() {
     return this.http.get<string[]>(this.api.buildUrl(`${this.endpoint}/tecnicos`));
   }

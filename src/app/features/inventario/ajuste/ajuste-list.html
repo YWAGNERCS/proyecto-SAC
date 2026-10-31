@@ -1,0 +1,108 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Ajustes de inventario</h1>
+    <p class="page-sub">Conteos físicos, mermas, material dañado o perdido y stock inicial. Cada ajuste sale en el kardex.</p>
+  </div>
+  @if (puedeAjustar()) {
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-secondary" (click)="abrir('MOVIMIENTO')">Merma, dañado u otro</button>
+      <button type="button" class="btn btn-primary" (click)="abrir('CONTEO')">+ Conteo físico</button>
+    </div>
+  }
+</div>
+
+@if (aviso()) { <div class="alert alert-success" role="status">{{ aviso() }}</div> }
+
+<section class="tarjeta sin-relleno">
+  <div class="barra-filtros">
+    <div><label class="form-label" for="fProd">Material</label>
+      <select id="fProd" class="form-select" [(ngModel)]="filtro.productoId" (ngModelChange)="buscar()">
+        <option [ngValue]="null">Todos</option>
+        @for (p of materiales(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+      </select></div>
+    <div><label class="form-label" for="fMot">Motivo</label>
+      <select id="fMot" class="form-select" [(ngModel)]="filtro.motivo" (ngModelChange)="buscar()">
+        <option value="">Todos</option>
+        @for (m of motivos(); track m.codigo) { <option [value]="m.codigo">{{ m.nombre }}</option> }
+      </select></div>
+    <div><label class="form-label" for="fDesde">Desde</label>
+      <input id="fDesde" type="date" class="form-control" [(ngModel)]="filtro.desde" (change)="buscar()" /></div>
+    <div><label class="form-label" for="fHasta">Hasta</label>
+      <input id="fHasta" type="date" class="form-control" [(ngModel)]="filtro.hasta" (change)="buscar()" /></div>
+  </div>
+  @if (error()) { <div class="alert alert-danger margen">{{ error() }}</div> }
+  <div class="table-responsive">
+    <table class="tabla-suave">
+      <thead><tr><th>Fecha</th><th>Material</th><th>Motivo</th><th class="text-end">Movimiento</th>
+        <th class="text-end">Stock</th><th>Observación</th><th>Registró</th></tr></thead>
+      <tbody>
+        @for (a of ajustes(); track a.id) {
+          <tr>
+            <td>{{ a.fecha | date: 'dd/MM/yyyy' }}<small class="d-block muted">#{{ a.id }}</small></td>
+            <td><a [routerLink]="['/catalogo/productos', a.productoId, 'kardex']">{{ a.producto }}</a></td>
+            <td>{{ a.motivoNombre }}</td>
+            <td class="text-end"><span class="badge" [class.badge-success]="a.tipo === 'ENTRADA'" [class.badge-danger]="a.tipo === 'SALIDA'">
+              {{ a.tipo === 'ENTRADA' ? '+' : '−' }}{{ a.cantidad }}</span></td>
+            <td class="text-end nowrap">{{ a.stockAnterior }} → <strong>{{ a.stockNuevo }}</strong></td>
+            <td class="observacion">{{ a.observacion ?? '—' }}</td>
+            <td>{{ a.registradoPor ?? '—' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="vacio">{{ cargando() ? 'Cargando…' : 'No hay ajustes con esos filtros.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+@if (abierto()) {
+  <div class="dialogo-fondo" (click)="abierto.set(false)">
+    <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloAjuste"
+          (ngSubmit)="guardar()" (click)="$event.stopPropagation()" novalidate>
+      <h3 id="tituloAjuste">{{ modo === 'CONTEO' ? 'Conteo físico' : 'Ajuste de inventario' }}</h3>
+      <p class="muted">{{ modo === 'CONTEO'
+        ? 'Escriba cuántas unidades hay de verdad en el almacén: el sistema registra la diferencia.'
+        : 'Una entrada o salida que no es compra, venta ni orden de trabajo.' }}</p>
+
+      <div class="campos">
+        <div class="ancho"><label class="form-label" for="nProd">Material</label>
+          <select id="nProd" class="form-select" name="producto" [(ngModel)]="nuevo.productoId">
+            <option [ngValue]="null">— Elija —</option>
+            @for (p of materiales(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} (stock {{ p.stockActual ?? 0 }})</option> }
+          </select></div>
+        <div><label class="form-label" for="nFecha">Fecha</label>
+          <input id="nFecha" type="date" class="form-control" name="fecha" [(ngModel)]="nuevo.fecha" [max]="hoy" /></div>
+        @if (modo === 'CONTEO') {
+          <div><label class="form-label" for="nContado">Unidades contadas</label>
+            <input id="nContado" type="number" class="form-control" name="contado" min="0" [(ngModel)]="nuevo.stockContado" /></div>
+        } @else {
+          <div><label class="form-label" for="nTipo">Tipo</label>
+            <select id="nTipo" class="form-select" name="tipo" [(ngModel)]="nuevo.tipo">
+              <option value="SALIDA">Salida (resta)</option>
+              <option value="ENTRADA">Entrada (suma)</option>
+            </select></div>
+          <div><label class="form-label" for="nCant">Cantidad</label>
+            <input id="nCant" type="number" class="form-control" name="cantidad" min="1" [(ngModel)]="nuevo.cantidad" /></div>
+          <div><label class="form-label" for="nMot">Motivo</label>
+            <select id="nMot" class="form-select" name="motivo" [(ngModel)]="nuevo.motivo">
+              @for (m of motivosMovimiento(); track m.codigo) { <option [value]="m.codigo">{{ m.nombre }}</option> }
+            </select></div>
+        }
+      </div>
+      <label class="form-label" for="nObs">Observación {{ modo === 'MOVIMIENTO' ? '(obligatoria)' : '(opcional)' }}</label>
+      <input id="nObs" type="text" class="form-control" name="obs" maxlength="300" [(ngModel)]="nuevo.observacion"
+             placeholder="Qué pasó, dónde, quién lo reportó" />
+
+      @if (productoElegido(); as p) {
+        <p class="vista-previa">Stock en el sistema: <strong>{{ p.stockActual ?? 0 }}</strong>
+          @if (stockResultante() !== null) { → queda en <strong [class.texto-negativo]="stockResultante()! < 0">{{ stockResultante() }}</strong> }
+        </p>
+      }
+      @if (errorForm()) { <div class="alert alert-danger margen-arriba">{{ errorForm() }}</div> }
+      <div class="d-flex justify-content-end gap-2 margen-arriba">
+        <button type="button" class="btn btn-secondary" (click)="abierto.set(false)" [disabled]="guardando()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Registrar ajuste' }}</button>
+      </div>
+    </form>
+  </div>
+}

@@ -52,6 +52,8 @@ export class OrdenFormComponent {
     ventaId: this.fb.control<number | null>(null),
     equipoId: this.fb.control<number | null>(null),
     fechaProgramada: this.fb.nonNullable.control(this.hoy(), Validators.required),
+    horaInicio: this.fb.nonNullable.control(''),
+    duracionMinutos: this.fb.nonNullable.control(120, [Validators.min(15), Validators.max(720)]),
     tecnico: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(100)]),
     direccion: this.fb.nonNullable.control('', Validators.maxLength(200)),
     descripcion: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(500)]),
@@ -75,7 +77,7 @@ export class OrdenFormComponent {
           this.mantenimientoId.set(o.mantenimientoId);
           this.cargarDelCliente(o.clienteId, false);
           this.form.patchValue({ tipo: o.tipo, clienteId: o.clienteId, sedeId: o.sedeId, ventaId: o.ventaId, equipoId: o.equipoId,
-            fechaProgramada: o.fechaProgramada, tecnico: o.tecnico, direccion: o.direccion ?? '', descripcion: o.descripcion }, { emitEvent: false });
+            fechaProgramada: o.fechaProgramada, horaInicio: o.horaInicio ?? '', duracionMinutos: o.duracionMinutos, tecnico: o.tecnico, direccion: o.direccion ?? '', descripcion: o.descripcion }, { emitEvent: false });
           this.form.controls.tipo.setValue(o.tipo);
         },
         error: () => this.error.set('No se pudo cargar la orden.'),
@@ -89,6 +91,12 @@ export class OrdenFormComponent {
     } else if (q.get('clienteId')) {
       this.form.patchValue({ clienteId: Number(q.get('clienteId')), ventaId: q.get('ventaId') ? Number(q.get('ventaId')) : null });
     }
+    // Desde la Agenda: el espacio libre elegido (día, hora y técnico)
+    if (!idParam && !q.get('mantenimientoId') && q.get('fecha') && q.get('fecha')! >= this.hoy()) {
+      this.form.patchValue({ fechaProgramada: q.get('fecha')! });
+    }
+    if (!idParam && q.get('hora')) this.form.patchValue({ horaInicio: q.get('hora')! });
+    if (!idParam && q.get('tecnico')) this.form.patchValue({ tecnico: q.get('tecnico')! });
   }
 
   private cargarDelCliente(clienteId: number | null, limpiar: boolean) {
@@ -119,6 +127,8 @@ export class OrdenFormComponent {
       mantenimientoId: this.mantenimientoId(),
       equipoId: v.equipoId,
       fechaProgramada: v.fechaProgramada,
+      horaInicio: v.horaInicio || null,
+      duracionMinutos: v.horaInicio ? v.duracionMinutos : null,
       tecnico: v.tecnico.trim(),
       direccion: v.direccion.trim() || null,
       descripcion: v.descripcion.trim(),

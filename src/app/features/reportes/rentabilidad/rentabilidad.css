@@ -1,0 +1,81 @@
+.periodo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.periodo .form-control {
+  width: 150px;
+}
+
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.indicadores .tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.86rem;
+}
+
+.indicadores .cifra {
+  font-size: 1.7rem;
+}
+
+.destacado {
+  background: var(--primary);
+  color: var(--sobre-primary);
+}
+
+.aviso,
+.nota {
+  font-size: 0.82rem;
+}
+
+.sin-relleno {
+  padding: 0;
+  overflow: hidden;
+}
+
+.pestanas {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.col-barra {
+  min-width: 200px;
+}
+
+.barra {
+  height: 6px;
+  margin-bottom: 4px;
+  border-radius: 999px;
+  background: var(--suave);
+  overflow: hidden;
+}
+
+.barra span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--secundario);
+}
+
+.barra span.negativa {
+  background: var(--danger);
+}
+
+.nota {
+  margin: 10px 18px 14px;
+}
+
+/* .cifra global usa el color de texto normal: sobre el acento va el texto de contraste */
+.destacado .cifra,
+.destacado .cifra span {
+  color: var(--sobre-primary);
+}
