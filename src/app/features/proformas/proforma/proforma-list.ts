@@ -8,11 +8,12 @@ import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { VentaService } from '../../ventas/venta/venta-service';
 import { ProformaResponse } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 @Component({
   selector: 'app-proforma-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './proforma-list.html',
   styleUrl: './proforma-list.css'
 })

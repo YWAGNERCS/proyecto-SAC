@@ -47,7 +47,7 @@
     <div class="destacada">
       <div class="destacada-fila">
         <span class="destacada-marca">JD Refrigeración</span>
-        <span class="destacada-icono" aria-hidden="true">❄</span>
+        <span class="destacada-icono" aria-hidden="true"><app-icono nombre="copo" [tamano]="18" /></span>
       </div>
       <span class="destacada-etiqueta">{{ ventasPeriodo().cantidad }} {{ ventasPeriodo().cantidad === 1 ? 'venta' : 'ventas' }}</span>
       <strong class="cifra cifra-destacada">S/ {{ partes(ventasPeriodo().total).entero }}<span>{{ partes(ventasPeriodo().total).decimales }}</span></strong>
@@ -203,7 +203,7 @@
 } @else {
 <!-- ── Sin sesión: bienvenida ── -->
 <section class="bienvenida">
-  <span class="bienvenida-icono" aria-hidden="true">❄</span>
+  <span class="bienvenida-icono" aria-hidden="true"><app-icono nombre="copo" [tamano]="30" /></span>
   <h1>Bienvenido a SGE-JD</h1>
   <p>Sistema de Gestión Empresarial de JD Refrigeración: proformas, ventas, cobranza, servicios técnicos y postventa en un solo lugar.</p>
   <button type="button" class="btn btn-primary" (click)="auth.iniciarLogin('/')">Iniciar sesión</button>

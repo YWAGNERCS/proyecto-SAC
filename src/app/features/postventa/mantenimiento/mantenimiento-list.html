@@ -54,7 +54,7 @@
 </div>
 
 @if (error()) {
-  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+  <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
 }
 @if (mensaje()) {
   <div class="alert alert-info" role="status">{{ mensaje() }}</div>
@@ -94,7 +94,7 @@
               @if (m.sedeNombre) { <div class="muted">Sede {{ m.sedeNombre }}</div> }
               <div class="contacto">
                 @if (m.clienteTelefono) {
-                  <a [href]="'tel:' + m.clienteTelefono">📞 {{ m.clienteTelefono }}</a>
+                  <a [href]="'tel:' + m.clienteTelefono"><app-icono nombre="telefono" [tamano]="14" /> {{ m.clienteTelefono }}</a>
                   @if (whatsapp(m); as wa) {
                     <a [href]="wa" target="_blank" rel="noopener">WhatsApp</a>
                   }
@@ -125,7 +125,7 @@
                   <a class="btn btn-sm btn-primary" [routerLink]="['/servicios/ordenes/nueva']"
                      [queryParams]="{ mantenimientoId: m.id, clienteId: m.clienteId, fecha: m.fechaProgramada }"
                      title="Programar la visita con técnico: al cerrar la orden queda realizada">Orden</a>
-                  <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REALIZADO')">✓ Realizado</button>
+                  <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REALIZADO')"><app-icono nombre="aceptar" [tamano]="14" /> Realizado</button>
                   <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REPROGRAMAR')">Reprogramar</button>
                 </div>
               } @else {
@@ -177,7 +177,7 @@
                 [placeholder]="accion() === 'REALIZADO' ? 'Ej.: limpieza de filtros, revisión de presión de gas' : 'Ej.: el cliente pidió después de su inventario'"></textarea>
 
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><app-icono nombre="alerta" /> {{ errorDialogo() }}</div>
       }
 
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">

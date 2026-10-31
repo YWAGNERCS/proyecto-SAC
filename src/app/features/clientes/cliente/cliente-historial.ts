@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../../core/services/api-service';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { VentaResponse } from '../../ventas/venta/venta.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /** Refleja VentaReporteService.HistorialCliente del backend. */
 interface HistorialCliente {
@@ -25,7 +26,7 @@ interface HistorialCliente {
 
 @Component({
   selector: 'app-cliente-historial',
-  imports: [RouterLink, DecimalPipe],
+  imports: [IconoComponent, RouterLink, DecimalPipe],
   templateUrl: './cliente-historial.html',
 })
 export class ClienteHistorialComponent {

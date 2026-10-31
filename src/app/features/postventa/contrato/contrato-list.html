@@ -9,7 +9,7 @@
 </div>
 
 @if (error()) {
-  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+  <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
 }
 @if (mensaje()) {
   <div class="alert alert-info" role="status">{{ mensaje() }}</div>
@@ -129,7 +129,7 @@
       <input id="cDesc" class="form-control" formControlName="descripcion" maxlength="300"
              placeholder="Ej.: mantenimiento de las 4 cámaras de frío y 2 splits de la tienda">
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><app-icono nombre="alerta" /> {{ errorDialogo() }}</div>
       }
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
         <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Cancelar</button>
@@ -149,7 +149,7 @@
       <label class="form-label" for="kMotivo">Motivo</label>
       <input id="kMotivo" class="form-control" [formControl]="motivo" maxlength="300" placeholder="Ej.: el cliente no renovó">
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;">{{ errorDialogo() }}</div>
       }
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
         <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Volver</button>

@@ -11,6 +11,7 @@ import { SedeService } from '../../clientes/sede/sede-service';
 import { Sede } from '../../clientes/sede/sede.model';
 import { ProductoService } from '../../catalogo/producto/producto-service';
 import { Producto, esEquipo } from '../../catalogo/producto/producto.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /**
  * Parque instalado: equipos de JD en los locales de los clientes, con serie, garantía y plan de
@@ -18,7 +19,7 @@ import { Producto, esEquipo } from '../../catalogo/producto/producto.model';
  */
 @Component({
   selector: 'app-equipo-list',
-  imports: [FormsModule, ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, FormsModule, ReactiveFormsModule, RouterLink],
   templateUrl: './equipo-list.html',
 })
 export class EquipoListComponent implements OnInit {

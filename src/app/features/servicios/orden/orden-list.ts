@@ -6,11 +6,12 @@ import { OrdenService } from './orden-service';
 import { EstadoOrden, OrdenTrabajo, etiquetaTipo } from './orden.model';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /** Órdenes de trabajo: agenda de los técnicos, con filtros por estado, cliente, técnico y fechas. */
 @Component({
   selector: 'app-orden-list',
-  imports: [FormsModule, RouterLink],
+  imports: [IconoComponent, FormsModule, RouterLink],
   templateUrl: './orden-list.html',
 })
 export class OrdenListComponent implements OnInit {

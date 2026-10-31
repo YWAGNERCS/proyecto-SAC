@@ -9,6 +9,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ProductoService } from '../../catalogo/producto/producto-service';
 import { Producto, esEquipo } from '../../catalogo/producto/producto.model';
 import { FRECUENCIAS, etiquetaFrecuencia } from '../../postventa/equipo/equipo.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 type MaterialForm = FormGroup<{ productoId: FormControl<number | null>; cantidad: FormControl<number> }>;
 type EquipoForm = FormGroup<{
@@ -27,7 +28,7 @@ type ServicioForm = FormGroup<{ productoId: FormControl<number | null>; cantidad
  */
 @Component({
   selector: 'app-orden-detalle',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [IconoComponent, ReactiveFormsModule, RouterLink, DecimalPipe],
   templateUrl: './orden-detalle.html',
 })
 export class OrdenDetalleComponent {

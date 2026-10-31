@@ -8,10 +8,11 @@ import { ProductoService } from './producto-service';
 import { Moneda, ProductoRequest, SECTORES, Sector, controlaStock } from './producto.model';
 import { CategoriaService } from '../categoria/categoria-service';
 import { Categoria } from '../categoria/categoria.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 @Component({
   selector: 'app-producto-form',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [IconoComponent, ReactiveFormsModule, RouterLink, DecimalPipe],
   templateUrl: './producto-form.html',
 })
 export class ProductoForm {

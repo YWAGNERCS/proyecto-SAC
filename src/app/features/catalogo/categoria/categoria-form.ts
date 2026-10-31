@@ -2,10 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CategoriaService } from './categoria-service';
+import { IconoComponent } from '../../../core/layout/icono';
 
 @Component({
   selector: 'app-categoria-form',
-  imports: [ReactiveFormsModule],
+  imports: [IconoComponent, ReactiveFormsModule],
   templateUrl: './categoria-form.html',
 })
 export class CategoriaForm {

@@ -11,7 +11,7 @@ import { GRUPOS, GrupoMenu, ICONOS, grupoDeUrl, iniciales } from './menu';
  * Estructura de la SPA (referencia "Quixotic"):
  *  - Barra superior: marca, grupos en píldoras, buscador global, avisos y menú del usuario.
  *  - Riel izquierdo: los módulos del grupo activo, como íconos con su nombre al pasar el mouse.
- *  - En tablet y celular el riel se oculta y ☰ abre el menú completo con texto.
+ *  - En tablet y celular el riel se oculta y el botón de menú abre el menú completo con texto.
  * Inicio es público; el resto del menú aparece solo con sesión. Las opciones solo ADMIN
  * siguen la misma regla que SecurityConfig y permisoGuard.
  */

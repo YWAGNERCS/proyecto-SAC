@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../../core/services/api-service';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { CompraResponse } from '../../compras/compra/compra.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /** Refleja CompraReporteService.HistorialProveedor del backend. */
 interface HistorialProveedor {
@@ -22,7 +23,7 @@ interface HistorialProveedor {
 
 @Component({
   selector: 'app-proveedor-historial',
-  imports: [RouterLink, DecimalPipe],
+  imports: [IconoComponent, RouterLink, DecimalPipe],
   templateUrl: './proveedor-historial.html',
 })
 export class ProveedorHistorialComponent {

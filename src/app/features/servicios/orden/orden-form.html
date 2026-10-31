@@ -11,7 +11,7 @@
   </div>
   <div class="card-body">
     @if (error()) {
-      <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+      <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
     }
     <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
       <div class="row">

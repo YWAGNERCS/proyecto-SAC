@@ -19,7 +19,7 @@
 </div>
 
 @if (error()) {
-  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+  <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
 }
 @if (mensaje()) {
   <div class="alert alert-info" role="status">{{ mensaje() }}</div>
@@ -68,13 +68,13 @@
               <div class="d-flex justify-content-center gap-1" style="flex-wrap: wrap; gap: 4px;">
                 @if (c.estado === 'PENDIENTE') {
                   <button class="btn btn-sm btn-secondary" (click)="enviar(c.id)" [disabled]="accionEnCurso() === c.id" title="Enviar por WhatsApp y correo">
-                    📤 Enviar
+                    <app-icono nombre="enviar" [tamano]="14" /> Enviar
                   </button>
-                  <button class="btn btn-sm badge-success-btn" (click)="aceptar(c.id)" [disabled]="accionEnCurso() === c.id" title="Marcar como aceptada">
-                    ✓
+                  <button class="btn btn-sm badge-success-btn" (click)="aceptar(c.id)" [disabled]="accionEnCurso() === c.id" title="Marcar como aceptada" aria-label="Aceptar">
+                    <app-icono nombre="aceptar" [tamano]="14" />
                   </button>
-                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c)" [disabled]="accionEnCurso() === c.id" title="Marcar como rechazada">
-                    ✗
+                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c)" [disabled]="accionEnCurso() === c.id" title="Marcar como rechazada" aria-label="Rechazar">
+                    <app-icono nombre="rechazar" [tamano]="14" />
                   </button>
                 }
                 @if (c.estado === 'CONVERTIDA') {
@@ -82,10 +82,10 @@
                 }
                 @if (c.estado === 'ACEPTADA') {
                   <button class="btn btn-sm btn-primary" (click)="abrirConversion(c)" title="Convertir en venta">
-                    🛒 → Venta
+                    <app-icono nombre="ventas" [tamano]="14" /> Convertir en venta
                   </button>
-                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c)" [disabled]="accionEnCurso() === c.id" title="El cliente se echó atrás: marcar como rechazada">
-                    ✗
+                  <button class="btn btn-sm badge-danger-btn" (click)="rechazar(c)" [disabled]="accionEnCurso() === c.id" title="El cliente se echó atrás: marcar como rechazada" aria-label="Rechazar">
+                    <app-icono nombre="rechazar" [tamano]="14" />
                   </button>
                 }
               </div>
@@ -141,7 +141,7 @@
       </fieldset>
 
       @if (errorConversion()) {
-        <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ errorConversion() }}</div>
+        <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ errorConversion() }}</div>
       }
 
       <div class="d-flex justify-content-end gap-2">

@@ -5,6 +5,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../../core/services/api-service';
 import { DescargaService } from '../../../core/services/descarga-service';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /** Refleja KardexService.Kardex del backend. */
 interface Movimiento {
@@ -35,7 +36,7 @@ interface Kardex {
 
 @Component({
   selector: 'app-producto-kardex',
-  imports: [RouterLink, FormsModule, DecimalPipe],
+  imports: [IconoComponent, RouterLink, FormsModule, DecimalPipe],
   templateUrl: './producto-kardex.html',
 })
 export class ProductoKardexComponent {

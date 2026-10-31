@@ -6,12 +6,13 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ClienteService } from './cliente-service';
 import { Cliente } from './cliente.model';
 import { SedesClienteComponent } from '../sede/sedes-cliente';
+import { IconoComponent } from '../../../core/layout/icono';
 
 type Tipo = Cliente['tipo'];
 
 @Component({
   selector: 'app-cliente-form',
-  imports: [ReactiveFormsModule, RouterLink, SedesClienteComponent],
+  imports: [IconoComponent, ReactiveFormsModule, RouterLink, SedesClienteComponent],
   templateUrl: './cliente-form.html',
 })
 export class ClienteFormComponent {

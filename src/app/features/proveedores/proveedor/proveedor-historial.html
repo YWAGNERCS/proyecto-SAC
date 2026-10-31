@@ -7,12 +7,13 @@
     }
   </div>
   <button class="btn btn-secondary" (click)="exportarExcel()" [disabled]="exportando() || !historial()">
-    {{ exportando() ? 'Generando…' : '⬇ Exportar a Excel' }}
+    @if (!exportando()) { <app-icono nombre="descargar" /> }
+      {{ exportando() ? 'Generando…' : 'Exportar a Excel' }}
   </button>
 </div>
 
 @if (error()) {
-  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+  <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
 }
 
 @if (historial(); as h) {

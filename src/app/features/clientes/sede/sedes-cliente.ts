@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SedeService } from './sede-service';
 import { Sede } from './sede.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /**
  * Sedes (locales) de un cliente, dentro de su ficha. Se agregan y editan en la misma tarjeta;
@@ -11,7 +12,7 @@ import { Sede } from './sede.model';
  */
 @Component({
   selector: 'app-sedes-cliente',
-  imports: [ReactiveFormsModule],
+  imports: [IconoComponent, ReactiveFormsModule],
   templateUrl: './sedes-cliente.html',
 })
 export class SedesClienteComponent {

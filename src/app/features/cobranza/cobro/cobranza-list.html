@@ -67,7 +67,7 @@
 </div>
 
 @if (error()) {
-  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+  <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
 }
 @if (mensaje()) {
   <div class="alert alert-info" role="status">{{ mensaje() }}</div>
@@ -357,7 +357,7 @@
       <input id="cNotas" type="text" class="form-control" maxlength="300" formControlName="notas">
 
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><app-icono nombre="alerta" /> {{ errorDialogo() }}</div>
       }
 
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
@@ -389,7 +389,7 @@
              [class.is-invalid]="motivoAnulacion.touched && motivoAnulacion.invalid">
 
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;">{{ errorDialogo() }}</div>
       }
 
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
@@ -434,7 +434,7 @@
       <input id="dNotas" type="text" class="form-control" maxlength="300" formControlName="notas">
 
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;">{{ errorDialogo() }}</div>
       }
 
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">

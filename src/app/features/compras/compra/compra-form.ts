@@ -10,6 +10,7 @@ import { ProductoService } from '../../catalogo/producto/producto-service';
 import { CompraRequest } from './compra.model';
 import { Proveedor } from '../../proveedores/proveedor/proveedor.model';
 import { Producto } from '../../catalogo/producto/producto.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /** Una línea de la compra. */
 type DetalleForm = FormGroup<{
@@ -22,7 +23,7 @@ type DetalleForm = FormGroup<{
 @Component({
   selector: 'app-compra-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './compra-form.html'
 })
 export class CompraFormComponent implements OnInit {

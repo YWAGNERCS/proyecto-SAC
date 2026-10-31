@@ -13,6 +13,7 @@ import { Cobro, CuentaPorCobrar, Devolucion, METODOS_PAGO, MetodoPago, MonedaCob
 import { AuthService } from '../../../core/auth/auth.service';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 type Vista = 'POR_COBRAR' | 'HISTORIAL' | 'DEVOLUCIONES';
 
@@ -33,7 +34,7 @@ const noFutura = (hoy: string): ValidatorFn => (c: AbstractControl): ValidationE
 @Component({
   selector: 'app-cobranza-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [IconoComponent, CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './cobranza-list.html',
   styleUrl: './cobranza-list.css',
 })

@@ -13,6 +13,7 @@ import { EquipoService } from '../../postventa/equipo/equipo-service';
 import { Equipo } from '../../postventa/equipo/equipo.model';
 import { VentaService } from '../../ventas/venta/venta-service';
 import { VentaResponse } from '../../ventas/venta/venta.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /**
  * Programar o editar una orden de trabajo. Desde Postventa llega con ?mantenimientoId=…&clienteId=…&fecha=…
@@ -21,7 +22,7 @@ import { VentaResponse } from '../../ventas/venta/venta.model';
  */
 @Component({
   selector: 'app-orden-form',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './orden-form.html',
 })
 export class OrdenFormComponent {

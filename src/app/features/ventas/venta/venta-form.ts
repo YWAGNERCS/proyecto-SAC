@@ -12,6 +12,7 @@ import { Cliente } from '../../clientes/cliente/cliente.model';
 import { Producto, precioVenta } from '../../catalogo/producto/producto.model';
 import { Moneda, TipoCambioService, convertir, simboloMoneda } from '../../../core/services/tipo-cambio-service';
 import { DescuentoService } from '../../../core/services/descuento-service';
+import { IconoComponent } from '../../../core/layout/icono';
 
 const IGV = 0.18;
 const MAX_SUGERENCIAS = 8;
@@ -27,7 +28,7 @@ function sinProductosRepetidos(control: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-venta-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './venta-form.html',
   styleUrl: './venta-form.css',
 })

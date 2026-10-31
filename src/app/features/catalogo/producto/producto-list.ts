@@ -8,13 +8,14 @@ import { ProductoService } from './producto-service';
 import { Producto, SECTORES, controlaStock } from './producto.model';
 import { CategoriaService } from '../categoria/categoria-service';
 import { Categoria } from '../categoria/categoria.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /** Valor del filtro: todas, una categoría (id) o los productos aún sin categoría. */
 type FiltroCategoria = 'TODAS' | 'SIN_CATEGORIA' | number;
 
 @Component({
   selector: 'app-producto-list',
-  imports: [RouterLink, FormsModule, DecimalPipe],
+  imports: [IconoComponent, RouterLink, FormsModule, DecimalPipe],
   templateUrl: './producto-list.html',
 })
 export class ProductoList implements OnInit {

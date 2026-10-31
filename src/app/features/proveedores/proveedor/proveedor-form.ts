@@ -5,12 +5,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ProveedorService } from './proveedor-service';
 import { Proveedor } from './proveedor.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 type Tipo = Proveedor['tipo'];
 
 @Component({
   selector: 'app-proveedor-form',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './proveedor-form.html',
 })
 export class ProveedorFormComponent {

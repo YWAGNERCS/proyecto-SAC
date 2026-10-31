@@ -8,6 +8,7 @@ import { VentaService } from './venta-service';
 import { EstadoVenta, VentaResponse } from './venta.model';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { CobranzaService } from '../../cobranza/cobro/cobranza-service';
+import { IconoComponent } from '../../../core/layout/icono';
 
 interface Agregado {
   moneda: 'SOLES' | 'DOLARES';
@@ -19,7 +20,7 @@ interface Agregado {
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './venta-list.html',
   styleUrl: './venta-list.css',
 })
@@ -130,7 +131,7 @@ export class VentaListComponent implements OnInit {
   private confirmarAnulacion(v: VentaResponse, pagado: number) {
     const monto = (n: number) => `${this.simbolo(v.moneda)} ${n.toFixed(2)}`;
     const aviso = pagado > 0
-      ? `\n\n⚠️ El cliente ya pagó ${monto(pagado)} de esta venta. Ese monto quedará como devolución pendiente ` +
+      ? `\n\nAtención: el cliente ya pagó ${monto(pagado)} de esta venta. Ese monto quedará como devolución pendiente ` +
         `en Cobranza › Devoluciones, donde se registra cuándo y cómo se le devolvió.`
       : '';
     const ok = confirm(

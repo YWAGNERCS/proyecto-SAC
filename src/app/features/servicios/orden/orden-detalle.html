@@ -1,5 +1,5 @@
 @if (error()) {
-  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+  <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
 }
 @if (mensaje()) {
   <div class="alert alert-info" role="status">{{ mensaje() }}</div>
@@ -142,7 +142,7 @@
               </td>
               <td style="width: 120px;"><input type="number" min="1" class="form-control text-end" formControlName="cantidad"
                      [attr.aria-label]="'Cantidad del material ' + (i + 1)"></td>
-              <td style="width: 50px;"><button type="button" class="btn btn-sm btn-outline-secondary" (click)="materiales.removeAt(i)" aria-label="Quitar material">✕</button></td>
+              <td style="width: 50px;"><button type="button" class="btn btn-sm btn-outline-secondary" (click)="materiales.removeAt(i)" aria-label="Quitar material"><app-icono nombre="rechazar" [tamano]="14" /></button></td>
             </tr>
           } @empty {
             <tr><td class="muted">Sin materiales.</td></tr>
@@ -183,7 +183,7 @@
       }
 
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><app-icono nombre="alerta" /> {{ errorDialogo() }}</div>
       }
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
         <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Cancelar</button>
@@ -216,7 +216,7 @@
               <td style="width: 110px;"><input type="number" min="1" class="form-control text-end" formControlName="cantidad" (input)="recalcular()"
                      [attr.aria-label]="'Cantidad del servicio ' + (i + 1)"></td>
               <td style="width: 50px;">@if (items.length > 1) {
-                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="items.removeAt(i); recalcular()" aria-label="Quitar">✕</button> }</td>
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="items.removeAt(i); recalcular()" aria-label="Quitar"><app-icono nombre="rechazar" [tamano]="14" /></button> }</td>
             </tr>
           }
         </tbody>
@@ -242,7 +242,7 @@
           @if (mezclaMonedas()) { <div class="muted">Hay servicios en soles y en dólares: la venta los convierte con el tipo de cambio del día.</div> }</div>
       </div>
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;">{{ errorDialogo() }}</div>
       }
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
         <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Cancelar</button>
@@ -261,7 +261,7 @@
       <label class="form-label" for="mot">Motivo</label>
       <input id="mot" type="text" class="form-control" [formControl]="motivo" maxlength="300" placeholder="Ej.: el cliente reprogramó la visita">
       @if (errorDialogo()) {
-        <div class="alert alert-danger" role="alert" style="margin-top: 12px;"><span>⚠️</span> {{ errorDialogo() }}</div>
+        <div class="alert alert-danger" role="alert" style="margin-top: 12px;">{{ errorDialogo() }}</div>
       }
       <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
         <button type="button" class="btn btn-secondary" (click)="cerrarDialogo()" [disabled]="guardando()">Volver</button>

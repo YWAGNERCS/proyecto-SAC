@@ -64,6 +64,12 @@
   --fondo-velo: rgba(17, 24, 39, 0.4);
   --sombra-panel: 0 12px 32px rgba(8, 27, 44, 0.14);
   --tooltip-fondo: #081B2C;
+  /* Botón de aviso: amarillo manteca pastel */
+  --aviso-fondo: #FFF3C4;
+  --aviso-fondo-hover: #FDE9A2;
+  --aviso-fondo-activo: #F9DC74;
+  --aviso-texto: #6B4E00;
+  --aviso-borde: #F2DC8E;
   --destacada-fondo: linear-gradient(135deg, #102A43 0%, #033E8A 100%);
   --grafico-barra: repeating-linear-gradient(135deg, #A9E7F3 0 6px, #91E0EF 6px 12px);
   --grafico-barra-activa: repeating-linear-gradient(135deg, #102A43 0 6px, #0C2238 6px 12px);
@@ -123,6 +129,11 @@
   --fondo-velo: rgba(0, 0, 0, 0.6);
   --sombra-panel: 0 12px 32px rgba(0, 0, 0, 0.5);
   --tooltip-fondo: #3A404D;
+  --aviso-fondo: rgba(253, 230, 138, 0.16);
+  --aviso-fondo-hover: rgba(253, 230, 138, 0.26);
+  --aviso-fondo-activo: rgba(253, 230, 138, 0.38);
+  --aviso-texto: #FDE68A;
+  --aviso-borde: rgba(253, 230, 138, 0.35);
   --destacada-fondo: linear-gradient(135deg, #292F3D 0%, #1B2130 100%);
   --grafico-barra: repeating-linear-gradient(135deg, #3A404D 0 6px, #333946 6px 12px);
   --grafico-barra-activa: repeating-linear-gradient(135deg, #D1D5DB 0 6px, #C2C7CF 6px 12px);
@@ -396,6 +407,22 @@ textarea.form-control {
 
 .btn-danger:hover:not(:disabled) {
   background-color: var(--danger-hover);
+}
+
+/* Aviso suave (p. ej. "Pagos atrasados"): amarillo manteca; más intenso cuando el filtro está activo */
+.btn-aviso {
+  background-color: var(--aviso-fondo);
+  border: 1px solid var(--aviso-borde);
+  color: var(--aviso-texto);
+}
+
+.btn-aviso:hover:not(:disabled) {
+  background-color: var(--aviso-fondo-hover);
+}
+
+.btn-aviso.activo {
+  background-color: var(--aviso-fondo-activo);
+  font-weight: 600;
 }
 
 .btn-sm {

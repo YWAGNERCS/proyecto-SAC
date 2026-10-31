@@ -11,6 +11,7 @@ import { ProductoService } from '../../catalogo/producto/producto-service';
 import { ProformaRequest } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { Producto } from '../../catalogo/producto/producto.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /** Una línea de la proforma. */
 type ItemForm = FormGroup<{
@@ -23,7 +24,7 @@ type ItemForm = FormGroup<{
 @Component({
   selector: 'app-proforma-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './proforma-form.html'
 })
 export class ProformaFormComponent implements OnInit {

@@ -1,14 +1,15 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { IconoComponent } from '../../core/layout/icono';
 
 /** Destino de rolGuard cuando el rol del usuario no alcanza para la pantalla pedida. */
 @Component({
   selector: 'app-sin-permiso',
-  imports: [RouterLink],
+  imports: [IconoComponent, RouterLink],
   template: `
     <div class="card sin-permiso">
-      <span class="icono" aria-hidden="true">🔒</span>
+      <span class="icono" aria-hidden="true"><app-icono nombre="candado" [tamano]="40" /></span>
       <h2>Acceso denegado</h2>
       <p>
         Su usuario
@@ -20,7 +21,7 @@ import { AuthService } from '../auth/auth.service';
   `,
   styles: `
     .sin-permiso { max-width: 520px; margin: 2rem auto; padding: 32px 24px; text-align: center; }
-    .icono { font-size: 2.5rem; }
+    .icono { display: inline-flex; color: var(--text-muted); }
     h2 { margin: 8px 0; }
     p { color: var(--text-muted); margin-bottom: 20px; }
   `,

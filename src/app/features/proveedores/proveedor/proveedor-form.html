@@ -6,7 +6,7 @@
 
   <div class="card-body">
     @if (error()) {
-      <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+      <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
     }
     @if (yaRegistrado(); as p) {
       <div class="alert alert-info" role="status">
@@ -37,12 +37,13 @@
                  (keydown.enter)="$event.preventDefault(); buscarDocumento()" />
           <button type="button" class="btn btn-secondary" style="white-space: nowrap;"
                   (click)="buscarDocumento()" [disabled]="buscando()">
-            {{ buscando() ? 'Buscando…' : '🔍 Buscar en ' + (esEmpresa() ? 'SUNAT' : 'RENIEC') }}
+            @if (!buscando()) { <app-icono nombre="buscar" /> }
+            {{ buscando() ? 'Buscando…' : 'Buscar en ' + (esEmpresa() ? 'SUNAT' : 'RENIEC') }}
           </button>
         </div>
         @if (mensajeValidacion('documento'); as m) { <span class="error-text">{{ m }}</span> }
         @if (avisoBusqueda()) {
-          <small style="color: var(--success); display: block; margin-top: 4px;">✓ {{ avisoBusqueda() }}</small>
+          <small style="color: var(--success); display: block; margin-top: 4px;"><app-icono nombre="aceptar" [tamano]="14" /> {{ avisoBusqueda() }}</small>
         }
       </div>
 

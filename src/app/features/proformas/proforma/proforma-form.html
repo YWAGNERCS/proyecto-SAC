@@ -5,7 +5,7 @@
     </div>
     <div class="card-body">
         <div *ngIf="errorMessage()" class="alert alert-danger">
-            <span>⚠️</span> {{ errorMessage() }}
+            <app-icono nombre="alerta" /> {{ errorMessage() }}
         </div>
 
         <form [formGroup]="form" (ngSubmit)="guardar()">

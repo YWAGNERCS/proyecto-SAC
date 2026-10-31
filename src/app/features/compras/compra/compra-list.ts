@@ -7,11 +7,12 @@ import { CompraResponse } from './compra.model';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { ProveedorService } from '../../proveedores/proveedor/proveedor-service';
 import { Proveedor } from '../../proveedores/proveedor/proveedor.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 @Component({
   selector: 'app-compra-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [IconoComponent, CommonModule, RouterLink, FormsModule],
   templateUrl: './compra-list.html'
 })
 export class CompraListComponent implements OnInit {

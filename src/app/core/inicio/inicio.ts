@@ -11,6 +11,7 @@ import { CobranzaService } from '../../features/cobranza/cobro/cobranza-service'
 import { Cobro, CuentaPorCobrar, METODOS_PAGO } from '../../features/cobranza/cobro/cobranza.model';
 import { OrdenService } from '../../features/servicios/orden/orden-service';
 import { OrdenTrabajo, etiquetaTipo } from '../../features/servicios/orden/orden.model';
+import { IconoComponent } from '../../core/layout/icono';
 
 type Preset = 'MES' | 'MES_ANTERIOR' | 'TREINTA' | 'TRIMESTRE' | 'ANIO' | 'PERSONALIZADO';
 type ModoBarras = 'MENSUAL' | 'ANUAL';
@@ -42,7 +43,7 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'O
  */
 @Component({
   selector: 'app-inicio',
-  imports: [RouterLink, DecimalPipe],
+  imports: [IconoComponent, RouterLink, DecimalPipe],
   templateUrl: './inicio.html',
   styleUrl: './inicio.css',
 })

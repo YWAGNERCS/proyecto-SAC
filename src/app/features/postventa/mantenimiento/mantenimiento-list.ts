@@ -7,13 +7,14 @@ import { MantenimientoService } from './mantenimiento-service';
 import { Mantenimiento, ResumenPostventa, VistaPostventa } from './mantenimiento.model';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 type Accion = 'REALIZADO' | 'REPROGRAMAR';
 
 @Component({
   selector: 'app-mantenimiento-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './mantenimiento-list.html',
   styleUrl: './mantenimiento-list.css',
 })

@@ -7,7 +7,8 @@
   </div>
   <div class="d-flex gap-2">
     <button class="btn btn-secondary" (click)="exportarExcel()" [disabled]="exportando()">
-      {{ exportando() ? 'Generando…' : '⬇ Exportar a Excel' }}
+      @if (!exportando()) { <app-icono nombre="descargar" /> }
+      {{ exportando() ? 'Generando…' : 'Exportar a Excel' }}
     </button>
     <a routerLink="/ventas/nueva" class="btn btn-primary">+ Nueva Venta</a>
   </div>
@@ -34,13 +35,13 @@
   <div class="filtros-acciones">
     <button class="btn btn-primary" (click)="buscar()">Buscar</button>
     <button class="btn btn-outline-secondary" (click)="limpiar()">Limpiar</button>
-    <button class="btn" [class.btn-danger]="vista() === 'ATRASADAS'" [class.btn-secondary]="vista() !== 'ATRASADAS'"
-            (click)="verAtrasadas()">⚠️ Pagos atrasados</button>
+    <button class="btn btn-aviso" [class.activo]="vista() === 'ATRASADAS'" [attr.aria-pressed]="vista() === 'ATRASADAS'"
+            (click)="verAtrasadas()"><app-icono nombre="alerta" /> Pagos atrasados</button>
   </div>
 </div>
 
 @if (error()) {
-  <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ error() }}</div>
+  <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ error() }}</div>
 }
 @if (mensaje()) {
   <div class="alert alert-info" role="status">{{ mensaje() }}

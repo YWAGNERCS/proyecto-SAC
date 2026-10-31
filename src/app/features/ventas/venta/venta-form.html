@@ -8,7 +8,7 @@
 
   <div class="card-body">
     @if (errorMessage()) {
-      <div class="alert alert-danger" role="alert"><span>⚠️</span> {{ errorMessage() }}</div>
+      <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ errorMessage() }}</div>
     }
 
     <form [formGroup]="form" (ngSubmit)="confirmarYGuardar()" novalidate>
@@ -133,7 +133,7 @@
               <td class="text-end celda-subtotal" data-label="Subtotal">{{ subtotales()[i] | number: '1.2-2' }}</td>
               <td class="text-center celda-quitar">
                 <button type="button" class="btn btn-sm btn-danger" (click)="quitarLinea(i)"
-                        [disabled]="detalles.length === 1" title="Quitar línea">✕</button>
+                        [disabled]="detalles.length === 1" title="Quitar línea" aria-label="Quitar línea"><app-icono nombre="rechazar" [tamano]="14" /></button>
               </td>
             </tr>
           }

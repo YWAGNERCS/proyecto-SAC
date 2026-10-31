@@ -12,6 +12,7 @@ import { Cliente } from '../../clientes/cliente/cliente.model';
 import { SedeService } from '../../clientes/sede/sede-service';
 import { Sede } from '../../clientes/sede/sede.model';
 import { FRECUENCIAS, etiquetaFrecuencia } from '../equipo/equipo.model';
+import { IconoComponent } from '../../../core/layout/icono';
 
 /**
  * Contratos de mantenimiento: entre dos fechas, una visita cada N meses a un precio por visita.
@@ -19,7 +20,7 @@ import { FRECUENCIAS, etiquetaFrecuencia } from '../equipo/equipo.model';
  */
 @Component({
   selector: 'app-contrato-list',
-  imports: [FormsModule, ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [IconoComponent, FormsModule, ReactiveFormsModule, RouterLink, DecimalPipe],
   templateUrl: './contrato-list.html',
 })
 export class ContratoListComponent implements OnInit {
