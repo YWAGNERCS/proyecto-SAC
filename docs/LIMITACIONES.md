@@ -42,7 +42,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 - **Búsqueda por RUC o DNI:** el servicio gratuito que usamos no deja hacer muchas búsquedas seguidas. Si aparece "servicio ocupado", esperen unos segundos y vuelvan a intentar, o escriban los datos a mano.
 - **Tipo de cambio:** se carga solo el del día de SUNAT; si no hay internet, hay que escribirlo.
 - **Contraseñas:** las de `lisandro` y `lucy` las puso el equipo de desarrollo. **Al recibir el sistema, cada uno debe cambiar la suya** (nosotros les mostramos cómo). Después de 5 intentos fallidos, la cuenta espera unos minutos antes de dejar intentar de nuevo.
-- **La base empieza vacía (30/10/2026):** se borró todo lo que usamos para probar: clientes, proveedores, productos, categorías, proformas, ventas, compras, cobros y mantenimientos. Las facturas y boletas empiezan en el número 1. Si algún dato de prueba les sirve, está guardado en el respaldo `sgejd_antes_de_entrega_20261030_2224.dmp`.
+- **Hoy la base tiene datos simulados (31/10/2026):** un año inventado de operación (noviembre de 2025 a octubre de 2026) para mostrar y probar el sistema: clientes, proveedores, productos, ventas, cobros, compras, órdenes y mantenimientos **ficticios**. No son datos de JD. Antes de empezar a usarlo de verdad se vuelve a la base vacía con `restaurar_sgejd.bat` y el respaldo `sgejd_entrega_vacia_20261030.dmp` (las facturas vuelven a empezar en el número 1).
 - **El stock inicial** hay que ponerlo una vez con un conteo físico del almacén: Inventario › Ajustes de inventario › "+ Conteo físico", material por material.
 - **Rentabilidad de ventas antiguas:** desde el 31/10/2026 cada venta guarda el costo del momento. En las anteriores se usó el costo que tenía el producto ese día, así que su ganancia es aproximada.
 - **Compras anteriores:** las compras registradas antes del 31/10/2026 quedaron como pagadas al contado. Si alguna se debe todavía, avísennos para pasarla a crédito.
@@ -62,7 +62,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 
 ## 5. Antes de empezar a usarlo
 
-1. ~~Borrar los datos de prueba~~ ✅ hecho: la base está vacía.
+1. Volver a la base vacía (quita los datos simulados): `restaurar_sgejd.bat` con `sgejd_entrega_vacia_20261030.dmp` (lo hacemos con ustedes).
 2. Crear las categorías y los productos (Inventario › Productos), y luego cargar el stock real con Inventario › Ajustes de inventario › "+ Conteo físico", material por material.
 3. Registrar sus clientes y proveedores (con el RUC o DNI se completan solos).
 4. Cada uno cambia su contraseña: Configuración › "Cambiar mi contraseña".
