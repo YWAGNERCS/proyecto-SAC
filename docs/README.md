@@ -901,7 +901,7 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 
 | Pendiente | Qué hace falta | Ref. |
 |---|---|---|
-| ⚠️ Credenciales en el historial de git | Cambiar la contraseña de aplicación de Gmail y regenerar el token de Decolecta (siguen en commits antiguos) | (2) |
+| Credenciales en el historial de git | Gmail ya revocada (05/11/2026). Falta regenerar el token de Decolecta si alguna vez se subió uno real | (2) |
 | Costos y márgenes visibles para asistentes | Si deben ser privados, filtrarlos en el backend (hoy `GET /productos` los devuelve a todos; solo el reporte de Rentabilidad está protegido) | (39) |
 | Costo de compra | Definir si el costo se actualiza con el último costo o con promedio ponderado: hoy una compra sube el stock pero no cambia `costoBase` | (40) |
 | Pruebas de seguridad en JUnit | `@WebMvcTest` por rol y permiso (hoy solo `pruebas-seguridad/05_matriz.ps1`) | (28) |
@@ -957,7 +957,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 
 ### Seguridad
 1. ~~**La API está abierta sin login.**~~ ✅ **Resuelto (18/10/2026, S10b):** toda `/api/v1/admin/**` exige un JWT válido de Keycloak; se retiró `app.security.admin-requiere-login`. Solo quedan abiertos el catálogo público y Swagger.
-2. **Credenciales en el historial de git (⏳ pendiente, prioridad alta).** La contraseña de aplicación de Gmail y el token de Decolecta ya no están en `application.properties`, pero siguen en commits anteriores y el repositorio se publica en GitHub. Borrarlos del historial no basta: hay que **revocar la contraseña de aplicación en Google y regenerar el token de Decolecta**, y poner los nuevos solo en `application-local.properties`.
+2. **Credenciales en el historial de git (parcialmente resuelto, 05/11/2026).** La contraseña de aplicación de Gmail (cuenta de Aron) **se eliminó** en Google: aunque aparezca en commits antiguos ya no sirve. **Pendiente:** regenerar el token de Decolecta si alguna vez se subió uno real. Como consecuencia, hoy no sale ningún correo (proformas, facturas, resumen diario) hasta configurar la cuenta de correo de la empresa en `application-local.properties`.
 3. ~~**Roles sin efecto (RF-02).**~~ ✅ **Resuelto (18/10/2026):** ver RF-02. **Por confirmar con Lisandro:** si Lucy debe ver costo y margen de los productos (hoy los ve).
 4. ~~**Usuarios de prueba.**~~ ✅ **Resuelto en parte (18/10/2026):** cuentas `lisandro` y `lucy` en Keycloak (correos `.test`; contraseñas en `.env`, ver 6b). Cada venta guarda quién la registró (`vendedor_id` = `sub`, `vendedor_nombre`). Falta registrar el autor en compras, cobros y anulaciones.
 5. ~~**La SPA guarda el token Basic en `localStorage`**~~ ✅ **Resuelto (18-19/10/2026):** login Authorization Code + PKCE (S256); el access token (5 min) y el refresh token viven en memoria con una copia en `sessionStorage` (sobrevive un F5, se borra al cerrar la pestaña) y se renuevan solos. *Direct access grants* desactivado en `bomerp-frontend`; los scripts de prueba usan su propio cliente, `sgejd-pruebas`. Nota: Spring acepta 60 s de tolerancia de reloj sobre el `exp`.
