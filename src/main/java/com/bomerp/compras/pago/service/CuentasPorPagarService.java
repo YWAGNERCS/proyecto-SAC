@@ -154,7 +154,9 @@ public class CuentasPorPagarService {
 
     /** @param usuario preferred_username de quien registra el pago */
     public PagoDTO registrar(PagoRequest dto, String usuario) {
-        Compra c = compra(dto.compraId());
+        // Bloqueada hasta el final: dos pagos simultáneos no superan juntos el saldo
+        Compra c = compraRepository.bloquear(dto.compraId())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Compra no encontrada: " + dto.compraId()));
         if (c.getTipoPago() != Compra.TipoPago.CREDITO) {
             throw new ReglaNegocioException("La compra #" + c.getId() + " fue al contado: no tiene saldo por pagar.");
         }

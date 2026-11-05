@@ -140,6 +140,10 @@ public class CobranzaService {
         Set<Long> vistas = new HashSet<>();
         Map<Long, BigDecimal> saldosFinales = new HashMap<>();
         BigDecimal total = BigDecimal.ZERO;
+        // Las ventas se bloquean en orden de id: dos cobros simultáneos a la misma venta no pueden
+        // superar juntos el saldo (el segundo espera y ve el abono del primero)
+        dto.abonos().stream().map(CobroRequestDTO.AbonoDTO::ventaId).distinct().sorted()
+                .forEach(ventaService::obtenerParaCobro);
         for (CobroRequestDTO.AbonoDTO abono : dto.abonos()) {
             if (!vistas.add(abono.ventaId())) {
                 throw new IllegalArgumentException("La venta #" + abono.ventaId() + " está repetida en el cobro.");

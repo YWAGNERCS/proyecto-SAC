@@ -1,4 +1,8 @@
 package com.bomerp.ventas.venta.repository;
+import jakarta.persistence.QueryHint;
+import org.springframework.data.jpa.repository.QueryHints;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import com.bomerp.ventas.venta.entity.Venta;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -58,6 +62,12 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             WHERE v.id IN :ids AND v.estado <> com.bomerp.ventas.venta.entity.Venta.EstadoVenta.ANULADA
             """)
     List<com.bomerp.ventas.detalleventa.entity.DetalleVenta> lineasDeVentas(@Param("ids") java.util.Collection<Long> ids);
+
+    /** Lee la venta bloqueando su fila hasta el fin de la transacción (cobros simultáneos). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
+    @Query("SELECT v FROM Venta v WHERE v.id = :id")
+    java.util.Optional<Venta> bloquear(@Param("id") Long id);
 
     // Evita convertir dos veces la misma proforma en venta
     boolean existsByProformaOrigenId(Long proformaId);

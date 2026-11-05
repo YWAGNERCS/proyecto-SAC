@@ -40,7 +40,8 @@ class AjusteInventarioServiceTest {
         material.setNombre("Nitrógeno seco");
         material.setSector(Producto.Sector.MATERIAL_SERVICIO);
         material.setStockActual(7);
-        when(productoService.obtenerPorId(18L)).thenReturn(material);
+        // El ajuste lee el producto bloqueado (stock real del momento)
+        when(productoService.bloquearParaStock(java.util.List.of(18L))).thenReturn(java.util.Map.of(18L, material));
         when(repository.save(any(AjusteInventario.class))).thenAnswer(i -> {
             AjusteInventario a = i.getArgument(0);
             a.setId(1L);
@@ -85,7 +86,7 @@ class AjusteInventarioServiceTest {
         assertThat(a.stockNuevo()).isEqualTo(5);
         assertThat(a.registradoPor()).isEqualTo("lisandro");
         assertThat(a.motivoNombre()).isEqualTo("Merma");
-        verify(productoService).guardar(material);
+        assertThat(material.getStockActual()).isEqualTo(5);
     }
 
     @Test

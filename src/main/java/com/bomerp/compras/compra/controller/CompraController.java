@@ -1,5 +1,6 @@
 package com.bomerp.compras.compra.controller;
 
+import com.bomerp.config.paginacion.Pagina;
 import com.bomerp.compras.pago.service.CuentasPorPagarService;
 import java.math.BigDecimal;
 import java.util.Map;
@@ -48,6 +49,21 @@ public class CompraController {
                 .map(c -> CompraResponseDTO.desdeEntidad(c, c.getTipoPago() == Compra.TipoPago.CREDITO
                         ? pagado.getOrDefault(c.getId(), BigDecimal.ZERO) : c.getTotal()))
                 .toList();
+    }
+
+    /** Compras por páginas (pantalla de Compras): pagina desde 0, tamano 20 por defecto (máximo 100). */
+    @GetMapping("/pagina")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Pagina<CompraResponseDTO> pagina(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long proveedorId,
+            @RequestParam(required = false) Integer pagina,
+            @RequestParam(required = false) Integer tamano) {
+        var page = compraService.buscarPagina(desde, hasta, proveedorId, Pagina.pedido(pagina, tamano));
+        Map<Long, BigDecimal> pagado = cuentasPorPagarService.pagadoPorCompra(page.getContent());
+        return Pagina.de(page, c -> CompraResponseDTO.desdeEntidad(c, c.getTipoPago() == Compra.TipoPago.CREDITO
+                ? pagado.getOrDefault(c.getId(), BigDecimal.ZERO) : c.getTotal()));
     }
 
     /** Mismo listado en Excel (.xlsx): hoja "Compras" y hoja "Detalle". */

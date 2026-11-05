@@ -285,6 +285,29 @@ Monolito modular: **un solo proyecto Maven y un solo ejecutable Spring Boot**. C
 
 Errores: `GlobalExceptionHandler` traduce excepciones a 400 (validación), 404 (`RecursoNoEncontradoException`), 409 (`ReglaNegocioException`, `StockInsuficienteException`) y 500 sin filtrar detalles.
 
+#### Stock y operaciones simultáneas (05/11/2026)
+
+Dos personas pueden registrar a la vez operaciones sobre el mismo producto, venta, compra o proforma. Para que
+el resultado sea el mismo que si se hubieran hecho una tras otra:
+
+- **Un solo lugar mueve el stock:** `ProductoService.descontarStock` y `sumarStock`. Ventas, conversión de
+  proformas, anulaciones, compras, órdenes de trabajo y ajustes pasan por ahí. Editar un producto **ya no cambia
+  su stock** (en el formulario queda de solo lectura): el stock cambia solo con movimientos que salen en el kardex.
+- **Cantidades sumadas por producto:** si una venta trae el mismo material en varias líneas, se suman antes de
+  validar (con stock 10, dos líneas de 6 se rechazan: piden 12).
+- **Bloqueo de filas (`SELECT … FOR UPDATE`, `PESSIMISTIC_WRITE`):** los productos se releen bloqueados y en
+  orden de id (sin interbloqueos); la proforma se bloquea al convertirla; la venta, al registrar un cobro; la
+  compra, al registrar un pago a proveedor. La segunda operación espera a que termine la primera y valida con el
+  dato ya actualizado. Si espera más de 10 s responde **409** ("otro usuario está registrando…").
+- **Todo o nada:** se valida el stock de todas las líneas antes de descontar; si algo falla después, la
+  transacción devuelve el stock.
+- **Respaldo en la base:** índice único `UX_VENTAS_PROFORMA` sobre `ventas.proforma_id`
+  (`migracion_proforma_unica.sql`): aunque falle todo lo anterior, una proforma no genera dos ventas.
+
+Probado contra el sistema real con peticiones en paralelo: 8 ventas simultáneas de 1 unidad con stock 4 → 4
+aceptadas, 4 rechazadas (409), stock final 0; dos conversiones simultáneas de la misma proforma → una venta; dos
+cobros simultáneos por el saldo completo → uno aceptado y el otro rechazado ("ya está PAGADA").
+
 #### Límites entre módulos (ADR-002, verificado con Spring Modulith)
 
 Cada paquete directo de `com.bomerp` es un **módulo**. Un módulo solo puede usar de otro su **API**: los paquetes
@@ -702,7 +725,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **66 pruebas** (31/10/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **72 pruebas** (05/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. `ProductoCrudTest` es de integración y
 sí necesita Oracle encendido (revierte lo que guarda).
 
@@ -718,6 +741,7 @@ sí necesita Oracle encendido (revierte lo que guarda).
 | `DeduccionTributariaServiceTest` | Detracción 12 % (soles enteros), retención 3 %, umbral S/ 700, dólares con tipo de cambio | 5 |
 | `VentaCostoTest` | Costo guardado en cada línea y su conversión de moneda; subtotal, IGV y total | 5 |
 | `RentabilidadServiceTest` | Ganancia en soles, líneas sin costo, rentabilidad por técnico | 4 |
+| `StockProductoTest` | Stock: suma de líneas repetidas, todo o nada, bloqueo en orden de id, equipos sin stock, editar un producto no cambia su stock | 6 |
 | `ModularityTests` (Spring Modulith) | Límites entre módulos y ausencia de ciclos (ADR-002); genera el diagrama de módulos | 2 |
 | `ProductoCrudTest` (integración, Oracle) | Guardar, buscar y actualizar un producto | 3 |
 
@@ -878,6 +902,8 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 | Pendiente | Qué hace falta | Ref. |
 |---|---|---|
 | ⚠️ Credenciales en el historial de git | Cambiar la contraseña de aplicación de Gmail y regenerar el token de Decolecta (siguen en commits antiguos) | (2) |
+| Costos y márgenes visibles para asistentes | Si deben ser privados, filtrarlos en el backend (hoy `GET /productos` los devuelve a todos; solo el reporte de Rentabilidad está protegido) | (39) |
+| Costo de compra | Definir si el costo se actualiza con el último costo o con promedio ponderado: hoy una compra sube el stock pero no cambia `costoBase` | (40) |
 | Pruebas de seguridad en JUnit | `@WebMvcTest` por rol y permiso (hoy solo `pruebas-seguridad/05_matriz.ps1`) | (28) |
 | DTO en todos los controladores | Categoría, Cliente y Proveedor todavía responden la entidad | (34) |
 | Logger en vez de `System.out` | 5 clases | (33) |
@@ -985,3 +1011,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 36. **Respaldo automático sin activar (⏳ pendiente).** Los scripts están listos desde el 31/10/2026 (`programar_respaldo.bat`, RNF-08), pero la tarea diaria **no está programada**: falta que Lisandro elija la carpeta fuera de la PC para la copia (USB, OneDrive o Google Drive de la empresa, o una carpeta de red). Mientras tanto, respaldo manual con `respaldar_sgejd.bat` al menos una vez por semana. Al decidir: `programar_respaldo.bat -Destino "<carpeta>"`.
 37. **Un error 500 sin explicar (25/10/2026).** Crear una venta falló una vez, sin guardar nada, en un backend que se había encendido justo después de cambiar las contraseñas de la base; no se pudo reproducir. Si vuelve a pasar, revisar la ventana "SGE-JD · Backend".
 38. **Tabla `USUARIOS` sin uso** (ver modelo de datos): conserva 2 filas con contraseñas cifradas de antes de Keycloak; se puede borrar.
+39. **Costos y márgenes visibles para asistentes (revisión externa, 05/11/2026).** El reporte de Rentabilidad es solo de ADMIN o `PERM_VER_RENTABILIDAD`, pero `GET /api/v1/admin/productos` devuelve `costoBase` y `margenPorcentaje` a cualquier usuario. Si Lisandro decide que sean privados, hay que quitarlos de la respuesta en el backend según el permiso (ocultarlos solo en la pantalla no basta).
+40. **Costo de compra sin actualizar (revisión externa, 05/11/2026).** Registrar una compra aumenta el stock pero no cambia `costoBase`, así que el precio de venta y la rentabilidad siguen con el costo anterior. Decidir con el cliente: último costo de compra o promedio ponderado.
+41. ~~**Listados sin paginación (revisión externa, 05/11/2026).**~~ ✅ **Resuelto (05/11/2026):** las pantallas de Ventas, Proformas y Compras piden de a 20 (o 50 / 100) con `GET /ventas/pagina`, `/proformas/pagina` y `/compras/pagina` (`pagina` desde 0, `tamano` máximo 100; respuesta `Pagina`: contenido, pagina, tamano, total, totalPaginas). En Proformas y Compras pagina la base de datos; en Ventas el servidor además calcula los totales por moneda y las anuladas de **todo** el filtro, así los indicadores no cambian al paginar. La respuesta de Ventas bajó de 194 KB a 16 KB. Los listados completos (`GET /ventas`, `/proformas`, `/compras`) se mantienen para el tablero, los avisos y los formularios que los usan.
+42. ~~**Stock y conversiones sin bloqueo (revisión externa, 05/11/2026).**~~ ✅ **Resuelto:** cantidades sumadas por producto, bloqueo de filas en productos, proformas, ventas (cobros) y compras (pagos), e índice único en `ventas.proforma_id`. Ver *Stock y operaciones simultáneas*.

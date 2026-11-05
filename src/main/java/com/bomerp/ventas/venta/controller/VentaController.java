@@ -28,6 +28,18 @@ public class VentaController {
         this.ventaReporteService = ventaReporteService;
     }
 
+    /** Reporte de ventas por páginas, con los totales del filtro completo (pantalla de Ventas). */
+    @GetMapping("/pagina")
+    public VentaService.ReporteVentas pagina(
+            @RequestParam(required = false) Venta.EstadoVenta estado,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(required = false) Integer pagina,
+            @RequestParam(required = false) Integer tamano) {
+        return ventaService.reportePagina(estado, desde, hasta, clienteId, pagina, tamano);
+    }
+
     /** Reporte de ventas con su detalle. Filtros opcionales: estado y rango de fechas (yyyy-MM-dd). */
     @GetMapping
     public List<VentaResponseDTO> listar(

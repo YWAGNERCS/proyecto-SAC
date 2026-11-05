@@ -7,22 +7,32 @@ import com.bomerp.catalogo.categoria.service.CategoriaService;
 import com.bomerp.catalogo.producto.dto.ProductoRequestDTO;
 import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
+import com.bomerp.config.StockInsuficienteException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 
 @Service
 public class ProductoService {
 
     private final ProductoRepository productoRepository;
     private final CategoriaService categoriaService;
+    private final EntityManager entityManager;
 
-    public ProductoService(ProductoRepository productoRepository, CategoriaService categoriaService) {
+    public ProductoService(ProductoRepository productoRepository, CategoriaService categoriaService,
+                           EntityManager entityManager) {
         this.productoRepository = productoRepository;
         this.categoriaService = categoriaService;
+        this.entityManager = entityManager;
     }
 
     // ── CRUD del panel administrativo (S2) con su categoría (S3) ──────────
@@ -44,10 +54,17 @@ public class ProductoService {
         return productoRepository.save(producto);
     }
 
+    /**
+     * Edita los datos del producto. El stock NO se cambia aquí: solo se mueve con compras, ventas,
+     * órdenes de trabajo y ajustes de inventario (así todo queda en el kardex y no se pisa una venta
+     * que se esté registrando al mismo tiempo).
+     */
     @Transactional
     public Producto actualizar(Long id, ProductoRequestDTO dto) {
         Producto producto = obtenerPorId(id);
+        Integer stock = producto.getStockActual();
         aplicar(dto, producto);
+        producto.setStockActual(stock);
         return productoRepository.save(producto);
     }
 
@@ -99,6 +116,71 @@ public class ProductoService {
     public Producto obtenerPorId(Long id) {
         return productoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado con ID: " + id));
+    }
+
+    // ── Movimientos de stock (únicos puntos que cambian stockActual) ───────
+
+    /** Cuánto espera una operación a que otra suelte el producto antes de responder 409 (ms). */
+    private static final String ESPERA_BLOQUEO = "jakarta.persistence.lock.timeout";
+    private static final int MILIS_ESPERA = 10_000;
+
+    /**
+     * Bloquea las filas de los productos (SELECT ... FOR UPDATE) y relee su stock, hasta que termine la
+     * transacción: otra venta, compra u orden que toque esos productos espera su turno. Se bloquean en
+     * orden de id para que dos operaciones con los mismos productos no se esperen mutuamente.
+     */
+    @Transactional
+    public Map<Long, Producto> bloquearParaStock(Collection<Long> ids) {
+        Map<Long, Producto> bloqueados = new LinkedHashMap<>();
+        for (Long id : new TreeSet<>(ids)) {
+            Producto p = entityManager.find(Producto.class, id);
+            if (p == null) {
+                throw new RecursoNoEncontradoException("Producto no encontrado con ID: " + id);
+            }
+            // refresh con bloqueo: relee el stock de la base aunque el producto ya estuviera cargado
+            entityManager.refresh(p, LockModeType.PESSIMISTIC_WRITE, Map.of(ESPERA_BLOQUEO, MILIS_ESPERA));
+            bloqueados.put(id, p);
+        }
+        return bloqueados;
+    }
+
+    /**
+     * Descuenta stock de varios productos a la vez (venta, conversión de proforma, orden de trabajo).
+     * Suma las cantidades del mismo producto repetido en varias líneas, valida todo con el stock leído
+     * bajo bloqueo y recién entonces descuenta: o se descuenta todo o nada (409 si alguno no alcanza).
+     * Los productos que no controlan stock (equipos, servicios) se ignoran.
+     *
+     * @param cantidades producto → unidades (pueden venir repetidos: se suman antes de llamar)
+     */
+    @Transactional
+    public void descontarStock(Map<Long, Integer> cantidades) {
+        Map<Long, Producto> productos = bloquearParaStock(cantidades.keySet());
+        for (Map.Entry<Long, Integer> e : cantidades.entrySet()) {
+            Producto p = productos.get(e.getKey());
+            if (!p.controlaStock()) continue;
+            int disponible = p.getStockActual() != null ? p.getStockActual() : 0;
+            if (disponible < e.getValue()) {
+                throw new StockInsuficienteException(p.getNombre(), disponible, e.getValue());
+            }
+        }
+        for (Map.Entry<Long, Integer> e : cantidades.entrySet()) {
+            Producto p = productos.get(e.getKey());
+            if (p.controlaStock()) {
+                p.setStockActual(p.getStockActual() - e.getValue());
+            }
+        }
+    }
+
+    /** Suma stock (compra, anulación de venta) con el mismo bloqueo. Ignora lo que no controla stock. */
+    @Transactional
+    public void sumarStock(Map<Long, Integer> cantidades) {
+        Map<Long, Producto> productos = bloquearParaStock(cantidades.keySet());
+        for (Map.Entry<Long, Integer> e : cantidades.entrySet()) {
+            Producto p = productos.get(e.getKey());
+            if (p.controlaStock()) {
+                p.setStockActual((p.getStockActual() != null ? p.getStockActual() : 0) + e.getValue());
+            }
+        }
     }
 
     /** Materiales cuyo stock actual llegó o bajó del stock mínimo (los equipos no controlan stock). */

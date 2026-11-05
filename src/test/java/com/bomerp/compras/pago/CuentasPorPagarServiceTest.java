@@ -57,6 +57,7 @@ class CuentasPorPagarServiceTest {
         compra.setTipoPago(Compra.TipoPago.CREDITO);
         compra.setEstadoPago(Compra.EstadoPago.PENDIENTE);
         when(compraRepository.findById(10L)).thenReturn(Optional.of(compra));
+        when(compraRepository.bloquear(10L)).thenReturn(Optional.of(compra));   // el pago la lee bloqueada
         when(pagoRepository.pagadoDeCompra(10L)).thenReturn(BigDecimal.ZERO);
         when(pagoRepository.mismaOperacion(anyLong(), any(), anyString())).thenReturn(List.of());
         when(pagoRepository.save(any(PagoProveedor.class))).thenAnswer(i -> {

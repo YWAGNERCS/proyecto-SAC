@@ -1,5 +1,11 @@
 package com.bomerp.compras.compra.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import jakarta.persistence.QueryHint;
+import org.springframework.data.jpa.repository.QueryHints;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import com.bomerp.compras.detallecompra.entity.DetalleCompra;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +20,12 @@ import java.util.Optional;
 
 @Repository
 public interface CompraRepository extends JpaRepository<Compra, Long> {
+
+    /** Lee la compra bloqueando su fila hasta el fin de la transacción (pagos simultáneos). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
+    @Query("SELECT c FROM Compra c WHERE c.id = :id")
+    java.util.Optional<Compra> bloquear(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {"proveedor", "detalles", "detalles.producto"})
     List<Compra> findAll();
@@ -32,6 +44,22 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
             """)
     List<Compra> buscar(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta,
                         @Param("proveedorId") Long proveedorId);
+
+    /** Lo mismo, por páginas (la pantalla de Compras). */
+    @Query(value = """
+            SELECT c FROM Compra c JOIN FETCH c.proveedor
+            WHERE (CAST(:desde AS LocalDate) IS NULL OR c.fechaCompra >= :desde)
+              AND (CAST(:hasta AS LocalDate) IS NULL OR c.fechaCompra <= :hasta)
+              AND (:proveedorId IS NULL OR c.proveedor.id = :proveedorId)
+            ORDER BY c.fechaCompra DESC, c.id DESC
+            """, countQuery = """
+            SELECT COUNT(c) FROM Compra c
+            WHERE (CAST(:desde AS LocalDate) IS NULL OR c.fechaCompra >= :desde)
+              AND (CAST(:hasta AS LocalDate) IS NULL OR c.fechaCompra <= :hasta)
+              AND (:proveedorId IS NULL OR c.proveedor.id = :proveedorId)
+            """)
+    Page<Compra> buscarPagina(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta,
+                              @Param("proveedorId") Long proveedorId, Pageable pedido);
 
     // Kardex: líneas compradas de un producto
     @Query("""

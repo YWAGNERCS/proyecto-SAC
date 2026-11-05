@@ -138,16 +138,13 @@ public class OrdenTrabajoService {
                 throw new IllegalArgumentException("'" + p.getNombre() + "' no es un material con stock (es "
                         + p.getSector() + "): los equipos se registran como equipos instalados y la mano de obra se factura.");
             }
-            int disponible = p.getStockActual() != null ? p.getStockActual() : 0;
-            if (disponible < m.cantidad()) {
-                throw new StockInsuficienteException(p.getNombre(), disponible, m.cantidad());
-            }
             productos.add(p);
         }
+        java.util.Map<Long, Integer> usados = new java.util.HashMap<>();
+        materiales.forEach(m -> usados.put(m.productoId(), m.cantidad()));
+        productoService.descontarStock(usados);   // valida y descuenta con los productos bloqueados
         for (int i = 0; i < materiales.size(); i++) {
             Producto p = productos.get(i);
-            p.setStockActual(p.getStockActual() - materiales.get(i).cantidad());
-            productoService.guardar(p);
             o.agregarMaterial(new MaterialOrden(p, materiales.get(i).cantidad()));
         }
 

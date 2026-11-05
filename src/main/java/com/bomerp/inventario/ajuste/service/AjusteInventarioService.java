@@ -83,7 +83,8 @@ public class AjusteInventarioService {
 
     /** @param usuario preferred_username de quien ajusta */
     public AjusteDTO registrar(AjusteRequest dto, String usuario) {
-        Producto producto = productoService.obtenerPorId(dto.productoId());
+        // Bloqueado hasta el final: el conteo se compara con el stock real del momento
+        Producto producto = productoService.bloquearParaStock(java.util.List.of(dto.productoId())).get(dto.productoId());
         if (!producto.controlaStock()) {
             throw new ReglaNegocioException("'" + producto.getNombre() + "' no controla stock (equipo o servicio): no se ajusta. "
                     + "Un equipo dañado o devuelto se registra en Equipos instalados o con el proveedor.");
@@ -137,7 +138,6 @@ public class AjusteInventarioService {
         AjusteInventario guardado = repository.save(a);
 
         producto.setStockActual(nuevo);
-        productoService.guardar(producto);
         log.info("Ajuste {} de '{}' por {}: {} {} ({}), stock {} → {}", guardado.getId(), producto.getNombre(), usuario,
                 tipo, cantidad, dto.motivo(), actual, nuevo);
         return AjusteDTO.de(guardado);

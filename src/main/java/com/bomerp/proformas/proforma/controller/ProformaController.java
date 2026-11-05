@@ -27,6 +27,16 @@ public class ProformaController {
         return proformaService.listar(estado, clienteId);
     }
 
+    /** Proformas por páginas (pantalla de Proformas): pagina desde 0, tamano 20 por defecto (máximo 100). */
+    @GetMapping("/pagina")
+    public com.bomerp.config.paginacion.Pagina<ProformaResponseDTO> pagina(
+            @RequestParam(required = false) Proforma.EstadoProforma estado,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(required = false) Integer pagina,
+            @RequestParam(required = false) Integer tamano) {
+        return proformaService.listarPagina(estado, clienteId, pagina, tamano);
+    }
+
     @PostMapping
     public ProformaResponseDTO crear(@Valid @RequestBody ProformaRequest.CrearProformaDTO request) {
         return proformaService.crear(request);

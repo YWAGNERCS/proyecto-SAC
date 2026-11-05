@@ -1,4 +1,6 @@
 package com.bomerp.compras.compra.service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import com.bomerp.config.ReglaNegocioException;
 import java.math.BigDecimal;
@@ -52,6 +54,15 @@ public class CompraService {
             proveedorService.obtenerPorId(proveedorId);   // 404 si el proveedor no existe
         }
         return compraRepository.buscar(desde, hasta, proveedorId);
+    }
+
+    /** Compras por páginas, con los mismos filtros que buscar(). */
+    @Transactional(readOnly = true)
+    public Page<Compra> buscarPagina(LocalDate desde, LocalDate hasta, Long proveedorId, Pageable pedido) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
+        }
+        return compraRepository.buscarPagina(desde, hasta, proveedorId, pedido);
     }
 
     /** Fachada para el kardex (Inventario): líneas compradas de un producto. */
@@ -127,6 +138,7 @@ public class CompraService {
         compra.setRegistradoPor(usuario);
         aplicarFormaPago(compra, dto.tipoPago(), dto.diasCredito());
         BigDecimal total = BigDecimal.ZERO;
+        java.util.Map<Long, Integer> entradas = new java.util.HashMap<>();
 
         for (CompraRequestDTO.DetalleCompraRequestDTO detDto : dto.detalles()) {
             Producto producto = productoService.obtenerPorId(detDto.productoId());
@@ -139,15 +151,11 @@ public class CompraService {
 
             compra.addDetalle(detalle);
 
-            // REGLA DE NEGOCIO: la compra sube el stock solo de los productos que lo controlan
-            // (materiales). Los equipos no se almacenan, igual que en Ventas.
-            if (producto.controlaStock()) {
-                int stockActual = producto.getStockActual() == null ? 0 : producto.getStockActual();
-                producto.setStockActual(stockActual + detDto.cantidad());
-                productoService.guardar(producto);
-            }
+            entradas.merge(producto.getId(), detDto.cantidad(), Integer::sum);
         }
 
+        // La compra sube el stock solo de los materiales (los equipos no se almacenan), con bloqueo
+        productoService.sumarStock(entradas);
         compra.setTotal(total.setScale(2, RoundingMode.HALF_UP));
         return compraRepository.save(compra);
     }

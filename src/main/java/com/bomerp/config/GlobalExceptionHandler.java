@@ -87,6 +87,14 @@ public class GlobalExceptionHandler {
         return respuesta(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** Otra operación tiene bloqueado el mismo producto, venta, compra o proforma más de 10 s. */
+    @ExceptionHandler({org.springframework.dao.PessimisticLockingFailureException.class,
+            jakarta.persistence.PessimisticLockException.class, jakarta.persistence.LockTimeoutException.class})
+    public ResponseEntity<Map<String, Object>> handleBloqueo(RuntimeException ex) {
+        return respuesta(HttpStatus.CONFLICT,
+                "Otro usuario está registrando una operación con los mismos productos o documentos. Intente de nuevo en unos segundos.");
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleIntegridad(DataIntegrityViolationException ex) {
         log.warn("Violacion de integridad: {}", ex.getMostSpecificCause().getMessage());

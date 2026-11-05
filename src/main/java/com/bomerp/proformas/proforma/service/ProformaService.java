@@ -65,6 +65,15 @@ public class ProformaService {
                 .toList();
     }
 
+    /** Proformas por páginas (pantalla de Proformas). */
+    @Transactional(readOnly = true)
+    public com.bomerp.config.paginacion.Pagina<ProformaResponseDTO> listarPagina(Proforma.EstadoProforma estado, Long clienteId,
+                                                                                Integer pagina, Integer tamano) {
+        return com.bomerp.config.paginacion.Pagina.de(
+                proformaRepository.buscarPagina(estado, clienteId, com.bomerp.config.paginacion.Pagina.pedido(pagina, tamano)),
+                ProformaResponseDTO::desdeEntidad);
+    }
+
     /** Fachada para Reportes: proformas PENDIENTES (entidades, con su cliente e ítems). */
     @Transactional(readOnly = true)
     public List<Proforma> pendientes() {
@@ -308,6 +317,15 @@ public class ProformaService {
     }
 
     /** Fachada pública para otros módulos (ventas, reportes). */
+    /**
+     * Para convertirla en venta: bloquea la proforma hasta que termine la transacción, así dos
+     * solicitudes simultáneas no la convierten dos veces (la segunda espera y ve que ya está CONVERTIDA).
+     */
+    public Proforma obtenerParaConvertir(Long id) {
+        return proformaRepository.bloquear(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Proforma no encontrada: " + id));
+    }
+
     public Proforma obtenerPorId(Long id) {
         return obtenerOFallar(id);
     }

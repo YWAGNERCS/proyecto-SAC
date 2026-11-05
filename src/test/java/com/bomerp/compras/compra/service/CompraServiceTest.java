@@ -28,6 +28,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /** Compras: N° de factura, factura duplicada, stock de materiales y forma de pago (RF-30). */
 @ExtendWith(MockitoExtension.class)
@@ -49,9 +51,11 @@ class CompraServiceTest {
         proveedor.setNombreORazonSocial("Daikin");
         when(proveedorService.obtenerPorId(1L)).thenReturn(proveedor);
         material = new Producto();
+        material.setId(18L);
         material.setSector(Producto.Sector.MATERIAL_SERVICIO);
         material.setStockActual(5);
         equipo = new Producto();
+        equipo.setId(1L);
         equipo.setSector(Producto.Sector.CLIMATIZACION);
         equipo.setStockActual(0);
         when(productoService.obtenerPorId(18L)).thenReturn(material);
@@ -79,8 +83,8 @@ class CompraServiceTest {
         assertThat(c.getTipoPago()).isEqualTo(Compra.TipoPago.CONTADO);
         assertThat(c.getEstadoPago()).isEqualTo(Compra.EstadoPago.PAGADA);
         assertThat(c.getTotal()).isEqualByComparingTo("1030.03");   // 3 × 10.01 + 1 000
-        assertThat(material.getStockActual()).isEqualTo(8);
-        assertThat(equipo.getStockActual()).isZero();
+        // Sube el stock por la operación central (con bloqueo); ella ignora lo que no controla stock
+        verify(productoService).sumarStock(java.util.Map.of(18L, 3, 1L, 1));
         assertThat(c.getRegistradoPor()).isEqualTo("lucy");
     }
 
@@ -108,6 +112,6 @@ class CompraServiceTest {
 
         assertThatThrownBy(() -> service.registrarCompra(compra(null, null), "lucy"))
                 .isInstanceOf(ReglaNegocioException.class).hasMessageContaining("compra #4");
-        assertThat(material.getStockActual()).isEqualTo(5);
+        verify(productoService, never()).sumarStock(any());
     }
 }

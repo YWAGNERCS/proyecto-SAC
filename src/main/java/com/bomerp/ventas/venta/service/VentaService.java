@@ -89,7 +89,7 @@ public class VentaService {
                                                      String vendedorId, String vendedorNombre) {
         log.info("Iniciando transaccion: Convertir Proforma {} en Venta", proformaId);
 
-        Proforma proforma = proformaService.obtenerPorId(proformaId);
+        Proforma proforma = proformaService.obtenerParaConvertir(proformaId);   // bloqueada hasta el final
 
         // ── Regla 1: Solo ACEPTADA se puede convertir ──────────────────────
         if (proforma.getEstado() == Proforma.EstadoProforma.CONVERTIDA) {
@@ -108,17 +108,13 @@ public class VentaService {
                     "La proforma #" + proformaId + " ya fue convertida en venta anteriormente.");
         }
 
-        // ── Regla 3: Verificar stock suficiente (solo MATERIAL_SERVICIO) ────
+        // ── Regla 3: stock suficiente (sumando el mismo producto en varias líneas) y descuento,
+        //    con los productos bloqueados para que otra venta simultánea no use el mismo stock ────
+        java.util.Map<Long, Integer> cantidades = new java.util.HashMap<>();
         for (ItemProforma item : proforma.getItems()) {
-            Producto producto = item.getProducto();
-            if (producto.controlaStock()) {
-                int stockDisponible = producto.getStockActual() != null ? producto.getStockActual() : 0;
-                if (stockDisponible < item.getCantidad()) {
-                    throw new StockInsuficienteException(
-                            producto.getNombre(), stockDisponible, item.getCantidad());
-                }
-            }
+            cantidades.merge(item.getProducto().getId(), item.getCantidad(), Integer::sum);
         }
+        productoService.descontarStock(cantidades);
 
         Venta venta = new Venta();
         venta.setCliente(proforma.getCliente());
@@ -135,15 +131,6 @@ public class VentaService {
 
         for (ItemProforma item : proforma.getItems()) {
             Producto producto = item.getProducto();
-
-            // Descuento de inventario (solo para productos que controlan stock)
-            if (producto.controlaStock()) {
-                int nuevoStock = (producto.getStockActual() != null ? producto.getStockActual() : 0)
-                        - item.getCantidad();
-                producto.setStockActual(nuevoStock);
-                productoService.guardar(producto);
-            }
-
             // Se respeta también el descuento negociado en la proforma
             venta.agregarDetalle(new DetalleVenta(
                     producto, item.getCantidad(), item.getPrecioUnitario(), item.getDescuentoPorcentaje()));
@@ -200,19 +187,16 @@ public class VentaService {
         List<BigDecimal> descuentos = items.stream()
                 .map(i -> topeDescuentoService.validar(i.descuentoPorcentaje())).toList();
 
-        // ── Regla: stock suficiente, antes de mutar nada ────────────────────
+        // ── Regla: stock suficiente sumando el mismo producto en varias líneas, y descuento con los
+        //    productos bloqueados (otra venta simultánea espera su turno). Si algo falla después,
+        //    la transacción devuelve el stock. ────────────────────────────────
         List<Producto> productos = new java.util.ArrayList<>();
+        java.util.Map<Long, Integer> cantidades = new java.util.HashMap<>();
         for (ItemVentaDTO itemDTO : items) {
-            Producto producto = productoService.obtenerPorId(itemDTO.productoId());
-            productos.add(producto);
-            if (producto.controlaStock()) {
-                int stockDisponible = producto.getStockActual() != null ? producto.getStockActual() : 0;
-                if (stockDisponible < itemDTO.cantidad()) {
-                    throw new StockInsuficienteException(
-                            producto.getNombre(), stockDisponible, itemDTO.cantidad());
-                }
-            }
+            productos.add(productoService.obtenerPorId(itemDTO.productoId()));
+            cantidades.merge(itemDTO.productoId(), itemDTO.cantidad(), Integer::sum);
         }
+        productoService.descontarStock(cantidades);
 
         // ── Moneda y tipo de cambio ──────────────────────────────────────────
         // Se puede vender en soles o en dólares sin importar la moneda de cada producto:
@@ -238,13 +222,6 @@ public class VentaService {
         for (int i = 0; i < items.size(); i++) {
             ItemVentaDTO itemDTO = items.get(i);
             Producto producto = productos.get(i);
-
-            if (producto.controlaStock()) {
-                int nuevoStock = (producto.getStockActual() != null ? producto.getStockActual() : 0)
-                        - itemDTO.cantidad();
-                producto.setStockActual(nuevoStock);
-                productoService.guardar(producto);
-            }
 
             BigDecimal precio = TipoCambioService.convertir(producto.calcularPrecioVenta(),
                     producto.getMoneda().name(), moneda.name(), tc);
@@ -285,6 +262,31 @@ public class VentaService {
 
     /** Igual que el reporte, con filtro opcional por cliente (historial del cliente). */
     @Transactional(readOnly = true)
+    /** Totales de las ventas REGISTRADAS de una moneda (las anuladas no son ingreso). */
+    public record ResumenMoneda(String moneda, long cantidad, BigDecimal montoTotal, BigDecimal ticketPromedio) {}
+
+    /** Una página del reporte, con el resumen calculado sobre TODAS las ventas del filtro (no solo la página). */
+    public record ReporteVentas(com.bomerp.config.paginacion.Pagina<VentaResponseDTO> ventas, List<ResumenMoneda> resumen,
+                                long anuladas) {}
+
+    @Transactional(readOnly = true)
+    public ReporteVentas reportePagina(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta, Long clienteId,
+                                       Integer pagina, Integer tamano) {
+        List<Venta> todas = buscar(estado, desde, hasta, clienteId);
+        List<ResumenMoneda> resumen = new java.util.ArrayList<>();
+        for (Venta.Moneda moneda : Venta.Moneda.values()) {
+            List<Venta> vigentes = todas.stream()
+                    .filter(v -> v.getEstado() == Venta.EstadoVenta.REGISTRADA && v.getMoneda() == moneda).toList();
+            if (vigentes.isEmpty()) continue;
+            BigDecimal monto = vigentes.stream().map(Venta::calcularTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+            resumen.add(new ResumenMoneda(moneda.name(), vigentes.size(), monto,
+                    monto.divide(BigDecimal.valueOf(vigentes.size()), 2, java.math.RoundingMode.HALF_UP)));
+        }
+        long anuladas = todas.stream().filter(v -> v.getEstado() == Venta.EstadoVenta.ANULADA).count();
+        return new ReporteVentas(com.bomerp.config.paginacion.Pagina.deLista(todas,
+                com.bomerp.config.paginacion.Pagina.pedido(pagina, tamano), VentaResponseDTO::desdeEntidad), resumen, anuladas);
+    }
+
     public List<Venta> buscar(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta, Long clienteId) {
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
@@ -348,14 +350,11 @@ public class VentaService {
             throw new ReglaNegocioException("La venta #" + ventaId + " ya está ANULADA.");
         }
 
+        java.util.Map<Long, Integer> devueltas = new java.util.HashMap<>();
         for (DetalleVenta detalle : venta.getDetalles()) {
-            Producto producto = detalle.getProducto();
-            if (producto.controlaStock()) {
-                int stockActual = producto.getStockActual() != null ? producto.getStockActual() : 0;
-                producto.setStockActual(stockActual + detalle.getCantidad());
-                productoService.guardar(producto);
-            }
+            devueltas.merge(detalle.getProducto().getId(), detalle.getCantidad(), Integer::sum);
         }
+        productoService.sumarStock(devueltas);
         venta.setEstado(Venta.EstadoVenta.ANULADA);
         venta.setFechaAnulacion(LocalDate.now());
 
@@ -373,6 +372,15 @@ public class VentaService {
                 .stream()
                 .filter(v -> clienteId == null || v.getCliente().getId().equals(clienteId))
                 .toList();
+    }
+
+    /**
+     * Fachada para Cobranza: la venta con su fila bloqueada hasta el fin de la transacción, para que
+     * dos cobros simultáneos no superen juntos el saldo. 404 si no existe.
+     */
+    public Venta obtenerParaCobro(Long ventaId) {
+        return ventaRepository.bloquear(ventaId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada: " + ventaId));
     }
 
     /** Fachada para otros módulos (Cobranza): 404 si la venta no existe. */
