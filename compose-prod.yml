@@ -1,0 +1,14 @@
+# Frontend de producción local (S13): nginx con el build optimizado en http://localhost:4300.
+# No necesita la red del backend: es el navegador el que llama al backend (48088) y a Keycloak (48080).
+#   npx ng build --configuration production
+#   docker compose -f compose-prod.yml up -d --build
+name: sge-jd-frontend-prod
+
+services:
+  frontend:
+    build: .
+    image: sge-jd-frontend:prod
+    container_name: sge-jd-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4300:80"
