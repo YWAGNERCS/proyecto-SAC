@@ -4,23 +4,29 @@ Equivale a los pasos de la consola: realm, roles, cliente y usuarios semilla.
 
 Uso (con Keycloak en http://localhost:38080):
     python keycloak/configurar_realm.py
+Entorno de producción local (S13, compose-prod.yml): Keycloak en 48080, SPA en 4300, secretos de
+.env.prod y SIN el cliente de pruebas con contraseña directa:
+    python keycloak/configurar_realm.py --prod
 Se puede ejecutar varias veces: lo que ya existe se deja como está.
 """
 import json
 import os
 import pathlib
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 
 # 127.0.0.1 y no localhost: en Windows "localhost" prueba IPv6 primero y cada llamada tarda ~2 s
 # (el token de admin dura 60 s y el script no alcanzaba a terminar)
-KC = "http://127.0.0.1:38080"
+PROD = "--prod" in sys.argv
+KC = "http://127.0.0.1:48080" if PROD else "http://127.0.0.1:38080"
 REALM = "bomerp"
 CLIENTE = "bomerp-frontend"
 CLIENTE_PRUEBAS = "sgejd-pruebas"
 CLIENTE_BACKEND = "sgejd-backend"
-SPA = "http://localhost:4200"
+SPA = "http://localhost:4300" if PROD else "http://localhost:4200"
+ARCHIVO_ENV = ".env.prod" if PROD else ".env"
 
 # Roles reales del negocio (auditoría C2): Lisandro administra, Lucy registra.
 ROLES = {
@@ -53,16 +59,16 @@ USUARIOS = [
 
 
 def secreto(nombre):
-    """Lee un secreto de la variable de entorno o, si no está, de bomerp-backend/.env."""
-    if os.environ.get(nombre):
+    """Lee un secreto de la variable de entorno o, si no está, de bomerp-backend/.env (.env.prod con --prod)."""
+    if not PROD and os.environ.get(nombre):
         return os.environ[nombre]
-    env = pathlib.Path(__file__).resolve().parent.parent / ".env"
+    env = pathlib.Path(__file__).resolve().parent.parent / ARCHIVO_ENV
     if env.exists():
         for linea in env.read_text(encoding="utf-8").splitlines():
             clave, _, valor = linea.partition("=")
             if clave.strip() == nombre and valor.strip():
                 return valor.strip()
-    raise SystemExit(f"Falta {nombre}: póngalo en .env (ver .env.example)")
+    raise SystemExit(f"Falta {nombre}: póngalo en {ARCHIVO_ENV} (ver {ARCHIVO_ENV}.example)")
 
 
 def pedir(metodo, ruta, token=None, datos=None, form=False):
@@ -134,10 +140,13 @@ def main():
     # Cliente SOLO para los scripts de pruebas-seguridad (PowerShell no puede hacer el login con
     # redirección). Mantiene el atajo de contraseña directa: no se usa desde la SPA y no debe
     # existir en producción.
-    guardar_cliente(t, {
-        "clientId": CLIENTE_PRUEBAS, "name": "Scripts de prueba (solo desarrollo)", "protocol": "openid-connect",
-        "publicClient": True, "standardFlowEnabled": False, "directAccessGrantsEnabled": True,
-    })
+    if PROD:
+        print("cliente", CLIENTE_PRUEBAS, "omitido (producción)")
+    else:
+        guardar_cliente(t, {
+            "clientId": CLIENTE_PRUEBAS, "name": "Scripts de prueba (solo desarrollo)", "protocol": "openid-connect",
+            "publicClient": True, "standardFlowEnabled": False, "directAccessGrantsEnabled": True,
+        })
 
     # Cuenta de servicio del backend (confidencial, solo client_credentials): lee usuarios, cambia
     # sus permisos PERM_* y lee los eventos de sesión. El secreto sale de .env (KC_BACKEND_SECRET).

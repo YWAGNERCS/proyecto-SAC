@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class MantenimientoScheduledService {
 
@@ -75,12 +77,12 @@ public class MantenimientoScheduledService {
                             "</div></body></html>";
 
         if (correoOficina == null || correoOficina.isBlank()) {
-            System.err.println("Alerta de mantenimiento no enviada: falta configurar CORREO_OFICINA.");
+            log.warn("Alerta de mantenimiento no enviada: falta configurar CORREO_OFICINA.");
             return false;
         }
         boolean enviado = notificadorCorreo.enviarCorreo(correoOficina, asunto, cuerpoHtml);
         if (enviado) {
-            System.out.println("Alerta de mantenimiento enviada a la oficina para el cliente: " + nombreCliente);
+            log.info("Alerta de mantenimiento enviada a la oficina para el cliente: {}", nombreCliente);
         }
         return enviado;
     }

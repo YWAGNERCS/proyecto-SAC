@@ -211,7 +211,7 @@ public class FacturacionService implements ComprobantesDeVenta {
             pdfAdjunto = generadorPdfFacturacionService.generarFacturaPdf(comprobante);
             notificadorCorreo.enviarCorreoConAdjunto(correoDestino, "Su " + tipoDoc + " " + numeroDoc + " ha sido emitida", cuerpoHtml, pdfAdjunto);
         } catch (Exception e) {
-            System.err.println("Error generando PDF de factura: " + e.getMessage());
+            log.error("Error generando PDF de factura: {}", e.getMessage(), e);
             // Fallback sin adjunto si falla la generación
             notificadorCorreo.enviarCorreo(correoDestino, "Su " + tipoDoc + " " + numeroDoc + " ha sido emitida", cuerpoHtml);
         } finally {

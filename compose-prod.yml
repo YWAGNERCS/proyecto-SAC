@@ -1,0 +1,123 @@
+# ============================================================
+# Entorno de PRODUCCIÓN local (S13): Oracle, Keycloak (+ su Postgres) y el backend en Docker,
+# separados del entorno de desarrollo (docker-compose.yml): otro nombre de proyecto, otros
+# contenedores, otros volúmenes y puertos con prefijo 4 en vez de 3 (o 1522/8080).
+#
+#   Servicio            DEV          PROD
+#   Oracle              1522         41521
+#   Postgres Keycloak   35432        45432
+#   Keycloak            38080        48080
+#   Backend             8080 (mvn)   48088 (contenedor)
+#   Frontend            4200 (ng)    4300 (nginx, bomerp-frontend/compose-prod.yml)
+#
+# Secretos en .env.prod (no se versiona; plantilla .env.prod.example):
+#   docker compose -f compose-prod.yml --env-file .env.prod up -d --build
+# Guía completa: docs/PRODUCCION_LOCAL.md
+# ============================================================
+name: sge-jd-prod
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    container_name: sge-jd-oracle-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:41521:1521"
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Falta ORACLE_PASSWORD en .env.prod}
+      APP_USER: "jdrefrigeracion"
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD:?Falta APP_USER_PASSWORD en .env.prod}
+      TZ: America/Lima
+    volumes:
+      - oracle-data-prod:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  keycloak-db:
+    image: postgres:17-alpine
+    container_name: sge-jd-keycloak-db-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:45432:5432"
+    environment:
+      POSTGRES_DB: sgejd_keycloak
+      POSTGRES_USER: sgejd_keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?Falta KC_DB_PASSWORD en .env.prod}
+    volumes:
+      - keycloak-db-data-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sgejd_keycloak -d sgejd_keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.0
+    container_name: sge-jd-keycloak-prod
+    restart: unless-stopped
+    # "start" (modo producción) y no "start-dev": sin el atajo de desarrollo. HTTP solo porque
+    # todo corre en la misma laptop; en un servidor real va detrás de HTTPS.
+    # El realm lo crea keycloak/configurar_realm.py (mismo script que dev, con la URL de prod).
+    command: start --http-enabled=true --hostname=http://localhost:48080 --hostname-backchannel-dynamic=true --health-enabled=true
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:48080:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:?Falta KC_ADMIN_PASSWORD en .env.prod}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/sgejd_keycloak
+      KC_DB_USERNAME: sgejd_keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?Falta KC_DB_PASSWORD en .env.prod}
+      JAVA_OPTS_KC_HEAP: "-Xms64m -Xmx512m"
+    volumes:
+      - keycloak-data-prod:/opt/keycloak/data
+
+  backend:
+    build: .
+    image: sge-jd-backend:prod
+    container_name: sge-jd-backend-prod
+    restart: unless-stopped
+    depends_on:
+      oracle:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "127.0.0.1:48088:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Conexión: nombres de servicio y puertos internos de esta red (no son secretos)
+      DB_HOST: oracle
+      DB_PORT: "1521"
+      DB_NAME: FREEPDB1
+      DB_USERNAME: jdrefrigeracion
+      DB_PASSWORD: ${APP_USER_PASSWORD:?Falta APP_USER_PASSWORD en .env.prod}
+      # Emisor público (el que va en el token del navegador) y URL interna para claves y API de admin
+      KEYCLOAK_ISSUER_URI: http://localhost:48080/realms/bomerp
+      KEYCLOAK_URL_INTERNA: http://keycloak:8080/realms/bomerp
+      KC_BACKEND_SECRET: ${KC_BACKEND_SECRET:?Falta KC_BACKEND_SECRET en .env.prod}
+      CORS_ALLOWED_ORIGINS: http://localhost:4300
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      CORREO_OFICINA: ${CORREO_OFICINA:-}
+      DECOLECTA_TOKEN: ${DECOLECTA_TOKEN:-}
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /actuator/health HTTP/1.0\r\n\r\n\" >&3 && grep -q UP <&3'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  oracle-data-prod:
+  keycloak-data-prod:
+  keycloak-db-data-prod:

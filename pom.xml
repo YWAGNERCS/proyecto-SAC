@@ -30,6 +30,13 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
+        <!-- Actuator (S13): /actuator/health para el contenedor de prod y métricas por endpoint en dev.
+             Qué se expone lo decide cada perfil (application-dev / application-prod). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- JPA / Hibernate -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

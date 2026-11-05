@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging por perfil (S13). Base de Spring Boot (formato y colores de siempre) más el nivel
+  de cada perfil:
+    dev  → DEBUG del código propio (com.bomerp) y el SQL de Hibernate: para depurar.
+    prod → INFO del código propio, sin SQL y con Spring/Hibernate en WARN: lo que importa
+           al operar (errores, correos enviados, tareas programadas) sin ruido ni datos de clientes.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+
+    <springProfile name="dev">
+        <logger name="com.bomerp" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+    </springProfile>
+
+    <springProfile name="prod">
+        <logger name="com.bomerp" level="INFO"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="org.springframework" level="WARN"/>
+    </springProfile>
+</configuration>

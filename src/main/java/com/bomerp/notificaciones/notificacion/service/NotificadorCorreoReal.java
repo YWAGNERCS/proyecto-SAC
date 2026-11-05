@@ -5,7 +5,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class NotificadorCorreoReal implements NotificadorCorreo {
 
@@ -26,7 +28,7 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
     @Override
     public boolean enviarCorreoConAdjunto(String destinatario, String asunto, String cuerpo, java.io.File adjunto) {
         if (remitente == null || remitente.isBlank()) {
-            System.err.println("Correo no enviado a " + destinatario + ": falta configurar MAIL_USERNAME / MAIL_PASSWORD.");
+            log.warn("Correo no enviado a {}: falta configurar MAIL_USERNAME / MAIL_PASSWORD.", destinatario);
             return false;
         }
         try {
@@ -51,10 +53,10 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
             }
             
             mailSender.send(message);
-            System.out.println("[REAL - Correo HTML] Enviado exitosamente a " + destinatario);
+            log.info("Correo enviado a {}", destinatario);
             return true;
         } catch (Exception e) {
-            System.err.println("Error enviando correo HTML: " + e.getMessage());
+            log.error("Error enviando correo a {}: {}", destinatario, e.getMessage());
             return false;
         }
     }

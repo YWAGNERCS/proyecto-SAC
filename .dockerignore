@@ -1,0 +1,14 @@
+# Nada de esto entra a la imagen: secretos locales, compilados y documentación.
+.env
+.env.*
+**/application-local.properties
+target/
+.git/
+.idea/
+.vscode/
+docs/
+sitio/
+pruebas-seguridad/
+scripts/
+keycloak/
+*.sql

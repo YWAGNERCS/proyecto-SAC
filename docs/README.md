@@ -236,7 +236,7 @@ estándar en `docs/diagramas/` (`.bpmn`, se abre y edita en [Camunda Modeler](ht
 |---|---|
 | Lenguaje | Java 21 |
 | Framework | Spring Boot **4.0.7** · Spring Framework 7 (Web MVC, Data JPA, Validation, Security, Mail) |
-| ORM | Hibernate 7.2 (`ddl-auto=update`); los `boolean` son `BOOLEAN` nativo de Oracle 23 |
+| ORM | Hibernate 7.2 (`ddl-auto=update` en dev, `validate` en prod); los `boolean` son `BOOLEAN` nativo de Oracle 23 |
 | Base de datos | Oracle Database 23 Free (Docker `gvenzl/oracle-free:23-slim`, servicio `FREEPDB1`, puerto **1522**) |
 | Seguridad | Spring Security como OAuth2 Resource Server (`spring-boot-starter-security-oauth2-resource-server`) + **Keycloak 26.8** con su propio Postgres 17 (Docker, puerto 38080) |
 | Documentación API | springdoc-openapi 3.0.2, OpenAPI 3.1 (Swagger UI en `/swagger-ui.html`) |
@@ -872,7 +872,7 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo, con diagrama de clases del dominio (UML) |
 | 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos (S1–S11), con Spring Boot 4.0.7 y Keycloak. Simulados: OSE y WhatsApp; correo real por Gmail (configurado en la laptop de desarrollo el 26/10/2026). Pendiente repartir `reportes` entre sus módulos |
 | 8 | Pruebas y validación | 🔄 Recorridos completos por API como Lisandro y Lucy, matriz de seguridad 14/14 y pruebas de cada corrección de la auditoría; pruebas automatizadas mínimas (ver 5) |
-| 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Pendiente un ambiente accesible desde otras PC |
+| 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Configuración de producción verificada de punta a punta en contenedores (perfil `prod`, imagen Docker del backend, Oracle y Keycloak propios, SPA en nginx): [PRODUCCION_LOCAL.md](PRODUCCION_LOCAL.md) y [S13](S13_optimizacion_produccion.md) (05/11/2026). Pendiente el servidor de JD y HTTPS |
 | 10 | Documentación técnica | ✅ Este documento, `CONTEXTO.md`, los `README.md` y `lp2-demo.md`, publicados en https://ywagnercs.github.io/proyecto-SAC/ |
 | 11 | Manual de usuario | 🔄 Sección 3 y hoja para el cliente [`LIMITACIONES.md`](LIMITACIONES.md) (25/10/2026); falta un manual con capturas por pantalla |
 | 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
@@ -906,7 +906,6 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 | Costo de compra | Definir si el costo se actualiza con el último costo o con promedio ponderado: hoy una compra sube el stock pero no cambia `costoBase` | (40) |
 | Pruebas de seguridad en JUnit | `@WebMvcTest` por rol y permiso (hoy solo `pruebas-seguridad/05_matriz.ps1`) | (28) |
 | DTO en todos los controladores | Categoría, Cliente y Proveedor todavía responden la entidad | (34) |
-| Logger en vez de `System.out` | 5 clases | (33) |
 | Perfil de pruebas con H2 | Configurarlo o quitar la dependencia del `pom.xml` | (29) |
 | Tabla `USUARIOS` | Borrarla (sin uso desde Keycloak) | (38) |
 | Dependencias del frontend | Revisar los 2 avisos de `npm audit` | (34c) |
@@ -1001,7 +1000,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 30. ~~**Paquete de arreglos 2 sin aplicar.**~~ Ya no existe la carpeta `Claude/arreglos2`. De lo que traía, el correlativo secuencial se hizo aparte (punto 12); siguen pendientes las pruebas de ventas (punto 28) y los límites entre módulos (punto 21).
 31. **Contenedor Docker:** la documentación anterior lo llamaba `SGE-DJ`; el real es **`SGE-JD`**. El volumen `sge-jd-oracle-data` está marcado como `external` en `docker-compose.yml`, así que debe existir antes de `docker compose up`.
 32. **Requisitos "16 RF consolidados en 8":** la documentación anterior lo decía, pero no existe esa versión consolidada. Confirmar si hay otro documento con los 8 RF.
-33. **`System.out` en vez de logger** en 5 clases (`NubefactClientSimulado`, `NotificadorSimulado`, `NotificadorCorreoReal`, `InventarioScheduledService`, `MantenimientoScheduledService`). Pasarlas a SLF4J como el resto.
+33. ~~**`System.out` en vez de logger**~~ ✅ **Resuelto (05/11/2026, S13):** las 7 clases que lo usaban (las 5 anotadas más `FacturacionService` y `ProformaService`) usan SLF4J, así que el nivel de cada perfil (`logback-spring.xml`) también las controla. El WhatsApp simulado, que escribía el teléfono y el mensaje del cliente, quedó en DEBUG: no sale en el log de producción.
 34. **Algunos controllers todavía responden entidades:** Categoría, Cliente y Proveedor (el resto ya usa DTO).
 34b. ~~**La SPA todavía dice "BomERP".**~~ ✅ **Resuelto (25/10/2026):** pestaña, títulos de las 25 rutas, menú (ícono "JD") e Inicio dicen SGE-JD, y el Inicio tiene accesos a Ventas, Proformas, Cobranza y Postventa. (`bomerp` sigue siendo el nombre técnico del realm y del cliente de Keycloak.) Pendiente: indicadores en el Inicio (ventas del mes, por cobrar, stock en alerta).
 34c. **Dependencias:** (el `console.log` que `categoria-form.ts` arrastraba del ejemplo de ciclo de vida de la S07 se quitó el 26/10/2026) `npm audit` marca 2 avisos altos en `@angular/router` (solo afecta a SSR, que no se usa) y `zod`, ambos con actualización menor.

@@ -104,6 +104,11 @@ public class SecurityConfig {
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                         "/images/**", "/error").permitAll()
 
+                // Actuator (S13): health abierto (lo consulta Docker/un balanceador, sin token); el resto
+                // (env, heapdump, metrics...) solo ADMIN. En prod además ni existe: se expone solo health,info.
+                .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
+
                 // Solo el dueño: quién puede qué (permisos) y el historial de cambios. No se delega.
                 .requestMatchers("/api/v1/admin/permisos/**", "/api/v1/admin/auditoria/**").hasRole("ADMIN")
 

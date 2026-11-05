@@ -28,6 +28,8 @@ SUBSECCIONES = {
     "sectores-del-producto": "tecnica.md",
 }
 
+REPO_DOCS = "https://github.com/YWAGNERCS/proyecto-SAC/blob/master/docs"
+
 
 def enlaces(texto):
     """Los enlaces internos del README apuntan a anclas; en el sitio, a páginas."""
@@ -36,6 +38,9 @@ def enlaces(texto):
     for ancla, archivo in SUBSECCIONES.items():
         texto = texto.replace(f"](#{ancla})", f"]({archivo}#{ancla})")
     texto = texto.replace("](LIMITACIONES.md)", "](limitaciones.md)")
+    # Guías que no son páginas del sitio: se abren en GitHub
+    for guia in ("PRODUCCION_LOCAL.md", "S13_optimizacion_produccion.md"):
+        texto = texto.replace(f"]({guia})", f"]({REPO_DOCS}/{guia})")
     # Docsify necesita `a\|b` dentro de una tabla; MkDocs ya ignora los | del código y mostraría la barra
     texto = re.sub(r"`[^`\n]*`", lambda m: m.group(0).replace("\\|", "|"), texto)
     # "6b. …" no es un número de lista: MkDocs lo pegaría al punto anterior. Va como párrafo propio dentro de él

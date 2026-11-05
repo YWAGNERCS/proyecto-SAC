@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class InventarioScheduledService {
 
@@ -38,7 +40,7 @@ public class InventarioScheduledService {
         List<Producto> productosCriticos = inventarioService.obtenerProductosEnAlerta();
 
         if (productosCriticos.isEmpty()) {
-            System.out.println("No hay productos en estado crítico de stock.");
+            log.info("No hay productos en estado crítico de stock.");
             return;
         }
 
@@ -77,6 +79,6 @@ public class InventarioScheduledService {
                             "</div></body></html>";
 
         notificadorCorreo.enviarCorreo(correoOficina, asunto, cuerpoHtml);
-        System.out.println("Reporte de inventario enviado a la oficina.");
+        log.info("Reporte de inventario enviado a la oficina.");
     }
 }

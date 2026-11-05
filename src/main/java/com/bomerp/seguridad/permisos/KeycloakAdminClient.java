@@ -38,7 +38,12 @@ public class KeycloakAdminClient {
     private String token;
     private Instant vence = Instant.EPOCH;
 
-    public KeycloakAdminClient(@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuer,
+    /**
+     * {@code issuer} es la URL del realm vista desde el backend: en dev la misma del token
+     * (localhost:38080); en el contenedor de prod la interna (keycloak:8080), porque ahí
+     * "localhost" es el propio contenedor (app.keycloak.url-interna, ver application-prod).
+     */
+    public KeycloakAdminClient(@Value("${app.keycloak.url-interna:${spring.security.oauth2.resourceserver.jwt.issuer-uri}}") String issuer,
                                @Value("${app.keycloak.admin.client-id:sgejd-backend}") String clientId,
                                @Value("${app.keycloak.admin.client-secret:}") String clientSecret) {
         this.urlToken = issuer + "/protocol/openid-connect/token";

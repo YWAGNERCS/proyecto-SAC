@@ -22,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @Transactional
 public class ProformaService {
@@ -163,7 +165,7 @@ public class ProformaService {
                     enviado = notificadorCorreo.enviarCorreoConAdjunto(correo,
                             "Proforma JD Refrigeración S.A.C.", cuerpoHtml, pdfAdjunto);
                 } catch (Exception e) {
-                    System.err.println("Error generando PDF: " + e.getMessage());
+                    log.error("Error generando PDF de la proforma: {}", e.getMessage(), e);
                     // Fallback sin PDF
                     enviado = notificadorCorreo.enviarCorreo(correo, "Proforma JD Refrigeración S.A.C.", cuerpoHtml);
                 } finally {
