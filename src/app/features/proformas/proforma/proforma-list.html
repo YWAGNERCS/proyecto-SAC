@@ -101,6 +101,8 @@
       </tbody>
     </table>
   </div>
+  <app-paginador [pagina]="pagina()" [tamano]="tamano()" [total]="total()" [totalPaginas]="totalPaginas()"
+                 (paginaCambia)="irAPagina($event)" (tamanoCambia)="cambiarTamano($event)" />
 </div>
 
 <!-- ── Diálogo: convertir proforma en venta ─────────────── -->

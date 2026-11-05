@@ -2,6 +2,21 @@ import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../../../core/services/api-service';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { VentaResponse, VentaDirectaRequest, FiltroVentas } from './venta.model';
+import { Pagina } from '../../../core/services/pagina';
+
+/** Totales de las ventas REGISTRADAS de una moneda, sobre todo el filtro (no solo la página). */
+export interface ResumenMoneda {
+  moneda: 'SOLES' | 'DOLARES';
+  cantidad: number;
+  montoTotal: number;
+  ticketPromedio: number;
+}
+
+export interface ReporteVentas {
+  ventas: Pagina<VentaResponse>;
+  resumen: ResumenMoneda[];
+  anuladas: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class VentaService {
@@ -16,6 +31,15 @@ export class VentaService {
     if (filtro.desde) params = params.set('desde', filtro.desde);
     if (filtro.hasta) params = params.set('hasta', filtro.hasta);
     return this.http.get<VentaResponse[]>(this.api.buildUrl(this.endpoint), { params });
+  }
+
+  /** Una página del reporte, con los totales calculados en el servidor sobre todo el filtro. */
+  reportePagina(filtro: FiltroVentas, pagina: number, tamano: number) {
+    let params = new HttpParams().set('pagina', pagina).set('tamano', tamano);
+    if (filtro.estado) params = params.set('estado', filtro.estado);
+    if (filtro.desde) params = params.set('desde', filtro.desde);
+    if (filtro.hasta) params = params.set('hasta', filtro.hasta);
+    return this.http.get<ReporteVentas>(this.api.buildUrl(`${this.endpoint}/pagina`), { params });
   }
 
   convertirDesdeProforma(proformaId: number, tipoPago: string, diasCredito?: number) {

@@ -50,6 +50,8 @@ export const ICONOS = {
   campana: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
   menu: 'M4 6h16 M4 12h16 M4 18h16',
   flecha: 'M7 17L17 7 M7 7h10v10',
+  anterior: 'M15 18l-6-6 6-6',
+  siguiente: 'M9 18l6-6-6-6',
   alerta: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z M12 9v4 M12 17h.01',
   enviar: 'M22 2 11 13 M22 2l-7 20-4-9-9-4z',
   aceptar: 'M20 6 9 17l-5-5',

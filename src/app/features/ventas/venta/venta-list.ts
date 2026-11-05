@@ -9,6 +9,7 @@ import { EstadoVenta, VentaResponse } from './venta.model';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { CobranzaService } from '../../cobranza/cobro/cobranza-service';
 import { IconoComponent } from '../../../core/layout/icono';
+import { PaginadorComponent } from '../../../core/layout/paginador';
 
 interface Agregado {
   moneda: 'SOLES' | 'DOLARES';
@@ -20,7 +21,7 @@ interface Agregado {
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [IconoComponent, CommonModule, FormsModule, RouterLink],
+  imports: [PaginadorComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './venta-list.html',
   styleUrl: './venta-list.css',
 })
@@ -36,6 +37,14 @@ export class VentaListComponent implements OnInit {
   exportando = signal(false);
 
   ventas = signal<VentaResponse[]>([]);
+  // Paginación del reporte (en "Pagos atrasados" se muestra la lista completa, que es corta)
+  pagina = signal(0);
+  tamano = signal(20);
+  total = signal(0);
+  totalPaginas = signal(0);
+  /** Totales del filtro completo que calcula el servidor (en la vista de atrasadas se calculan aquí). */
+  private resumenServidor = signal<Agregado[] | null>(null);
+  private anuladasServidor = signal<number | null>(null);
   vista = signal<'REPORTE' | 'ATRASADAS'>('REPORTE');
   loading = signal(false);
   error = signal('');
@@ -53,6 +62,8 @@ export class VentaListComponent implements OnInit {
    * Solo cuentan las ventas REGISTRADAS (una anulada no es ingreso) y se separan por moneda.
    */
   readonly agregados = computed<Agregado[]>(() => {
+    const delServidor = this.resumenServidor();
+    if (delServidor) return delServidor;
     const vigentes = this.ventas().filter((v) => v.estado === 'REGISTRADA');
     return (['SOLES', 'DOLARES'] as const)
       .map((moneda) => {
@@ -68,7 +79,9 @@ export class VentaListComponent implements OnInit {
       .filter((a) => a.cantidad > 0);
   });
 
-  readonly cantidadAnuladas = computed(() => this.ventas().filter((v) => v.estado === 'ANULADA').length);
+  readonly cantidadAnuladas = computed(
+    () => this.anuladasServidor() ?? this.ventas().filter((v) => v.estado === 'ANULADA').length,
+  );
 
   ngOnInit() {
     // Aviso que deja otra pantalla al navegar aquí (p. ej. "Convertir en venta" de una proforma).
@@ -84,7 +97,38 @@ export class VentaListComponent implements OnInit {
       return;
     }
     this.vista.set('REPORTE');
-    this.cargar(this.ventaService.listar({ estado: this.estado, desde: this.desde, hasta: this.hasta }));
+    this.pagina.set(0);
+    this.cargarPagina();
+  }
+
+  irAPagina(p: number) {
+    this.pagina.set(p);
+    this.cargarPagina();
+  }
+
+  cambiarTamano(t: number) {
+    this.tamano.set(t);
+    this.pagina.set(0);
+    this.cargarPagina();
+  }
+
+  private cargarPagina() {
+    this.loading.set(true);
+    this.ventaService.reportePagina({ estado: this.estado, desde: this.desde, hasta: this.hasta }, this.pagina(), this.tamano())
+      .subscribe({
+        next: (r) => {
+          this.ventas.set(r.ventas.contenido);
+          this.total.set(r.ventas.total);
+          this.totalPaginas.set(r.ventas.totalPaginas);
+          this.resumenServidor.set(r.resumen);
+          this.anuladasServidor.set(r.anuladas);
+          this.loading.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.loading.set(false);
+          this.error.set(err.error?.message ?? 'No se pudo cargar el reporte de ventas.');
+        },
+      });
   }
 
   limpiar() {
@@ -96,12 +140,14 @@ export class VentaListComponent implements OnInit {
 
   verAtrasadas() {
     this.vista.set('ATRASADAS');
+    this.resumenServidor.set(null);
+    this.anuladasServidor.set(null);
     this.cargar(this.ventaService.listarPagosAtrasados());
   }
 
   private recargar() {
     if (this.vista() === 'ATRASADAS') this.verAtrasadas();
-    else this.buscar();
+    else this.cargarPagina();   // se queda en la misma página
   }
 
   private cargar(peticion: ReturnType<VentaService['listar']>) {

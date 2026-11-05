@@ -86,7 +86,10 @@
           <div class="col-md-6 form-group">
             <label class="form-label" for="stockActual">Stock actual</label>
             <input id="stockActual" type="number" min="0" class="form-control" formControlName="stockActual"
-                   [class.is-invalid]="mensajeValidacion('stockActual')" />
+                   [readonly]="id() !== null" [class.is-invalid]="mensajeValidacion('stockActual')" />
+            @if (id() !== null) {
+              <small class="muted">El stock cambia con compras, ventas, órdenes y Ajustes de inventario (así queda en el kardex).</small>
+            }
             @if (mensajeValidacion('stockActual'); as m) { <span class="error-text">{{ m }}</span> }
           </div>
           <div class="col-md-6 form-group">

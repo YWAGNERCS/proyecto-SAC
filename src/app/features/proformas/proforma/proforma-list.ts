@@ -9,11 +9,12 @@ import { VentaService } from '../../ventas/venta/venta-service';
 import { ProformaResponse } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { PaginadorComponent } from '../../../core/layout/paginador';
 
 @Component({
   selector: 'app-proforma-list',
   standalone: true,
-  imports: [IconoComponent, CommonModule, FormsModule, RouterLink],
+  imports: [PaginadorComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './proforma-list.html',
   styleUrl: './proforma-list.css'
 })
@@ -24,6 +25,12 @@ export class ProformaListComponent implements OnInit {
   private router = inject(Router);
 
   proformas = signal<ProformaResponse[]>([]);
+  pagina = signal(0);
+  tamano = signal(20);
+  total = signal(0);
+  totalPaginas = signal(0);
+  /** Cliente del filtro (se conserva al cambiar de página y al recargar tras una acción). */
+  private clienteFiltro: number | undefined;
   clientes = signal<Cliente[]>([]);
   accionEnCurso = signal<number | null>(null);
 
@@ -42,10 +49,26 @@ export class ProformaListComponent implements OnInit {
     this.cargarClientes();
   }
 
-  cargarProformas(clienteId?: number) {
-    this.proformaService.listar(clienteId).subscribe({
-      next: (data) => this.proformas.set(data)
+  /** Recarga la página actual (tras aceptar, rechazar, enviar o convertir se queda en la misma página). */
+  cargarProformas() {
+    this.proformaService.listarPagina(this.clienteFiltro, this.pagina(), this.tamano()).subscribe({
+      next: (p) => {
+        this.proformas.set(p.contenido);
+        this.total.set(p.total);
+        this.totalPaginas.set(p.totalPaginas);
+      },
     });
+  }
+
+  irAPagina(p: number) {
+    this.pagina.set(p);
+    this.cargarProformas();
+  }
+
+  cambiarTamano(t: number) {
+    this.tamano.set(t);
+    this.pagina.set(0);
+    this.cargarProformas();
   }
 
   cargarClientes() {
@@ -56,8 +79,9 @@ export class ProformaListComponent implements OnInit {
 
   filtrarPorCliente(event: Event) {
     const select = event.target as HTMLSelectElement;
-    const clienteId = select.value ? Number(select.value) : undefined;
-    this.cargarProformas(clienteId);
+    this.clienteFiltro = select.value ? Number(select.value) : undefined;
+    this.pagina.set(0);
+    this.cargarProformas();
   }
 
   /** Envía por WhatsApp y correo y muestra qué salió y qué no (el backend lo informa). */

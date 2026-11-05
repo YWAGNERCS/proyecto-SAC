@@ -8,11 +8,12 @@ import { DescargaService } from '../../../core/services/descarga-service';
 import { ProveedorService } from '../../proveedores/proveedor/proveedor-service';
 import { Proveedor } from '../../proveedores/proveedor/proveedor.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { PaginadorComponent } from '../../../core/layout/paginador';
 
 @Component({
   selector: 'app-compra-list',
   standalone: true,
-  imports: [IconoComponent, CommonModule, RouterLink, FormsModule],
+  imports: [PaginadorComponent, IconoComponent, CommonModule, RouterLink, FormsModule],
   templateUrl: './compra-list.html'
 })
 export class CompraListComponent implements OnInit {
@@ -21,6 +22,10 @@ export class CompraListComponent implements OnInit {
   private descargaService = inject(DescargaService);
 
   compras = signal<CompraResponse[]>([]);
+  pagina = signal(0);
+  tamano = signal(20);
+  total = signal(0);
+  totalPaginas = signal(0);
   proveedores = signal<Proveedor[]>([]);
   loading = signal(false);
   exportando = signal(false);
@@ -40,7 +45,7 @@ export class CompraListComponent implements OnInit {
     this.desde = '';
     this.hasta = '';
     this.proveedorId = null;
-    this.cargarCompras();
+    this.buscar();
   }
 
   /** Excel con los mismos filtros de la pantalla (hojas "Compras" y "Detalle"). */
@@ -65,9 +70,12 @@ export class CompraListComponent implements OnInit {
     }
     this.loading.set(true);
     this.errorMessage.set('');
-    this.compraService.listar({ desde: this.desde, hasta: this.hasta, proveedorId: this.proveedorId }).subscribe({
-      next: (data) => {
-        this.compras.set(data);
+    this.compraService.listarPagina({ desde: this.desde, hasta: this.hasta, proveedorId: this.proveedorId },
+      this.pagina(), this.tamano()).subscribe({
+      next: (p) => {
+        this.compras.set(p.contenido);
+        this.total.set(p.total);
+        this.totalPaginas.set(p.totalPaginas);
         this.loading.set(false);
       },
       error: (err) => {
@@ -77,6 +85,23 @@ export class CompraListComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  /** "Buscar" y "Limpiar" vuelven a la primera página. */
+  buscar() {
+    this.pagina.set(0);
+    this.cargarCompras();
+  }
+
+  irAPagina(p: number) {
+    this.pagina.set(p);
+    this.cargarCompras();
+  }
+
+  cambiarTamano(t: number) {
+    this.tamano.set(t);
+    this.pagina.set(0);
+    this.cargarCompras();
   }
 
   getTotalDetalles(compra: CompraResponse): number {
