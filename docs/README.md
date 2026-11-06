@@ -878,6 +878,34 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
 | 13 | Mantenimiento y evolución | ✅ Git/GitHub (`YWAGNERCS/proyecto-SAC`, con topics) y publicación automática de la documentación |
 
+### Avances del 05/11/2026
+
+| Tema | Qué se hizo | Dónde |
+|---|---|---|
+| Revisión externa: stock y operaciones simultáneas | Cantidades sumadas por producto y bloqueo de filas: dos ventas al mismo tiempo ya no dejan el stock en negativo, una proforma no se convierte dos veces (índice único `UX_VENTAS_PROFORMA`) y un cobro no se registra dos veces. Probado con peticiones en paralelo: 8 ventas con stock 4 → 4 aceptadas y 4 rechazadas (409), stock final 0 | *Stock y operaciones simultáneas* en [2. Documentación técnica](#doc-tecnica), (42) |
+| Paginación | Ventas, Proformas y Compras se cargan de a 20, 50 o 100; los totales de Ventas se calculan en el servidor sobre todo el filtro. La respuesta de Ventas bajó de 194 KB a 16 KB | (41) |
+| Credenciales | La contraseña de Gmail que quedó en el historial de git se revocó; hasta configurar la cuenta de la empresa no sale ningún correo | (2) |
+| Pruebas automáticas | 72 pruebas JUnit, todas pasan (6 nuevas de stock) | *Pruebas automáticas* en [2. Documentación técnica](#doc-tecnica) |
+| LP2 S13: preparación para producción | Perfiles `dev`/`prod`, logging por perfil, Actuator mínimo y protegido, Cache-Control en el tipo de cambio, Redis descartado con medición, imagen Docker del backend, Oracle y Keycloak propios de producción y el frontend compilado en nginx, verificado de punta a punta | [PRODUCCION_LOCAL.md](PRODUCCION_LOCAL.md), [S13](S13_optimizacion_produccion.md) |
+| Logger | Las 7 clases con `System.out` pasaron a SLF4J; el WhatsApp simulado ya no escribe datos del cliente en el log de producción | (33) |
+
+### Ideas (por decidir)
+
+**Instalar en la PC de JD sin Python: Keycloak que se configura solo.** Hoy Keycloak arranca vacío y lo llena
+`keycloak/configurar_realm.py` (realm, roles, permisos, clientes, cuenta de servicio y usuarios). Ese script
+necesita Python, que la PC de JD probablemente no tenga.
+
+- **Propuesta:** que Keycloak importe al arrancar un JSON con todo el realm (`--import-realm`, como ya hace dev
+  con `realm-bomerp.json`). Las claves y el secreto de la cuenta de servicio irían como variables
+  (`${SGEJD_CLAVE_LISANDRO}`, `${KC_BACKEND_SECRET}`), que Keycloak lee del `.env` al importar: no quedan
+  escritas en el archivo. No hace falta ningún lenguaje, ni Python ni Java.
+- **Junto con eso:** pasar `generar_env_prod.py` a PowerShell (viene con Windows) y compilar el frontend dentro
+  de Docker (Dockerfile de dos etapas, como el del backend). Así la PC de JD solo necesitaría **Docker**:
+  instalarlo, copiar la carpeta y ejecutar un script.
+- **Descartado:** que el backend configure Keycloak al arrancar. Tendría que guardar la contraseña de
+  administrador total de Keycloak, y si se compromete el backend se compromete el control de todos los usuarios.
+- **Sigue en Python** solo lo de desarrollo: `sitio/armar.py` (este sitio) y `docs/diagramas/generar_bpmn.py`.
+
 ### Pendientes (al 31/10/2026)
 
 Resumen de lo que falta, según de quién depende. El detalle de cada punto está en [5. Por verificar](#por-verificar) (n.º entre paréntesis).
@@ -890,7 +918,7 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 | Acceso desde otra PC o desde el celular | Contratar un servidor o VPS con HTTPS; al instalarlo, eliminar el cliente `sgejd-pruebas` de Keycloak | — |
 | Respaldo automático diario | Elegir la carpeta fuera de la PC (USB, OneDrive o Google Drive de la empresa, red) y ejecutar `programar_respaldo.bat -Destino` | (36) |
 | AS-IS de los procesos | Confirmar los supuestos [S1]–[S9] de los diagramas BPMN | *Modelado de procesos* |
-| Correo de la empresa | Cuenta para enviar proformas y facturas (hoy sale con la Gmail de prueba de Aron) y correo de la oficina para el resumen diario | — |
+| Correo de la empresa | Cuenta para enviar proformas y facturas (la Gmail de prueba de Aron se revocó el 05/11/2026: hoy no sale ningún correo) y correo de la oficina para el resumen diario | — |
 | WhatsApp real | Cuenta de WhatsApp Business API (pagada); hoy el envío de proformas por WhatsApp es simulado | (13) |
 | Topes de descuento | Confirmar 30 % (Lisandro) y 10 % (Lucy) | (25b) |
 | Costos visibles para Lucy | Decidir si Lucy debe ver costo y margen en la lista de productos | — |
