@@ -180,18 +180,3 @@ Tabla 4. Trazabilidad con ADS y BD2
   sin que el usuario lo note.
 - **El menú por rol es solo comodidad visual.** La autorización real está en `SecurityConfig`:
   un 403 del backend la respalda aunque alguien edite el HTML.
-
-## 7. Rúbrica de evaluación
-
-Tabla 5. Rúbrica de la Unidad 2 (autoevaluación con evidencia)
-
-| Criterio | Peso | Evidencia | Nivel esperado |
-|---|---|---|---|
-| 1. SPA con layout, menú, rutas, servicios HTTP y CRUD independiente | 16% | Shell único, más de 20 rutas, CRUD de Categoría contra el backend real | A |
-| 2. CRUD dependiente con datos relacionados | 16% | Producto → Categoría con lista desplegable, `required` y 404 del backend | A |
-| 3. Cabecera–detalle con cálculos, validaciones, consultas y reportes | 16% | Venta con `FormArray`, totales en vivo, 409 por stock, reportes y kardex | A |
-| 4. Seguridad backend con Keycloak, roles efectivos | 16% | Resource Server con `issuer-uri`, matriz de 14 casos con 2 usuarios | A |
-| 5. Login, guards, interceptor, menú por permisos, 401/403 | 16% | PKCE, token en memoria, `authGuard`/`rolGuard`, refresco único, 403 sin reintento | A |
-| 6. Sustentación | 20% | En vivo | — |
-
-Nota final = suma de (Peso × Puntos) / 100 × 20, con A=20, B=15, C=10, D=5.
