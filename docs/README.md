@@ -761,6 +761,16 @@ con Keycloak y el backend encendidos).
    ```
    También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`.
 4. Ejecutar `mvn spring-boot:run` (puerto 8080). Swagger: `http://localhost:8080/swagger-ui.html`.
+   - **Probar la API en Swagger:** sin token todo responde 401. Para tener uno:
+     1. En PowerShell, desde `bomerp-backend\pruebas-seguridad`, ejecutar
+        `. .\comun.ps1; Get-Token lisandro | Set-Clipboard`. Toma la clave de `.env` y copia el token al
+        portapapeles sin mostrarlo; con `lucy` se prueba como asistente.
+     2. En Swagger, botón **Authorize** → pegar el token en *Value* (solo el token: Swagger agrega `Bearer`) →
+        **Authorize** → **Close**.
+     3. En cualquier endpoint: **Try it out** → **Execute**.
+
+     El token dura 5 minutos: cuando vuelvan los 401, repetir el paso 1. Swagger solo existe en dev; en el perfil
+     `prod` está apagado (`/swagger-ui` responde 404).
    - **Identidad (Keycloak):** `docker compose up -d keycloak-db keycloak` (desde `bomerp-backend`). Antes, copiar `.env.example` como `.env` (no se versiona) y poner las contraseñas: las usan `docker compose`, `configurar_realm.py` y `pruebas-seguridad/`. La primera vez Keycloak importa `keycloak/realm-bomerp.json` (realm, roles, clientes y usuarios, sin contraseñas); después ejecutar `python keycloak/configurar_realm.py`, que pone las contraseñas de `.env` (y crea el realm si no existe), los roles de permiso `PERM_*` y el cliente confidencial `sgejd-backend` (cuenta de servicio con `view-users`, `manage-users`, `view-realm` y `view-events`, secreto `KC_BACKEND_SECRET` de `.env`, que el backend lee como `app.keycloak.admin.client-secret`): con él el backend cambia los permisos delegados y lee los eventos de sesión. Historial de cambios: tabla `HISTORIAL_CAMBIOS` (`migracion_historial_cambios.sql`), escrita por `AuditoriaFilter` dentro de la cadena de seguridad, después de leer el token y antes de autorizar, para registrar también los 403. Consola: `http://localhost:38080` (usuario `admin`, contraseña `KC_ADMIN_PASSWORD` de `.env`). Usuarios: `lisandro` (ADMIN) y `lucy` (ASISTENTE). Pruebas: `pruebas-seguridad/05_matriz.ps1`.
    - **Bases creadas antes del 28/10/2026 (servicios):** ejecutar una vez `migracion_servicios.sql`, después de `migracion_cobros_anulacion.sql` (sector SERVICIO, agente de retención, deducción de las ventas, métodos DETRACCION/RETENCION, sedes, órdenes de trabajo, equipos instalados, contratos y las columnas nuevas de `MANTENIMIENTOS`; se puede ejecutar varias veces).
    - **Bases creadas antes del 28/10/2026:** ejecutar una vez `migracion_cobros_anulacion.sql` (columnas de anulación y `registrado_por` en `COBROS`; los cobros existentes quedan VIGENTES; se puede ejecutar varias veces).
