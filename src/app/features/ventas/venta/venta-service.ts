@@ -3,6 +3,7 @@ import { ApiService } from '../../../core/services/api-service';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { VentaResponse, VentaDirectaRequest, FiltroVentas } from './venta.model';
 import { Pagina } from '../../../core/services/pagina';
+import { RutinaMantenimiento } from '../../postventa/mantenimiento/rutina-mantenimiento';
 
 /** Totales de las ventas REGISTRADAS de una moneda, sobre todo el filtro (no solo la página). */
 export interface ResumenMoneda {
@@ -44,12 +45,13 @@ export class VentaService {
     return this.http.get<ReporteVentas>(this.api.buildUrl(`${this.endpoint}/pagina`), { params });
   }
 
-  convertirDesdeProforma(proformaId: number, tipoPago: string, diasCredito?: number) {
+  /** @param rutina "Implementar rutinas de mantenimiento" (null = la venta no programa visitas) */
+  convertirDesdeProforma(proformaId: number, tipoPago: string, diasCredito?: number, rutina: RutinaMantenimiento | null = null) {
     let url = `${this.api.buildUrl(this.endpoint)}/desde-proforma/${proformaId}?tipoPago=${tipoPago}`;
     if (diasCredito) {
       url += `&diasCredito=${diasCredito}`;
     }
-    return this.http.post<VentaResponse>(url, {});
+    return this.http.post<VentaResponse>(url, { rutinaMantenimiento: rutina });
   }
 
   registrarVentaDirecta(request: VentaDirectaRequest) {

@@ -9,13 +9,14 @@ import { VentaService } from '../../ventas/venta/venta-service';
 import { ProformaResponse } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { RutinaMantenimiento, RutinaMantenimientoComponent, resumenRutina } from '../../postventa/mantenimiento/rutina-mantenimiento';
 import { PaginadorComponent } from '../../../core/layout/paginador';
 import { Orden, OrdenComponent, ordenParaServidor } from '../../../core/layout/orden';
 
 @Component({
   selector: 'app-proforma-list',
   standalone: true,
-  imports: [PaginadorComponent, OrdenComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
+  imports: [PaginadorComponent, OrdenComponent, RutinaMantenimientoComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './proforma-list.html',
   styleUrl: './proforma-list.css'
 })
@@ -45,6 +46,8 @@ export class ProformaListComponent implements OnInit {
   tipoPago: 'CONTADO' | 'CREDITO' = 'CONTADO';
   diasCredito = 30;
   convirtiendo = signal(false);
+  /** Rutina de mantenimiento elegida en el diálogo (solo si la proforma tiene equipos). */
+  rutina = signal<RutinaMantenimiento | null>(null);
   errorConversion = signal('');
 
   ngOnInit() {
@@ -155,7 +158,13 @@ export class ProformaListComponent implements OnInit {
     this.tipoPago = 'CONTADO';
     this.diasCredito = 30;
     this.errorConversion.set('');
+    this.rutina.set(null);
     this.aConvertir.set(proforma);
+  }
+
+  /** La proforma tiene equipos de climatización o refrigeración: se ofrece la rutina de mantenimiento. */
+  conEquipos(p: ProformaResponse): boolean {
+    return !!p.items?.some((i) => i.requiereMantenimiento);
   }
 
   cerrarConversion() {
@@ -178,13 +187,15 @@ export class ProformaListComponent implements OnInit {
     const dias = this.tipoPago === 'CREDITO' ? this.diasCredito : undefined;
     this.convirtiendo.set(true);
     this.errorConversion.set('');
-    this.ventaService.convertirDesdeProforma(proforma.id, this.tipoPago, dias).subscribe({
+    const rutina = this.conEquipos(proforma) ? this.rutina() : null;
+    this.ventaService.convertirDesdeProforma(proforma.id, this.tipoPago, dias, rutina).subscribe({
       next: (venta) => {
         this.convirtiendo.set(false);
         this.aConvertir.set(null);
         const pago = dias ? `a crédito (${dias} días)` : 'al contado';
+        const mant = rutina ? ` Mantenimiento: ${resumenRutina(rutina)}.` : '';
         this.router.navigate(['/ventas'], {
-          state: { mensaje: `Proforma #${proforma.id} convertida en la venta #${venta.id}, ${pago}.` }
+          state: { mensaje: `Proforma #${proforma.id} convertida en la venta #${venta.id}, ${pago}.${mant}` }
         });
       },
       error: (err: HttpErrorResponse) => {

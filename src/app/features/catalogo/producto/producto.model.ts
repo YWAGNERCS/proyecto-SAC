@@ -46,6 +46,11 @@ export function esEquipo(sector: Sector | undefined | null): boolean {
   return sector === 'CLIMATIZACION' || sector === 'REFRIGERACION' || sector === 'VENTILACION_FORZADA';
 }
 
+/** Equipos de climatización o refrigeración: al venderlos se ofrece "Implementar rutinas de mantenimiento". */
+export function requiereMantenimiento(sector: Sector | undefined | null): boolean {
+  return sector === 'CLIMATIZACION' || sector === 'REFRIGERACION';
+}
+
 /** Solo los materiales controlan stock; los equipos no se almacenan. */
 export function controlaStock(sector: Sector | undefined | null): boolean {
   return sector === 'MATERIAL_SERVICIO';

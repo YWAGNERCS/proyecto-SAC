@@ -153,6 +153,11 @@
         <div class="alert alert-danger">Hay productos en otra moneda: ingrese el tipo de cambio para convertirlos.</div>
       }
 
+      <!-- ── Mantenimiento: solo si se vende un equipo de climatización o refrigeración ── -->
+      @if (conEquipos()) {
+        <app-rutina-mantenimiento class="bloque-rutina" [(rutina)]="rutina" [deshabilitado]="loading()" />
+      }
+
       <!-- ── Totales (computed) ──────────────────────────── -->
       <div class="totales">
         <div><span>Subtotal</span><strong>{{ simbolo() }} {{ subtotal() | number: '1.2-2' }}</strong></div>

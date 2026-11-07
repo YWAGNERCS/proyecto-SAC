@@ -142,6 +142,10 @@
         }
       </fieldset>
 
+      @if (conEquipos(p)) {
+        <app-rutina-mantenimiento style="display: block; margin-bottom: 14px;" [(rutina)]="rutina" [deshabilitado]="convirtiendo()" />
+      }
+
       @if (errorConversion()) {
         <div class="alert alert-danger" role="alert"><app-icono nombre="alerta" /> {{ errorConversion() }}</div>
       }

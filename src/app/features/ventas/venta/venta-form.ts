@@ -9,11 +9,12 @@ import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { ProductoService } from '../../catalogo/producto/producto-service';
 import { VentaDirectaRequest } from './venta.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
-import { Producto, precioVenta } from '../../catalogo/producto/producto.model';
+import { Producto, precioVenta, requiereMantenimiento } from '../../catalogo/producto/producto.model';
 import { Moneda, TipoCambioService, convertir, simboloMoneda } from '../../../core/services/tipo-cambio-service';
 import { DescuentoService } from '../../../core/services/descuento-service';
 import { IconoComponent } from '../../../core/layout/icono';
 import { ClienteFormComponent } from '../../clientes/cliente/cliente-form';
+import { RutinaMantenimiento, RutinaMantenimientoComponent, resumenRutina } from '../../postventa/mantenimiento/rutina-mantenimiento';
 
 const IGV = 0.18;
 const MAX_SUGERENCIAS = 8;
@@ -29,7 +30,7 @@ function sinProductosRepetidos(control: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-venta-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, RutinaMantenimientoComponent],
   templateUrl: './venta-form.html',
   styleUrl: './venta-form.css',
 })
@@ -113,6 +114,12 @@ export class VentaFormComponent implements OnInit {
   readonly faltaTipoCambio = computed(() => this.requiereTipoCambio() && !this.tipoCambio());
 
   readonly esCredito = computed(() => this.tipoPago() === 'CREDITO');
+
+  /** Hay un equipo de climatización o refrigeración: se muestra "Implementar rutinas de mantenimiento". */
+  readonly conEquipos = computed(() => this.productosPorLinea().some((p) => requiereMantenimiento(p?.sector)));
+  /** Rutina elegida; solo viaja si la venta sigue teniendo equipos (si se quitan, no se programa nada). */
+  readonly rutina = signal<RutinaMantenimiento | null>(null);
+  private readonly rutinaAEnviar = computed(() => (this.conEquipos() ? this.rutina() : null));
 
   ngOnInit() {
     this.descuentoService.tope().subscribe({ next: (t) => this.topeDescuento.set(t) });
@@ -252,6 +259,7 @@ export class VentaFormComponent implements OnInit {
       `Pago: ${valor.tipoPago === 'CREDITO' ? `crédito a ${valor.diasCredito} días` : 'contado'}` +
       ` en ${valor.moneda === 'DOLARES' ? 'dólares' : 'soles'}\n` +
       this.lineaTipoCambio(valor.tipoCambio) +
+      this.lineaMantenimiento() +
       `\n` +
       `Se descontará el stock de los materiales. ¿Confirmar?`;
     if (!confirm(resumen)) return;
@@ -267,6 +275,13 @@ export class VentaFormComponent implements OnInit {
     return `Tipo de cambio: S/ ${Number(tc).toFixed(3)} por US$${distinto}\n`;
   }
 
+  /** Línea del resumen de confirmación sobre los mantenimientos. */
+  private lineaMantenimiento(): string {
+    if (!this.conEquipos()) return '';
+    const r = this.rutinaAEnviar();
+    return r ? `Mantenimiento: ${resumenRutina(r)}\n` : 'Sin rutina de mantenimiento (no se programarán visitas)\n';
+  }
+
   private guardar() {
     const valor = this.form.getRawValue();
     const payload: VentaDirectaRequest = {
@@ -280,6 +295,7 @@ export class VentaFormComponent implements OnInit {
       diasCredito: valor.tipoPago === 'CREDITO' ? Number(valor.diasCredito) : undefined,
       moneda: valor.moneda,
       tipoCambio: valor.tipoCambio ? Number(valor.tipoCambio) : null,
+      rutinaMantenimiento: this.rutinaAEnviar(),
     };
 
     this.loading.set(true);

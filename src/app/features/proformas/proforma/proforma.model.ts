@@ -25,7 +25,9 @@ export interface ProformaResponse {
   ventaId?: number | null;
   enviadoCorreo?: boolean;
   enviadoWhatsApp?: boolean;
-  items?: { productoNombre: string; cantidad: number; precioUnitario: number; descuentoPorcentaje: number; subtotalItem: number }[];
+  items?: { productoNombre: string; cantidad: number; precioUnitario: number; descuentoPorcentaje: number; subtotalItem: number;
+    /** Equipo de climatización o refrigeración: al convertir se ofrece la rutina de mantenimiento. */
+    requiereMantenimiento?: boolean }[];
 }
 
 /** Resultado de "Enviar": SIMULADO = WhatsApp aún no se envía de verdad (solo queda registrado). */

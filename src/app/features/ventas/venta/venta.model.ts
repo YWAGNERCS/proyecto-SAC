@@ -1,3 +1,4 @@
+import { RutinaMantenimiento } from '../../postventa/mantenimiento/rutina-mantenimiento';
 export interface DetalleVentaResponse {
   productoNombre: string;
   cantidad: number;
@@ -60,4 +61,6 @@ export interface VentaDirectaRequest {
   moneda: 'SOLES' | 'DOLARES';
   /** Soles por dólar (el de SUNAT del día o el negociado). */
   tipoCambio?: number | null;
+  /** Botón "Implementar rutinas de mantenimiento" (null = la venta no programa visitas). */
+  rutinaMantenimiento?: RutinaMantenimiento | null;
 }

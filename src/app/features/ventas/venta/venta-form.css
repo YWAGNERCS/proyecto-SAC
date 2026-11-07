@@ -74,6 +74,9 @@
   color: var(--primary);
 }
 
+/* Botón "Implementar rutinas de mantenimiento" bajo el detalle */
+.bloque-rutina { display: block; margin: 12px 0; }
+
 /* ── Celular: cada línea del detalle es una tarjeta con sus campos rotulados ──
    (no se usa scroll horizontal: recortaría la lista de sugerencias del buscador) */
 @media (max-width: 640px) {
