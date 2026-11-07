@@ -24,11 +24,12 @@ public class VentasPostventaListener {
         this.mantenimientoService = mantenimientoService;
     }
 
-    /** Venta con equipos de climatización o refrigeración: se programan sus 4 visitas trimestrales. */
+    /** Si el vendedor eligió una rutina de mantenimiento al vender, se programan sus visitas. */
     @EventListener
     @Order(1)
     public void alRegistrarVenta(VentaRegistradaEvent evento) {
-        mantenimientoService.programarParaVenta(ventaService.obtenerPorIdPublico(evento.ventaId()));
+        if (evento.rutina() == null) return;
+        mantenimientoService.programarParaVenta(ventaService.obtenerPorIdPublico(evento.ventaId()), evento.rutina());
     }
 
     /** Venta anulada: se cancelan sus visitas aún pendientes. */

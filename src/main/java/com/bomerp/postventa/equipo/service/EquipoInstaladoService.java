@@ -80,7 +80,7 @@ public class EquipoInstaladoService {
     /**
      * Fachada para Órdenes de trabajo: registra un equipo instalado por una orden de instalación.
      * Si tiene frecuencia de mantenimiento, se programa su plan; si además viene de una venta,
-     * las 4 visitas genéricas de esa venta se cancelan (las reemplaza el plan del equipo).
+     * las visitas de la rutina de esa venta se cancelan (las reemplaza el plan del equipo).
      */
     public EquipoInstalado registrarEquipo(EquipoDTO.Registro dto, Long ordenTrabajoId) {
         Cliente cliente = clienteService.obtenerPorId(dto.clienteId());

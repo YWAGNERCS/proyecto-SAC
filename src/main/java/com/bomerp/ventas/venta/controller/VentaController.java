@@ -3,6 +3,7 @@ package com.bomerp.ventas.venta.controller;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import com.bomerp.ventas.venta.entity.Venta;
+import com.bomerp.ventas.venta.event.RutinaMantenimiento;
 import com.bomerp.ventas.venta.service.VentaService;
 import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.reporte.service.VentaReporteService;
@@ -80,11 +81,16 @@ public class VentaController {
             @PathVariable Long proformaId,
             @RequestParam Venta.TipoPago tipoPago,
             @RequestParam(required = false) Integer diasCredito,
+            @RequestBody(required = false) ConversionRequest cuerpo,
             @AuthenticationPrincipal Jwt jwt) {
         // El vendedor sale del token ya validado (sub), nunca de un campo del request
         return ventaService.convertirProformaEnVenta(proformaId, tipoPago, diasCredito,
-                jwt.getSubject(), jwt.getClaimAsString("preferred_username"));
+                jwt.getSubject(), jwt.getClaimAsString("preferred_username"),
+                cuerpo != null ? cuerpo.rutinaMantenimiento() : null);
     }
+
+    /** Cuerpo opcional de la conversión: la rutina de mantenimiento elegida (null = sin mantenimientos). */
+    public record ConversionRequest(RutinaMantenimiento rutinaMantenimiento) {}
 
     @PostMapping("/directa")
     public VentaResponseDTO registrarVentaDirecta(@RequestBody VentaDirectaRequest request,
@@ -92,7 +98,7 @@ public class VentaController {
         return ventaService.registrarVentaDirecta(
                 request.clienteId(), request.items(), request.tipoPago(), request.diasCredito(),
                 request.moneda(), request.tipoCambio(),
-                jwt.getSubject(), jwt.getClaimAsString("preferred_username"));
+                jwt.getSubject(), jwt.getClaimAsString("preferred_username"), request.rutinaMantenimiento());
     }
 
     @GetMapping("/pagos-atrasados")
@@ -106,6 +112,7 @@ public class VentaController {
             @NotNull Venta.TipoPago tipoPago,
             Integer diasCredito,
             Venta.Moneda moneda,                     // opcional: moneda en la que se cobra
-            java.math.BigDecimal tipoCambio          // opcional: soles por dólar (null = SUNAT del día)
+            java.math.BigDecimal tipoCambio,         // opcional: soles por dólar (null = SUNAT del día)
+            RutinaMantenimiento rutinaMantenimiento  // opcional: botón "Implementar rutinas de mantenimiento"
     ) {}
 }

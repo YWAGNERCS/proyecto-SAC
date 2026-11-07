@@ -13,7 +13,7 @@ import java.time.LocalDate;
 
 /**
  * Visita de mantenimiento preventivo. Se programa por una de tres vías:
- *  - VENTA:    4 visitas (3, 6, 9 y 12 meses) al vender equipos de climatización o refrigeración.
+ *  - VENTA:    la rutina elegida al vender equipos de climatización o refrigeración (botón "Implementar rutinas").
  *  - EQUIPO:   según la frecuencia elegida para un equipo instalado (cada 1, 2, 3, 6 o 12 meses).
  *  - CONTRATO: según la frecuencia de un contrato de mantenimiento, entre sus fechas.
  */

@@ -18,7 +18,7 @@ public interface MantenimientoRepository extends JpaRepository<Mantenimiento, Lo
 
     List<Mantenimiento> findByVenta_IdAndEstado(Long ventaId, Mantenimiento.EstadoMantenimiento estado);
 
-    /** Los de la venta que no son de un equipo en particular (las 4 visitas genéricas al vender). */
+    /** Los de la venta que no son de un equipo en particular (las de la rutina elegida al vender). */
     List<Mantenimiento> findByVenta_IdAndEquipoIsNullAndEstado(Long ventaId, Mantenimiento.EstadoMantenimiento estado);
 
     List<Mantenimiento> findByEquipo_IdAndEstado(Long equipoId, Mantenimiento.EstadoMantenimiento estado);

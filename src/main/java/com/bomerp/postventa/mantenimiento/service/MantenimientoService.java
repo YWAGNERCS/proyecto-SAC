@@ -10,13 +10,14 @@ import com.bomerp.postventa.equipo.entity.EquipoInstalado;
 import com.bomerp.postventa.mantenimiento.entity.Mantenimiento;
 import com.bomerp.postventa.mantenimiento.repository.MantenimientoRepository;
 import com.bomerp.ventas.venta.entity.Venta;
+import com.bomerp.ventas.venta.event.RutinaMantenimiento;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 /**
- * Programa y lleva el mantenimiento preventivo: por venta (4 visitas), por equipo instalado
+ * Programa y lleva el mantenimiento preventivo: por venta (la rutina elegida al vender), por equipo instalado
  * (según su frecuencia) y por contrato. Fachada pública del módulo: Ventas, Equipos, Contratos
  * y Órdenes de trabajo no tocan MantenimientoRepository.
  */
@@ -30,23 +31,22 @@ public class MantenimientoService {
     }
 
     /**
-     * RF confirmado con el cliente: si la venta incluye equipos de climatización o
-     * refrigeración, se programan 4 mantenimientos (a los 3, 6, 9 y 12 meses).
+     * Visitas de la rutina que el vendedor eligió al vender un equipo de climatización o refrigeración
+     * (botón "Implementar rutinas de mantenimiento"; Ventas ya validó la rutina). Antes eran siempre
+     * 4 visitas trimestrales; ahora el vendedor decide cada cuánto y cuántas, o ninguna.
+     *
+     * @return cuántas visitas se programaron
      */
     @Transactional
-    public void programarParaVenta(Venta venta) {
-        boolean requiereMantenimiento = venta.getDetalles().stream()
-                .anyMatch(d -> d.getProducto().requiereMantenimiento());
-
-        if (requiereMantenimiento) {
-            for (int i = 1; i <= 4; i++) {
-                Mantenimiento mant = new Mantenimiento();
-                mant.setCliente(venta.getCliente());
-                mant.setVenta(venta);
-                mant.setFechaProgramada(venta.getFechaVenta().plusMonths(3L * i));
-                mantenimientoRepository.save(mant);
-            }
+    public int programarParaVenta(Venta venta, RutinaMantenimiento rutina) {
+        for (int i = 0; i < rutina.visitas(); i++) {
+            Mantenimiento mant = new Mantenimiento();
+            mant.setCliente(venta.getCliente());
+            mant.setVenta(venta);
+            mant.setFechaProgramada(rutina.fechaVisita(i));
+            mantenimientoRepository.save(mant);
         }
+        return rutina.visitas();
     }
 
     /**
@@ -155,7 +155,7 @@ public class MantenimientoService {
     }
 
     /**
-     * Al registrar un equipo con plan propio desde una venta, las 4 visitas genéricas de esa venta
+     * Al registrar un equipo con plan propio desde una venta, las visitas de la rutina de esa venta
      * se cancelan: las reemplaza el plan del equipo (así no hay visitas duplicadas).
      */
     @Transactional

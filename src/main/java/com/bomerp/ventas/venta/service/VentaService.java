@@ -8,6 +8,7 @@ import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.event.VentaAnuladaEvent;
 import com.bomerp.ventas.venta.event.VentaRegistradaEvent;
+import com.bomerp.ventas.venta.event.RutinaMantenimiento;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.repository.VentaRepository;
 
@@ -88,9 +89,18 @@ public class VentaService {
         return convertirProformaEnVenta(proformaId, tipoPago, diasCredito, null, null);
     }
 
-    /** @param vendedorId sub del JWT de quien registra · @param vendedorNombre su nombre de usuario */
     public VentaResponseDTO convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito,
                                                      String vendedorId, String vendedorNombre) {
+        return convertirProformaEnVenta(proformaId, tipoPago, diasCredito, vendedorId, vendedorNombre, null);
+    }
+
+    /**
+     * @param vendedorId sub del JWT de quien registra · @param vendedorNombre su nombre de usuario
+     * @param rutina     mantenimientos que se programan con la venta (null = ninguno)
+     */
+    public VentaResponseDTO convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito,
+                                                     String vendedorId, String vendedorNombre,
+                                                     RutinaMantenimiento rutina) {
         log.info("Iniciando transaccion: Convertir Proforma {} en Venta", proformaId);
 
         Proforma proforma = proformaService.obtenerParaConvertir(proformaId);   // bloqueada hasta el final
@@ -141,10 +151,11 @@ public class VentaService {
         }
 
         deduccionTributariaService.aplicar(venta);
+        RutinaMantenimiento rutinaValida = validarRutina(venta, rutina);
         Venta ventaGuardada = ventaRepository.save(venta);
         proformaService.marcarConvertida(proformaId, ventaGuardada.getId());
         // Postventa programa los mantenimientos y Facturación emite el comprobante (ADR-002)
-        eventos.publishEvent(new VentaRegistradaEvent(ventaGuardada.getId()));
+        eventos.publishEvent(new VentaRegistradaEvent(ventaGuardada.getId(), rutinaValida));
 
         log.info("Transaccion exitosa: Venta registrada con ID {}", ventaGuardada.getId());
         return VentaResponseDTO.desdeEntidad(ventaGuardada);
@@ -168,14 +179,24 @@ public class VentaService {
         return registrarVentaDirecta(clienteId, items, tipoPago, diasCredito, monedaVenta, tipoCambio, null, null);
     }
 
-    /**
-     * @param monedaVenta moneda en la que se cobra (null = la del primer producto)
-     * @param tipoCambio  soles por dólar negociado (null = venta SUNAT del día)
-     */
     public VentaResponseDTO registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
                                                   Venta.TipoPago tipoPago, Integer diasCredito,
                                                   Venta.Moneda monedaVenta, BigDecimal tipoCambio,
                                                   String vendedorId, String vendedorNombre) {
+        return registrarVentaDirecta(clienteId, items, tipoPago, diasCredito, monedaVenta, tipoCambio,
+                vendedorId, vendedorNombre, null);
+    }
+
+    /**
+     * @param monedaVenta moneda en la que se cobra (null = la del primer producto)
+     * @param tipoCambio  soles por dólar negociado (null = venta SUNAT del día)
+     * @param rutina      mantenimientos que se programan con la venta (null = ninguno)
+     */
+    public VentaResponseDTO registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
+                                                  Venta.TipoPago tipoPago, Integer diasCredito,
+                                                  Venta.Moneda monedaVenta, BigDecimal tipoCambio,
+                                                  String vendedorId, String vendedorNombre,
+                                                  RutinaMantenimiento rutina) {
         log.info("Iniciando transaccion: Registrar Venta directa para Cliente ID {}", clienteId);
 
         if (items == null || items.isEmpty()) {
@@ -233,13 +254,43 @@ public class VentaService {
         }
 
         deduccionTributariaService.aplicar(venta);
+        RutinaMantenimiento rutinaValida = validarRutina(venta, rutina);
         Venta ventaGuardada = ventaRepository.save(venta);
         // Postventa programa los mantenimientos y Facturación emite el comprobante (ADR-002)
-        eventos.publishEvent(new VentaRegistradaEvent(ventaGuardada.getId()));
+        eventos.publishEvent(new VentaRegistradaEvent(ventaGuardada.getId(), rutinaValida));
 
         log.info("Transaccion exitosa: Venta registrada con ID {} en {} (tipo de cambio {})",
                 ventaGuardada.getId(), moneda, tc);
         return VentaResponseDTO.desdeEntidad(ventaGuardada);
+    }
+
+    /**
+     * Rutina elegida con el botón "Implementar rutinas de mantenimiento": solo para ventas con equipos de
+     * climatización o refrigeración, cada 1 a 12 meses, de 1 a 24 visitas y la primera desde el día
+     * de la venta (sin fecha: la venta más la frecuencia). Devuelve la rutina con la primera fecha resuelta.
+     */
+    static RutinaMantenimiento validarRutina(Venta venta, RutinaMantenimiento rutina) {
+        if (rutina == null) return null;
+        boolean conEquipos = venta.getDetalles().stream().anyMatch(d -> d.getProducto().requiereMantenimiento());
+        if (!conEquipos) {
+            throw new ReglaNegocioException("Las rutinas de mantenimiento son para ventas con equipos de "
+                    + "climatización o refrigeración.");
+        }
+        Integer frecuencia = rutina.frecuenciaMeses();
+        if (frecuencia == null || frecuencia < 1 || frecuencia > RutinaMantenimiento.MAX_FRECUENCIA_MESES) {
+            throw new IllegalArgumentException("La frecuencia del mantenimiento debe estar entre 1 y "
+                    + RutinaMantenimiento.MAX_FRECUENCIA_MESES + " meses.");
+        }
+        Integer visitas = rutina.visitas();
+        if (visitas == null || visitas < 1 || visitas > RutinaMantenimiento.MAX_VISITAS) {
+            throw new IllegalArgumentException("La rutina debe tener entre 1 y " + RutinaMantenimiento.MAX_VISITAS + " visitas.");
+        }
+        LocalDate primera = rutina.primeraVisita() != null ? rutina.primeraVisita()
+                : venta.getFechaVenta().plusMonths(frecuencia);
+        if (primera.isBefore(venta.getFechaVenta())) {
+            throw new IllegalArgumentException("La primera visita no puede ser anterior a la fecha de la venta.");
+        }
+        return new RutinaMantenimiento(frecuencia, visitas, primera);
     }
 
     /** RNF: seguimiento de cobranza — ventas a crédito vencidas */
