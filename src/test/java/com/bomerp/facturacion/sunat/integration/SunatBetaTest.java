@@ -8,6 +8,7 @@ import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.entity.Venta;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +39,30 @@ class SunatBetaTest {
         EmpresaProperties empresa = new EmpresaProperties("JD REFRIGERACIÓN S.A.C.", "20521632268",
                 "Jr. Jorge Chávez N° 184 / 206, Breña, Lima", "00-000-123456");
         cliente = new SunatDirectoClient(new SunatProperties(BETA, "MODDATOS", "MODDATOS", "certificados/beta-prueba.p12", clave), empresa);
+    }
+
+    /** La beta corta los envíos en ráfaga (HTTP 401): una pausa entre pruebas, como hace la cola real. */
+    @AfterEach
+    void pausa() throws InterruptedException {
+        Thread.sleep(1500);
+    }
+
+    /**
+     * Rechazo provocado: una factura a un cliente sin RUC (con DNI). SUNAT exige RUC en las facturas,
+     * así que debe responder un código de rechazo (2000-3999) con su motivo, y SGE-JD clasificarlo
+     * como RECHAZADO (no como "reintentar").
+     */
+    @Test
+    void facturaAUnClienteSinRucEsRechazadaConSuMotivo() {
+        Comprobante factura = comprobante(Comprobante.TipoComprobante.FACTURA, "F001", 2);
+        factura.getVenta().getCliente().setRuc(null);
+        factura.getVenta().getCliente().setDni("45678912");
+        OseClient.RespuestaOse r = cliente.emitir(factura);
+        System.out.println("FACTURA F001-2 (cliente con DNI) → " + r.resultado() + " " + r.codigo() + " " + r.mensaje());
+        assertThat(r.resultado()).isEqualTo(OseClient.Resultado.RECHAZADO);
+        assertThat(r.codigo()).isBetween(2000, 3999);
+        assertThat(r.mensaje()).isNotBlank();
+        assertThat(r.xmlFirmado()).isNotNull();
     }
 
     @Test

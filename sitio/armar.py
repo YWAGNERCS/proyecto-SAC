@@ -39,7 +39,7 @@ def enlaces(texto):
         texto = texto.replace(f"](#{ancla})", f"]({archivo}#{ancla})")
     texto = texto.replace("](LIMITACIONES.md)", "](limitaciones.md)")
     # Guías que no son páginas del sitio: se abren en GitHub
-    for guia in ("PRODUCCION_LOCAL.md", "S13_optimizacion_produccion.md"):
+    for guia in ("PRODUCCION_LOCAL.md", "S13_optimizacion_produccion.md", "FACTURACION_SUNAT.md"):
         texto = texto.replace(f"]({guia})", f"]({REPO_DOCS}/{guia})")
     # Docsify necesita `a\|b` dentro de una tabla; MkDocs ya ignora los | del código y mostraría la barra
     texto = re.sub(r"`[^`\n]*`", lambda m: m.group(0).replace("\\|", "|"), texto)

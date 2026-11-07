@@ -29,7 +29,8 @@ def main():
     lineas = []
     for linea in PLANTILLA.read_text(encoding="utf-8").splitlines():
         nombre, igual, valor = linea.partition("=")
-        opcional = nombre.startswith(("MAIL_", "CORREO_", "DECOLECTA_"))
+        # Opcionales o de configuración (no son secretos a inventar): se dejan vacíos
+        opcional = nombre.startswith(("MAIL_", "CORREO_", "DECOLECTA_", "FACTURACION_", "SUNAT_", "CUENTA_", "SERIE_"))
         if igual and not linea.startswith("#") and not valor and not opcional:
             linea = f"{nombre}={clave(32 if nombre == 'KC_BACKEND_SECRET' else 20)}"
         lineas.append(linea)

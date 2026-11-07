@@ -33,6 +33,19 @@ public class FacturacionService implements ComprobantesDeVenta {
     private final NotaCreditoRepository notaCreditoRepository;
     private final CorrelativoService correlativoService;
 
+    /**
+     * Series de SGE-JD (app.facturacion.series.*). Si JD ya emite con F001/B001 desde el portal de
+     * SUNAT u otro sistema, aquí van otras (p. ej. F002): un mismo número no puede emitirse dos veces.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.facturacion.series.factura:F001}")
+    private String serieFactura;
+    @org.springframework.beans.factory.annotation.Value("${app.facturacion.series.boleta:B001}")
+    private String serieBoleta;
+    @org.springframework.beans.factory.annotation.Value("${app.facturacion.series.nota-factura:FC01}")
+    private String serieNotaFactura;
+    @org.springframework.beans.factory.annotation.Value("${app.facturacion.series.nota-boleta:BC01}")
+    private String serieNotaBoleta;
+
     public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, EnvioSunatService envioSunat, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
                               CorrelativoService correlativoService) {
         this.comprobanteRepository = comprobanteRepository;
@@ -60,10 +73,10 @@ public class FacturacionService implements ComprobantesDeVenta {
         // Lógica Simple (Patrón O - Open/Closed aplicable a futuro aquí)
         if (venta.getCliente().getTipo() == Cliente.TipoCliente.EMPRESA) {
             comprobante.setTipo(Comprobante.TipoComprobante.FACTURA);
-            comprobante.setSerie("F001");
+            comprobante.setSerie(serieFactura);
         } else {
             comprobante.setTipo(Comprobante.TipoComprobante.BOLETA);
-            comprobante.setSerie("B001");
+            comprobante.setSerie(serieBoleta);
         }
 
         // Correlativo por serie: 00000001, 00000002, ... sin saltos ni repetidos (SUNAT)
@@ -109,7 +122,7 @@ public class FacturacionService implements ComprobantesDeVenta {
         nota.setComprobanteReferencia(original);
         nota.setMotivo(motivo);
         nota.setTotal(original.getTotal());
-        nota.setSerie(original.getTipo() == Comprobante.TipoComprobante.FACTURA ? "FC01" : "BC01");
+        nota.setSerie(original.getTipo() == Comprobante.TipoComprobante.FACTURA ? serieNotaFactura : serieNotaBoleta);
         nota.setNumero(correlativoService.siguiente(nota.getSerie()));
         NotaCredito guardada = notaCreditoRepository.save(nota);
 

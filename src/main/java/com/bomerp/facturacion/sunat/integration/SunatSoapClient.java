@@ -84,11 +84,12 @@ class SunatSoapClient {
             byte[] zipCdr = Base64.getDecoder().decode(cdrBase64.trim());
             return leerCdr(zipCdr);
         }
-        String falla = texto(respuesta, "faultstring");
-        if (falla != null) {
-            // Fault: el código viene en faultstring (p. ej. "0111" o "2335") y el texto en <message> o <detail>
-            String detalle = texto(respuesta, "message");
-            return new Cdr(codigoNumerico(falla), detalle != null ? detalle : falla, null, null);
+        String codigoFalla = texto(respuesta, "faultcode");
+        if (codigoFalla != null) {
+            // Fault: el código va en <faultcode> ("soap-env:Client.2800") y el texto en <faultstring>
+            // (que trae otros números, p. ej. el ticket: no sirve para sacar el código).
+            String texto = texto(respuesta, "faultstring");
+            return new Cdr(codigoDeFalla(codigoFalla), texto != null ? texto.trim() : codigoFalla, null, null);
         }
         throw new SunatNoDisponibleException("Respuesta inesperada de SUNAT (HTTP " + r.statusCode() + ")", null);
     }
@@ -143,6 +144,13 @@ class SunatSoapClient {
         NodeList n = d.getElementsByTagNameNS("*", etiqueta);
         if (n.getLength() == 0) n = d.getElementsByTagName(etiqueta);
         return n.getLength() == 0 ? null : n.item(0).getTextContent();
+    }
+
+    /** "soap-env:Client.2800" → 2800; "soap-env:Server" (sin número) → -1, que se trata como reintentable. */
+    static int codigoDeFalla(String faultcode) {
+        int punto = faultcode.lastIndexOf('.');
+        String numero = punto >= 0 ? faultcode.substring(punto + 1).trim() : "";
+        return numero.matches("\\d{1,4}") ? Integer.parseInt(numero) : -1;
     }
 
     private static int codigoNumerico(String s) {

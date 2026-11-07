@@ -109,7 +109,22 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       CORREO_OFICINA: ${CORREO_OFICINA:-}
       DECOLECTA_TOKEN: ${DECOLECTA_TOKEN:-}
+      CUENTA_DETRACCIONES: ${CUENTA_DETRACCIONES:-}
+      # Facturación electrónica (docs/FACTURACION_SUNAT.md): "simulado" hasta tener las credenciales de JD
+      FACTURACION_MODO: ${FACTURACION_MODO:-simulado}
+      SUNAT_URL: ${SUNAT_URL:-https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService}
+      SUNAT_USUARIO: ${SUNAT_USUARIO:-MODDATOS}
+      SUNAT_CLAVE: ${SUNAT_CLAVE:-MODDATOS}
+      SUNAT_CERT_RUTA: /app/certificados/${SUNAT_CERT_ARCHIVO:-beta-prueba.p12}
+      SUNAT_CERT_CLAVE: ${SUNAT_CERT_CLAVE:-}
+      SERIE_FACTURA: ${SERIE_FACTURA:-F001}
+      SERIE_BOLETA: ${SERIE_BOLETA:-B001}
+      SERIE_NOTA_FACTURA: ${SERIE_NOTA_FACTURA:-FC01}
+      SERIE_NOTA_BOLETA: ${SERIE_NOTA_BOLETA:-BC01}
       JAVA_TOOL_OPTIONS: "-Xmx512m"
+    volumes:
+      # Certificado digital para firmar comprobantes: queda en el servidor, nunca en la imagen ni en git
+      - ./certificados:/app/certificados:ro
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /actuator/health HTTP/1.0\r\n\r\n\" >&3 && grep -q UP <&3'"]
       interval: 15s

@@ -312,7 +312,8 @@ Venta registrada ──► comprobante PENDIENTE (serie y correlativo) ──►
 - **En pantalla (Ventas):** bajo el estado de cada venta, una etiqueta "SUNAT: aceptado / observado / rechazado / pendiente / simulado"; en el detalle, una línea por comprobante y nota de crédito con el código y el mensaje de SUNAT, las descargas del **XML** firmado y del **CDR**, y el botón **Reenviar** (rechazados ya corregidos, o pendientes con aviso). Los comprobantes emitidos antes del envío real se muestran como **Simulado (sin envío a SUNAT)**: no tienen validez tributaria.
 - **API:** `GET /api/v1/admin/facturacion/estados?ventaIds=1,2`, `POST /facturacion/{id}/reenviar` (409 si ya fue aceptado), `GET /facturacion/{id}/xml` y `/cdr`, y lo mismo bajo `/facturacion/notas-credito/{id}/...`.
 - **Ambiente beta (pruebas, sin efecto tributario):** usuario `MODDATOS` y un certificado de prueba propio (`certificados/beta-prueba.p12`, fuera de git). `SunatBetaTest` hace el envío real con `SUNAT_BETA=1`.
-- **Producción:** cambiar `SUNAT_URL` a `https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService`, `SUNAT_USUARIO`/`SUNAT_CLAVE` por el usuario SOL secundario de JD y `SUNAT_CERT_RUTA`/`SUNAT_CERT_CLAVE` por su Certificado Digital Tributario. Nada de eso va en el código.
+- **Paso a producción (qué hace JD y cómo se configura):** [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md). En resumen:
+  cambiar `SUNAT_URL` a `https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService`, `SUNAT_USUARIO`/`SUNAT_CLAVE` por el usuario SOL secundario de JD y `SUNAT_CERT_RUTA`/`SUNAT_CERT_CLAVE` por su Certificado Digital Tributario. Nada de eso va en el código.
 
 #### Stock y operaciones simultáneas (05/11/2026)
 

@@ -25,4 +25,17 @@ class ClasificacionCodigosSunatTest {
     void clasifica(int codigo, Resultado esperado) {
         assertThat(SunatDirectoClient.clasificar(codigo)).isEqualTo(esperado);
     }
+
+    /** El código de un rechazo SOAP sale de faultcode, no del texto (que trae el número de ticket). */
+    @ParameterizedTest(name = "{0} → {1}")
+    @CsvSource({
+            "soap-env:Client.2800, 2800",
+            "soap-env:Client.0111, 111",
+            "soap-env:Client.1033, 1033",
+            "soap-env:Server, -1",
+            "Client.abc, -1",
+    })
+    void codigoDelFaultcode(String faultcode, int esperado) {
+        assertThat(SunatSoapClient.codigoDeFalla(faultcode)).isEqualTo(esperado);
+    }
 }

@@ -30,9 +30,9 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 
 | Parte | Qué pasa hoy | Qué hace falta para que sea real |
 |---|---|---|
-| **Facturas y boletas electrónicas** | El sistema arma la factura o boleta, le pone su número y genera el PDF, pero **no la envía a SUNAT**. Esos comprobantes **no tienen validez tributaria**: no los entreguen como factura oficial. Lo mismo pasa con las notas de crédito. | Contratar un proveedor de facturación electrónica autorizado por SUNAT (OSE, por ejemplo Nubefact) y conectar su cuenta. |
+| **Facturas y boletas electrónicas** | El sistema ya sabe enviarlas directamente a SUNAT y mostrar si las aceptó o rechazó: se probó en el ambiente de pruebas de SUNAT. Pero mientras no tenga las credenciales de JD, **no envía nada real**: los comprobantes aparecen como "Simulado" y **no tienen validez tributaria**. Lo mismo pasa con las notas de crédito. | Un usuario SOL secundario solo para comprobantes electrónicos, el certificado digital (SUNAT lo da gratis), las series y la cuenta de detracciones. Ver [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md). |
 | **WhatsApp** | Al "enviar" una proforma por WhatsApp, el sistema solo lo anota internamente; **el cliente no recibe nada**. Sí funciona el enlace de WhatsApp de Postventa, que abre la conversación en su celular. | Una cuenta de WhatsApp Business API (tiene costo mensual). |
-| **Correo** | El envío de proformas y facturas por correo y el resumen diario de mantenimientos **funcionan en la laptop de desarrollo** con una cuenta Gmail de prueba (la de Aron); en la computadora de la empresa todavía no sale ningún correo. | Una cuenta de correo de la empresa para enviar (por ejemplo Gmail con "contraseña de aplicación") y el correo de la oficina que recibe el resumen diario. |
+| **Correo** | El envío de proformas y facturas por correo y el resumen diario de mantenimientos están programados, pero **hoy no sale ningún correo**: la cuenta Gmail de prueba se dio de baja (05/11/2026). | Una cuenta de correo de la empresa para enviar (por ejemplo Gmail con "contraseña de aplicación") y el correo de la oficina que recibe el resumen diario. |
 
 ## 3. Límites que conviene conocer
 
@@ -54,7 +54,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 2. **Costos y márgenes:** el reporte de Rentabilidad ya es solo de Lisandro (o de quien él autorice), pero en la lista de productos Lucy todavía ve el costo y el margen de cada uno. ¿Debe verlos?
 3. **Mantenimientos:** hoy solo se programan para equipos de climatización y refrigeración. ¿Ventilación forzada también los necesita?
 4. **Teléfono y correo de la empresa** que deben salir impresos en las facturas y proformas.
-5. **Facturación electrónica real:** ¿con qué proveedor (OSE) quieren trabajar?
+5. **Facturación electrónica real:** crear el usuario SOL secundario, sacar el certificado digital y confirmar con su contador las series y desde qué fecha emitir (ver [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md)).
 6. **Respaldo automático:** ¿en qué carpeta fuera de la PC se guarda la copia diaria (un USB, el OneDrive o Google Drive de la empresa)?
 7. **Servidor:** para entrar desde otra PC o desde el celular hay que instalar el sistema en un servidor en internet (tiene costo mensual). ¿Lo quieren?
 8. **Correo de la empresa:** ¿con qué cuenta salen las proformas y facturas, y a qué correo de la oficina llega el resumen diario de mantenimientos?
