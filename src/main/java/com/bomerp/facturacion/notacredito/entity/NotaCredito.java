@@ -1,6 +1,7 @@
 package com.bomerp.facturacion.notacredito.entity;
 
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
+import com.bomerp.facturacion.comprobante.entity.EnvioSunat;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -54,6 +55,15 @@ public class NotaCredito {
     @OneToOne
     @JoinColumn(name = "comprobante_id", nullable = false, unique = true)
     private Comprobante comprobanteReferencia;
+
+    /** Respuesta de SUNAT al último envío (código, mensaje, XML firmado y CDR). */
+    @Embedded
+    private EnvioSunat envio = new EnvioSunat();
+
+    public EnvioSunat getEnvio() {
+        if (envio == null) envio = new EnvioSunat();
+        return envio;
+    }
 
     /** Serie-número del comprobante anulado (para el PDF, el envío a la OSE y la API). */
     public String getNumeroComprobanteReferencia() {

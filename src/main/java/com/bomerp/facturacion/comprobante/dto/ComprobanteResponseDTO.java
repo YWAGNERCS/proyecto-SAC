@@ -14,6 +14,10 @@ public record ComprobanteResponseDTO(
         LocalDate fechaEmision,
         BigDecimal total,
         String estadoSunat,
+        /** Código y mensaje de SUNAT del último envío (motivo del rechazo u observaciones) e intentos. */
+        Integer sunatCodigo,
+        String sunatMensaje,
+        int sunatIntentos,
         String enlacePdf,
         String enlaceXml,
         Long ventaId
@@ -27,6 +31,9 @@ public record ComprobanteResponseDTO(
                 c.getFechaEmision(),
                 c.getTotal(),
                 c.getEstadoSunat() != null ? c.getEstadoSunat().name() : null,
+                c.getEnvio().getCodigo(),
+                c.getEnvio().getMensaje(),
+                c.getEnvio().getIntentos(),
                 c.getEnlacePdf(),
                 c.getEnlaceXml(),
                 c.getVenta() != null ? c.getVenta().getId() : null

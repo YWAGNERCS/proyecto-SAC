@@ -22,27 +22,26 @@ public class VentasFacturacionListener {
         this.facturacionService = facturacionService;
     }
 
-    /** Emite el comprobante y lo envía por correo si el cliente tiene uno; los errores no abortan la venta. */
+    /** Registra el comprobante (PENDIENTE): se envía a SUNAT al confirmarse la venta. Un error no aborta la venta. */
     @EventListener
     @Order(2)
     public void alRegistrarVenta(VentaRegistradaEvent evento) {
-        Comprobante comp;
         try {
-            comp = facturacionService.emitirComprobanteParaVenta(evento.ventaId());
+            Comprobante comp = facturacionService.emitirComprobanteParaVenta(evento.ventaId());
+            log.info("Comprobante {}-{} de la Venta {} registrado; se envía a SUNAT en segundo plano",
+                    comp.getSerie(), comp.getNumero(), evento.ventaId());
         } catch (Exception e) {
             log.error("Error al emitir el comprobante de la Venta {}: {}", evento.ventaId(), e.getMessage());
-            return;
         }
-        // Sin correo no es un error: el comprobante queda emitido y se descarga o reenvía desde Ventas
-        String correo = comp.getVenta().getCliente().getCorreo();
-        if (correo == null || correo.isBlank()) {
-            log.info("Comprobante de la Venta {} emitido; no se envía por correo: el cliente no tiene correo", evento.ventaId());
-            return;
-        }
+    }
+
+    /** Comprobante aceptado por SUNAT: recién ahora se envía por correo al cliente (si tiene correo). */
+    @EventListener
+    public void alAceptarComprobante(EnvioSunatService.ComprobanteAceptadoEvent evento) {
         try {
-            facturacionService.enviarFacturaCorreo(comp.getId());
+            facturacionService.enviarFacturaCorreoSiTieneCorreo(evento.comprobanteId());
         } catch (Exception e) {
-            log.warn("Comprobante de la Venta {} emitido, pero no se pudo enviar por correo: {}", evento.ventaId(), e.getMessage());
+            log.warn("Comprobante {} aceptado, pero no se pudo enviar por correo: {}", evento.comprobanteId(), e.getMessage());
         }
     }
 

@@ -1,6 +1,7 @@
 package com.bomerp.facturacion.nubefact.integration;
 import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.facturacion.ose.integration.OseClient.RespuestaOse;
+import com.bomerp.facturacion.ose.integration.OseClient.Resultado;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 
@@ -28,7 +29,7 @@ public class NubefactClientSimulado implements OseClient {
         String pdf = urlBase + comprobante.getSerie() + "-" + comprobante.getNumero() + ".pdf";
         String xml = urlBase + comprobante.getSerie() + "-" + comprobante.getNumero() + ".xml";
 
-        return new RespuestaOse(true, pdf, xml, null);
+        return new RespuestaOse(Resultado.ACEPTADO, 0, "Simulado: no se envió a SUNAT", pdf, xml, null, null);
     }
 
     @Override
@@ -37,6 +38,6 @@ public class NubefactClientSimulado implements OseClient {
         log.info("[SIMULADO - OSE] Nota de crédito {} (anula {}) enviada a Nubefact", numero, notaCredito.getNumeroComprobanteReferencia());
 
         String urlBase = "https://www.nubefact.com/api/v1/demo/pdf/";
-        return new RespuestaOse(true, urlBase + numero + ".pdf", urlBase + numero + ".xml", null);
+        return new RespuestaOse(Resultado.ACEPTADO, 0, "Simulado: no se envió a SUNAT", urlBase + numero + ".pdf", urlBase + numero + ".xml", null, null);
     }
 }

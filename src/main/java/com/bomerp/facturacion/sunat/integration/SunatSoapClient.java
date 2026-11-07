@@ -38,10 +38,8 @@ class SunatSoapClient {
     }
 
     /** Respuesta de SUNAT: código 0 = aceptado; 2000-3999 = rechazado; 4000+ = aceptado con observaciones. */
+    /** Respuesta de SUNAT: código, descripción, observaciones (notas del CDR) y el CDR en ZIP (si lo hubo). */
     record Cdr(int codigo, String descripcion, String observaciones, byte[] zipCdr) {
-        boolean aceptado() {
-            return codigo == 0 || codigo >= 4000;
-        }
     }
 
     Cdr sendBill(String nombreArchivo, byte[] xmlFirmado) {
@@ -72,7 +70,15 @@ class SunatSoapClient {
             throw new SunatNoDisponibleException("SUNAT no respondió: " + e.getMessage(), e);
         }
 
-        Document respuesta = parsear(r.body());
+        if (r.statusCode() >= 500 && !r.body().contains("Envelope")) {
+            throw new SunatNoDisponibleException("SUNAT respondió HTTP " + r.statusCode() + ": " + resumen(r.body()), null);
+        }
+        Document respuesta;
+        try {
+            respuesta = parsear(r.body());
+        } catch (SunatNoDisponibleException e) {
+            throw new SunatNoDisponibleException("SUNAT respondió algo que no es XML (HTTP " + r.statusCode() + "): " + resumen(r.body()), e);
+        }
         String cdrBase64 = texto(respuesta, "applicationResponse");
         if (cdrBase64 != null) {
             byte[] zipCdr = Base64.getDecoder().decode(cdrBase64.trim());
@@ -143,6 +149,12 @@ class SunatSoapClient {
         if (s == null) return -1;
         String digitos = s.replaceAll("\\D", "");
         return digitos.isEmpty() ? -1 : Integer.parseInt(digitos.length() > 4 ? digitos.substring(digitos.length() - 4) : digitos);
+    }
+
+    /** Primeros caracteres legibles de una respuesta que no es SOAP (p. ej. una página de error HTML). */
+    private static String resumen(String cuerpo) {
+        String t = cuerpo.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+        return t.length() > 160 ? t.substring(0, 160) + "…" : t;
     }
 
     private static String escapar(String s) {

@@ -21,5 +21,27 @@ public interface OseClient {
      */
     RespuestaOse emitirNotaCredito(NotaCredito notaCredito);
 
-    record RespuestaOse(boolean exito, String enlacePdf, String enlaceXml, String mensajeError) {}
+    /** Cómo terminó un envío. REINTENTAR: SUNAT caída, lenta o limitando envíos (no es culpa del comprobante). */
+    enum Resultado { ACEPTADO, OBSERVADO, RECHAZADO, REINTENTAR }
+
+    /**
+     * Respuesta de SUNAT (o del OSE) a un envío.
+     *
+     * @param codigo     código de SUNAT: 0 aceptado, 2000-3999 rechazo, 4000+ observación; null si no hubo respuesta
+     * @param mensaje    descripción de SUNAT (motivo del rechazo u observaciones), o el error de conexión
+     * @param xmlFirmado XML tal como se firmó y envió (se guarda como respaldo legal)
+     * @param cdr        constancia de recepción de SUNAT (ZIP), cuando la hay
+     */
+    record RespuestaOse(Resultado resultado, Integer codigo, String mensaje, String enlacePdf, String enlaceXml,
+                        byte[] xmlFirmado, byte[] cdr) {
+
+        /** Aceptado, con o sin observaciones: el comprobante tiene validez. */
+        public boolean exito() {
+            return resultado == Resultado.ACEPTADO || resultado == Resultado.OBSERVADO;
+        }
+
+        public static RespuestaOse reintentar(String motivo, byte[] xmlFirmado) {
+            return new RespuestaOse(Resultado.REINTENTAR, null, motivo, null, null, xmlFirmado, null);
+        }
+    }
 }

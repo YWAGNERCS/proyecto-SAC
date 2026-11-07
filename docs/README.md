@@ -30,7 +30,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - Clientes y Proveedores con autocompletado por RUC (SUNAT) y DNI (RENIEC) vía apis.net.pe v1; Decolecta como respaldo opcional.
 - Proformas con exportación a PDF y envío por correo (SMTP).
 - Ventas al contado o a crédito: venta directa (cabecera-detalle) y conversión desde una proforma aceptada; anulación con restauración de stock, nota de crédito y, si el cliente ya pagó, devolución pendiente del dinero.
-- Facturación electrónica con correlativo real por serie (el envío a SUNAT es simulado, a la espera de contratar un OSE).
+- Facturación electrónica con correlativo real por serie y envío directo a SUNAT (SEE - Del Contribuyente) probado en el ambiente beta; en producción falta el usuario SOL y el certificado digital de JD.
 - Postventa: mantenimientos preventivos con alertas automáticas (tarea programada diaria) y pantalla de agenda (vencidos, próximos, realizado, reprogramar).
 - Inventario: descuento al vender, incremento al comprar y alertas de stock mínimo.
 - Cobranza: ventas a crédito con su saldo, abonos parciales o totales (un pago puede repartirse entre varias ventas), historial de cobros y devoluciones de ventas anuladas.
@@ -54,7 +54,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | 6 | Compras (incrementa stock) | Transaccional | Wilson | ✅ Valida cantidades, precios y N° de factura; total calculado en el servidor; no acepta la misma factura dos veces |
 | 7 | Inventario (alertas de stock mínimo) | Soporte | Wilson | ✅ |
 | 8 | Postventa (cronograma preventivo automático) | Operativo | Wilson | ✅ Pantalla de agenda en la SPA |
-| 9 | Facturación (Comprobante, XML UBL 2.1) | Integración | Aron | ⚠️ Correlativo real por serie; el envío a SUNAT es simulado — falta OSE real (Nubefact) |
+| 9 | Facturación (Comprobante, XML UBL 2.1) | Integración | Aron | ⚠️ Correlativo real por serie; envío directo a SUNAT probado en beta (facturas, boletas y notas de crédito aceptadas) — faltan las credenciales reales de JD |
 | 10 | Notificaciones (SMTP real + WhatsApp) | Integración | Aron | ⚠️ WhatsApp simulado |
 | 11 | Cobranza (abonos a ventas a crédito, saldos, historial, devoluciones) | Transaccional | Aron | ✅ `Cobro`–`DetalleCobro` (15/10/2026); "Registrar cobro" con `FormArray` y devoluciones de ventas anuladas (25/10/2026); anulación de cobros por el ADMIN, voucher duplicado y quién registró (28/10/2026) |
 | 12 | Seguridad (usuarios, roles, login) | Transversal | — (Keycloak) | ✅ **Keycloak** (S10b, 18/10/2026): realm `bomerp`, roles ADMIN/ASISTENTE; el backend es Resource Server y valida el JWT (RS256, `issuer-uri`) |
@@ -76,7 +76,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | RF-07 | **Envío de proformas por correo** (SMTP). | ✅ `POST /proformas/{id}/enviar`; requiere credenciales SMTP configuradas. |
 | RF-08 | **Conversión de proforma aceptada en venta** sin redigitar. | ✅ Valida que esté ACEPTADA (409); al convertirla pasa a **CONVERTIDA** y guarda el N° de venta, por lo que ya no se puede aceptar, rechazar, enviar ni convertir de nuevo. Respeta precios, tipo de cambio y descuentos de la proforma. |
 | RF-09 | **Control de créditos** (contado/crédito, deudas pendientes y atrasadas). | ✅ Con saldo por venta (RF-20). |
-| RF-10 | **Facturación electrónica** (estructura UBL 2.1). | ⚠️ Numeración real: correlativo por serie (F001, B001, FC01, BC01) sin saltos ni repetidos. El envío a SUNAT es simulado: los comprobantes no tienen validez tributaria hasta conectar un OSE. |
+| RF-10 | **Facturación electrónica** (estructura UBL 2.1). | ⚠️ Numeración real: correlativo por serie (F001, B001, FC01, BC01) sin saltos ni repetidos. Envío directo a SUNAT con XML UBL 2.1 firmado, probado en el ambiente beta; hasta tener el usuario SOL y el certificado de JD, los comprobantes no tienen validez tributaria. |
 | RF-11 | **Descuento de stock** atómico al vender. | ✅ Solo materiales (`MATERIAL_SERVICIO`); si no alcanza → 409 y no se guarda nada. Los equipos no controlan stock. |
 | RF-12 | **Incremento de stock** al registrar compras. | ✅ |
 | RF-13 | **Alertas de stock mínimo** diarias. | ✅ 8:00 a. m., solo materiales, por correo a `app.notificaciones.correo-oficina` (si está vacío, no se envía). |
@@ -284,6 +284,33 @@ Monolito modular: **un solo proyecto Maven y un solo ejecutable Spring Boot**. C
 4. **Integrations**: clientes hacia servicios externos detrás de interfaces (`ConsultaRucClient`, `OseClient`, `NotificadorCorreo`, `NotificadorWhatsApp`).
 
 Errores: `GlobalExceptionHandler` traduce excepciones a 400 (validación), 404 (`RecursoNoEncontradoException`), 409 (`ReglaNegocioException`, `StockInsuficienteException`) y 500 sin filtrar detalles.
+
+#### Facturación electrónica: envío directo a SUNAT (06/11/2026)
+
+SGE-JD emite directamente ante SUNAT con las credenciales de JD (**SEE - Del Contribuyente**), sin OSE intermedio. Se activa con `app.facturacion.modo=sunat`; sin esa propiedad el envío es simulado (como antes).
+
+```
+Venta registrada ──► comprobante PENDIENTE (serie y correlativo) ──► se confirma la venta
+      └─► cola de envíos (uno a la vez, con pausa) ──► XML UBL 2.1 (xbuilder) ──► firma con el certificado
+            └─► ZIP ──► SUNAT billService (sendBill, usuario SOL) ──► CDR: código y mensaje
+```
+
+| Código de SUNAT | Estado en SGE-JD |
+|---|---|
+| 0 | ACEPTADO |
+| 4000 o más | OBSERVADO (válido; la observación queda guardada) |
+| 2000-3999 y demás excepciones | RECHAZADO, con el motivo de SUNAT |
+| 0100-0199, HTTP 401/5xx o sin respuesta | PENDIENTE: se reintenta solo cada 3 minutos (hasta 20 intentos) |
+| 1033 (ya registrado en un envío anterior) | ACEPTADO |
+
+- **Fuera de la transacción de la venta:** la venta no espera a SUNAT (responde en ~1 s) ni se deshace si SUNAT está caída.
+- **Una cola, de uno en uno:** la beta de SUNAT responde HTTP 401 al tercer envío seguido en menos de un segundo.
+- **Respaldo:** por cada comprobante y nota de crédito se guardan el XML firmado, el CDR (constancia de SUNAT), el código, el mensaje y los intentos (`migracion_envio_sunat.sql`).
+- **Nota de crédito:** se crea al anular la venta y sale cuando SUNAT aceptó el original. Si el original fue rechazado, no se anula (no tenía validez).
+- **Detracción sin cuenta configurada:** la factura no se envía y queda PENDIENTE con el aviso; al configurar `CUENTA_DETRACCIONES` el reintento la envía.
+- **El correo** con el comprobante sale recién cuando SUNAT lo acepta.
+- **Ambiente beta (pruebas, sin efecto tributario):** usuario `MODDATOS` y un certificado de prueba propio (`certificados/beta-prueba.p12`, fuera de git). `SunatBetaTest` hace el envío real con `SUNAT_BETA=1`.
+- **Producción:** cambiar `SUNAT_URL` a `https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService`, `SUNAT_USUARIO`/`SUNAT_CLAVE` por el usuario SOL secundario de JD y `SUNAT_CERT_RUTA`/`SUNAT_CERT_CLAVE` por su Certificado Digital Tributario. Nada de eso va en el código.
 
 #### Stock y operaciones simultáneas (05/11/2026)
 
@@ -880,7 +907,7 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ✅ 2 procesos en BPMN 2.0 (`docs/diagramas/`); los AS-IS son borrador con supuestos S1–S9 por confirmar con el cliente |
 | 5 | Análisis del sistema (casos de uso UML) | ✅ CU-01 a CU-11 y diagrama de casos de uso |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo, con diagrama de clases del dominio (UML) |
-| 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos (S1–S11), con Spring Boot 4.0.7 y Keycloak. Simulados: OSE y WhatsApp; correo real por Gmail (configurado en la laptop de desarrollo el 26/10/2026). Pendiente repartir `reportes` entre sus módulos |
+| 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos (S1–S11), con Spring Boot 4.0.7 y Keycloak. Simulados: WhatsApp y, hasta tener las credenciales de JD, el envío real a SUNAT (probado en beta); correo real por Gmail (configurado en la laptop de desarrollo el 26/10/2026). Pendiente repartir `reportes` entre sus módulos |
 | 8 | Pruebas y validación | 🔄 Recorridos completos por API como Lisandro y Lucy, matriz de seguridad 14/14 y pruebas de cada corrección de la auditoría; pruebas automatizadas mínimas (ver 5) |
 | 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Configuración de producción verificada de punta a punta en contenedores (perfil `prod`, imagen Docker del backend, Oracle y Keycloak propios, SPA en nginx): [PRODUCCION_LOCAL.md](PRODUCCION_LOCAL.md) y [S13](S13_optimizacion_produccion.md) (05/11/2026). Pendiente el servidor de JD y HTTPS |
 | 10 | Documentación técnica | ✅ Este documento, `CONTEXTO.md`, los `README.md` y `lp2-demo.md`, publicados en https://ywagnercs.github.io/proyecto-SAC/ |
@@ -924,7 +951,7 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 
 | Pendiente | Qué hace falta | Ref. |
 |---|---|---|
-| Facturación electrónica real | Elegir y contratar un OSE (por ejemplo Nubefact) y conectar su cuenta; hoy los comprobantes no tienen validez tributaria | (13b) |
+| Facturación electrónica real | El envío directo a SUNAT ya funciona en beta. Falta que Lisandro cree un usuario SOL secundario (solo comprobantes electrónicos), saque el Certificado Digital Tributario y confirme series y la cuenta de detracciones | (13b) |
 | Acceso desde otra PC o desde el celular | Contratar un servidor o VPS con HTTPS; al instalarlo, eliminar el cliente `sgejd-pruebas` de Keycloak | — |
 | Respaldo automático diario | Elegir la carpeta fuera de la PC (USB, OneDrive o Google Drive de la empresa, red) y ejecutar `programar_respaldo.bat -Destino` | (36) |
 | AS-IS de los procesos | Confirmar los supuestos [S1]–[S9] de los diagramas BPMN | *Modelado de procesos* |
@@ -1009,7 +1036,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 11. ~~**Autocompletado RUC/DNI simulado.**~~ ✅ **Resuelto (13/10/2026):** proveedor principal apis.net.pe v1 (sin token), respaldo Decolecta con `DECOLECTA_TOKEN` (RUC por SUNAT, DNI por RENIEC) y modo simulado solo con `CONSULTA_DOCUMENTOS_SIMULADO=true`. ⚠️ La v1 limita las consultas seguidas (429): se responde 503 "intente en unos segundos" y se recomienda registrar un token gratuito de Decolecta como respaldo. La API oficial de RENIEC (PIDE) requiere convenio institucional y no está disponible para el proyecto.
 12. ~~**Correlativo de comprobantes aleatorio.**~~ ✅ **Resuelto (15/10/2026):** cada serie (F001, B001, FC01, BC01) numera 00000001, 00000002… sin saltos ni repetidos, con un contador por serie (`SERIES_COMPROBANTE`) bloqueado durante la venta y la restricción única (serie, número). Probado con 5 ventas simultáneas: números consecutivos, 0 repetidos. Las bases existentes deben correr `migracion_correlativos.sql` una vez (renumera los comprobantes ya emitidos).
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
-13b. **Facturación electrónica simulada:** `NubefactClientSimulado` numera y genera el PDF, pero no envía a SUNAT; los comprobantes no tienen validez tributaria. Falta contratar una OSE y conectar su cuenta.
+13b. **Facturación electrónica (06/11/2026): envío directo a SUNAT probado en beta.** Con `app.facturacion.modo=sunat`, SGE-JD arma el XML UBL 2.1 (xbuilder de OpenUBL), lo firma con el certificado de JD y lo envía a SUNAT (sendBill); en beta fueron aceptadas facturas, boletas y notas de crédito, y un rechazo real (3034, falta la cuenta de detracciones) quedó registrado con su motivo. Ver *Facturación electrónica: envío directo a SUNAT* en la documentación técnica. **Pendiente para producción:** usuario SOL secundario, Certificado Digital Tributario, series y cuenta de detracciones (decisiones de Lisandro y su contador).
 13c. ~~**Correo sin configurar.**~~ ✅ **Resuelto en desarrollo (26/10/2026):** sale por Gmail con una contraseña de aplicación puesta en `application-local.properties` (ignorado por git), con el correo de Aron como remitente y como `correo-oficina`; probado con una boleta enviada con su PDF adjunto. Cada máquina que corra el backend debe poner sus propias credenciales, y para producción falta la cuenta de correo de la empresa. Corregido el 28/10/2026: las alertas diarias de stock y de mantenimientos tenían el correo de oficina escrito en el código (`yoelwagnercs@gmail.com`); ahora usan `app.notificaciones.correo-oficina`. Al emitir una factura: si el cliente no tiene correo queda en INFO, si el envío falla queda en WARN y solo un fallo de emisión es ERROR.
 14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.
 15. ~~**Alerta de stock mínimo sobre todos los productos.**~~ ✅ **Resuelto (15/10/2026):** las alertas (pantalla y correo diario) consideran solo materiales (`MATERIAL_SERVICIO`); los equipos no controlan stock y ya no generan alertas falsas.

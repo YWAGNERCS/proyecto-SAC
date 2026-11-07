@@ -44,8 +44,20 @@ class SunatBetaTest {
     void facturaAceptadaPorSunatBeta() {
         Comprobante factura = comprobante(Comprobante.TipoComprobante.FACTURA, "F001", 1);
         OseClient.RespuestaOse r = cliente.emitir(factura);
-        System.out.println("FACTURA F001-1 → " + (r.exito() ? "ACEPTADA" : "NO ACEPTADA: " + r.mensajeError()));
-        assertThat(r.exito()).as(r.mensajeError()).isTrue();
+        System.out.println("FACTURA F001-1 → " + r.resultado() + " " + r.codigo() + " " + r.mensaje());
+        assertThat(r.exito()).as(r.mensaje()).isTrue();
+    }
+
+    @Test
+    void boletaIndividualAceptadaPorSunatBeta() {
+        Comprobante boleta = comprobante(Comprobante.TipoComprobante.BOLETA, "B001", 1);
+        boleta.getVenta().getCliente().setTipo(Cliente.TipoCliente.PERSONA_NATURAL);
+        boleta.getVenta().getCliente().setRuc(null);
+        boleta.getVenta().getCliente().setDni("45678912");
+        boleta.getVenta().getCliente().setNombreORazonSocial("CLIENTE DE PRUEBA");
+        OseClient.RespuestaOse r = cliente.emitir(boleta);
+        System.out.println("BOLETA B001-1 → " + (r.resultado() + " " + r.codigo() + " " + r.mensaje()));
+        assertThat(r.exito()).as(r.mensaje()).isTrue();
     }
 
     @Test
@@ -56,8 +68,8 @@ class SunatBetaTest {
         nota.setMotivo("Anulación de la operación");
         nota.setComprobanteReferencia(comprobante(Comprobante.TipoComprobante.FACTURA, "F001", 1));
         OseClient.RespuestaOse r = cliente.emitirNotaCredito(nota);
-        System.out.println("NOTA DE CRÉDITO FC01-1 → " + (r.exito() ? "ACEPTADA" : "NO ACEPTADA: " + r.mensajeError()));
-        assertThat(r.exito()).as(r.mensajeError()).isTrue();
+        System.out.println("NOTA DE CRÉDITO FC01-1 → " + (r.resultado() + " " + r.codigo() + " " + r.mensaje()));
+        assertThat(r.exito()).as(r.mensaje()).isTrue();
     }
 
     /** Venta de prueba: 2 × filtro (S/ 50) + 1 servicio de mantenimiento (S/ 120), al contado. */

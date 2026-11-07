@@ -47,6 +47,10 @@ public class Comprobante {
     @Column(length = 500)
     private String enlaceXml;
 
+    /** Respuesta de SUNAT al último envío (código, mensaje, XML firmado y CDR). */
+    @Embedded
+    private EnvioSunat envio = new EnvioSunat();
+
     // Relación directa a la Venta que originó este comprobante
     @OneToOne
     @JoinColumn(name = "venta_id", nullable = false, unique = true)
@@ -56,8 +60,23 @@ public class Comprobante {
         FACTURA, BOLETA, NOTA_CREDITO
     }
 
+    /**
+     * PENDIENTE: aún no enviado o SUNAT no respondió (se reintenta solo). ACEPTADO: válido.
+     * OBSERVADO: válido, con observaciones de SUNAT. RECHAZADO: sin validez; hay que corregir y reenviar.
+     */
     public enum EstadoSunat {
-        PENDIENTE, ACEPTADO, RECHAZADO
+        PENDIENTE, ACEPTADO, OBSERVADO, RECHAZADO;
+
+        /** El comprobante tiene validez tributaria. */
+        public boolean valido() {
+            return this == ACEPTADO || this == OBSERVADO;
+        }
+    }
+
+    /** El comprobante sin envío guardado (datos viejos): evita nulos al leer. */
+    public EnvioSunat getEnvio() {
+        if (envio == null) envio = new EnvioSunat();
+        return envio;
     }
 
     public BigDecimal getTotal() {

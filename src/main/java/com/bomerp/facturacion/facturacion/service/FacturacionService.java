@@ -4,7 +4,6 @@ import com.bomerp.facturacion.notacredito.dto.NotaCreditoResponseDTO;
 import com.bomerp.facturacion.serie.service.CorrelativoService;
 import com.bomerp.facturacion.pdf.service.GeneradorPdfFacturacionService;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
-import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.facturacion.comprobante.repository.ComprobanteRepository;
 import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 import com.bomerp.facturacion.notacredito.repository.NotaCreditoRepository;
@@ -28,17 +27,17 @@ public class FacturacionService implements ComprobantesDeVenta {
 
     private final ComprobanteRepository comprobanteRepository;
     private final VentaService ventaService;
-    private final OseClient oseClient;
+    private final EnvioSunatService envioSunat;
     private final com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo;
     private final GeneradorPdfFacturacionService generadorPdfFacturacionService;
     private final NotaCreditoRepository notaCreditoRepository;
     private final CorrelativoService correlativoService;
 
-    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, OseClient oseClient, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
+    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, EnvioSunatService envioSunat, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
                               CorrelativoService correlativoService) {
         this.comprobanteRepository = comprobanteRepository;
         this.ventaService = ventaService;
-        this.oseClient = oseClient;
+        this.envioSunat = envioSunat;
         this.notificadorCorreo = notificadorCorreo;
         this.generadorPdfFacturacionService = generadorPdfFacturacionService;
         this.notaCreditoRepository = notaCreditoRepository;
@@ -76,19 +75,10 @@ public class FacturacionService implements ComprobantesDeVenta {
         // Actualizamos la venta
         ventaService.asignarComprobante(ventaId, comprobanteGuardado.getId());
 
-        // 3. Enviamos al OSE (Nubefact)
-        OseClient.RespuestaOse respuesta = oseClient.emitir(comprobanteGuardado);
-
-        if (respuesta.exito()) {
-            comprobanteGuardado.setEstadoSunat(Comprobante.EstadoSunat.ACEPTADO);
-            comprobanteGuardado.setEnlacePdf(respuesta.enlacePdf());
-            comprobanteGuardado.setEnlaceXml(respuesta.enlaceXml());
-        } else {
-            comprobanteGuardado.setEstadoSunat(Comprobante.EstadoSunat.RECHAZADO);
-            // Logear respuesta.mensajeError()
-        }
-
-        return comprobanteRepository.save(comprobanteGuardado);
+        // Queda PENDIENTE: se envía a SUNAT cuando la venta se confirme (EnvioSunatService), así
+        // una SUNAT lenta o caída no traba ni deshace la venta; si no responde, se reintenta solo.
+        envioSunat.programarComprobante(comprobanteGuardado.getId());
+        return comprobanteGuardado;
     }
     
     /**
@@ -102,8 +92,10 @@ public class FacturacionService implements ComprobantesDeVenta {
     @Transactional
     public Optional<NotaCredito> emitirNotaCreditoPorAnulacion(Long ventaId, String motivo) {
         Optional<Comprobante> comprobante = comprobanteRepository.findByVentaId(ventaId);
-        if (comprobante.isEmpty() || comprobante.get().getEstadoSunat() != Comprobante.EstadoSunat.ACEPTADO) {
-            log.info("Venta {} sin comprobante aceptado: no requiere nota de crédito", ventaId);
+        // Un comprobante rechazado no tiene validez: no hay nada que anular ante SUNAT. Uno pendiente
+        // sí: la nota se crea ya y sale cuando SUNAT acepte el original (EnvioSunatService).
+        if (comprobante.isEmpty() || comprobante.get().getEstadoSunat() == Comprobante.EstadoSunat.RECHAZADO) {
+            log.info("Venta {} sin comprobante válido: no requiere nota de crédito", ventaId);
             return Optional.empty();
         }
         Comprobante original = comprobante.get();
@@ -121,19 +113,10 @@ public class FacturacionService implements ComprobantesDeVenta {
         nota.setNumero(correlativoService.siguiente(nota.getSerie()));
         NotaCredito guardada = notaCreditoRepository.save(nota);
 
-        OseClient.RespuestaOse respuesta = oseClient.emitirNotaCredito(guardada);
-        if (respuesta.exito()) {
-            guardada.setEstadoSunat(Comprobante.EstadoSunat.ACEPTADO);
-            guardada.setEnlacePdf(respuesta.enlacePdf());
-            guardada.setEnlaceXml(respuesta.enlaceXml());
-        } else {
-            guardada.setEstadoSunat(Comprobante.EstadoSunat.RECHAZADO);
-            log.warn("OSE rechazó la nota de crédito {}-{}: {}",
-                    guardada.getSerie(), guardada.getNumero(), respuesta.mensajeError());
-        }
-        log.info("Nota de crédito {}-{} emitida: anula {}", guardada.getSerie(), guardada.getNumero(),
-                guardada.getNumeroComprobanteReferencia());
-        return Optional.of(notaCreditoRepository.save(guardada));
+        envioSunat.programarNota(guardada.getId());
+        log.info("Nota de crédito {}-{} registrada: anula {} (se envía a SUNAT en segundo plano)",
+                guardada.getSerie(), guardada.getNumero(), guardada.getNumeroComprobanteReferencia());
+        return Optional.of(guardada);
     }
 
     /** Fachada para Ventas (reportes y Excel): número "SERIE-NUMERO" del comprobante de una venta. */
@@ -181,6 +164,18 @@ public class FacturacionService implements ComprobantesDeVenta {
     @Transactional
     public ComprobanteResponseDTO emitir(Long ventaId) {
         return ComprobanteResponseDTO.desdeEntidad(emitirComprobanteParaVenta(ventaId));
+    }
+
+    /** Tras la aceptación de SUNAT: envía el comprobante por correo solo si el cliente tiene uno. */
+    @Transactional(readOnly = true)
+    public void enviarFacturaCorreoSiTieneCorreo(Long comprobanteId) {
+        Comprobante comprobante = comprobanteRepository.findById(comprobanteId).orElse(null);
+        String correo = comprobante == null ? null : comprobante.getVenta().getCliente().getCorreo();
+        if (correo == null || correo.isBlank()) {
+            log.info("Comprobante {} aceptado; no se envía por correo: el cliente no tiene correo", comprobanteId);
+            return;
+        }
+        enviarFacturaCorreo(comprobanteId);
     }
 
     @Transactional(readOnly = true)
