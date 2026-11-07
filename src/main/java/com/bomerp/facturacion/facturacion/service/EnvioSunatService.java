@@ -143,6 +143,42 @@ public class EnvioSunatService {
         });
     }
 
+    /**
+     * Reenvío manual (botón "Reenviar"): un comprobante RECHAZADO (después de corregir el dato, p. ej. el
+     * RUC del cliente; SUNAT permite reenviar el mismo número) o PENDIENTE que agotó los reintentos.
+     * Vuelve a PENDIENTE con los intentos en cero y entra a la cola. 409 si ya tiene validez.
+     */
+    public void reenviarComprobante(Long id) {
+        tx.executeWithoutResult(s -> {
+            Comprobante c = comprobantes.findById(id).orElseThrow(() -> noEncontrado("Comprobante", id));
+            reabrir(c.getEstadoSunat(), c.getEnvio(), c.getSerie() + "-" + Integer.parseInt(c.getNumero()));
+            c.setEstadoSunat(EstadoSunat.PENDIENTE);
+        });
+        encolar(() -> enviarComprobante(id));
+    }
+
+    public void reenviarNota(Long id) {
+        tx.executeWithoutResult(s -> {
+            NotaCredito n = notas.findById(id).orElseThrow(() -> noEncontrado("Nota de crédito", id));
+            reabrir(n.getEstadoSunat(), n.getEnvio(), n.getSerie() + "-" + Integer.parseInt(n.getNumero()));
+            n.setEstadoSunat(EstadoSunat.PENDIENTE);
+        });
+        encolar(() -> enviarNota(id));
+    }
+
+    private static void reabrir(EstadoSunat estado, EnvioSunat envio, String numero) {
+        if (estado.valido()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    numero + " ya fue aceptado por SUNAT: no se vuelve a enviar.");
+        }
+        envio.setIntentos(0);
+    }
+
+    private static org.springframework.web.server.ResponseStatusException noEncontrado(String que, Long id) {
+        return new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,
+                que + " no encontrado: " + id);
+    }
+
     /** Pasa la respuesta al registro del envío y devuelve el nuevo estado. */
     private static EstadoSunat aplicar(EnvioSunat envio, RespuestaOse r) {
         envio.registrarIntento(r.codigo(), r.mensaje(), r.xmlFirmado(), r.cdr());

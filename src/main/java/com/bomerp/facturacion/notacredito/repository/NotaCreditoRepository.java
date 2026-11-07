@@ -13,6 +13,8 @@ public interface NotaCreditoRepository extends JpaRepository<NotaCredito, Long> 
 
     Optional<NotaCredito> findByComprobanteReferencia_Id(Long comprobanteId);
 
+    List<NotaCredito> findByComprobanteReferencia_IdIn(List<Long> comprobanteIds);
+
     /** Último número emitido en una serie de notas de crédito (FC01 / BC01). */
     /** Pendientes de envío a SUNAT, los más antiguos primero (el reintento los toma de a pocos). */
     List<NotaCredito> findTop20ByEstadoSunatOrderByIdAsc(Comprobante.EstadoSunat estado);

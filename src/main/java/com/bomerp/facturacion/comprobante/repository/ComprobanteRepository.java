@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> {
     Optional<Comprobante> findByVentaId(Long ventaId);
 
+    List<Comprobante> findByVenta_IdIn(List<Long> ventaIds);
+
     /** Último número emitido en una serie (los números tienen 8 dígitos, así que MAX de texto sirve). */
     /** Pendientes de envío a SUNAT, los más antiguos primero (el reintento los toma de a pocos). */
     List<Comprobante> findTop20ByEstadoSunatOrderByIdAsc(Comprobante.EstadoSunat estado);

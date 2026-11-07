@@ -155,6 +155,43 @@ public class FacturacionService implements ComprobantesDeVenta {
 
     public record PdfComprobante(String nombreArchivo, byte[] contenido) {}
 
+    /** Estado ante SUNAT del comprobante (y su nota de crédito) de cada venta pedida; las que no tienen comprobante no aparecen. */
+    @Transactional(readOnly = true)
+    public List<com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO> estadosDeVentas(List<Long> ventaIds) {
+        if (ventaIds == null || ventaIds.isEmpty()) return List.of();
+        List<Comprobante> lista = comprobanteRepository.findByVenta_IdIn(ventaIds.stream().limit(200).toList());
+        var notas = notaCreditoRepository.findByComprobanteReferencia_IdIn(lista.stream().map(Comprobante::getId).toList())
+                .stream().collect(java.util.stream.Collectors.toMap(n -> n.getComprobanteReferencia().getId(), n -> n));
+        return lista.stream().map(c -> com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO.de(c, notas.get(c.getId()))).toList();
+    }
+
+    /** Archivo guardado del envío a SUNAT: XML firmado o CDR (constancia de recepción, ZIP). */
+    public record ArchivoSunat(String nombre, byte[] contenido, boolean esZip) {}
+
+    @Transactional(readOnly = true)
+    public ArchivoSunat archivoSunat(boolean esNota, Long id, boolean cdr) {
+        String numero;
+        com.bomerp.facturacion.comprobante.entity.EnvioSunat envio;
+        if (esNota) {
+            NotaCredito n = notaCreditoRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nota de crédito no encontrada: " + id));
+            numero = n.getSerie() + "-" + Integer.parseInt(n.getNumero());
+            envio = n.getEnvio();
+        } else {
+            Comprobante c = comprobanteRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + id));
+            numero = c.getSerie() + "-" + Integer.parseInt(c.getNumero());
+            envio = c.getEnvio();
+        }
+        byte[] contenido = cdr ? envio.getCdr() : envio.getXmlFirmado();
+        if (contenido == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, cdr
+                    ? numero + " todavía no tiene constancia de SUNAT (CDR)."
+                    : numero + " todavía no tiene XML firmado (no se ha enviado a SUNAT).");
+        }
+        return new ArchivoSunat(cdr ? "CDR_" + numero + ".zip" : numero + ".xml", contenido, cdr);
+    }
+
     @Transactional(readOnly = true)
     public List<NotaCreditoResponseDTO> listarNotasCredito() {
         return notaCreditoRepository.findAllByOrderByIdDesc().stream().map(NotaCreditoResponseDTO::desdeEntidad).toList();

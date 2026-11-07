@@ -13,11 +13,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -136,6 +138,22 @@ class EnvioSunatServiceTest {
 
         servicio.reintentarPendientes();
         verify(ose, after(300).never()).emitir(any());
+    }
+
+    @Test
+    void reenviarUnRechazadoLoVuelvePendienteConLosIntentosEnCero() {
+        Comprobante c = comprobante(13, EstadoSunat.RECHAZADO);
+        c.getEnvio().registrarIntento(2800, "Tipo de documento del receptor no permitido", null, null);
+        servicio.reenviarComprobante(13L);
+        assertThat(c.getEstadoSunat()).isEqualTo(EstadoSunat.PENDIENTE);
+        assertThat(c.getEnvio().getIntentos()).isZero();
+    }
+
+    @Test
+    void noSeReenviaLoQueSunatYaAcepto() {
+        comprobante(14, EstadoSunat.ACEPTADO);
+        assertThatThrownBy(() -> servicio.reenviarComprobante(14L))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("F001-1 ya fue aceptado");
     }
 
     private NotaCredito nota(long id, Comprobante original) {
