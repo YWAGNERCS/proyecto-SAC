@@ -65,6 +65,8 @@ class FlujoCompletoEndToEndTest {
 
     private Long clienteId;
     private Long categoriaId;
+    /** Venta de la prueba: el intento sin token queda como "anónimo" y también hay que borrarlo. */
+    private Long ventaDeLaPrueba;
 
     @BeforeEach
     void preparar() {
@@ -77,7 +79,14 @@ class FlujoCompletoEndToEndTest {
     void limpiarAuditoria() {
         TransactionTemplate nueva = new TransactionTemplate(transacciones);
         nueva.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        nueva.executeWithoutResult(t -> jdbc.update("DELETE FROM historial_cambios WHERE usuario = ?", USUARIO));
+        nueva.executeWithoutResult(t -> {
+            jdbc.update("DELETE FROM historial_cambios WHERE usuario = ?", USUARIO);
+            // Bitácora H-5: sin token no hay usuario y la fila queda como "anónimo" sobre la venta de la prueba
+            if (ventaDeLaPrueba != null) {
+                jdbc.update("DELETE FROM historial_cambios WHERE usuario = 'anónimo' AND ruta = ?",
+                        API + "/ventas/" + ventaDeLaPrueba + "/anular");
+            }
+        });
     }
 
     // ── Token simulado (ya validado): mismos claims que emite Keycloak ─────────────────────────
@@ -142,6 +151,7 @@ class FlujoCompletoEndToEndTest {
                 """
                 {"rutinaMantenimiento": {"frecuenciaMeses": 3, "visitas": 4, "primeraVisita": null}}""");
         long ventaId = ((Number) JsonPath.read(venta, "$.id")).longValue();
+        ventaDeLaPrueba = ventaId;
         BigDecimal total = new BigDecimal(JsonPath.read(venta, "$.total").toString());
         assertThat((String) JsonPath.read(venta, "$.estado")).isEqualTo("REGISTRADA");
         assertThat((String) JsonPath.read(venta, "$.estadoPago")).isEqualTo("PENDIENTE");

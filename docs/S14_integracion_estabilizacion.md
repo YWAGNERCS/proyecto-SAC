@@ -11,7 +11,7 @@ Qué pide la sesión y dónde está la evidencia en el proyecto:
 | Checklist de integración funcional (Tabla 6) | Recorrido automatizado + recorrido en vivo | 2 |
 | Auditoría de al menos dos acciones críticas | `HISTORIAL_CAMBIOS` (RF-29) | 3 |
 | Prueba end-to-end contra la base real | `FlujoCompletoEndToEndTest` | 4 |
-| Bitácora de estabilización | 4 hallazgos reales, cada uno con su prueba | 5 |
+| Bitácora de estabilización | 5 hallazgos reales, cada uno con su prueba | 5 |
 | Matriz de trazabilidad (ADS S14) | [RTM.md](RTM.md) | 6 |
 
 ## 1. Totales del servidor frente a totales del navegador
@@ -90,7 +90,7 @@ producto → proforma → aceptar → venta a crédito con rutina de mantenimien
   de retención. No depende del stock que dejó otra corrida (el error frecuente de la guía).
 - **No deja rastro:** corre en una transacción que se deshace al final, así que no quedan ventas en la base y no se
   envía nada a SUNAT (el envío ocurre solo al confirmar). Las filas del historial, que se guardan aparte, se borran al
-  terminar. Se comprobó en Oracle después de correrla: 0 productos "E2E", la última venta sigue siendo la #287 y 0
+  terminar, incluida la del intento sin token (hallazgo H-5). Se comprobó en Oracle después de correrla: 0 productos "E2E", la última venta sigue siendo la #287 y 0
   filas del usuario `prueba-e2e`.
 - **Ejecutar** (con Oracle encendido; Keycloak no hace falta):
 
@@ -107,6 +107,7 @@ Resultado del 07/11/2026: `Tests run: 1, Failures: 0, Errors: 0` (unos 17 s).
 | H-1 (06/11) | **Un rechazo de SUNAT se marcaba como válido.** El código se sacaba de los dígitos del texto del error, que trae el número de ticket: un rechazo 2800 se leía como 8001 (observado, es decir, válido). | El código se lee de `faultcode` (`soap-env:Client.2800`), no del texto (`SunatSoapClient.codigoDeFalla`). | `ClasificacionCodigosSunatTest.codigoDelFaultcode` (5 casos) y `SunatBetaTest` (rechazo 2800 real en beta). |
 | H-2 (06/11) | **La beta de SUNAT respondía 401 a envíos seguidos.** Al registrar varias ventas juntas, algunos comprobantes fallaban. | Envíos en cola de un solo hilo con pausa de 1,5 s; un 401 o 5xx deja el comprobante PENDIENTE y se reintenta cada 3 minutos (hasta 20 veces). | `EnvioSunatServiceTest.sunatSinResponderQuedaPendienteYCuentaElIntento` y `elReintentoNoTomaLosQueYaSuperaronElMaximoDeIntentos`. |
 | H-3 (07/11) | **Ordenar por Total mezclaba monedas.** Al ordenar ventas por Total, una de US$ 20,874 quedaba debajo de una de S/ 66,505, porque se comparaba solo el número. | Ventas y proformas comparan en soles con su propio tipo de cambio; compras y productos, con el del día (`Orden.enSoles`). | `OrdenTest.losMontosEnDolaresSeComparanEnSoles` y verificación por API: la venta #266 en dólares sale primera. |
+| H-5 (07/11) | **La prueba de punta a punta dejaba rastro en el historial.** En la verificación en vivo, el Historial mostraba "anónimo · Intentó anular la venta #291, #292 y #293", ventas que no existen. Eran de la prueba: la venta se deshace al terminar, pero el intento sin token se guarda aparte (REQUIRES_NEW) con usuario "anónimo", y la limpieza solo borraba las filas del usuario `prueba-e2e`. | La limpieza borra también la fila anónima de la venta de la prueba (por su ruta exacta). Se borraron las 3 filas que habían quedado, después de comprobar que esas ventas no existían. | `FlujoCompletoEndToEndTest` vuelto a ejecutar: 0 filas nuevas en `HISTORIAL_CAMBIOS`. |
 | H-4 (07/11) | **Condición de las sumas en el navegador (sección 1).** Pagos atrasados y Cobranza suman en la SPA, lo que es correcto solo porque esas listas llegan completas. | Se registra la condición: si se paginan, sus totales pasan al servidor, como en el reporte de ventas. | Verificación cruzada del reporte paginado en `FlujoCompletoEndToEndTest`. |
 
 ## 6. Trazabilidad (ADS S14)
