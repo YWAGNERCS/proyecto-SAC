@@ -140,10 +140,3 @@
   }
 }
 
-/* Selector de cliente con el botón "Nuevo cliente" al lado */
-.cliente-con-nuevo { display: flex; gap: 8px; }
-.cliente-con-nuevo .form-select { flex: 1 1 auto; min-width: 0; }
-.btn-nuevo-cliente { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
-@media (max-width: 520px) {
-  .cliente-con-nuevo { flex-direction: column; }
-}

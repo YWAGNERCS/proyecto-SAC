@@ -14,12 +14,18 @@
                     <label class="form-label" for="clienteSelect">
                         Cliente <span style="color: var(--danger);">*</span>
                     </label>
-                    <select id="clienteSelect" class="form-select" formControlName="clienteId">
-                        <option [ngValue]="null">-- Seleccione un cliente --</option>
-                        <option *ngFor="let c of clientes()" [ngValue]="c.id">
-                            {{ c.nombreORazonSocial }}
-                        </option>
-                    </select>
+                    <div class="cliente-con-nuevo">
+                        <select id="clienteSelect" class="form-select" formControlName="clienteId">
+                            <option [ngValue]="null">-- Seleccione un cliente --</option>
+                            <option *ngFor="let c of clientes()" [ngValue]="c.id">
+                                {{ c.nombreORazonSocial }}
+                            </option>
+                        </select>
+                        <button type="button" class="btn btn-outline-secondary btn-nuevo-cliente" (click)="creandoCliente.set(true)"
+                                title="Registrar un cliente nuevo sin salir de la proforma (busca el RUC o DNI en SUNAT/RENIEC)">
+                            <app-icono nombre="nuevo" [tamano]="16" /> Nuevo cliente
+                        </button>
+                    </div>
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label" for="monedaSelect">Moneda</label>
@@ -109,3 +115,10 @@
         </form>
     </div>
 </div>
+
+@if (creandoCliente()) {
+    <div class="dialogo-fondo" (click)="creandoCliente.set(false)">
+        <app-cliente-form [enDialogo]="true" (guardado)="clienteCreado($event)" (cancelado)="creandoCliente.set(false)"
+                          (click)="$event.stopPropagation()" />
+    </div>
+}

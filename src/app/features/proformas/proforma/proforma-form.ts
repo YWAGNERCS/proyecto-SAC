@@ -12,6 +12,7 @@ import { ProformaRequest } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { Producto } from '../../catalogo/producto/producto.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { ClienteFormComponent } from '../../clientes/cliente/cliente-form';
 
 /** Una línea de la proforma. */
 type ItemForm = FormGroup<{
@@ -24,7 +25,7 @@ type ItemForm = FormGroup<{
 @Component({
   selector: 'app-proforma-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent],
   templateUrl: './proforma-form.html'
 })
 export class ProformaFormComponent implements OnInit {
@@ -43,6 +44,8 @@ export class ProformaFormComponent implements OnInit {
   productos = signal<Producto[]>([]);
   errorMessage = signal<string>('');
   loading = signal<boolean>(false);
+  /** Diálogo "Nuevo cliente": registrar al cliente sin salir de la proforma. */
+  creandoCliente = signal(false);
 
   /** Descuento entre 0 y el tope del usuario (el tope llega del backend después de crear el formulario). */
   private readonly dentroDelTope = (control: AbstractControl): ValidationErrors | null => {
@@ -114,6 +117,18 @@ export class ProformaFormComponent implements OnInit {
 
   eliminarItem(index: number) {
     this.items.removeAt(index);
+  }
+
+  /**
+   * Cliente recién registrado (o ya existente con ese RUC/DNI) desde el diálogo: se agrega a la lista
+   * si no estaba, en orden alfabético, y queda seleccionado en la proforma.
+   */
+  clienteCreado(c: Cliente) {
+    if (c.id && !this.clientes().some((x) => x.id === c.id)) {
+      this.clientes.update((lista) => [...lista, c].sort((a, b) => a.nombreORazonSocial.localeCompare(b.nombreORazonSocial)));
+    }
+    this.form.controls.clienteId.setValue(c.id ?? null);
+    this.creandoCliente.set(false);
   }
 
   getNombreProducto(id: number): string {
