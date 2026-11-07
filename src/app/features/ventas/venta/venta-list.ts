@@ -283,8 +283,17 @@ export class VentaListComponent implements OnInit {
     return this.estadosSunat().get(v.id);
   }
 
+  /**
+   * SUNAT respondió 1033: ya tenía ese número por un envío anterior y no dice si fue aceptado o rechazado.
+   * No tiene validez hasta verificarlo en SUNAT, y reenviarlo solo repetiría la misma respuesta.
+   */
+  porConfirmar(d: DocumentoSunat): boolean {
+    return d.estado === 'PENDIENTE' && d.codigo === 1033;
+  }
+
   etiquetaSunat(d: DocumentoSunat): string {
     if (d.simulado) return 'Simulado (sin envío a SUNAT)';
+    if (this.porConfirmar(d)) return 'Por confirmar en SUNAT';
     switch (d.estado) {
       case 'ACEPTADO': return 'Aceptado por SUNAT';
       case 'OBSERVADO': return 'Aceptado con observaciones';
@@ -302,6 +311,7 @@ export class VentaListComponent implements OnInit {
 
   etiquetaCorta(d: DocumentoSunat): string {
     if (d.simulado) return 'SUNAT: simulado';
+    if (this.porConfirmar(d)) return 'SUNAT: por confirmar';
     return { ACEPTADO: 'SUNAT: aceptado', OBSERVADO: 'SUNAT: observado', RECHAZADO: 'SUNAT: rechazado', PENDIENTE: 'SUNAT: pendiente' }[d.estado];
   }
 
@@ -311,8 +321,12 @@ export class VentaListComponent implements OnInit {
     return estado === 'ACEPTADO' ? 'badge-success' : estado === 'RECHAZADO' ? 'badge-danger' : 'badge-warning';
   }
 
-  /** Se puede reenviar lo rechazado (ya corregido) y lo pendiente que tiene un aviso o agotó los reintentos. */
+  /**
+   * Se puede reenviar lo rechazado (ya corregido) y lo pendiente que tiene un aviso o agotó los reintentos.
+   * No lo que está por confirmar (1033): SUNAT respondería lo mismo; hay que verificarlo en SUNAT.
+   */
   puedeReenviar(d: DocumentoSunat): boolean {
+    if (this.porConfirmar(d)) return false;
     return d.estado === 'RECHAZADO' || (d.estado === 'PENDIENTE' && d.intentos > 0);
   }
 
