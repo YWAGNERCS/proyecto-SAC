@@ -5,11 +5,20 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { ProveedorService } from './proveedor-service';
 import { Proveedor } from './proveedor.model';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables con un clic en el encabezado. */
+const CAMPOS_ORDEN: CamposOrden<Proveedor> = {
+  id: (x) => x.id,
+  nombre: (x) => x.nombreORazonSocial,
+  tipo: (x) => (x.tipo === 'EMPRESA' ? 'Empresa' : 'Persona'),
+  documento: (x) => x.ruc ?? x.dni,
+};
 
 @Component({
   selector: 'app-proveedor-list',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, OrdenComponent],
   templateUrl: './proveedor-list.html',
   styleUrl: './proveedor-list.css',
 })
@@ -24,6 +33,8 @@ export class ProveedorListComponent implements OnInit {
   error = signal<string | null>(null);
   mensaje = signal<string | null>(null);
   busqueda = signal('');
+  /** Columna por la que se ordena; null = como llegan del servidor. */
+  orden = signal<Orden | null>(null);
 
   constructor(private proveedorService: ProveedorService) {}
 
@@ -41,8 +52,9 @@ export class ProveedorListComponent implements OnInit {
 
   get proveedoresFiltrados(): Proveedor[] {
     const q = this.busqueda().toLowerCase();
-    if (!q) return this.proveedores();
-    return this.proveedores().filter(p =>
+    const todos = ordenarLista(this.proveedores(), this.orden(), CAMPOS_ORDEN);
+    if (!q) return todos;
+    return todos.filter(p =>
       p.nombreORazonSocial.toLowerCase().includes(q) ||
       (p.ruc ?? '').includes(q) ||
       (p.dni ?? '').includes(q) ||

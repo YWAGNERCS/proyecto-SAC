@@ -12,6 +12,16 @@ import { Sede } from '../../clientes/sede/sede.model';
 import { ProductoService } from '../../catalogo/producto/producto-service';
 import { Producto, esEquipo } from '../../catalogo/producto/producto.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables con un clic en el encabezado (la lista llega completa: se ordena aquí). */
+const CAMPOS_ORDEN: CamposOrden<Equipo> = {
+  equipo: (e) => e.productoNombre,
+  cliente: (e) => `${e.clienteNombre} ${e.sedeNombre ?? ''}`,
+  instalado: (e) => e.fechaInstalacion,
+  garantia: (e) => e.garantiaHasta,
+  mantenimiento: (e) => e.proximoMantenimiento,
+};
 
 /**
  * Parque instalado: equipos de JD en los locales de los clientes, con serie, garantía y plan de
@@ -19,7 +29,7 @@ import { IconoComponent } from '../../../core/layout/icono';
  */
 @Component({
   selector: 'app-equipo-list',
-  imports: [IconoComponent, FormsModule, ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, OrdenComponent, FormsModule, ReactiveFormsModule, RouterLink],
   templateUrl: './equipo-list.html',
 })
 export class EquipoListComponent implements OnInit {
@@ -33,6 +43,9 @@ export class EquipoListComponent implements OnInit {
   readonly puedeServicios = computed(() => this.auth.puede('SERVICIOS'));
 
   readonly equipos = signal<Equipo[]>([]);
+  /** Columna por la que se ordena; null = el orden en que llegan del servidor. */
+  readonly orden = signal<Orden | null>(null);
+  readonly equiposVisibles = computed(() => ordenarLista(this.equipos(), this.orden(), CAMPOS_ORDEN));
   readonly clientes = signal<Cliente[]>([]);
   readonly productos = signal<Producto[]>([]);
   readonly sedesDialogo = signal<Sede[]>([]);

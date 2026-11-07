@@ -9,13 +9,15 @@ import { Producto, SECTORES, controlaStock } from './producto.model';
 import { CategoriaService } from '../categoria/categoria-service';
 import { Categoria } from '../categoria/categoria.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { TipoCambioService } from '../../../core/services/tipo-cambio-service';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
 
 /** Valor del filtro: todas, una categoría (id) o los productos aún sin categoría. */
 type FiltroCategoria = 'TODAS' | 'SIN_CATEGORIA' | number;
 
 @Component({
   selector: 'app-producto-list',
-  imports: [IconoComponent, RouterLink, FormsModule, DecimalPipe],
+  imports: [IconoComponent, OrdenComponent, RouterLink, FormsModule, DecimalPipe],
   templateUrl: './producto-list.html',
 })
 export class ProductoList implements OnInit {
@@ -26,6 +28,7 @@ export class ProductoList implements OnInit {
 
   private readonly productoService = inject(ProductoService);
   private readonly categoriaService = inject(CategoriaService);
+  private readonly tipoCambioService = inject(TipoCambioService);
 
   protected readonly productos = signal<Producto[]>([]);
   protected readonly categorias = signal<Categoria[]>([]);
@@ -34,16 +37,33 @@ export class ProductoList implements OnInit {
   protected readonly loading = signal(false);
   protected filtro: FiltroCategoria = 'TODAS';
 
+  /** Venta SUNAT de hoy (solo para ordenar por precio; sin él se compara el número tal cual). */
+  private readonly tipoCambioHoy = signal<number | null>(null);
+  /** Columna por la que se ordena (clic en el encabezado); null = como llegan del servidor. */
+  protected readonly orden = signal<Orden | null>(null);
+  /** Precio y stock: números (los servicios sin stock quedan al final). */
+  private readonly camposOrden: CamposOrden<Producto> = {
+    nombre: (p) => p.nombre,
+    categoria: (p) => p.categoriaNombre,
+    sector: (p) => this.etiquetaSector(p.sector),
+    // En soles con el tipo de cambio de hoy, para comparar productos en dólares con los de soles
+    precio: (p) => (p.moneda === 'DOLARES' ? (p.precioVenta ?? 0) * (this.tipoCambioHoy() ?? 1) : p.precioVenta),
+    stock: (p) => (controlaStock(p.sector) ? (p.stockActual ?? 0) : null),
+  };
+
   /** Con el filtro "sin categoría" se traen todos y se filtra aquí (el backend filtra por id). */
   protected readonly visibles = computed(() =>
-    this.filtroActual() === 'SIN_CATEGORIA'
-      ? this.productos().filter((p) => !p.categoriaId)
-      : this.productos(),
+    ordenarLista(
+      this.filtroActual() === 'SIN_CATEGORIA' ? this.productos().filter((p) => !p.categoriaId) : this.productos(),
+      this.orden(),
+      this.camposOrden,
+    ),
   );
   protected readonly sinCategoria = signal(0);
   private readonly filtroActual = signal<FiltroCategoria>('TODAS');
 
   ngOnInit(): void {
+    this.tipoCambioService.hoy().subscribe({ next: (tc) => this.tipoCambioHoy.set(tc.venta), error: () => {} });
     this.categoriaService.listar().subscribe({
       next: (data) => this.categorias.set(data),
       error: () => this.error.set('No se pudieron cargar las categorías.'),

@@ -4,10 +4,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { CategoriaService } from './categoria-service';
 import { Categoria } from './categoria.model';
+import { Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
 
 @Component({
   selector: 'app-categoria-list',
-  imports: [RouterLink],
+  imports: [RouterLink, OrdenComponent],
   templateUrl: './categoria-list.html',
 })
 export class CategoriaList implements OnInit {
@@ -19,6 +20,10 @@ export class CategoriaList implements OnInit {
   private readonly categoriaService = inject(CategoriaService);
 
   protected readonly categorias = signal<Categoria[]>([]);
+  /** Columna por la que se ordena (clic en el encabezado); null = como llegan del servidor. */
+  protected readonly orden = signal<Orden | null>(null);
+  protected readonly visibles = computed(() =>
+    ordenarLista(this.categorias(), this.orden(), { nombre: (c) => c.nombre, descripcion: (c) => c.descripcion }));
   protected readonly error = signal<string | null>(null);
   protected readonly loading = signal(false);
 

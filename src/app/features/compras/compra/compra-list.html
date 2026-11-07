@@ -50,13 +50,13 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 80px;">ID</th>
-          <th>Proveedor</th>
-          <th class="text-center" style="width: 130px;">Fecha</th>
-          <th class="text-center" style="width: 140px;">N° Factura</th>
+          <th style="width: 80px;"><app-orden campo="id" primero="desc" [orden]="orden()" (cambiar)="ordenar($event)">ID</app-orden></th>
+          <th><app-orden campo="proveedor" [orden]="orden()" (cambiar)="ordenar($event)">Proveedor</app-orden></th>
+          <th class="text-center" style="width: 130px;"><app-orden campo="fecha" primero="desc" [orden]="orden()" (cambiar)="ordenar($event)">Fecha</app-orden></th>
+          <th class="text-center" style="width: 140px;"><app-orden campo="factura" [orden]="orden()" (cambiar)="ordenar($event)">N° Factura</app-orden></th>
           <th class="text-center" style="width: 110px;">Moneda</th>
           <th class="text-center" style="width: 100px;">Ítems</th>
-          <th style="text-align: right; width: 140px;">Total</th>
+          <th style="text-align: right; width: 140px;"><app-orden campo="total" primero="desc" [orden]="orden()" (cambiar)="ordenar($event)">Total</app-orden></th>
           <th class="text-center" style="width: 150px;">Pago</th>
         </tr>
       </thead>

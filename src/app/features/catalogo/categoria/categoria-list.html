@@ -17,13 +17,13 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 30%;">Nombre</th>
-          <th style="width: 50%;">Descripción</th>
+          <th style="width: 30%;"><app-orden campo="nombre" [orden]="orden()" (cambiar)="orden.set($event)">Nombre</app-orden></th>
+          <th style="width: 50%;"><app-orden campo="descripcion" [orden]="orden()" (cambiar)="orden.set($event)">Descripción</app-orden></th>
           <th style="width: 20%; text-align: right;">Acciones</th>
         </tr>
       </thead>
       <tbody>
-        @for (cat of categorias(); track cat.id) {
+        @for (cat of visibles(); track cat.id) {
           <tr>
             <td>
               <strong style="color: var(--text-main);">{{ cat.nombre }}</strong>

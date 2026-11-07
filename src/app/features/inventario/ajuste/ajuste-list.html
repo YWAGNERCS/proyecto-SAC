@@ -33,10 +33,10 @@
   @if (error()) { <div class="alert alert-danger margen">{{ error() }}</div> }
   <div class="table-responsive">
     <table class="tabla-suave">
-      <thead><tr><th>Fecha</th><th>Material</th><th>Motivo</th><th class="text-end">Movimiento</th>
-        <th class="text-end">Stock</th><th>Observación</th><th>Registró</th></tr></thead>
+      <thead><tr><th><app-orden campo="fecha" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">Fecha</app-orden></th><th><app-orden campo="material" [orden]="orden()" (cambiar)="orden.set($event)">Material</app-orden></th><th><app-orden campo="motivo" [orden]="orden()" (cambiar)="orden.set($event)">Motivo</app-orden></th><th class="text-end"><app-orden campo="movimiento" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">Movimiento</app-orden></th>
+        <th class="text-end"><app-orden campo="stock" [orden]="orden()" (cambiar)="orden.set($event)">Stock</app-orden></th><th>Observación</th><th><app-orden campo="registro" [orden]="orden()" (cambiar)="orden.set($event)">Registró</app-orden></th></tr></thead>
       <tbody>
-        @for (a of ajustes(); track a.id) {
+        @for (a of ajustesVisibles(); track a.id) {
           <tr>
             <td>{{ a.fecha | date: 'dd/MM/yyyy' }}<small class="d-block muted">#{{ a.id }}</small></td>
             <td><a [routerLink]="['/catalogo/productos', a.productoId, 'kardex']">{{ a.producto }}</a></td>

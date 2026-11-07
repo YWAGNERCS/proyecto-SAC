@@ -68,6 +68,10 @@ export const ICONOS = {
   luna: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   escudo: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
   historial: 'M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5 M12 7v5l4 2',
+  // Encabezados ordenables: sin orden, ascendente, descendente
+  ordenar: 'M8 9l4-4 4 4 M16 15l-4 4-4-4',
+  ordenAsc: 'M12 19V5 M6 11l6-6 6 6',
+  ordenDesc: 'M12 5v14 M18 13l-6 6-6-6',
 };
 
 export const GRUPOS: GrupoMenu[] = [

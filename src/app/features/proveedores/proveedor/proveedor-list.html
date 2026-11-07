@@ -30,10 +30,10 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>Nombre / Razón Social</th>
-          <th>Tipo</th>
-          <th>RUC / DNI</th>
+          <th><app-orden campo="id" [orden]="orden()" (cambiar)="orden.set($event)">#</app-orden></th>
+          <th><app-orden campo="nombre" [orden]="orden()" (cambiar)="orden.set($event)">Nombre / Razón Social</app-orden></th>
+          <th><app-orden campo="tipo" [orden]="orden()" (cambiar)="orden.set($event)">Tipo</app-orden></th>
+          <th><app-orden campo="documento" [orden]="orden()" (cambiar)="orden.set($event)">RUC / DNI</app-orden></th>
           <th>Teléfono</th>
           <th>Correo</th>
           <th style="text-align: right;">Acciones</th>

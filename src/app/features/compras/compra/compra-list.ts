@@ -9,11 +9,12 @@ import { ProveedorService } from '../../proveedores/proveedor/proveedor-service'
 import { Proveedor } from '../../proveedores/proveedor/proveedor.model';
 import { IconoComponent } from '../../../core/layout/icono';
 import { PaginadorComponent } from '../../../core/layout/paginador';
+import { Orden, OrdenComponent, ordenParaServidor } from '../../../core/layout/orden';
 
 @Component({
   selector: 'app-compra-list',
   standalone: true,
-  imports: [PaginadorComponent, IconoComponent, CommonModule, RouterLink, FormsModule],
+  imports: [PaginadorComponent, OrdenComponent, IconoComponent, CommonModule, RouterLink, FormsModule],
   templateUrl: './compra-list.html'
 })
 export class CompraListComponent implements OnInit {
@@ -22,6 +23,8 @@ export class CompraListComponent implements OnInit {
   private descargaService = inject(DescargaService);
 
   compras = signal<CompraResponse[]>([]);
+  /** Columna por la que se ordena (clic en el encabezado; la ordena el servidor sobre todas las páginas). */
+  orden = signal<Orden | null>(null);
   pagina = signal(0);
   tamano = signal(20);
   total = signal(0);
@@ -71,7 +74,7 @@ export class CompraListComponent implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     this.compraService.listarPagina({ desde: this.desde, hasta: this.hasta, proveedorId: this.proveedorId },
-      this.pagina(), this.tamano()).subscribe({
+      this.pagina(), this.tamano(), ordenParaServidor(this.orden())).subscribe({
       next: (p) => {
         this.compras.set(p.contenido);
         this.total.set(p.total);
@@ -85,6 +88,12 @@ export class CompraListComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  ordenar(o: Orden | null) {
+    this.orden.set(o);
+    this.pagina.set(0);
+    this.cargarCompras();
   }
 
   /** "Buscar" y "Limpiar" vuelven a la primera página. */

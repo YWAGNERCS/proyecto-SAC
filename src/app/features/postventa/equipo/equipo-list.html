@@ -43,11 +43,11 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="min-width: 220px;">Equipo</th>
-          <th style="min-width: 190px;">Cliente y sede</th>
-          <th style="width: 130px;">Instalado</th>
-          <th style="width: 140px;">Garantía</th>
-          <th style="width: 170px;">Mantenimiento</th>
+          <th style="min-width: 220px;"><app-orden campo="equipo" [orden]="orden()" (cambiar)="orden.set($event)">Equipo</app-orden></th>
+          <th style="min-width: 190px;"><app-orden campo="cliente" [orden]="orden()" (cambiar)="orden.set($event)">Cliente y sede</app-orden></th>
+          <th style="width: 130px;"><app-orden campo="instalado" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">Instalado</app-orden></th>
+          <th style="width: 140px;"><app-orden campo="garantia" [orden]="orden()" (cambiar)="orden.set($event)">Garantía</app-orden></th>
+          <th style="width: 170px;"><app-orden campo="mantenimiento" [orden]="orden()" (cambiar)="orden.set($event)">Mantenimiento</app-orden></th>
           <th class="text-end" style="width: 170px;"></th>
         </tr>
       </thead>
@@ -55,7 +55,7 @@
         @if (loading()) {
           <tr><td colspan="6" class="vacio">Cargando…</td></tr>
         }
-        @for (e of equipos(); track e.id) {
+        @for (e of equiposVisibles(); track e.id) {
           <tr>
             <td><strong>{{ e.productoNombre }}</strong>
               <div class="muted">{{ e.numeroSerie ? 'Serie ' + e.numeroSerie : 'Sin serie' }}{{ e.ubicacion ? ' · ' + e.ubicacion : '' }}</div>

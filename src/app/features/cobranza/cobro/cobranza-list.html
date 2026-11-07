@@ -105,11 +105,11 @@
       <table class="table">
         <thead>
           <tr>
-            <th style="width: 110px;">Venta</th>
-            <th style="min-width: 200px;">Cliente</th>
-            <th style="width: 150px;">Vence</th>
-            <th style="width: 190px;">Cobrado</th>
-            <th class="num" style="width: 130px;">Saldo</th>
+            <th style="width: 110px;"><app-orden campo="venta" primero="desc" [orden]="ordenCuentas()" (cambiar)="ordenCuentas.set($event)">Venta</app-orden></th>
+            <th style="min-width: 200px;"><app-orden campo="cliente" [orden]="ordenCuentas()" (cambiar)="ordenCuentas.set($event)">Cliente</app-orden></th>
+            <th style="width: 150px;"><app-orden campo="vence" [orden]="ordenCuentas()" (cambiar)="ordenCuentas.set($event)">Vence</app-orden></th>
+            <th style="width: 190px;"><app-orden campo="cobrado" primero="desc" [orden]="ordenCuentas()" (cambiar)="ordenCuentas.set($event)">Cobrado</app-orden></th>
+            <th class="num" style="width: 130px;"><app-orden campo="saldo" primero="desc" [orden]="ordenCuentas()" (cambiar)="ordenCuentas.set($event)">Saldo</app-orden></th>
             <th class="text-end" style="width: 220px;">Acción</th>
           </tr>
         </thead>
@@ -197,12 +197,12 @@
       <table class="table">
         <thead>
           <tr>
-            <th style="width: 80px;">Cobro</th>
-            <th style="width: 110px;">Fecha</th>
-            <th style="min-width: 200px;">Cliente</th>
-            <th style="width: 150px;">Método</th>
+            <th style="width: 80px;"><app-orden campo="id" primero="desc" [orden]="ordenCobros()" (cambiar)="ordenCobros.set($event)">Cobro</app-orden></th>
+            <th style="width: 110px;"><app-orden campo="fecha" primero="desc" [orden]="ordenCobros()" (cambiar)="ordenCobros.set($event)">Fecha</app-orden></th>
+            <th style="min-width: 200px;"><app-orden campo="cliente" [orden]="ordenCobros()" (cambiar)="ordenCobros.set($event)">Cliente</app-orden></th>
+            <th style="width: 150px;"><app-orden campo="metodo" [orden]="ordenCobros()" (cambiar)="ordenCobros.set($event)">Método</app-orden></th>
             <th>Abonado a</th>
-            <th class="num" style="width: 130px;">Monto</th>
+            <th class="num" style="width: 130px;"><app-orden campo="monto" primero="desc" [orden]="ordenCobros()" (cambiar)="ordenCobros.set($event)">Monto</app-orden></th>
             <th class="text-end" style="width: 100px;">Acción</th>
           </tr>
         </thead>
@@ -253,11 +253,11 @@
       <table class="table">
         <thead>
           <tr>
-            <th style="width: 90px;">Venta</th>
-            <th style="min-width: 200px;">Cliente</th>
-            <th class="text-center" style="width: 130px;">Anulada el</th>
-            <th class="num" style="width: 130px;">Por devolver</th>
-            <th style="width: 220px;">Devolución</th>
+            <th style="width: 90px;"><app-orden campo="venta" primero="desc" [orden]="ordenDevoluciones()" (cambiar)="ordenDevoluciones.set($event)">Venta</app-orden></th>
+            <th style="min-width: 200px;"><app-orden campo="cliente" [orden]="ordenDevoluciones()" (cambiar)="ordenDevoluciones.set($event)">Cliente</app-orden></th>
+            <th class="text-center" style="width: 130px;"><app-orden campo="anulada" primero="desc" [orden]="ordenDevoluciones()" (cambiar)="ordenDevoluciones.set($event)">Anulada el</app-orden></th>
+            <th class="num" style="width: 130px;"><app-orden campo="monto" primero="desc" [orden]="ordenDevoluciones()" (cambiar)="ordenDevoluciones.set($event)">Por devolver</app-orden></th>
+            <th style="width: 220px;"><app-orden campo="estado" [orden]="ordenDevoluciones()" (cambiar)="ordenDevoluciones.set($event)">Devolución</app-orden></th>
             <th class="text-center" style="width: 170px;">Acción</th>
           </tr>
         </thead>
@@ -265,7 +265,7 @@
           @if (loading()) {
             <tr><td colspan="6" class="vacio">Cargando…</td></tr>
           }
-          @for (d of devoluciones(); track d.id) {
+          @for (d of devolucionesVisibles(); track d.id) {
             <tr>
               <td><span class="badge">#{{ d.ventaId }}</span></td>
               <td><strong>{{ d.clienteNombre }}</strong>

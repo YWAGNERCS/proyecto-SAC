@@ -20,8 +20,10 @@ export class CompraService {
   }
 
   /** Una página de compras con los mismos filtros que listar(). */
-  listarPagina(filtro: { desde?: string; hasta?: string; proveedorId?: number | null }, pagina: number, tamano: number) {
+  listarPagina(filtro: { desde?: string; hasta?: string; proveedorId?: number | null }, pagina: number, tamano: number,
+               orden = '') {
     let params = new HttpParams().set('pagina', pagina).set('tamano', tamano);
+    if (orden) params = params.set('orden', orden);
     if (filtro.desde) params = params.set('desde', filtro.desde);
     if (filtro.hasta) params = params.set('hasta', filtro.hasta);
     if (filtro.proveedorId) params = params.set('proveedorId', filtro.proveedorId);

@@ -14,6 +14,30 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables de cada tabla (con un clic en el encabezado). */
+const ORDEN_CUENTAS: CamposOrden<CuentaPorCobrar> = {
+  venta: (c) => c.ventaId,
+  cliente: (c) => c.clienteNombre,
+  vence: (c) => c.fechaLimitePago,
+  cobrado: (c) => Number(c.cobrado),
+  saldo: (c) => Number(c.saldo),
+};
+const ORDEN_COBROS: CamposOrden<Cobro> = {
+  id: (c) => c.id,
+  fecha: (c) => c.fecha,
+  cliente: (c) => c.clienteNombre,
+  metodo: (c) => c.metodoPago,
+  monto: (c) => Number(c.montoTotal),
+};
+const ORDEN_DEVOLUCIONES: CamposOrden<Devolucion> = {
+  venta: (d) => d.ventaId,
+  cliente: (d) => d.clienteNombre,
+  anulada: (d) => d.fechaAnulacion,
+  monto: (d) => Number(d.monto),
+  estado: (d) => d.estado,
+};
 
 type Vista = 'POR_COBRAR' | 'HISTORIAL' | 'DEVOLUCIONES';
 
@@ -34,7 +58,7 @@ const noFutura = (hoy: string): ValidatorFn => (c: AbstractControl): ValidationE
 @Component({
   selector: 'app-cobranza-list',
   standalone: true,
-  imports: [IconoComponent, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [IconoComponent, OrdenComponent, CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './cobranza-list.html',
   styleUrl: './cobranza-list.css',
 })
@@ -64,6 +88,12 @@ export class CobranzaListComponent implements OnInit {
   cuentas = signal<CuentaPorCobrar[]>([]);
   cobros = signal<Cobro[]>([]);
   devoluciones = signal<Devolucion[]>([]);
+  /** Orden de cada tabla; null = el de siempre (el que manda el servidor). */
+  readonly ordenCuentas = signal<Orden | null>(null);
+  readonly ordenCobros = signal<Orden | null>(null);
+  readonly ordenDevoluciones = signal<Orden | null>(null);
+  readonly devolucionesVisibles = computed(() =>
+    ordenarLista(this.devoluciones(), this.ordenDevoluciones(), ORDEN_DEVOLUCIONES));
   loading = signal(false);
   error = signal('');
   mensaje = signal('');
@@ -89,10 +119,11 @@ export class CobranzaListComponent implements OnInit {
   /** Cuentas por cobrar con la búsqueda (cliente, N° de venta o comprobante) y "solo vencidas". */
   readonly cuentasFiltradas = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
-    return this.cuentas().filter((c) =>
+    const filtradas = this.cuentas().filter((c) =>
       (!this.soloVencidas() || c.diasAtraso > 0) &&
       (!texto || c.clienteNombre.toLowerCase().includes(texto) || String(c.ventaId).includes(texto)
         || (c.comprobante ?? '').toLowerCase().includes(texto)));
+    return ordenarLista(filtradas, this.ordenCuentas(), ORDEN_CUENTAS);
   });
 
   readonly cuentasVencidas = computed(() => this.cuentas().filter((c) => c.diasAtraso > 0).length);
@@ -128,9 +159,9 @@ export class CobranzaListComponent implements OnInit {
 
   /** Historial con el rango de fechas y el método elegidos, y su total por moneda. */
   readonly cobrosFiltrados = computed(() =>
-    this.cobros().filter((c) =>
+    ordenarLista(this.cobros().filter((c) =>
       (!this.desde() || c.fecha >= this.desde()) && (!this.hasta() || c.fecha <= this.hasta())
-      && (!this.metodo() || c.metodoPago === this.metodo())));
+      && (!this.metodo() || c.metodoPago === this.metodo())), this.ordenCobros(), ORDEN_COBROS));
 
   readonly totalHistorial = computed(() => {
     const suma = (m: MonedaCobro) => this.cobrosFiltrados().filter((c) => c.moneda === m && c.estado !== 'ANULADO')

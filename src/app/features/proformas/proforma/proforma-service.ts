@@ -16,9 +16,10 @@ export class ProformaService {
   }
 
   /** Una página de proformas, la más nueva primero (cliente opcional). */
-  listarPagina(clienteId: number | undefined, pagina: number, tamano: number) {
-    const params: Record<string, number> = { pagina, tamano };
+  listarPagina(clienteId: number | undefined, pagina: number, tamano: number, orden = '') {
+    const params: Record<string, number | string> = { pagina, tamano };
     if (clienteId) params['clienteId'] = clienteId;
+    if (orden) params['orden'] = orden;
     return this.http.get<Pagina<ProformaResponse>>(this.api.buildUrl(`${this.endpoint}/pagina`), { params });
   }
 

@@ -11,6 +11,17 @@ import { DocumentoSunat, EstadoSunatVenta, FacturacionService } from '../../../c
 import { CobranzaService } from '../../cobranza/cobro/cobranza-service';
 import { IconoComponent } from '../../../core/layout/icono';
 import { PaginadorComponent } from '../../../core/layout/paginador';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista, ordenParaServidor } from '../../../core/layout/orden';
+
+/** Columnas ordenables (en "Pagos atrasados" se ordena en el navegador; en el reporte, el servidor). */
+const CAMPOS_ORDEN: CamposOrden<VentaResponse> = {
+  id: (v) => v.id,
+  cliente: (v) => v.clienteNombre,
+  fecha: (v) => v.fechaVenta,
+  estado: (v) => v.estado,
+  // En soles, para que US$ 20 000 quede por encima de S/ 66 000 (igual que el orden del servidor)
+  total: (v) => Number(v.total) * (v.moneda === 'DOLARES' && v.tipoCambio ? Number(v.tipoCambio) : 1),
+};
 
 interface Agregado {
   moneda: 'SOLES' | 'DOLARES';
@@ -22,7 +33,7 @@ interface Agregado {
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [PaginadorComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
+  imports: [PaginadorComponent, OrdenComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './venta-list.html',
   styleUrl: './venta-list.css',
 })
@@ -39,6 +50,11 @@ export class VentaListComponent implements OnInit {
   exportando = signal(false);
 
   ventas = signal<VentaResponse[]>([]);
+  /** Columna por la que se ordena (clic en el encabezado); null = la más nueva primero. */
+  orden = signal<Orden | null>(null);
+  /** En el reporte el servidor ya ordenó todas las páginas; la lista de atrasadas llega completa y se ordena aquí. */
+  readonly ventasVisibles = computed(() =>
+    this.vista() === 'ATRASADAS' ? ordenarLista(this.ventas(), this.orden(), CAMPOS_ORDEN) : this.ventas());
   /** Estado ante SUNAT del comprobante (y nota de crédito) de cada venta de la página. */
   private estadosSunat = signal(new Map<number, EstadoSunatVenta>());
   // Paginación del reporte (en "Pagos atrasados" se muestra la lista completa, que es corta)
@@ -105,6 +121,14 @@ export class VentaListComponent implements OnInit {
     this.cargarPagina();
   }
 
+  ordenar(o: Orden | null) {
+    this.orden.set(o);
+    if (this.vista() === 'REPORTE') {
+      this.pagina.set(0);
+      this.cargarPagina();
+    }
+  }
+
   irAPagina(p: number) {
     this.pagina.set(p);
     this.cargarPagina();
@@ -118,7 +142,8 @@ export class VentaListComponent implements OnInit {
 
   private cargarPagina() {
     this.loading.set(true);
-    this.ventaService.reportePagina({ estado: this.estado, desde: this.desde, hasta: this.hasta }, this.pagina(), this.tamano())
+    this.ventaService.reportePagina({ estado: this.estado, desde: this.desde, hasta: this.hasta }, this.pagina(), this.tamano(),
+        ordenParaServidor(this.orden()))
       .subscribe({
         next: (r) => {
           this.ventas.set(r.ventas.contenido);

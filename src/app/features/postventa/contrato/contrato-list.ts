@@ -13,6 +13,17 @@ import { SedeService } from '../../clientes/sede/sede-service';
 import { Sede } from '../../clientes/sede/sede.model';
 import { FRECUENCIAS, etiquetaFrecuencia } from '../equipo/equipo.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables con un clic en el encabezado (la lista llega completa: se ordena aquí). */
+const CAMPOS_ORDEN: CamposOrden<Contrato> = {
+  id: (k) => k.id,
+  cliente: (k) => k.clienteNombre,
+  vigencia: (k) => k.fechaFin,
+  frecuencia: (k) => k.frecuenciaMeses,
+  monto: (k) => Number(k.montoVisita),
+  visitas: (k) => k.visitasPendientes,
+};
 
 /**
  * Contratos de mantenimiento: entre dos fechas, una visita cada N meses a un precio por visita.
@@ -20,7 +31,7 @@ import { IconoComponent } from '../../../core/layout/icono';
  */
 @Component({
   selector: 'app-contrato-list',
-  imports: [IconoComponent, FormsModule, ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [IconoComponent, OrdenComponent, FormsModule, ReactiveFormsModule, RouterLink, DecimalPipe],
   templateUrl: './contrato-list.html',
 })
 export class ContratoListComponent implements OnInit {
@@ -33,6 +44,9 @@ export class ContratoListComponent implements OnInit {
   readonly puedeServicios = computed(() => this.auth.puede('SERVICIOS'));
 
   readonly contratos = signal<Contrato[]>([]);
+  /** Columna por la que se ordena; null = el orden en que llegan del servidor. */
+  readonly orden = signal<Orden | null>(null);
+  readonly contratosVisibles = computed(() => ordenarLista(this.contratos(), this.orden(), CAMPOS_ORDEN));
   readonly clientes = signal<Cliente[]>([]);
   readonly sedesDialogo = signal<Sede[]>([]);
   readonly loading = signal(false);

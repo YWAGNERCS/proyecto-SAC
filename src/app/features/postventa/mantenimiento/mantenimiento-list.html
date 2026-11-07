@@ -66,11 +66,11 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 130px;">Fecha</th>
-          <th>Cliente y contacto</th>
-          <th>Equipos</th>
-          <th class="text-center" style="width: 110px;">Origen</th>
-          <th class="text-center" style="width: 110px;">Estado</th>
+          <th style="width: 130px;"><app-orden campo="fecha" [orden]="orden()" (cambiar)="orden.set($event)">Fecha</app-orden></th>
+          <th><app-orden campo="cliente" [orden]="orden()" (cambiar)="orden.set($event)">Cliente y contacto</app-orden></th>
+          <th><app-orden campo="equipos" [orden]="orden()" (cambiar)="orden.set($event)">Equipos</app-orden></th>
+          <th class="text-center" style="width: 110px;"><app-orden campo="origen" [orden]="orden()" (cambiar)="orden.set($event)">Origen</app-orden></th>
+          <th class="text-center" style="width: 110px;"><app-orden campo="estado" [orden]="orden()" (cambiar)="orden.set($event)">Estado</app-orden></th>
           <th class="text-center" style="width: 210px;">Acciones</th>
         </tr>
       </thead>
@@ -78,7 +78,7 @@
         @if (loading()) {
           <tr><td colspan="6" class="vacio">Cargando…</td></tr>
         }
-        @for (m of mantenimientos(); track m.id) {
+        @for (m of mantenimientosVisibles(); track m.id) {
           <tr>
             <td>
               <strong>{{ m.fechaProgramada }}</strong>

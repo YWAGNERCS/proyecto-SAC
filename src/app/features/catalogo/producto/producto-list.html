@@ -40,11 +40,11 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Nombre</th>
-          <th style="width: 150px;">Categoría</th>
-          <th style="width: 150px;">Sector</th>
-          <th style="width: 130px; text-align: right;">Precio (sin IGV)</th>
-          <th class="text-center" style="width: 110px;">Stock</th>
+          <th><app-orden campo="nombre" [orden]="orden()" (cambiar)="orden.set($event)">Nombre</app-orden></th>
+          <th style="width: 150px;"><app-orden campo="categoria" [orden]="orden()" (cambiar)="orden.set($event)">Categoría</app-orden></th>
+          <th style="width: 150px;"><app-orden campo="sector" [orden]="orden()" (cambiar)="orden.set($event)">Sector</app-orden></th>
+          <th style="width: 130px; text-align: right;"><app-orden campo="precio" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">Precio (sin IGV)</app-orden></th>
+          <th class="text-center" style="width: 110px;"><app-orden campo="stock" [orden]="orden()" (cambiar)="orden.set($event)">Stock</app-orden></th>
           <th style="width: 240px; text-align: right;">Acciones</th>
         </tr>
       </thead>

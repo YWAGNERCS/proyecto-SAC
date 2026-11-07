@@ -5,11 +5,20 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { ClienteService } from './cliente-service';
 import { Cliente } from './cliente.model';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables con un clic en el encabezado. */
+const CAMPOS_ORDEN: CamposOrden<Cliente> = {
+  id: (x) => x.id,
+  nombre: (x) => x.nombreORazonSocial,
+  tipo: (x) => (x.tipo === 'EMPRESA' ? 'Empresa' : 'Persona'),
+  documento: (x) => x.ruc ?? x.dni,
+};
 
 @Component({
   selector: 'app-cliente-list',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, OrdenComponent],
   templateUrl: './cliente-list.html',
   styleUrl: './cliente-list.css',
 })
@@ -24,6 +33,8 @@ export class ClienteListComponent implements OnInit {
   error = signal<string | null>(null);
   mensaje = signal<string | null>(null);
   busqueda = signal('');
+  /** Columna por la que se ordena; null = como llegan del servidor. */
+  orden = signal<Orden | null>(null);
 
   constructor(private clienteService: ClienteService) {}
 
@@ -46,8 +57,9 @@ export class ClienteListComponent implements OnInit {
 
   get clientesFiltrados(): Cliente[] {
     const q = this.busqueda().toLowerCase();
-    if (!q) return this.clientes();
-    return this.clientes().filter(c =>
+    const todos = ordenarLista(this.clientes(), this.orden(), CAMPOS_ORDEN);
+    if (!q) return todos;
+    return todos.filter(c =>
       c.nombreORazonSocial.toLowerCase().includes(q) ||
       (c.ruc ?? '').includes(q) ||
       (c.dni ?? '').includes(q) ||

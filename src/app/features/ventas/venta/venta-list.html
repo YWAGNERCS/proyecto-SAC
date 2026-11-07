@@ -69,14 +69,14 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 70px;">ID</th>
-          <th>Cliente</th>
-          <th class="text-center" style="width: 110px;">Fecha</th>
+          <th style="width: 70px;"><app-orden campo="id" primero="desc" [orden]="orden()" (cambiar)="ordenar($event)">ID</app-orden></th>
+          <th><app-orden campo="cliente" [orden]="orden()" (cambiar)="ordenar($event)">Cliente</app-orden></th>
+          <th class="text-center" style="width: 110px;"><app-orden campo="fecha" primero="desc" [orden]="orden()" (cambiar)="ordenar($event)">Fecha</app-orden></th>
           <th class="text-center" style="width: 90px;">Origen</th>
           <th class="text-center" style="width: 90px;">Pago</th>
-          <th class="text-center" style="width: 110px;">Estado</th>
+          <th class="text-center" style="width: 110px;"><app-orden campo="estado" [orden]="orden()" (cambiar)="ordenar($event)">Estado</app-orden></th>
           <th class="text-center" style="width: 110px;">Cobro</th>
-          <th style="text-align: right; width: 130px;">Total</th>
+          <th style="text-align: right; width: 130px;"><app-orden campo="total" primero="desc" [orden]="orden()" (cambiar)="ordenar($event)">Total</app-orden></th>
           <th class="text-center" style="width: 220px;">Acciones</th>
         </tr>
       </thead>
@@ -84,7 +84,7 @@
         @if (loading()) {
           <tr><td colspan="9" class="vacio">Cargando…</td></tr>
         }
-        @for (v of ventas(); track v.id) {
+        @for (v of ventasVisibles(); track v.id) {
           <tr class="venta-row" [class.anulada]="v.estado === 'ANULADA'">
             <td><span class="badge">#{{ v.id }}</span></td>
             <td><strong>{{ v.clienteNombre }}</strong></td>

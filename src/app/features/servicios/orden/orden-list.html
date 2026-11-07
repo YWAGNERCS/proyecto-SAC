@@ -48,12 +48,12 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 80px;">N°</th>
-          <th style="width: 120px;">Fecha</th>
-          <th>Cliente y lugar</th>
-          <th>Trabajo</th>
-          <th style="width: 160px;">Técnico</th>
-          <th style="width: 120px;">Estado</th>
+          <th style="width: 80px;"><app-orden campo="id" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">N°</app-orden></th>
+          <th style="width: 120px;"><app-orden campo="fecha" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">Fecha</app-orden></th>
+          <th><app-orden campo="cliente" [orden]="orden()" (cambiar)="orden.set($event)">Cliente y lugar</app-orden></th>
+          <th><app-orden campo="trabajo" [orden]="orden()" (cambiar)="orden.set($event)">Trabajo</app-orden></th>
+          <th style="width: 160px;"><app-orden campo="tecnico" [orden]="orden()" (cambiar)="orden.set($event)">Técnico</app-orden></th>
+          <th style="width: 120px;"><app-orden campo="estado" [orden]="orden()" (cambiar)="orden.set($event)">Estado</app-orden></th>
           <th class="text-end" style="width: 100px;"></th>
         </tr>
       </thead>
@@ -61,7 +61,7 @@
         @if (loading()) {
           <tr><td colspan="7" class="vacio">Cargando…</td></tr>
         }
-        @for (o of ordenes(); track o.id) {
+        @for (o of ordenesVisibles(); track o.id) {
           <tr>
             <td><span class="badge">#{{ o.id }}</span></td>
             <td style="white-space: nowrap;">{{ o.fechaProgramada }}@if (o.horaInicio) { <span class="muted">{{ o.horaInicio }}</span> }

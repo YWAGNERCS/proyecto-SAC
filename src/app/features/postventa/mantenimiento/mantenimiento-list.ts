@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -8,13 +8,23 @@ import { Mantenimiento, ResumenPostventa, VistaPostventa } from './mantenimiento
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables con un clic en el encabezado (la lista llega completa: se ordena aquí). */
+const CAMPOS_ORDEN: CamposOrden<Mantenimiento> = {
+  fecha: (m) => m.fechaProgramada,
+  cliente: (m) => m.clienteNombre,
+  equipos: (m) => m.equipos,
+  origen: (m) => m.origen,
+  estado: (m) => m.estado,
+};
 
 type Accion = 'REALIZADO' | 'REPROGRAMAR';
 
 @Component({
   selector: 'app-mantenimiento-list',
   standalone: true,
-  imports: [IconoComponent, CommonModule, FormsModule, RouterLink],
+  imports: [IconoComponent, OrdenComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './mantenimiento-list.html',
   styleUrl: './mantenimiento-list.css',
 })
@@ -34,6 +44,9 @@ export class MantenimientoListComponent implements OnInit {
   clienteId: number | null = null;
 
   mantenimientos = signal<Mantenimiento[]>([]);
+  /** Columna por la que se ordena; null = el orden en que llegan del servidor. */
+  readonly orden = signal<Orden | null>(null);
+  readonly mantenimientosVisibles = computed(() => ordenarLista(this.mantenimientos(), this.orden(), CAMPOS_ORDEN));
   resumen = signal<ResumenPostventa | null>(null);
   clientes = signal<Cliente[]>([]);
   loading = signal(false);

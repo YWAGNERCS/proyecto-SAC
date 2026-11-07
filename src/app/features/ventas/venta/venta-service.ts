@@ -34,8 +34,10 @@ export class VentaService {
   }
 
   /** Una página del reporte, con los totales calculados en el servidor sobre todo el filtro. */
-  reportePagina(filtro: FiltroVentas, pagina: number, tamano: number) {
+  /** @param orden columna y dirección para el servidor, p. ej. "cliente,asc" (vacío = la más nueva primero) */
+  reportePagina(filtro: FiltroVentas, pagina: number, tamano: number, orden = '') {
     let params = new HttpParams().set('pagina', pagina).set('tamano', tamano);
+    if (orden) params = params.set('orden', orden);
     if (filtro.estado) params = params.set('estado', filtro.estado);
     if (filtro.desde) params = params.set('desde', filtro.desde);
     if (filtro.hasta) params = params.set('hasta', filtro.hasta);

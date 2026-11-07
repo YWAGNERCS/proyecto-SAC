@@ -10,11 +10,12 @@ import { ProformaResponse } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { IconoComponent } from '../../../core/layout/icono';
 import { PaginadorComponent } from '../../../core/layout/paginador';
+import { Orden, OrdenComponent, ordenParaServidor } from '../../../core/layout/orden';
 
 @Component({
   selector: 'app-proforma-list',
   standalone: true,
-  imports: [PaginadorComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
+  imports: [PaginadorComponent, OrdenComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './proforma-list.html',
   styleUrl: './proforma-list.css'
 })
@@ -25,6 +26,8 @@ export class ProformaListComponent implements OnInit {
   private router = inject(Router);
 
   proformas = signal<ProformaResponse[]>([]);
+  /** Columna por la que se ordena (clic en el encabezado; la ordena el servidor sobre todas las páginas). */
+  orden = signal<Orden | null>(null);
   pagina = signal(0);
   tamano = signal(20);
   total = signal(0);
@@ -51,13 +54,19 @@ export class ProformaListComponent implements OnInit {
 
   /** Recarga la página actual (tras aceptar, rechazar, enviar o convertir se queda en la misma página). */
   cargarProformas() {
-    this.proformaService.listarPagina(this.clienteFiltro, this.pagina(), this.tamano()).subscribe({
+    this.proformaService.listarPagina(this.clienteFiltro, this.pagina(), this.tamano(), ordenParaServidor(this.orden())).subscribe({
       next: (p) => {
         this.proformas.set(p.contenido);
         this.total.set(p.total);
         this.totalPaginas.set(p.totalPaginas);
       },
     });
+  }
+
+  ordenar(o: Orden | null) {
+    this.orden.set(o);
+    this.pagina.set(0);
+    this.cargarProformas();
   }
 
   irAPagina(p: number) {

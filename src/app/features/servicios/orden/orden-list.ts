@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -7,11 +7,22 @@ import { EstadoOrden, OrdenTrabajo, etiquetaTipo } from './orden.model';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
 import { IconoComponent } from '../../../core/layout/icono';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables con un clic en el encabezado (la lista llega completa: se ordena aquí). */
+const CAMPOS_ORDEN: CamposOrden<OrdenTrabajo> = {
+  id: (o) => o.id,
+  fecha: (o) => `${o.fechaProgramada} ${o.horaInicio ?? ''}`,
+  cliente: (o) => o.clienteNombre,
+  trabajo: (o) => o.descripcion,
+  tecnico: (o) => o.tecnico,
+  estado: (o) => o.estado,
+};
 
 /** Órdenes de trabajo: agenda de los técnicos, con filtros por estado, cliente, técnico y fechas. */
 @Component({
   selector: 'app-orden-list',
-  imports: [IconoComponent, FormsModule, RouterLink],
+  imports: [IconoComponent, OrdenComponent, FormsModule, RouterLink],
   templateUrl: './orden-list.html',
 })
 export class OrdenListComponent implements OnInit {
@@ -19,6 +30,9 @@ export class OrdenListComponent implements OnInit {
   private readonly clienteService = inject(ClienteService);
 
   readonly ordenes = signal<OrdenTrabajo[]>([]);
+  /** Columna por la que se ordena; null = el orden en que llegan del servidor. */
+  readonly orden = signal<Orden | null>(null);
+  readonly ordenesVisibles = computed(() => ordenarLista(this.ordenes(), this.orden(), CAMPOS_ORDEN));
   readonly clientes = signal<Cliente[]>([]);
   readonly loading = signal(false);
   readonly error = signal('');

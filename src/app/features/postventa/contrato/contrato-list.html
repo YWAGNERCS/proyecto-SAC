@@ -37,12 +37,12 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 70px;">N°</th>
-          <th>Cliente y alcance</th>
-          <th style="width: 190px;">Vigencia</th>
-          <th style="width: 150px;">Frecuencia</th>
-          <th class="text-end" style="width: 130px;">Por visita</th>
-          <th style="width: 140px;">Visitas</th>
+          <th style="width: 70px;"><app-orden campo="id" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">N°</app-orden></th>
+          <th><app-orden campo="cliente" [orden]="orden()" (cambiar)="orden.set($event)">Cliente y alcance</app-orden></th>
+          <th style="width: 190px;"><app-orden campo="vigencia" [orden]="orden()" (cambiar)="orden.set($event)">Vigencia</app-orden></th>
+          <th style="width: 150px;"><app-orden campo="frecuencia" [orden]="orden()" (cambiar)="orden.set($event)">Frecuencia</app-orden></th>
+          <th class="text-end" style="width: 130px;"><app-orden campo="monto" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">Por visita</app-orden></th>
+          <th style="width: 140px;"><app-orden campo="visitas" primero="desc" [orden]="orden()" (cambiar)="orden.set($event)">Visitas</app-orden></th>
           <th class="text-end" style="width: 110px;"></th>
         </tr>
       </thead>
@@ -50,7 +50,7 @@
         @if (loading()) {
           <tr><td colspan="7" class="vacio">Cargando…</td></tr>
         }
-        @for (k of contratos(); track k.id) {
+        @for (k of contratosVisibles(); track k.id) {
           <tr>
             <td><span class="badge">#{{ k.id }}</span></td>
             <td><strong>{{ k.clienteNombre }}</strong>

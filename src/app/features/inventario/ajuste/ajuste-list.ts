@@ -6,6 +6,17 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ProductoService } from '../../catalogo/producto/producto-service';
 import { Producto, controlaStock } from '../../catalogo/producto/producto.model';
 import { AjusteInventario, AjusteService } from './ajuste-service';
+import { CamposOrden, Orden, OrdenComponent, ordenarLista } from '../../../core/layout/orden';
+
+/** Columnas ordenables con un clic en el encabezado (la lista llega completa: se ordena aquí). */
+const CAMPOS_ORDEN: CamposOrden<AjusteInventario> = {
+  fecha: (a) => `${a.fecha} ${String(a.id).padStart(9, '0')}`,
+  material: (a) => a.producto,
+  motivo: (a) => a.motivoNombre,
+  movimiento: (a) => (a.tipo === 'ENTRADA' ? a.cantidad : -a.cantidad),
+  stock: (a) => a.stockNuevo,
+  registro: (a) => a.registradoPor,
+};
 
 /**
  * Inventario › Ajustes de inventario: historial de ajustes y registro de uno nuevo.
@@ -15,7 +26,7 @@ import { AjusteInventario, AjusteService } from './ajuste-service';
  */
 @Component({
   selector: 'app-ajuste-list',
-  imports: [DatePipe, FormsModule, RouterLink],
+  imports: [DatePipe, FormsModule, RouterLink, OrdenComponent],
   templateUrl: './ajuste-list.html',
   styleUrl: './ajuste-list.css',
 })
@@ -27,6 +38,9 @@ export class AjusteListComponent {
   readonly materiales = signal<Producto[]>([]);
   readonly motivos = signal<{ codigo: string; nombre: string }[]>([]);
   readonly ajustes = signal<AjusteInventario[]>([]);
+  /** Columna por la que se ordena; null = el orden en que llegan del servidor. */
+  readonly orden = signal<Orden | null>(null);
+  readonly ajustesVisibles = computed(() => ordenarLista(this.ajustes(), this.orden(), CAMPOS_ORDEN));
   readonly cargando = signal(false);
   readonly error = signal('');
 
