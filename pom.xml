@@ -128,6 +128,12 @@
             <artifactId>spring-boot-starter-data-jpa-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- S14: jwt() simula un token ya validado en las pruebas de punta a punta (solo pruebas, no va al .jar) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Anotaciones de Spring Modulith (@NamedInterface en package-info): solo marcan la API de cada módulo -->
         <dependency>

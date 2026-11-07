@@ -100,6 +100,8 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | RF-31 | **Ajustes de inventario** (nuevo, 31/10/2026). | ✅ Solo materiales (los equipos no controlan stock). Conteo físico: se escribe cuántas unidades hay y el sistema registra la diferencia. Movimiento: entrada o salida con motivo (stock inicial, merma, dañado, robo o pérdida, devolución al proveedor, otro) y observación obligatoria. Una salida no deja el stock negativo. Cada ajuste guarda el stock antes y después, quién y cuándo; sale en el kardex (Ajuste +/−) y en el historial de cambios. Registrar: ADMIN o permiso AJUSTAR_INVENTARIO. No se editan ni borran: un error se corrige con otro ajuste. |
 | RF-32 | **Rentabilidad** (nuevo, 31/10/2026). | ✅ Cada línea vendida guarda el costo del producto al vender, en la moneda de la venta. Comercial › Rentabilidad (ADMIN o permiso VER_RENTABILIDAD) muestra, para un periodo y en soles (lo vendido en dólares, al tipo de cambio de cada venta): vendido sin IGV, costo, ganancia y % por venta, cliente, producto, categoría y técnico (órdenes realizadas: su facturación de mano de obra menos el costo de mano de obra y los materiales usados). Marca en ámbar lo que deja menos de 10 %. Las ventas anteriores al 31/10/2026 usan el costo del producto de esa fecha (no se guardaba). |
 | RF-33 | **Agenda de técnicos** (nuevo, 31/10/2026). | ✅ La orden de trabajo lleva hora de inicio (opcional) y duración estimada (15 min a 12 h, 2 h por defecto). Un técnico no puede tener dos visitas PROGRAMADAS que se crucen el mismo día (409 con la orden que choca). Servicios › Agenda: semana de lunes a domingo con una fila por técnico; cada visita con horario, cliente y tipo; las que se cruzan, en rojo; "+" en un día libre programa una orden para ese técnico y ese día. |
+| RF-34 | **Ordenar listados por columna** (nuevo, 07/11/2026). | ✅ Clic en el encabezado: A→Z o de menor a mayor, otro clic invierte y el tercero vuelve al orden normal, en las 13 listas. Ventas, Proformas y Compras ordenan en el servidor antes de paginar (`orden=campo,asc\|desc`, columnas permitidas por listado); los montos en dólares se comparan en soles. |
+| RF-35 | **Registrar un cliente sin salir de la venta o proforma** (nuevo, 06/11/2026). | ✅ Botón "Nuevo cliente" junto al selector: abre el formulario de cliente (con búsqueda SUNAT/RENIEC) en un diálogo y lo deja seleccionado; si el RUC/DNI ya existe ofrece "Usar este cliente". |
 
 
 ### Requerimientos No Funcionales (RNF)
@@ -112,6 +114,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - **RNF-06 (Usabilidad):** la SPA es **responsiva**: barra superior con grupos, buscador global y avisos, y riel de íconos con el nombre de cada módulo al pasar el mouse; bajo 900 px el riel pasa a un menú desplegable (☰) con texto; formularios a una columna y tablas con desplazamiento horizontal en celular (≤ 640 px); el detalle de la venta se muestra como tarjetas.
 - **RNF-07 (Usabilidad):** tema **claro, oscuro o "como el sistema"** (sigue al modo de Windows sin recargar), elegido en Configuración o con el botón sol/luna de la barra; se guarda en el navegador y se aplica antes de cargar la app (sin destello claro). El tema oscuro usa una escala de grises neutros: fondo `#111827`, texto `#F3F4F6`, texto secundario `#9AA3AF`, bordes y gráficos `#D1D5DB`/`#9AA3AF`, y `#F3F4F6` como acento (botones claros con texto oscuro); rojo, verde y ámbar quedan solo para estados y alertas.
 - **RNF-08 (Recuperabilidad):** respaldo **automático diario** de la base (tarea de Windows "SGE-JD respaldo diario", `programar_respaldo.bat`): Data Pump a `C:\SGE-JD\respaldos`, copia a una carpeta fuera de la PC (USB, OneDrive o red) y se conservan los últimos 14; si la PC estaba apagada a la hora, corre al encenderla. Registro en `respaldos\respaldo_automatico.log`.
+- **RNF-09 (Observabilidad):** perfiles dev/prod, logs con `logback-spring.xml` y Actuator `health`/`info` para diagnosticar en producción (S13).
 
 ### Casos de uso / Historias de usuario
 
@@ -755,9 +758,10 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **72 pruebas** (05/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
-(Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. `ProductoCrudTest` es de integración y
-sí necesita Oracle encendido (revierte lo que guarda).
+`mvn test` corre **110 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+(Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. Las marcadas *(Oracle)* son de
+integración y necesitan la base encendida; todas deshacen lo que guardan. La trazabilidad de cada requisito con su
+prueba está en [RTM.md](RTM.md).
 
 | Clase de prueba | Qué protege | Pruebas |
 |---|---|---|
@@ -774,6 +778,13 @@ sí necesita Oracle encendido (revierte lo que guarda).
 | `StockProductoTest` | Stock: suma de líneas repetidas, todo o nada, bloqueo en orden de id, equipos sin stock, editar un producto no cambia su stock | 6 |
 | `ModularityTests` (Spring Modulith) | Límites entre módulos y ausencia de ciclos (ADR-002); genera el diagrama de módulos | 2 |
 | `ProductoCrudTest` (integración, Oracle) | Guardar, buscar y actualizar un producto | 3 |
+| `FlujoCompletoEndToEndTest` (punta a punta, Oracle) | S14: producto → proforma → venta con rutina → comprobante → visitas → reporte paginado = suma manual → cobros → 401/403 → anulación → auditoría, sin mocks | 1 |
+| `RutinaMantenimientoIntegracionTest` (Oracle) | Venta real: con rutina se programan sus visitas, sin rutina ninguna | 2 |
+| `RutinaMantenimientoTest` | Rutina de mantenimiento: solo con equipos, rangos, primera fecha | 5 |
+| `ClasificacionCodigosSunatTest` | Qué hace SGE-JD con cada código de SUNAT y lectura de `faultcode` | 15 |
+| `EnvioSunatServiceTest` | Envío a SUNAT: aceptado, observado, rechazado, sin respuesta, nota de crédito, reintentos y reenvío | 11 |
+| `OrdenTest` | Orden por columna: texto en español, números, vacíos al final, dólares en soles | 4 |
+| `SunatBetaTest` (beta real de SUNAT) | Factura, boleta y nota aceptadas y un rechazo real; solo corre con `SUNAT_BETA=1` | 0 por defecto |
 
 La seguridad por rol y permiso se prueba además de punta a punta con `pruebas-seguridad/05_matriz.ps1` (14 casos,
 con Keycloak y el backend encendidos).
@@ -906,7 +917,7 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 |---|---|---|
 | 1 | Inicio y planificación | ✅ Completo |
 | 2 | Levantamiento de información | ✅ Completo (pendiente confirmar con Lucy el formato exacto de envío a SUNAT) |
-| 3 | Análisis de requisitos | ✅ 16 RF originales + RF-17 a RF-33 (anulación, moneda, descuentos, cobranza, postventa, devoluciones, anulación de cobros, detracción y retención, órdenes de trabajo, equipos instalados, contratos, permisos delegables, historial de cambios, cuentas por pagar, ajustes de inventario, rentabilidad y agenda de técnicos) |
+| 3 | Análisis de requisitos | ✅ 16 RF originales + RF-17 a RF-35 (anulación, moneda, descuentos, cobranza, postventa, devoluciones, anulación de cobros, detracción y retención, órdenes de trabajo, equipos instalados, contratos, permisos delegables, historial de cambios, cuentas por pagar, ajustes de inventario, rentabilidad, agenda de técnicos, orden por columna y cliente nuevo desde la venta) |
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ✅ 2 procesos en BPMN 2.0 (`docs/diagramas/`); los AS-IS son borrador con supuestos S1–S9 por confirmar con el cliente |
 | 5 | Análisis del sistema (casos de uso UML) | ✅ CU-01 a CU-11 y diagrama de casos de uso |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo, con diagrama de clases del dominio (UML) |
@@ -915,7 +926,7 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Configuración de producción verificada de punta a punta en contenedores (perfil `prod`, imagen Docker del backend, Oracle y Keycloak propios, SPA en nginx): [PRODUCCION_LOCAL.md](PRODUCCION_LOCAL.md) y [S13](S13_optimizacion_produccion.md) (05/11/2026). Pendiente el servidor de JD y HTTPS |
 | 10 | Documentación técnica | ✅ Este documento, `CONTEXTO.md`, los `README.md` y `lp2-demo.md`, publicados en https://ywagnercs.github.io/proyecto-SAC/ |
 | 11 | Manual de usuario | 🔄 Sección 3 y hoja para el cliente [`LIMITACIONES.md`](LIMITACIONES.md) (25/10/2026); falta un manual con capturas por pantalla |
-| 12 | Trazabilidad (RTM) | ⏳ **Pendiente — siguiente entregable prioritario** |
+| 12 | Trazabilidad (RTM) | ✅ [RTM.md](RTM.md): RF-01 a RF-35 y RNF-01 a RNF-09 con arquitectura, base de datos, API, pantalla y prueba; pruebas que faltan registradas (07/11/2026). Integración y estabilización (S14): [S14_integracion_estabilizacion.md](S14_integracion_estabilizacion.md) |
 | 13 | Mantenimiento y evolución | ✅ Git/GitHub (`YWAGNERCS/proyecto-SAC`, con topics) y publicación automática de la documentación |
 
 ### Avances del 05/11/2026
