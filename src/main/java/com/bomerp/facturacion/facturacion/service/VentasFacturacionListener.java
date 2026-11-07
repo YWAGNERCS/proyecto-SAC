@@ -45,6 +45,17 @@ public class VentasFacturacionListener {
         }
     }
 
+    /**
+     * Protección del envío (EnvioSunatService): un comprobante de una venta anulada iba a salir sin su nota
+     * de crédito. Se crea aquí, dentro de la transacción del envío; si falla, el comprobante no se envía.
+     */
+    @EventListener
+    public void alEnviarComprobanteDeVentaAnulada(EnvioSunatService.VentaAnuladaSinNotaEvent evento) {
+        facturacionService.emitirNotaCreditoPorAnulacion(evento.ventaId(), "Anulación de la operación (venta #" + evento.ventaId() + ")")
+                .ifPresent(nc -> log.info("Venta {} anulada: nota de crédito {}-{} creada al enviar su comprobante",
+                        evento.ventaId(), nc.getSerie(), nc.getNumero()));
+    }
+
     /** Venta anulada: nota de crédito que anula su comprobante aceptado. */
     @EventListener
     @Order(2)

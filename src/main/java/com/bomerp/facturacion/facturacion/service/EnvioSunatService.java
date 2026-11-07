@@ -8,6 +8,7 @@ import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 import com.bomerp.facturacion.notacredito.repository.NotaCreditoRepository;
 import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.facturacion.ose.integration.OseClient.RespuestaOse;
+import com.bomerp.ventas.venta.entity.Venta;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -106,6 +107,11 @@ public class EnvioSunatService {
             if (c == null || c.getEstadoSunat() != EstadoSunat.PENDIENTE) {
                 return c == null ? null : c.getEstadoSunat();
             }
+            if (!tieneNotaSiSuVentaFueAnulada(c)) {
+                c.getEnvio().registrarIntento(null, "No se envía: la venta #" + c.getVenta().getId()
+                        + " está anulada y no se pudo crear su nota de crédito. Revise el registro del backend.", null, null);
+                return EstadoSunat.PENDIENTE;
+            }
             RespuestaOse r = ose.emitir(c);
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
             if (r.enlacePdf() != null) c.setEnlacePdf(r.enlacePdf());
@@ -117,6 +123,33 @@ public class EnvioSunatService {
         }
         return estado;
     }
+
+    /**
+     * Una factura o boleta de una venta anulada solo puede salir junto con su nota de crédito: si SUNAT
+     * la aceptara sola, quedaría vigente una venta que ya no existe (auditoría M10, venta #285: se anuló
+     * cuando la nota todavía no se creaba para comprobantes pendientes). Si falta la nota, se pide a
+     * Facturación que la cree ahora, en esta misma transacción, y sale después de la factura.
+     *
+     * @return false si la venta está anulada y aun así no tiene nota: entonces no se envía
+     */
+    private boolean tieneNotaSiSuVentaFueAnulada(Comprobante c) {
+        if (c.getVenta() == null || c.getVenta().getEstado() != Venta.EstadoVenta.ANULADA
+                || notas.findByComprobanteReferencia_Id(c.getId()).isPresent()) {
+            return true;
+        }
+        log.warn("{}-{} es de la venta anulada #{} y no tiene nota de crédito: se crea antes de enviarlo",
+                c.getSerie(), c.getNumero(), c.getVenta().getId());
+        eventos.publishEvent(new VentaAnuladaSinNotaEvent(c.getVenta().getId()));
+        boolean creada = notas.findByComprobanteReferencia_Id(c.getId()).isPresent();
+        if (!creada) {
+            log.error("{}-{} no se envía: la venta #{} está anulada y no se pudo crear su nota de crédito",
+                    c.getSerie(), c.getNumero(), c.getVenta().getId());
+        }
+        return creada;
+    }
+
+    /** Comprobante de una venta anulada que se iba a enviar sin su nota de crédito: Facturación la crea. */
+    public record VentaAnuladaSinNotaEvent(Long ventaId) {}
 
     /** Envía una nota de crédito PENDIENTE, solo si su comprobante original ya tiene validez. */
     public EstadoSunat enviarNota(Long id) {

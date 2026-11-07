@@ -9,6 +9,7 @@ import com.bomerp.facturacion.notacredito.repository.NotaCreditoRepository;
 import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.facturacion.ose.integration.OseClient.RespuestaOse;
 import com.bomerp.facturacion.ose.integration.OseClient.Resultado;
+import com.bomerp.ventas.venta.entity.Venta;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -164,5 +165,60 @@ class EnvioSunatServiceTest {
         n.setComprobanteReferencia(original);
         when(notas.findById(id)).thenReturn(Optional.of(n));
         return n;
+    }
+
+    // --- Protección: una venta anulada no deja su comprobante vigente sin nota de crédito (auditoría M10) ---
+
+    private Comprobante deVenta(Comprobante c, Venta.EstadoVenta estado) {
+        Venta v = new Venta();
+        v.setId(285L);
+        v.setEstado(estado);
+        c.setVenta(v);
+        return c;
+    }
+
+    @Test
+    void ventaAnuladaSinNotaPideCrearlaAntesDeEnviar() {
+        Comprobante c = deVenta(comprobante(20, EstadoSunat.PENDIENTE), Venta.EstadoVenta.ANULADA);
+        // primero no tiene nota; después del evento, Facturación ya la creó
+        when(notas.findByComprobanteReferencia_Id(20L)).thenReturn(Optional.empty(), Optional.of(new NotaCredito()));
+        when(ose.emitir(c)).thenReturn(respuesta(Resultado.ACEPTADO, 0, "aceptada"));
+
+        assertThat(servicio.enviarComprobante(20L)).isEqualTo(EstadoSunat.ACEPTADO);
+        var orden = inOrder(eventos, ose);
+        orden.verify(eventos).publishEvent(new EnvioSunatService.VentaAnuladaSinNotaEvent(285L));
+        orden.verify(ose).emitir(c);
+    }
+
+    @Test
+    void ventaAnuladaSinNotaQueNoSePudoCrearNoSeEnvia() {
+        Comprobante c = deVenta(comprobante(21, EstadoSunat.PENDIENTE), Venta.EstadoVenta.ANULADA);
+        when(notas.findByComprobanteReferencia_Id(21L)).thenReturn(Optional.empty());
+
+        assertThat(servicio.enviarComprobante(21L)).isEqualTo(EstadoSunat.PENDIENTE);
+        verify(ose, never()).emitir(any());
+        // cuenta como intento (no se reintenta sin fin) y el motivo queda a la vista
+        assertThat(c.getEnvio().getIntentos()).isEqualTo(1);
+        assertThat(c.getEnvio().getMensaje()).contains("venta #285 está anulada");
+    }
+
+    @Test
+    void ventaAnuladaQueYaTieneNotaSeEnviaSinCrearOtra() {
+        Comprobante c = deVenta(comprobante(22, EstadoSunat.PENDIENTE), Venta.EstadoVenta.ANULADA);
+        when(notas.findByComprobanteReferencia_Id(22L)).thenReturn(Optional.of(new NotaCredito()));
+        when(ose.emitir(c)).thenReturn(respuesta(Resultado.ACEPTADO, 0, "aceptada"));
+
+        assertThat(servicio.enviarComprobante(22L)).isEqualTo(EstadoSunat.ACEPTADO);
+        verify(eventos, never()).publishEvent(any(EnvioSunatService.VentaAnuladaSinNotaEvent.class));
+    }
+
+    @Test
+    void ventaVigenteNoConsultaNotas() {
+        Comprobante c = deVenta(comprobante(23, EstadoSunat.PENDIENTE), Venta.EstadoVenta.REGISTRADA);
+        when(ose.emitir(c)).thenReturn(respuesta(Resultado.ACEPTADO, 0, "aceptada"));
+
+        assertThat(servicio.enviarComprobante(23L)).isEqualTo(EstadoSunat.ACEPTADO);
+        verify(notas, never()).findByComprobanteReferencia_Id(any());
+        verify(eventos, never()).publishEvent(any(EnvioSunatService.VentaAnuladaSinNotaEvent.class));
     }
 }
