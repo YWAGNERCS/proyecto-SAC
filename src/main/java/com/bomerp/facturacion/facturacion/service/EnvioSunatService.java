@@ -230,10 +230,12 @@ public class EnvioSunatService {
     @Scheduled(initialDelayString = "${app.facturacion.reintento-inicial-ms:60000}",
             fixedDelayString = "${app.facturacion.reintento-ms:180000}")
     public void reintentarPendientes() {
-        var pendientes = comprobantes.findTop20ByEstadoSunatOrderByIdAsc(EstadoSunat.PENDIENTE).stream()
-                .filter(c -> c.getEnvio().getIntentos() < MAX_INTENTOS).map(Comprobante::getId).toList();
-        var notasPendientes = notas.findTop20ByEstadoSunatOrderByIdAsc(EstadoSunat.PENDIENTE).stream()
-                .filter(n -> n.getEnvio().getIntentos() < MAX_INTENTOS).map(NotaCredito::getId).toList();
+        // El límite de intentos va en la consulta, antes del Top 20 (revisión externa F-02): si se filtrara
+        // después, 20 comprobantes agotados al principio de la lista taparían para siempre a los siguientes.
+        var pendientes = comprobantes.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, MAX_INTENTOS)
+                .stream().map(Comprobante::getId).toList();
+        var notasPendientes = notas.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, MAX_INTENTOS)
+                .stream().map(NotaCredito::getId).toList();
         if (pendientes.isEmpty() && notasPendientes.isEmpty()) return;
         log.info("Reintento de envíos a SUNAT: {} comprobante(s) y {} nota(s) de crédito pendientes",
                 pendientes.size(), notasPendientes.size());

@@ -9,6 +9,12 @@ import java.util.List;
 
 public interface DevolucionRepository extends JpaRepository<Devolucion, Long> {
 
+    /** Lee la fila bloqueándola hasta el fin de la transacción (operaciones simultáneas sobre la misma). */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
+    @Query("SELECT x FROM Devolucion x WHERE x.id = :id")
+    java.util.Optional<Devolucion> bloquear(@Param("id") Long id);
+
     boolean existsByVentaId(Long ventaId);
 
     /** Devoluciones con filtros opcionales; primero las pendientes y las más recientes. */

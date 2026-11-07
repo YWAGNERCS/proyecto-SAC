@@ -97,7 +97,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleIntegridad(DataIntegrityViolationException ex) {
-        log.warn("Violacion de integridad: {}", ex.getMostSpecificCause().getMessage());
+        String causa = String.valueOf(ex.getMostSpecificCause().getMessage());
+        log.warn("Violacion de integridad: {}", causa);
+        // Índices únicos que protegen operaciones simultáneas: mensaje en palabras del negocio
+        if (causa.toUpperCase().contains("UX_COMPRAS_PROVEEDOR_FACTURA")) {
+            return respuesta(HttpStatus.CONFLICT, "Esa factura del proveedor ya está registrada en otra compra.");
+        }
+        if (causa.toUpperCase().contains("UX_VENTAS_PROFORMA")) {
+            return respuesta(HttpStatus.CONFLICT, "Esa proforma ya se convirtió en venta.");
+        }
         return respuesta(HttpStatus.CONFLICT, "La operación viola una restricción de integridad de datos");
     }
 

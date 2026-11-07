@@ -131,13 +131,14 @@ class EnvioSunatServiceTest {
     }
 
     @Test
-    void elReintentoNoTomaLosQueYaSuperaronElMaximoDeIntentos() {
-        Comprobante agotado = comprobante(9, EstadoSunat.PENDIENTE);
-        for (int i = 0; i < 20; i++) agotado.getEnvio().registrarIntento(null, "sin respuesta", null, null);
-        when(comprobantes.findTop20ByEstadoSunatOrderByIdAsc(EstadoSunat.PENDIENTE)).thenReturn(List.of(agotado));
-        when(notas.findTop20ByEstadoSunatOrderByIdAsc(EstadoSunat.PENDIENTE)).thenReturn(List.of());
+    void elReintentoPideALaBaseSoloLosQueNoAgotaronSusIntentos() {
+        // El filtro va en la consulta (F-02); que Oracle lo cumpla lo prueba ReintentoSunatIntegracionTest
+        when(comprobantes.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20)).thenReturn(List.of());
+        when(notas.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20)).thenReturn(List.of());
 
         servicio.reintentarPendientes();
+        verify(comprobantes).findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20);
+        verify(notas).findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20);
         verify(ose, after(300).never()).emitir(any());
     }
 

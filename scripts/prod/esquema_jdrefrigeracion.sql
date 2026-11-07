@@ -1,7 +1,7 @@
 -- ============================================================
 -- Esquema de SGE-JD para una base NUEVA (S13: Oracle de producción).
 -- Generado con DBMS_METADATA desde el esquema real de desarrollo (JDREFRIGERACION, 06/11/2026: incluye la respuesta de SUNAT por comprobante):
--- 25 tablas, sus índices (incluido UX_VENTAS_PROFORMA) y las claves foráneas, sin datos.
+-- 25 tablas, sus índices (incluidos UX_VENTAS_PROFORMA y UX_COMPRAS_PROVEEDOR_FACTURA, 07/11/2026) y las claves foráneas, sin datos.
 -- No incluye USUARIOS (tabla antigua que el código ya no usa: los usuarios viven en Keycloak).
 --
 -- Se ejecuta UNA vez, como el usuario de la aplicación, sobre el PDB vacío:
@@ -471,6 +471,9 @@ CREATE TABLE "AJUSTES_INVENTARIO"
   ;
 
   CREATE UNIQUE INDEX "UX_VENTAS_PROFORMA" ON "VENTAS" ("PROFORMA_ID")
+  ;
+
+  CREATE UNIQUE INDEX "UX_COMPRAS_PROVEEDOR_FACTURA" ON "COMPRAS" ("PROVEEDOR_ID", "NUMERO_FACTURA")
   ;
 
   ALTER TABLE "AJUSTES_INVENTARIO" ADD FOREIGN KEY ("PRODUCTO_ID")

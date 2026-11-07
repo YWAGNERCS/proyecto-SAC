@@ -310,6 +310,8 @@ Venta registrada ──► comprobante PENDIENTE (serie y correlativo) ──►
 - **Una cola, de uno en uno:** la beta de SUNAT responde HTTP 401 al tercer envío seguido en menos de un segundo.
 - **Respaldo:** por cada comprobante y nota de crédito se guardan el XML firmado, el CDR (constancia de SUNAT), el código, el mensaje y los intentos (`migracion_envio_sunat.sql`).
 - **Nota de crédito:** se crea al anular la venta y sale cuando SUNAT aceptó el original. Si el original fue rechazado, no se anula (no tenía validez).
+- **Reintentos sin trabas (revisión externa F-02, 07/11/2026):** el límite de 20 intentos se filtra en la consulta a Oracle, antes de tomar los 20 primeros pendientes; antes, 20 agotados al principio de la lista tapaban para siempre a los siguientes.
+- **Correo al cliente solo con validez (revisión externa F-01, 07/11/2026):** "Su Factura ... ha sido emitida" sale solo si SUNAT la aceptó (o la observó). Un comprobante pendiente, rechazado o del modo simulado no se envía: el botón responde 409 con el motivo.
 - **Ninguna factura de una venta anulada sale sola (auditoría M10, 07/11/2026):** antes de enviar un comprobante se revisa su venta. Si está anulada y no tiene nota de crédito (pasó con la venta #285, anulada antes de que la nota se creara también para comprobantes pendientes), la nota se crea en ese momento y sale después de la factura. Si no se puede crear, el comprobante no se envía y el motivo queda en su registro de envío.
 - **Detracción sin cuenta configurada:** la factura no se envía y queda PENDIENTE con el aviso; al configurar `CUENTA_DETRACCIONES` el reintento la envía.
 - **El correo** con el comprobante sale recién cuando SUNAT lo acepta.
@@ -759,7 +761,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **116 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **121 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. Las marcadas *(Oracle)* son de
 integración y necesitan la base encendida; todas deshacen lo que guardan. La trazabilidad de cada requisito con su
 prueba está en [RTM.md](RTM.md).
@@ -784,6 +786,8 @@ prueba está en [RTM.md](RTM.md).
 | `RutinaMantenimientoTest` | Rutina de mantenimiento: solo con equipos, rangos, primera fecha | 5 |
 | `ClasificacionCodigosSunatTest` | Qué hace SGE-JD con cada código de SUNAT y lectura de `faultcode` | 15 |
 | `EnvioSunatServiceTest` | Envío a SUNAT: aceptado, observado, rechazado, sin respuesta, nota de crédito, reintentos y reenvío; el comprobante de una venta anulada no sale sin su nota | 15 |
+| `CorreoComprobanteTest` | Al cliente solo se le envía por correo un comprobante aceptado por SUNAT; nunca uno pendiente, rechazado ni del modo simulado | 4 |
+| `ReintentoSunatIntegracionTest` (Oracle) | 25 comprobantes con los intentos agotados al principio de la lista no tapan al siguiente pendiente | 1 |
 | `VentaAnuladaSinNotaIntegracionTest` (Oracle) | El caso de la venta #285: venta anulada sin nota → la nota se crea antes de enviar la factura; una anulación normal no la duplica | 2 |
 | `OrdenTest` | Orden por columna: texto en español, números, vacíos al final, dólares en soles | 4 |
 | `SunatBetaTest` (beta real de SUNAT) | Factura, boleta y nota aceptadas y un rechazo real; solo corre con `SUNAT_BETA=1` | 0 por defecto |
@@ -1087,7 +1091,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 34c. **Dependencias:** (el `console.log` que `categoria-form.ts` arrastraba del ejemplo de ciclo de vida de la S07 se quitó el 26/10/2026) `npm audit` marca 2 avisos altos en `@angular/router` (solo afecta a SSR, que no se usa) y `zod`, ambos con actualización menor.
 
 ### Operación
-35. **Base con datos simulados para la demostración (31/10/2026).** Tiene un año ficticio (11/2025 → 10/2026) cargado por la API como lo harían Lucy y Lisandro: 34 clientes, 8 proveedores, 39 productos, 219 proformas, 224 ventas (3 anuladas con su devolución), cobros con detracción y retención, 48 compras con pagos, 58 órdenes de trabajo, mantenimientos, 5 contratos y ajustes de inventario. Las fechas se corrieron por SQL y las facturas se renumeraron por fecha. **Antes de entregar:** `restaurar_sgejd.bat` con `respaldos/sgejd_entrega_vacia_20261107.dmp` (base vacía, series en 0). Es el respaldo vacío del 30/10 con `migracion_proforma_unica.sql` y `migracion_envio_sunat.sql` aplicadas (07/11/2026, auditoría A10): el del 30/10 restauraba el esquema de ese día, sin las columnas de la respuesta de SUNAT ni el índice de proforma única. Se comprobó restaurándolo en un esquema aparte: 0 diferencias de columnas, índices y restricciones con la base actual. **Si después se cambia el esquema, hay que volver a generarlo.** Los datos de prueba anteriores siguen en `sgejd_antes_de_entrega_20261030_2224.dmp`.
+35. **Base con datos simulados para la demostración (31/10/2026).** Tiene un año ficticio (11/2025 → 10/2026) cargado por la API como lo harían Lucy y Lisandro: 34 clientes, 8 proveedores, 39 productos, 219 proformas, 224 ventas (3 anuladas con su devolución), cobros con detracción y retención, 48 compras con pagos, 58 órdenes de trabajo, mantenimientos, 5 contratos y ajustes de inventario. Las fechas se corrieron por SQL y las facturas se renumeraron por fecha. **Antes de entregar:** `restaurar_sgejd.bat` con `respaldos/sgejd_entrega_vacia_20261107.dmp` (base vacía, series en 0). Es el respaldo vacío del 30/10 con `migracion_proforma_unica.sql`, `migracion_envio_sunat.sql` y `migracion_compra_factura_unica.sql` aplicadas (07/11/2026, auditoría A10 y revisión externa): el del 30/10 restauraba el esquema de ese día, sin las columnas de la respuesta de SUNAT ni el índice de proforma única. Se comprobó restaurándolo en un esquema aparte: 0 diferencias de columnas, índices y restricciones con la base actual. **Si después se cambia el esquema, hay que volver a generarlo.** Los datos de prueba anteriores siguen en `sgejd_antes_de_entrega_20261030_2224.dmp`.
 36. **Respaldo automático sin activar (⏳ pendiente).** Los scripts están listos desde el 31/10/2026 (`programar_respaldo.bat`, RNF-08), pero la tarea diaria **no está programada**: falta que Lisandro elija la carpeta fuera de la PC para la copia (USB, OneDrive o Google Drive de la empresa, o una carpeta de red). Mientras tanto, respaldo manual con `respaldar_sgejd.bat` al menos una vez por semana. Al decidir: `programar_respaldo.bat -Destino "<carpeta>"`.
 37. **Un error 500 sin explicar (25/10/2026).** Crear una venta falló una vez, sin guardar nada, en un backend que se había encendido justo después de cambiar las contraseñas de la base; no se pudo reproducir. Si vuelve a pasar, revisar la ventana "SGE-JD · Backend".
 38. **Tabla `USUARIOS` sin uso** (ver modelo de datos): conserva 2 filas con contraseñas cifradas de antes de Keycloak; se puede borrar.

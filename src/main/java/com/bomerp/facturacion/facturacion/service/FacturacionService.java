@@ -225,14 +225,42 @@ public class FacturacionService implements ComprobantesDeVenta {
             log.info("Comprobante {} aceptado; no se envía por correo: el cliente no tiene correo", comprobanteId);
             return;
         }
+        String motivo = motivoParaNoEnviarAlCliente(comprobante);
+        if (motivo != null) {
+            log.info("Comprobante {}: no se envía por correo. {}", comprobanteId, motivo);
+            return;
+        }
         enviarFacturaCorreo(comprobanteId);
+    }
+
+    /**
+     * Al cliente solo se le envía un comprobante con validez ante SUNAT (revisión externa F-01): el correo
+     * dice "ha sido emitida". Uno PENDIENTE o RECHAZADO no la tiene; uno del modo simulado tampoco, aunque
+     * figure ACEPTADO, porque nunca salió a SUNAT (el envío real siempre guarda el XML firmado; el simulado no).
+     *
+     * @return el motivo para no enviarlo, o null si se puede enviar
+     */
+    static String motivoParaNoEnviarAlCliente(Comprobante c) {
+        String numero = c.getSerie() + "-" + c.getNumero();
+        if (c.getEstadoSunat() == null || !c.getEstadoSunat().valido()) {
+            return numero + " todavía no tiene validez ante SUNAT (estado " + c.getEstadoSunat()
+                    + "): se podrá enviar al cliente cuando SUNAT lo acepte.";
+        }
+        if (c.getEnvio().getXmlFirmado() == null) {
+            return numero + " se emitió en modo simulado (no se envió a SUNAT): no se envía al cliente como comprobante.";
+        }
+        return null;
     }
 
     @Transactional(readOnly = true)
     public void enviarFacturaCorreo(Long comprobanteId) {
         Comprobante comprobante = comprobanteRepository.findById(comprobanteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));
-        
+        String motivo = motivoParaNoEnviarAlCliente(comprobante);
+        if (motivo != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, motivo);
+        }
+
         String correoDestino = comprobante.getVenta().getCliente().getCorreo();
         if (correoDestino == null || correoDestino.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cliente no tiene correo registrado");
@@ -244,7 +272,7 @@ public class FacturacionService implements ComprobantesDeVenta {
         String cuerpoHtml = "<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;'>" +
                             "<div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>" +
                             "<h2 style='color: #0078d4;'>Documento Emitido: " + tipoDoc + "</h2>" +
-                            "<p>Estimado cliente <strong>" + comprobante.getVenta().getCliente().getNombreORazonSocial() + "</strong>,</p>" +
+                            "<p>Estimado cliente <strong>" + org.springframework.web.util.HtmlUtils.htmlEscape(comprobante.getVenta().getCliente().getNombreORazonSocial()) + "</strong>,</p>" +
                             "<p>Le informamos que se ha emitido su comprobante de pago <strong>" + numeroDoc + "</strong> por el monto de <strong>" + comprobante.getVenta().getMoneda() + " " + comprobante.getTotal() + "</strong>.</p>" +
                             "<p>Adjunto a este correo encontrará la representación impresa de su documento (PDF).</p>" +
                             "<hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'/>" +

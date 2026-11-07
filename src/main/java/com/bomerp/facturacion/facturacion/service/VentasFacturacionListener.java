@@ -22,17 +22,19 @@ public class VentasFacturacionListener {
         this.facturacionService = facturacionService;
     }
 
-    /** Registra el comprobante (PENDIENTE): se envía a SUNAT al confirmarse la venta. Un error no aborta la venta. */
+    /**
+     * Registra el comprobante (PENDIENTE): se envía a SUNAT al confirmarse la venta.
+     * Corre en la transacción de la venta, así que si no se puede crear, la venta tampoco se guarda: nunca
+     * queda una venta sin comprobante. Antes un try/catch aparentaba lo contrario ("un error no aborta la
+     * venta"), pero la transacción ya estaba marcada para deshacerse y el usuario recibía un error genérico
+     * en lugar del motivo (revisión externa F-03). Ahora el error sube con su mensaje.
+     */
     @EventListener
     @Order(2)
     public void alRegistrarVenta(VentaRegistradaEvent evento) {
-        try {
-            Comprobante comp = facturacionService.emitirComprobanteParaVenta(evento.ventaId());
-            log.info("Comprobante {}-{} de la Venta {} registrado; se envía a SUNAT en segundo plano",
-                    comp.getSerie(), comp.getNumero(), evento.ventaId());
-        } catch (Exception e) {
-            log.error("Error al emitir el comprobante de la Venta {}: {}", evento.ventaId(), e.getMessage());
-        }
+        Comprobante comp = facturacionService.emitirComprobanteParaVenta(evento.ventaId());
+        log.info("Comprobante {}-{} de la Venta {} registrado; se envía a SUNAT en segundo plano",
+                comp.getSerie(), comp.getNumero(), evento.ventaId());
     }
 
     /** Comprobante aceptado por SUNAT: recién ahora se envía por correo al cliente (si tiene correo). */

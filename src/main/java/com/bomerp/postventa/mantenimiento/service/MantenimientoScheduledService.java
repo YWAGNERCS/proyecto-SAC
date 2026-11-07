@@ -67,8 +67,8 @@ public class MantenimientoScheduledService {
                             "<p>Hola,</p>" +
                             "<p>El sistema automático ha detectado que se acerca la fecha de mantenimiento preventivo para el siguiente cliente:</p>" +
                             "<ul>" +
-                            "<li><strong>Cliente:</strong> " + nombreCliente + "</li>" +
-                            "<li><strong>Teléfono:</strong> " + (telefonoCliente != null ? telefonoCliente : "No registrado") + "</li>" +
+                            "<li><strong>Cliente:</strong> " + org.springframework.web.util.HtmlUtils.htmlEscape(nombreCliente) + "</li>" +
+                            "<li><strong>Teléfono:</strong> " + (telefonoCliente != null ? org.springframework.web.util.HtmlUtils.htmlEscape(telefonoCliente) : "No registrado") + "</li>" +
                             "<li><strong>Fecha Programada:</strong> " + mantenimiento.getFechaProgramada() + "</li>" +
                             "</ul>" +
                             "<p>Por favor, comuníquese con el cliente a la brevedad para agendar la visita técnica y generar la orden de servicio.</p>" +

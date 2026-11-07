@@ -54,7 +54,7 @@ public class InventarioScheduledService {
         for (Producto p : productos) {
             filas.append("<tr>")
                  .append("<td style='padding: 8px; border: 1px solid #ddd;'>").append(p.getId()).append("</td>")
-                 .append("<td style='padding: 8px; border: 1px solid #ddd;'>").append(p.getNombre()).append("</td>")
+                 .append("<td style='padding: 8px; border: 1px solid #ddd;'>").append(org.springframework.web.util.HtmlUtils.htmlEscape(p.getNombre())).append("</td>")
                  .append("<td style='padding: 8px; border: 1px solid #ddd; color: red; font-weight: bold;'>").append(p.getStockActual() != null ? p.getStockActual() : 0).append("</td>")
                  .append("<td style='padding: 8px; border: 1px solid #ddd;'>").append(p.getStockMinimo() != null ? p.getStockMinimo() : 0).append("</td>")
                  .append("</tr>");

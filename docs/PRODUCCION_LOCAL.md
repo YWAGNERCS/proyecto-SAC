@@ -65,7 +65,7 @@ docker cp scripts/prod/esquema_jdrefrigeracion.sql sge-jd-oracle-prod:/tmp/esque
 "alter session set current_schema=JDREFRIGERACION;`n@/tmp/esquema.sql" | docker exec -i -e ORACLE_PDB_SID=FREEPDB1 sge-jd-oracle-prod sqlplus -s / as sysdba
 ```
 
-Debe decir 25 veces `Table created.`, 5 `Index created.` y 41 `Table altered.`.
+Debe decir 25 veces `Table created.`, 6 `Index created.` y 41 `Table altered.`.
 
 **4. Crear el realm, los roles, los clientes y los usuarios** (las claves de Lisandro y Lucy quedan en `.env.prod`):
 
@@ -89,8 +89,12 @@ qué tabla o columna falta (`ddl-auto=validate`): regenerar el script del paso 3
 **6. Construir y servir el frontend** (desde `bomerp-frontend`):
 
 ```powershell
-npx ng build --configuration production
+npm run build:prod
 ```
+
+Compila y verifica que la Content-Security-Policy de nginx permita los dos scripts en línea de `index.html`
+(por su huella sha256). Si alguno cambió, termina con error y muestra la línea `script-src` correcta para
+`cabeceras-seguridad.conf`; sin ese cambio, el navegador los bloquearía y la página quedaría sin estilos.
 
 ```powershell
 docker compose -f compose-prod.yml up -d --build
@@ -118,6 +122,12 @@ curl -i http://localhost:48088/actuator/env
 | Login en 4300 → token con `iss` = `http://localhost:48080/realms/bomerp` | Aceptado por el backend |
 | Configuración › Usuarios y permisos | Lista los usuarios (API de administración de Keycloak por la red interna) |
 | Registrar una venta | Venta y comprobante B001-00000001 emitidos |
+| `curl -I http://localhost:4300/` (y un `.js`, un 404) | Cabeceras de seguridad en todas las respuestas: `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`; `Server: nginx` sin versión (07/11/2026) |
+| Login, Ventas, Proformas, Cobranza, Postventa, Compras, Productos, Clientes, Órdenes, Historial y cerrar sesión | Sin ningún aviso de la CSP en la consola (07/11/2026) |
+| `fetch('https://example.com')` desde la consola de 4300 | Bloqueado por `connect-src` (07/11/2026) |
+
+**Cabeceras de seguridad (auditoría M11):** están en `bomerp-frontend/cabeceras-seguridad.conf`. Al pasar a un
+dominio real, cambiar ahí `http://localhost:48088` y `http://localhost:48080` (igual que en `environment.prod.ts`).
 
 ## Volver a desarrollo
 

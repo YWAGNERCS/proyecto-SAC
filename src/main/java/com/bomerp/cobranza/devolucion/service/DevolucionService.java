@@ -67,7 +67,8 @@ public class DevolucionService {
 
     /** PENDIENTE -> DEVUELTA. Fecha: hoy por defecto; ni futura ni anterior a la anulación. */
     public DevolucionResponseDTO registrar(Long id, DevolucionRequestDTO dto) {
-        Devolucion devolucion = devolucionRepository.findById(id)
+        // Bloqueada (revisión externa): dos registros simultáneos no pisan la fecha, el método ni el N° de operación
+        Devolucion devolucion = devolucionRepository.bloquear(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Devolución no encontrada: " + id));
         if (devolucion.getEstado() == Devolucion.Estado.DEVUELTA) {
             throw new ReglaNegocioException("La devolución #" + id + " ya se registró el "

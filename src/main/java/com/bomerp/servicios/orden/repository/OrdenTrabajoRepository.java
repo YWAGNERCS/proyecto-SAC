@@ -11,6 +11,12 @@ import java.util.List;
 
 public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, Long> {
 
+    /** Lee la fila bloqueándola hasta el fin de la transacción (operaciones simultáneas sobre la misma). */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
+    @Query("SELECT x FROM OrdenTrabajo x WHERE x.id = :id")
+    java.util.Optional<OrdenTrabajo> bloquear(@Param("id") Long id);
+
     /** Una visita de mantenimiento no tiene dos órdenes programadas a la vez. */
     boolean existsByMantenimientoIdAndEstado(Long mantenimientoId, OrdenTrabajo.Estado estado);
 

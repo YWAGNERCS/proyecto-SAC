@@ -421,7 +421,10 @@ public class VentaService {
      *       emite la nota de crédito y Cobranza deja pendiente la devolución de lo ya pagado.
      */
     public VentaResponseDTO anular(Long ventaId) {
-        Venta venta = obtenerPorId(ventaId);
+        // Fila bloqueada hasta el fin de la transacción (revisión externa): dos anulaciones simultáneas
+        // de la misma venta devolverían el stock dos veces; la segunda espera y encuentra ANULADA (409).
+        Venta venta = ventaRepository.bloquear(ventaId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada: " + ventaId));
         if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
             throw new ReglaNegocioException("La venta #" + ventaId + " ya está ANULADA.");
         }

@@ -184,7 +184,10 @@ public class OrdenTrabajoService {
      * La venta calcula su detracción (es un servicio) y queda vinculada a la orden.
      */
     public OrdenDTO.Response facturar(Long id, OrdenDTO.Facturacion dto, String vendedorId, String vendedorNombre) {
-        OrdenTrabajo o = buscar(id);
+        // Bloqueada hasta el fin de la transacción (revisión externa): dos "Facturar" simultáneos crearían
+        // dos ventas; el segundo espera y encuentra ventaFacturadaId ya puesto.
+        OrdenTrabajo o = ordenRepository.bloquear(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Orden de trabajo no encontrada: " + id));
         if (o.getEstado() != OrdenTrabajo.Estado.REALIZADA) {
             throw new ReglaNegocioException("Solo se factura una orden REALIZADA. La #" + id + " está " + o.getEstado() + ".");
         }

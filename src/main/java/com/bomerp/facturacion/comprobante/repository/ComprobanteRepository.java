@@ -17,7 +17,8 @@ public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> 
 
     /** Último número emitido en una serie (los números tienen 8 dígitos, así que MAX de texto sirve). */
     /** Pendientes de envío a SUNAT, los más antiguos primero (el reintento los toma de a pocos). */
-    List<Comprobante> findTop20ByEstadoSunatOrderByIdAsc(Comprobante.EstadoSunat estado);
+    /** Pendientes que todavía pueden reintentarse: el límite de intentos se filtra aquí, antes del Top 20. */
+    List<Comprobante> findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(Comprobante.EstadoSunat estado, int maxIntentos);
 
     @Query("SELECT MAX(c.numero) FROM Comprobante c WHERE c.serie = :serie")
     String maxNumeroDeSerie(@Param("serie") String serie);

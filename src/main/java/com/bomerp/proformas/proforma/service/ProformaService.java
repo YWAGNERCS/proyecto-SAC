@@ -251,8 +251,8 @@ public class ProformaService {
         for (ItemProforma item : proforma.getItems()) {
             sb.append("<tr style='border-bottom: 1px solid #333;'>");
             sb.append("<td style='padding: 15px 0;'>")
-              .append("<strong style='display: block; color: #ffffff;'>").append(item.getProducto().getNombre()).append("</strong>")
-              .append("<span style='font-size: 12px; color: #888888;'>").append(item.getProducto().getDescripcion()).append("</span>")
+              .append("<strong style='display: block; color: #ffffff;'>").append(org.springframework.web.util.HtmlUtils.htmlEscape(item.getProducto().getNombre())).append("</strong>")
+              .append("<span style='font-size: 12px; color: #888888;'>").append(org.springframework.web.util.HtmlUtils.htmlEscape(String.valueOf(item.getProducto().getDescripcion() == null ? "" : item.getProducto().getDescripcion()))).append("</span>")
               .append(item.getDescuentoPorcentaje().signum() > 0
                       ? "<span style='display: block; font-size: 12px; color: #7fd18b;'>Descuento "
                         + item.getDescuentoPorcentaje().stripTrailingZeros().toPlainString() + " %</span>"
