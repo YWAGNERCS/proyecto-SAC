@@ -66,9 +66,13 @@ public class SunatDirectoClient implements OseClient {
                 case ACEPTADO, OBSERVADO -> log.info("SUNAT aceptó {}: {} - {}", nombre, cdr.codigo(), detalle);
                 case RECHAZADO -> log.warn("SUNAT rechazó {}: {} - {}", nombre, cdr.codigo(), detalle);
                 case REINTENTAR -> log.warn("SUNAT no pudo procesar {} ahora (se reintentará): {} - {}", nombre, cdr.codigo(), detalle);
+                case POR_CONFIRMAR -> log.warn("SUNAT ya tenía registrado {} por un envío anterior (no se sabe si fue aceptado): {} - {}",
+                        nombre, cdr.codigo(), detalle);
             }
             if (cdr.codigo() == YA_REGISTRADO) {
-                detalle = "Ya había sido recibido por SUNAT en un envío anterior: " + detalle;
+                detalle = "SUNAT ya tiene registrado este número por un envío anterior y no indica si fue aceptado o "
+                        + "rechazado. Verifíquelo en SUNAT (Consulta de validez del comprobante) antes de entregarlo al "
+                        + "cliente. Respuesta de SUNAT: " + detalle;
             }
             return new RespuestaOse(resultado, cdr.codigo(), detalle, null, null, xmlFirmado, cdr.zipCdr());
         } catch (SunatSoapClient.SunatNoDisponibleException e) {
@@ -77,16 +81,21 @@ public class SunatDirectoClient implements OseClient {
         }
     }
 
-    /** SUNAT ya tiene ese comprobante (p. ej. se perdió la respuesta del primer envío y se reintentó). */
+    /**
+     * SUNAT ya tiene registrado ese número por un envío anterior (p. ej. se perdió la respuesta del primer envío,
+     * o se reenvió con el mismo número un comprobante que SUNAT había rechazado). No trae CDR: el envío anterior
+     * pudo ser aceptado o rechazado, así que NO se puede dar por aceptado (informe de rechazos SUNAT, D-1).
+     */
     private static final int YA_REGISTRADO = 1033;
 
     /**
      * Códigos de SUNAT: 0 aceptado; 4000+ aceptado con observaciones; 2000-3999 rechazo;
-     * 0100-0199 fallas del sistema de SUNAT (temporales); 1033 ya registrado; resto de
+     * 0100-0199 fallas del sistema de SUNAT (temporales); 1033 ya registrado (por confirmar); resto de
      * 0200-1999, excepciones por datos o configuración que hay que corregir.
      */
     static Resultado clasificar(int codigo) {
-        if (codigo == 0 || codigo == YA_REGISTRADO) return Resultado.ACEPTADO;
+        if (codigo == YA_REGISTRADO) return Resultado.POR_CONFIRMAR;
+        if (codigo == 0) return Resultado.ACEPTADO;
         if (codigo >= 4000) return Resultado.OBSERVADO;
         if (codigo >= 100 && codigo <= 199) return Resultado.REINTENTAR;
         if (codigo < 0) return Resultado.REINTENTAR;

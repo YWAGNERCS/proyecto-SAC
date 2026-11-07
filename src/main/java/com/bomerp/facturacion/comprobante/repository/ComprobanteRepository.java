@@ -15,11 +15,19 @@ public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> 
 
     List<Comprobante> findByVenta_IdIn(List<Long> ventaIds);
 
-    /** Último número emitido en una serie (los números tienen 8 dígitos, así que MAX de texto sirve). */
-    /** Pendientes de envío a SUNAT, los más antiguos primero (el reintento los toma de a pocos). */
-    /** Pendientes que todavía pueden reintentarse: el límite de intentos se filtra aquí, antes del Top 20. */
-    List<Comprobante> findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(Comprobante.EstadoSunat estado, int maxIntentos);
+    /**
+     * Pendientes que el reintento automático puede volver a enviar, los más antiguos primero. Se filtran aquí,
+     * antes del límite del lote, los que agotaron sus intentos (F-02) y los que SUNAT respondió con el código
+     * "ya registrado" (1033): esos quedan por confirmar y reenviarlos solo repetiría la misma respuesta.
+     */
+    @Query("SELECT c FROM Comprobante c WHERE c.estadoSunat = :estado AND c.envio.intentos < :maxIntentos"
+            + " AND (c.envio.codigo IS NULL OR c.envio.codigo <> :codigoPorConfirmar) ORDER BY c.id")
+    List<Comprobante> pendientesParaReintentar(@Param("estado") Comprobante.EstadoSunat estado,
+                                               @Param("maxIntentos") int maxIntentos,
+                                               @Param("codigoPorConfirmar") int codigoPorConfirmar,
+                                               org.springframework.data.domain.Limit lote);
 
+    /** Último número emitido en una serie (los números tienen 8 dígitos, así que MAX de texto sirve). */
     @Query("SELECT MAX(c.numero) FROM Comprobante c WHERE c.serie = :serie")
     String maxNumeroDeSerie(@Param("serie") String serie);
 }

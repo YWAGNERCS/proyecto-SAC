@@ -21,8 +21,12 @@ public interface OseClient {
      */
     RespuestaOse emitirNotaCredito(NotaCredito notaCredito);
 
-    /** Cómo terminó un envío. REINTENTAR: SUNAT caída, lenta o limitando envíos (no es culpa del comprobante). */
-    enum Resultado { ACEPTADO, OBSERVADO, RECHAZADO, REINTENTAR }
+    /**
+     * Cómo terminó un envío. REINTENTAR: SUNAT caída, lenta o limitando envíos (no es culpa del comprobante).
+     * POR_CONFIRMAR: SUNAT ya tiene registrado ese número por un envío anterior (código 1033), pero no dice si
+     * ese envío fue aceptado o rechazado: no tiene validez hasta verificarlo, y reenviarlo solo repetiría el 1033.
+     */
+    enum Resultado { ACEPTADO, OBSERVADO, RECHAZADO, REINTENTAR, POR_CONFIRMAR }
 
     /**
      * Respuesta de SUNAT (o del OSE) a un envío.

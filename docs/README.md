@@ -304,7 +304,7 @@ Venta registrada ──► comprobante PENDIENTE (serie y correlativo) ──►
 | 4000 o más | OBSERVADO (válido; la observación queda guardada) |
 | 2000-3999 y demás excepciones | RECHAZADO, con el motivo de SUNAT |
 | 0100-0199, HTTP 401/5xx o sin respuesta | PENDIENTE: se reintenta solo cada 3 minutos (hasta 20 intentos) |
-| 1033 (ya registrado en un envío anterior) | ACEPTADO |
+| 1033 (ya registrado en un envío anterior) | PENDIENTE "por confirmar": sin validez, fuera del reintento automático y con el aviso de verificarlo en SUNAT |
 
 - **Fuera de la transacción de la venta:** la venta no espera a SUNAT (responde en ~1 s) ni se deshace si SUNAT está caída.
 - **Una cola, de uno en uno:** la beta de SUNAT responde HTTP 401 al tercer envío seguido en menos de un segundo.
@@ -312,6 +312,7 @@ Venta registrada ──► comprobante PENDIENTE (serie y correlativo) ──►
 - **Nota de crédito:** se crea al anular la venta y sale cuando SUNAT aceptó el original. Si el original fue rechazado, no se anula (no tenía validez).
 - **Reintentos sin trabas (revisión externa F-02, 07/11/2026):** el límite de 20 intentos se filtra en la consulta a Oracle, antes de tomar los 20 primeros pendientes; antes, 20 agotados al principio de la lista tapaban para siempre a los siguientes.
 - **Correo al cliente solo con validez (revisión externa F-01, 07/11/2026):** "Su Factura ... ha sido emitida" sale solo si SUNAT la aceptó (o la observó). Un comprobante pendiente, rechazado o del modo simulado no se envía: el botón responde 409 con el motivo.
+- **El 1033 no se da por aceptado (informe de rechazos SUNAT D-1, 07/11/2026):** SUNAT responde 1033 cuando ya tiene ese número por un envío anterior, sin CDR y sin decir si fue aceptado o rechazado (p. ej. un rechazado que se reenvió con el mismo número). Antes quedaba ACEPTADO y salía el correo "ha sido emitida"; ahora queda pendiente por confirmar, no se envía al cliente, el reintento automático no lo repite y en Ventas aparece "Por confirmar en SUNAT" sin el botón Reenviar.
 - **Ninguna factura de una venta anulada sale sola (auditoría M10, 07/11/2026):** antes de enviar un comprobante se revisa su venta. Si está anulada y no tiene nota de crédito (pasó con la venta #285, anulada antes de que la nota se creara también para comprobantes pendientes), la nota se crea en ese momento y sale después de la factura. Si no se puede crear, el comprobante no se envía y el motivo queda en su registro de envío.
 - **Detracción sin cuenta configurada:** la factura no se envía y queda PENDIENTE con el aviso; al configurar `CUENTA_DETRACCIONES` el reintento la envía.
 - **El correo** con el comprobante sale recién cuando SUNAT lo acepta.
@@ -761,7 +762,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **121 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **122 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. Las marcadas *(Oracle)* son de
 integración y necesitan la base encendida; todas deshacen lo que guardan. La trazabilidad de cada requisito con su
 prueba está en [RTM.md](RTM.md).
@@ -785,9 +786,9 @@ prueba está en [RTM.md](RTM.md).
 | `RutinaMantenimientoIntegracionTest` (Oracle) | Venta real: con rutina se programan sus visitas, sin rutina ninguna | 2 |
 | `RutinaMantenimientoTest` | Rutina de mantenimiento: solo con equipos, rangos, primera fecha | 5 |
 | `ClasificacionCodigosSunatTest` | Qué hace SGE-JD con cada código de SUNAT y lectura de `faultcode` | 15 |
-| `EnvioSunatServiceTest` | Envío a SUNAT: aceptado, observado, rechazado, sin respuesta, nota de crédito, reintentos y reenvío; el comprobante de una venta anulada no sale sin su nota | 15 |
+| `EnvioSunatServiceTest` | Envío a SUNAT: aceptado, observado, rechazado, sin respuesta, "ya registrado" (1033) sin validez, nota de crédito, reintentos y reenvío; el comprobante de una venta anulada no sale sin su nota | 16 |
 | `CorreoComprobanteTest` | Al cliente solo se le envía por correo un comprobante aceptado por SUNAT; nunca uno pendiente, rechazado ni del modo simulado | 4 |
-| `ReintentoSunatIntegracionTest` (Oracle) | 25 comprobantes con los intentos agotados al principio de la lista no tapan al siguiente pendiente | 1 |
+| `ReintentoSunatIntegracionTest` (Oracle) | 25 comprobantes con los intentos agotados al principio de la lista no tapan al siguiente pendiente, y uno por confirmar (1033) no se reintenta | 1 |
 | `VentaAnuladaSinNotaIntegracionTest` (Oracle) | El caso de la venta #285: venta anulada sin nota → la nota se crea antes de enviar la factura; una anulación normal no la duplica | 2 |
 | `OrdenTest` | Orden por columna: texto en español, números, vacíos al final, dólares en soles | 4 |
 | `SunatBetaTest` (beta real de SUNAT) | Factura, boleta y nota aceptadas y un rechazo real; solo corre con `SUNAT_BETA=1` | 0 por defecto |

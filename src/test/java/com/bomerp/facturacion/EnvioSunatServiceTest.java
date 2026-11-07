@@ -22,6 +22,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /** Envío a SUNAT en segundo plano: qué estado queda según lo que responde SUNAT. */
@@ -131,15 +132,32 @@ class EnvioSunatServiceTest {
     }
 
     @Test
-    void elReintentoPideALaBaseSoloLosQueNoAgotaronSusIntentos() {
-        // El filtro va en la consulta (F-02); que Oracle lo cumpla lo prueba ReintentoSunatIntegracionTest
-        when(comprobantes.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20)).thenReturn(List.of());
-        when(notas.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20)).thenReturn(List.of());
+    void elReintentoPideALaBaseSoloLosQueNoAgotaronSusIntentosNiEstanPorConfirmar() {
+        // El filtro va en la consulta (F-02 y 1033); que Oracle lo cumpla lo prueba ReintentoSunatIntegracionTest
+        when(comprobantes.pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), any())).thenReturn(List.of());
+        when(notas.pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), any())).thenReturn(List.of());
 
         servicio.reintentarPendientes();
-        verify(comprobantes).findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20);
-        verify(notas).findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20);
+        verify(comprobantes).pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), eq(org.springframework.data.domain.Limit.of(20)));
+        verify(notas).pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), eq(org.springframework.data.domain.Limit.of(20)));
         verify(ose, after(300).never()).emitir(any());
+    }
+
+    /**
+     * 1033: SUNAT ya tenía ese número por un envío anterior y no dice si fue aceptado. Antes se daba por
+     * ACEPTADO y salía el correo "ha sido emitida" (informe de rechazos SUNAT, D-1): ahora queda sin validez.
+     */
+    @Test
+    void yaRegistradoNoSeDaPorAceptadoNiSeEnviaPorCorreo() {
+        Comprobante c = comprobante(14, EstadoSunat.PENDIENTE);
+        when(ose.emitir(c)).thenReturn(new RespuestaOse(Resultado.POR_CONFIRMAR, 1033,
+                "SUNAT ya tiene registrado este número por un envío anterior", null, null, new byte[]{1}, null));
+
+        assertThat(servicio.enviarComprobante(14L)).isEqualTo(EstadoSunat.PENDIENTE);
+        assertThat(c.getEstadoSunat().valido()).isFalse();
+        assertThat(c.getEnvio().getCodigo()).isEqualTo(1033);
+        assertThat(c.getEnvio().getCdr()).isNull();
+        verifyNoInteractions(eventos);
     }
 
     @Test

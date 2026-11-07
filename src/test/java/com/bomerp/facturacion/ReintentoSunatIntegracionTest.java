@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import org.springframework.data.domain.Limit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,20 +32,26 @@ class ReintentoSunatIntegracionTest {
 
     @Test
     void veinticincoAgotadosAlPrincipioNoTapanAlSiguiente() {
-        List<Long> ids = jdbc.queryForList("SELECT id FROM comprobantes ORDER BY id FETCH FIRST 26 ROWS ONLY", Long.class);
-        assertThat(ids).hasSize(26);
+        List<Long> ids = jdbc.queryForList("SELECT id FROM comprobantes ORDER BY id FETCH FIRST 27 ROWS ONLY", Long.class);
+        assertThat(ids).hasSize(27);
         List<Long> agotados = ids.subList(0, 25);
         Long reintentable = ids.get(25);
+        Long porConfirmar = ids.get(26);
         for (Long id : agotados) {
             jdbc.update("UPDATE comprobantes SET estado_sunat = 'PENDIENTE', sunat_intentos = 20 WHERE id = ?", id);
         }
-        jdbc.update("UPDATE comprobantes SET estado_sunat = 'PENDIENTE', sunat_intentos = 3 WHERE id = ?", reintentable);
+        jdbc.update("UPDATE comprobantes SET estado_sunat = 'PENDIENTE', sunat_intentos = 3, sunat_codigo = NULL WHERE id = ?", reintentable);
+        // 1033: SUNAT ya tenía el número; reenviarlo solo repetiría la respuesta, así que no se toma
+        jdbc.update("UPDATE comprobantes SET estado_sunat = 'PENDIENTE', sunat_intentos = 1, sunat_codigo = 1033 WHERE id = ?", porConfirmar);
         em.clear();
 
         List<Long> tomados = comprobantes
-                .findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, 20)
+                .pendientesParaReintentar(EstadoSunat.PENDIENTE, 20, 1033, Limit.of(20))
                 .stream().map(Comprobante::getId).toList();
 
-        assertThat(tomados).contains(reintentable).doesNotContainAnyElementsOf(agotados);
+        assertThat(tomados).hasSizeLessThanOrEqualTo(20)
+                .contains(reintentable)
+                .doesNotContain(porConfirmar)
+                .doesNotContainAnyElementsOf(agotados);
     }
 }

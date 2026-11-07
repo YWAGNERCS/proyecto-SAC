@@ -15,11 +15,15 @@ public interface NotaCreditoRepository extends JpaRepository<NotaCredito, Long> 
 
     List<NotaCredito> findByComprobanteReferencia_IdIn(List<Long> comprobanteIds);
 
-    /** Último número emitido en una serie de notas de crédito (FC01 / BC01). */
-    /** Pendientes de envío a SUNAT, los más antiguos primero (el reintento los toma de a pocos). */
-    /** Pendientes que todavía pueden reintentarse: el límite de intentos se filtra aquí, antes del Top 20. */
-    List<NotaCredito> findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(Comprobante.EstadoSunat estado, int maxIntentos);
+    /** Igual que en ComprobanteRepository: sin los que agotaron sus intentos ni los "ya registrado" (1033). */
+    @Query("SELECT n FROM NotaCredito n WHERE n.estadoSunat = :estado AND n.envio.intentos < :maxIntentos"
+            + " AND (n.envio.codigo IS NULL OR n.envio.codigo <> :codigoPorConfirmar) ORDER BY n.id")
+    List<NotaCredito> pendientesParaReintentar(@Param("estado") Comprobante.EstadoSunat estado,
+                                               @Param("maxIntentos") int maxIntentos,
+                                               @Param("codigoPorConfirmar") int codigoPorConfirmar,
+                                               org.springframework.data.domain.Limit lote);
 
+    /** Último número emitido en una serie de notas de crédito (FC01 / BC01). */
     @Query("SELECT MAX(n.numero) FROM NotaCredito n WHERE n.serie = :serie")
     String maxNumeroDeSerie(@Param("serie") String serie);
 

@@ -41,6 +41,12 @@ public class EnvioSunatService {
     /** Después de tantos intentos se deja de reintentar solo: el mensaje queda a la vista para revisarlo. */
     static final int MAX_INTENTOS = 20;
 
+    /** Código 1033 de SUNAT: el número ya estaba registrado por un envío anterior (ver SunatDirectoClient). */
+    static final int CODIGO_POR_CONFIRMAR = 1033;
+
+    /** Cuántos pendientes toma cada vuelta del reintento automático. */
+    static final org.springframework.data.domain.Limit LOTE = org.springframework.data.domain.Limit.of(20);
+
     private final ComprobanteRepository comprobantes;
     private final NotaCreditoRepository notas;
     private final OseClient ose;
@@ -220,6 +226,9 @@ public class EnvioSunatService {
             case OBSERVADO -> EstadoSunat.OBSERVADO;
             case RECHAZADO -> EstadoSunat.RECHAZADO;
             case REINTENTAR -> EstadoSunat.PENDIENTE;
+            // Sin validez (no se envía por correo ni cuenta como emitido) y fuera del reintento automático:
+            // queda a la vista con el aviso para verificarlo en SUNAT.
+            case POR_CONFIRMAR -> EstadoSunat.PENDIENTE;
         };
     }
 
@@ -232,9 +241,11 @@ public class EnvioSunatService {
     public void reintentarPendientes() {
         // El límite de intentos va en la consulta, antes del Top 20 (revisión externa F-02): si se filtrara
         // después, 20 comprobantes agotados al principio de la lista taparían para siempre a los siguientes.
-        var pendientes = comprobantes.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, MAX_INTENTOS)
+        // Los que SUNAT respondió con 1033 (ya registrado, por confirmar) también quedan fuera: reenviarlos solo
+        // repetiría el 1033 cada pocos minutos. Se ven en Ventas con el aviso para verificarlos en SUNAT.
+        var pendientes = comprobantes.pendientesParaReintentar(EstadoSunat.PENDIENTE, MAX_INTENTOS, CODIGO_POR_CONFIRMAR, LOTE)
                 .stream().map(Comprobante::getId).toList();
-        var notasPendientes = notas.findTop20ByEstadoSunatAndEnvio_IntentosLessThanOrderByIdAsc(EstadoSunat.PENDIENTE, MAX_INTENTOS)
+        var notasPendientes = notas.pendientesParaReintentar(EstadoSunat.PENDIENTE, MAX_INTENTOS, CODIGO_POR_CONFIRMAR, LOTE)
                 .stream().map(NotaCredito::getId).toList();
         if (pendientes.isEmpty() && notasPendientes.isEmpty()) return;
         log.info("Reintento de envíos a SUNAT: {} comprobante(s) y {} nota(s) de crédito pendientes",

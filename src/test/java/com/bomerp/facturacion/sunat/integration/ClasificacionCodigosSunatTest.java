@@ -12,7 +12,7 @@ class ClasificacionCodigosSunatTest {
     @ParameterizedTest(name = "código {0} → {1}")
     @CsvSource({
             "0, ACEPTADO",          // aceptado
-            "1033, ACEPTADO",       // ya registrado en un envío anterior
+            "1033, POR_CONFIRMAR",  // ya registrado por un envío anterior: no se sabe si fue aceptado
             "4252, OBSERVADO",      // aceptado con observaciones
             "2800, RECHAZADO",      // rechazo por datos del comprobante
             "3105, RECHAZADO",
