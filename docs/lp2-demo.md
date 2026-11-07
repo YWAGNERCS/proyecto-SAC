@@ -173,9 +173,14 @@ Tabla 4. Trazabilidad con ADS y BD2
 - **Cambiar de proveedor de identidad cuesta poco.** Solo cambian `issuer-uri`, el convertidor
   de roles (`realm_access.roles`) en `SecurityConfig` y `environment.keycloak` en la SPA.
   `catalogo` y `ventas` no se tocan, porque solo leen claims estándar (`sub`, `preferred_username`).
-- **El token vive en memoria y no en `localStorage`.** Un script inyectado (XSS) no puede leerlo
-  de forma persistente. El precio es que la sesión no sobrevive a cerrar la pestaña, y es aceptable
-  en un sistema interno de dos usuarios.
+- **El token vive en memoria, con una copia en `sessionStorage`, y no en `localStorage`.** Así la sesión
+  no queda guardada después de cerrar la pestaña ni se comparte entre pestañas. **No protege contra XSS:**
+  un script inyectado en la página sí podría leer `sessionStorage` (corregido el 07/11/2026; el texto
+  anterior decía lo contrario). Contra eso protegen otras capas: Angular escapa todo lo que muestra (la
+  SPA no usa `innerHTML`), el token dura 5 minutos y, en producción, la Content-Security-Policy de nginx
+  impide que un script envíe datos a otro sitio (`cabeceras-seguridad.conf`). El precio de no usar
+  `localStorage` es que la sesión no sobrevive a cerrar la pestaña, y es aceptable en un sistema interno
+  de dos usuarios.
 - **El access token dura 5 min.** Si se filtra, sirve poco tiempo; el refresh token lo renueva
   sin que el usuario lo note.
 - **El menú por rol es solo comodidad visual.** La autorización real está en `SecurityConfig`:

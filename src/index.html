@@ -6,6 +6,8 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Producción: la CSP de nginx permite este script por su huella (cabeceras-seguridad.conf).
+       Si se cambia una sola letra de su contenido, `npm run build:prod` avisa la huella nueva. -->
   <script>
     // Tema antes de que cargue Angular, para no ver un destello claro al abrir en modo oscuro
     // (misma regla que PreferenciasService; si falla, Angular lo aplica igual al iniciar)
