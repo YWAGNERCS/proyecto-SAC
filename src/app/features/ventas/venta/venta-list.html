@@ -99,6 +99,10 @@
             <td class="text-center">{{ getTipoPagoLabel(v.tipoPago) }}</td>
             <td class="text-center">
               <span class="badge" [class.badge-success]="v.estado === 'REGISTRADA'" [class.badge-danger]="v.estado === 'ANULADA'">{{ v.estado }}</span>
+              @if (sunat(v); as s) {
+                <div class="sunat-corta"><span class="badge" [class]="claseSunat(s.comprobante)"
+                     [title]="s.comprobante.mensaje ?? etiquetaSunat(s.comprobante)">{{ etiquetaCorta(s.comprobante) }}</span></div>
+              }
             </td>
             <td class="text-center">
               <span class="badge" [class]="getEstadoPagoClass(v.estadoPago)">{{ v.estadoPago }}</span>
@@ -156,6 +160,31 @@
                   }
                 </tbody>
               </table>
+              @if (sunat(v); as s) {
+                <div class="sunat">
+                  @for (x of documentosSunat(s); track x.esNota) {
+                    <div class="sunat-linea" [class.sunat-problema]="x.d.estado === 'RECHAZADO' || (x.d.estado === 'PENDIENTE' && x.d.intentos > 0)">
+                      <span class="sunat-doc">{{ x.titulo }} {{ x.d.numero }}</span>
+                      <span class="badge" [class]="claseSunat(x.d)">{{ etiquetaSunat(x.d) }}</span>
+                      @if (x.d.codigo !== null) { <span class="muted">código {{ x.d.codigo }}</span> }
+                      @if (x.d.estado === 'PENDIENTE' && x.d.intentos > 0) { <span class="muted">· {{ x.d.intentos }} intento(s)</span> }
+                      @if (x.d.mensaje) { <span class="sunat-mensaje">{{ x.d.mensaje }}</span> }
+                      <span class="sunat-acciones">
+                        @if (x.d.tieneXml) {
+                          <button class="btn btn-sm btn-outline-secondary" (click)="descargarSunat(x.d, x.esNota, 'xml')" title="XML firmado tal como se envió a SUNAT">XML</button>
+                        }
+                        @if (x.d.tieneCdr) {
+                          <button class="btn btn-sm btn-outline-secondary" (click)="descargarSunat(x.d, x.esNota, 'cdr')" title="Constancia de recepción de SUNAT (CDR)">CDR</button>
+                        }
+                        @if (puedeReenviar(x.d)) {
+                          <button class="btn btn-sm btn-primary" (click)="reenviarSunat(x.d, x.esNota)"
+                                  [title]="x.d.estado === 'RECHAZADO' ? 'Corrija el dato que indica SUNAT (p. ej. el cliente) y vuelva a enviar con el mismo número' : 'Volver a intentar el envío ahora'">Reenviar</button>
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
             </td>
           </tr>
         } @empty {

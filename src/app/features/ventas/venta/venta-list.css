@@ -143,3 +143,14 @@
     font-size: 1.05rem;
   }
 }
+
+/* Comprobante electrónico: estado ante SUNAT bajo el detalle de la venta */
+.sunat-corta { margin-top: 4px; }
+.sunat-corta .badge { font-size: 0.7rem; }
+.badge-neutro { background: var(--suave); color: var(--text-muted); }
+.sunat { margin-top: 8px; display: grid; gap: 6px; }
+.sunat-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--suave); font-size: 0.85rem; }
+.sunat-problema { outline: 1px solid var(--aviso-borde, #e0b84d); }
+.sunat-doc { font-weight: 600; }
+.sunat-mensaje { flex: 1 1 260px; color: var(--text-muted); }
+.sunat-acciones { margin-left: auto; display: flex; gap: 6px; }

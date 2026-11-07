@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
 import { EstadoVenta, VentaResponse } from './venta.model';
 import { DescargaService } from '../../../core/services/descarga-service';
+import { DocumentoSunat, EstadoSunatVenta, FacturacionService } from '../../../core/services/facturacion-service';
 import { CobranzaService } from '../../cobranza/cobro/cobranza-service';
 import { IconoComponent } from '../../../core/layout/icono';
 import { PaginadorComponent } from '../../../core/layout/paginador';
@@ -33,10 +34,13 @@ export class VentaListComponent implements OnInit {
 
   private ventaService = inject(VentaService);
   private descargaService = inject(DescargaService);
+  private facturacion = inject(FacturacionService);
   private cobranzaService = inject(CobranzaService);
   exportando = signal(false);
 
   ventas = signal<VentaResponse[]>([]);
+  /** Estado ante SUNAT del comprobante (y nota de crédito) de cada venta de la página. */
+  private estadosSunat = signal(new Map<number, EstadoSunatVenta>());
   // Paginación del reporte (en "Pagos atrasados" se muestra la lista completa, que es corta)
   pagina = signal(0);
   tamano = signal(20);
@@ -118,6 +122,7 @@ export class VentaListComponent implements OnInit {
       .subscribe({
         next: (r) => {
           this.ventas.set(r.ventas.contenido);
+          this.cargarEstadosSunat();
           this.total.set(r.ventas.total);
           this.totalPaginas.set(r.ventas.totalPaginas);
           this.resumenServidor.set(r.resumen);
@@ -155,6 +160,7 @@ export class VentaListComponent implements OnInit {
     peticion.subscribe({
       next: (data) => {
         this.ventas.set(data);
+        this.cargarEstadosSunat();
         this.loading.set(false);
       },
       error: (err: HttpErrorResponse) => {
@@ -232,6 +238,76 @@ export class VentaListComponent implements OnInit {
           this.error.set('No se pudo generar el Excel de ventas.');
         },
       });
+  }
+
+  /** Pide el estado SUNAT de los comprobantes de las ventas mostradas (Facturación es otro módulo). */
+  private cargarEstadosSunat() {
+    const ids = this.ventas().filter((v) => v.comprobanteId).map((v) => v.id);
+    if (!ids.length) {
+      this.estadosSunat.set(new Map());
+      return;
+    }
+    this.facturacion.estados(ids).subscribe({
+      next: (lista) => this.estadosSunat.set(new Map(lista.map((e) => [e.ventaId, e]))),
+      // Sin estado SUNAT la lista sigue sirviendo: no se muestra error
+      error: () => this.estadosSunat.set(new Map()),
+    });
+  }
+
+  sunat(v: VentaResponse): EstadoSunatVenta | undefined {
+    return this.estadosSunat().get(v.id);
+  }
+
+  etiquetaSunat(d: DocumentoSunat): string {
+    if (d.simulado) return 'Simulado (sin envío a SUNAT)';
+    switch (d.estado) {
+      case 'ACEPTADO': return 'Aceptado por SUNAT';
+      case 'OBSERVADO': return 'Aceptado con observaciones';
+      case 'RECHAZADO': return 'Rechazado por SUNAT';
+      default: return 'Pendiente de envío';
+    }
+  }
+
+  /** Comprobante y, si existe, nota de crédito de la venta, para la línea "Comprobante electrónico". */
+  documentosSunat(s: EstadoSunatVenta): { d: DocumentoSunat; esNota: boolean; titulo: string }[] {
+    const docs = [{ d: s.comprobante, esNota: false, titulo: 'Comprobante' }];
+    if (s.notaCredito) docs.push({ d: s.notaCredito, esNota: true, titulo: 'Nota de crédito' });
+    return docs;
+  }
+
+  etiquetaCorta(d: DocumentoSunat): string {
+    if (d.simulado) return 'SUNAT: simulado';
+    return { ACEPTADO: 'SUNAT: aceptado', OBSERVADO: 'SUNAT: observado', RECHAZADO: 'SUNAT: rechazado', PENDIENTE: 'SUNAT: pendiente' }[d.estado];
+  }
+
+  claseSunat(d: DocumentoSunat): string {
+    if (d.simulado) return 'badge-neutro';
+    const estado = d.estado;
+    return estado === 'ACEPTADO' ? 'badge-success' : estado === 'RECHAZADO' ? 'badge-danger' : 'badge-warning';
+  }
+
+  /** Se puede reenviar lo rechazado (ya corregido) y lo pendiente que tiene un aviso o agotó los reintentos. */
+  puedeReenviar(d: DocumentoSunat): boolean {
+    return d.estado === 'RECHAZADO' || (d.estado === 'PENDIENTE' && d.intentos > 0);
+  }
+
+  reenviarSunat(d: DocumentoSunat, esNota: boolean) {
+    this.error.set('');
+    this.facturacion.reenviar(d.id, esNota).subscribe({
+      next: () => {
+        this.mensaje.set(`${d.numero} se volvió a enviar a SUNAT. El estado se actualiza en unos segundos.`);
+        setTimeout(() => this.cargarEstadosSunat(), 4000);
+      },
+      error: (err: HttpErrorResponse) => this.error.set(err.error?.message ?? `No se pudo reenviar ${d.numero}.`),
+    });
+  }
+
+  /** XML firmado o constancia de recepción (CDR) guardados del envío a SUNAT. */
+  descargarSunat(d: DocumentoSunat, esNota: boolean, archivo: 'xml' | 'cdr') {
+    const nombre = archivo === 'xml' ? `${d.numero}.xml` : `CDR_${d.numero}.zip`;
+    this.descargaService.descargar(this.facturacion.rutaArchivo(d.id, esNota, archivo), nombre).subscribe({
+      error: () => this.error.set(`No se pudo descargar el ${archivo === 'xml' ? 'XML' : 'CDR'} de ${d.numero}.`),
+    });
   }
 
   /** PDF de la factura o boleta de la venta. */
