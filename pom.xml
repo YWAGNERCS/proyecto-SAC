@@ -37,6 +37,15 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Facturación electrónica directa a SUNAT (SEE - Del Contribuyente): arma el XML UBL 2.1
+             de facturas, boletas y notas de crédito y lo firma. El envío (SOAP sendBill) es propio,
+             con el cliente HTTP de Java: así no se arrastra Apache Camel/CXF. -->
+        <dependency>
+            <groupId>io.github.project-openubl</groupId>
+            <artifactId>xbuilder</artifactId>
+            <version>5.0.2</version>
+        </dependency>
+
         <!-- JPA / Hibernate -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

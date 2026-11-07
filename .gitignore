@@ -39,3 +39,7 @@ application-local.properties
 .env.*
 !.env.example
 !.env.prod.example
+# Certificados digitales para firmar comprobantes (SUNAT): nunca en git
+certificados/
+*.p12
+*.pfx

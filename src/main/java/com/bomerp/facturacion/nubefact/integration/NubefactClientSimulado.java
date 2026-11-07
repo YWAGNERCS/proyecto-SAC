@@ -4,6 +4,7 @@ import com.bomerp.facturacion.ose.integration.OseClient.RespuestaOse;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
+// Por defecto (sin app.facturacion.modo o con "simulado"); con "sunat" se usa SunatDirectoClient
+@ConditionalOnProperty(name = "app.facturacion.modo", havingValue = "simulado", matchIfMissing = true)
 public class NubefactClientSimulado implements OseClient {
 
     @Override
