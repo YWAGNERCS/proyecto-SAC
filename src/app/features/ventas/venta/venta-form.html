@@ -16,13 +16,19 @@
       <div class="row">
         <div class="col-md-6 mb-3">
           <label class="form-label" for="clienteSelect">Cliente <span style="color: var(--danger);">*</span></label>
-          <select id="clienteSelect" class="form-select" formControlName="clienteId"
-                  [class.is-invalid]="form.controls.clienteId.invalid && form.controls.clienteId.touched">
-            <option [ngValue]="0">-- Seleccione un cliente --</option>
-            @for (c of clientes(); track c.id) {
-              <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
-            }
-          </select>
+          <div class="cliente-con-nuevo">
+            <select id="clienteSelect" class="form-select" formControlName="clienteId"
+                    [class.is-invalid]="form.controls.clienteId.invalid && form.controls.clienteId.touched">
+              <option [ngValue]="0">-- Seleccione un cliente --</option>
+              @for (c of clientes(); track c.id) {
+                <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
+              }
+            </select>
+            <button type="button" class="btn btn-outline-secondary btn-nuevo-cliente" (click)="creandoCliente.set(true)"
+                    title="Registrar un cliente nuevo sin salir de la venta (busca el RUC o DNI en SUNAT/RENIEC)">
+              <app-icono nombre="nuevo" [tamano]="16" /> Nuevo cliente
+            </button>
+          </div>
           @if (form.controls.clienteId.invalid && form.controls.clienteId.touched) {
             <div class="error-text">Seleccione un cliente.</div>
           }
@@ -163,3 +169,11 @@
     </form>
   </div>
 </div>
+
+<!-- ── Diálogo: nuevo cliente sin salir de la venta ── -->
+@if (creandoCliente()) {
+  <div class="dialogo-fondo" (click)="creandoCliente.set(false)">
+    <app-cliente-form [enDialogo]="true" (guardado)="clienteCreado($event)" (cancelado)="creandoCliente.set(false)"
+                      (click)="$event.stopPropagation()" />
+  </div>
+}

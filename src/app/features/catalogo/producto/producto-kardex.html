@@ -33,7 +33,7 @@
 
 @if (kardex(); as k) {
   @if (!k.controlaStock) {
-    <div class="alert alert-info"><span>ℹ️</span> Es un equipo: no se almacena, así que no controla stock. Se listan sus movimientos sin saldo.</div>
+    <div class="alert alert-info"><app-icono nombre="alerta" /> Es un equipo: no se almacena, así que no controla stock. Se listan sus movimientos sin saldo.</div>
   }
   <div class="kpis">
     @if (k.controlaStock) {

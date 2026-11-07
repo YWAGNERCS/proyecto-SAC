@@ -24,7 +24,7 @@
 
 @if (sinCategoria() > 0 && filtro !== 'SIN_CATEGORIA') {
   <div class="alert alert-info" role="status">
-    <span>ℹ️</span> Hay {{ sinCategoria() }} producto(s) sin categoría.
+    <app-icono nombre="alerta" /> Hay {{ sinCategoria() }} producto(s) sin categoría.
     <button class="btn btn-sm btn-secondary" style="margin-left: 8px;" (click)="verSinCategoria()">Ver y asignar</button>
   </div>
 }

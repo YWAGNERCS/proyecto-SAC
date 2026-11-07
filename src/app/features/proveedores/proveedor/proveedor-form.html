@@ -10,7 +10,7 @@
     }
     @if (yaRegistrado(); as p) {
       <div class="alert alert-info" role="status">
-        <span>ℹ️</span> Este {{ etiquetaDocumento() }} ya está registrado como <strong>{{ p.nombreORazonSocial }}</strong>.
+        <app-icono nombre="alerta" /> Este {{ etiquetaDocumento() }} ya está registrado como <strong>{{ p.nombreORazonSocial }}</strong>.
         <a [routerLink]="['/proveedores', p.id, 'editar']" style="margin-left: 6px;">Ver / editar ese proveedor</a>
       </div>
     }

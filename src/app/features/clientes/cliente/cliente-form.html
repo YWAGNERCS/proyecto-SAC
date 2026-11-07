@@ -1,4 +1,5 @@
-<div class="card card-form" style="--ancho-form: 760px">
+<div class="card card-form" style="--ancho-form: 760px" [class.dialogo]="enDialogo()"
+     [attr.role]="enDialogo() ? 'dialog' : null" [attr.aria-modal]="enDialogo() ? 'true' : null">
   <div class="card-header">
     <h2>{{ id() ? 'Editar Cliente' : 'Nuevo Cliente' }}</h2>
     <p>Busque el RUC o DNI para traer los datos de SUNAT o RENIEC, revíselos y complete el contacto</p>
@@ -10,8 +11,12 @@
     }
     @if (yaRegistrado(); as p) {
       <div class="alert alert-info" role="status">
-        <span>ℹ️</span> Este {{ etiquetaDocumento() }} ya está registrado como <strong>{{ p.nombreORazonSocial }}</strong>.
-        <a [routerLink]="['/clientes', p.id, 'editar']" style="margin-left: 6px;">Ver / editar ese cliente</a>
+        <app-icono nombre="alerta" /> Este {{ etiquetaDocumento() }} ya está registrado como <strong>{{ p.nombreORazonSocial }}</strong>.
+        @if (enDialogo()) {
+          <button type="button" class="btn btn-sm btn-primary" style="margin-left: 6px;" (click)="guardado.emit(p)">Usar este cliente</button>
+        } @else {
+          <a [routerLink]="['/clientes', p.id, 'editar']" style="margin-left: 6px;">Ver / editar ese cliente</a>
+        }
       </div>
     }
 
@@ -86,7 +91,11 @@
       }
 
       <div class="d-flex justify-content-end gap-2 mt-4">
-        <a routerLink="/clientes" class="btn btn-outline-secondary">Cancelar</a>
+        @if (enDialogo()) {
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelado.emit()">Cancelar</button>
+        } @else {
+          <a routerLink="/clientes" class="btn btn-outline-secondary">Cancelar</a>
+        }
         <button type="submit" class="btn btn-primary" [disabled]="loading()">
           {{ id() ? 'Actualizar Cliente' : 'Guardar Cliente' }}
         </button>
@@ -95,7 +104,7 @@
   </div>
 </div>
 
-<!-- Las sedes se agregan una vez guardado el cliente -->
+<!-- Las sedes se agregan una vez guardado el cliente (en la pantalla de Clientes, no en el diálogo) -->
 @if (id(); as clienteId) {
   <app-sedes-cliente [clienteId]="clienteId" />
 }

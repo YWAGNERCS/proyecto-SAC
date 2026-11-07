@@ -13,6 +13,7 @@ import { Producto, precioVenta } from '../../catalogo/producto/producto.model';
 import { Moneda, TipoCambioService, convertir, simboloMoneda } from '../../../core/services/tipo-cambio-service';
 import { DescuentoService } from '../../../core/services/descuento-service';
 import { IconoComponent } from '../../../core/layout/icono';
+import { ClienteFormComponent } from '../../clientes/cliente/cliente-form';
 
 const IGV = 0.18;
 const MAX_SUGERENCIAS = 8;
@@ -28,7 +29,7 @@ function sinProductosRepetidos(control: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-venta-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent],
   templateUrl: './venta-form.html',
   styleUrl: './venta-form.css',
 })
@@ -45,6 +46,8 @@ export class VentaFormComponent implements OnInit {
   productos = signal<Producto[]>([]);
   errorMessage = signal('');
   loading = signal(false);
+  /** Diálogo "Nuevo cliente": registrar al cliente sin salir de la venta. */
+  creandoCliente = signal(false);
   /** Descuento máximo por línea (%) del usuario actual (el backend lo vuelve a validar). */
   topeDescuento = signal(0);
   /** Índice de la línea cuyo autocomplete está abierto (-1 = ninguno). */
@@ -209,6 +212,19 @@ export class VentaFormComponent implements OnInit {
   }
 
   // ── Guardar ─────────────────────────────────────────────────
+
+  /**
+   * Cliente recién registrado (o ya existente con ese RUC/DNI) desde el diálogo: se agrega a la lista
+   * si no estaba, en orden alfabético, y queda seleccionado en la venta.
+   */
+  clienteCreado(c: Cliente) {
+    if (c.id && !this.clientes().some((x) => x.id === c.id)) {
+      this.clientes.update((lista) => [...lista, c].sort((a, b) => a.nombreORazonSocial.localeCompare(b.nombreORazonSocial)));
+    }
+    this.form.controls.clienteId.setValue(c.id ?? 0);
+    this.form.controls.clienteId.markAsTouched();
+    this.creandoCliente.set(false);
+  }
 
   confirmarYGuardar() {
     this.errorMessage.set('');

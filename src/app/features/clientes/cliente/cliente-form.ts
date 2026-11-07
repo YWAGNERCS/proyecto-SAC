@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -16,6 +16,14 @@ type Tipo = Cliente['tipo'];
   templateUrl: './cliente-form.html',
 })
 export class ClienteFormComponent {
+  /**
+   * Dentro de un diálogo (p. ej. "Nuevo cliente" en Nueva venta): al guardar avisa con `guardado`
+   * en vez de ir a la lista de clientes, y "Cancelar" avisa con `cancelado`.
+   */
+  readonly enDialogo = input(false);
+  readonly guardado = output<Cliente>();
+  readonly cancelado = output<void>();
+
   private readonly fb = inject(FormBuilder);
   private readonly clienteService = inject(ClienteService);
   private readonly route = inject(ActivatedRoute);
@@ -148,7 +156,7 @@ export class ClienteFormComponent {
     const peticion = id ? this.clienteService.actualizar(id, cliente) : this.clienteService.crear(cliente);
     this.loading.set(true);
     peticion.subscribe({
-      next: () => this.router.navigate(['/clientes']),
+      next: (c) => (this.enDialogo() ? this.guardado.emit(c) : this.router.navigate(['/clientes'])),
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
         // 400: datos inválidos (documento, correo) · 409: RUC/DNI ya registrado
