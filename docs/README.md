@@ -106,7 +106,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 
 ### Requerimientos No Funcionales (RNF)
 
-- **RNF-01 (Arquitectura):** monolito modular en capas (controladores, servicios, repositorios), un módulo por paquete. *Hoy hay 2 módulos que usan repositorios de otros (ver 5).*
+- **RNF-01 (Arquitectura):** monolito modular en capas (controladores, servicios, repositorios), un módulo por paquete. Los módulos se comunican solo por fachadas de servicio y eventos; `ModularityTests` (Spring Modulith) lo verifica en cada `mvn test` (resuelto el 31/10/2026, ver 5, punto 21).
 - **RNF-02 (Rendimiento):** endpoints por debajo de 1000 ms con carga estándar. *Objetivo, aún sin medición formal.*
 - **RNF-03 (Interoperabilidad):** backend desacoplado del frontend, solo API REST en JSON, versionada en `/api/v1/...`.
 - **RNF-04 (Mantenibilidad e IoC):** inyección de dependencias de Spring; credenciales externalizadas: el backend las lee de variables de entorno o de `application-local.properties`, y Docker y Keycloak de `.env` (ambos ignorados por git, con plantilla `.example`). ✅ Cumplido; ver 5 sobre el historial de git.
@@ -926,7 +926,7 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Configuración de producción verificada de punta a punta en contenedores (perfil `prod`, imagen Docker del backend, Oracle y Keycloak propios, SPA en nginx): [PRODUCCION_LOCAL.md](PRODUCCION_LOCAL.md) y [S13](S13_optimizacion_produccion.md) (05/11/2026). Pendiente el servidor de JD y HTTPS |
 | 10 | Documentación técnica | ✅ Este documento, `CONTEXTO.md`, los `README.md` y `lp2-demo.md`, publicados en https://ywagnercs.github.io/proyecto-SAC/ |
 | 11 | Manual de usuario | 🔄 Sección 3 y hoja para el cliente [`LIMITACIONES.md`](LIMITACIONES.md) (25/10/2026); falta un manual con capturas por pantalla |
-| 12 | Trazabilidad (RTM) | ✅ [RTM.md](RTM.md): RF-01 a RF-35 y RNF-01 a RNF-09 con arquitectura, base de datos, API, pantalla y prueba; pruebas que faltan registradas (07/11/2026). Integración y estabilización (S14): [S14_integracion_estabilizacion.md](S14_integracion_estabilizacion.md) |
+| 12 | Trazabilidad (RTM) | ✅ [RTM.md](RTM.md): RF-01 a RF-35 y RNF-01 a RNF-09 con arquitectura, base de datos, API, pantalla y prueba; pruebas que faltan registradas (07/11/2026). Integración y estabilización (S14, LP2): [S14_integracion_estabilizacion.md](S14_integracion_estabilizacion.md); ADR-006, atributos de calidad y trazado de punta a punta (S14, ADS): [S14_ADS_decisiones_trazabilidad.md](S14_ADS_decisiones_trazabilidad.md) |
 | 13 | Mantenimiento y evolución | ✅ Git/GitHub (`YWAGNERCS/proyecto-SAC`, con topics) y publicación automática de la documentación |
 
 ### Avances del 05/11/2026
