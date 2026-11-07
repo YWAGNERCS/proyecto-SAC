@@ -19,7 +19,13 @@ import com.bomerp.proveedores.proveedor.service.ProveedorService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bomerp.config.paginacion.Orden;
+import com.bomerp.config.tipocambio.TipoCambioService;
+import org.springframework.data.domain.PageImpl;
+
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -29,11 +35,14 @@ public class CompraService {
     private final CompraRepository compraRepository;
     private final ProveedorService proveedorService;
     private final ProductoService productoService;
+    private final TipoCambioService tipoCambioService;
 
-    public CompraService(CompraRepository compraRepository, ProveedorService proveedorService, ProductoService productoService) {
+    public CompraService(CompraRepository compraRepository, ProveedorService proveedorService, ProductoService productoService,
+                         TipoCambioService tipoCambioService) {
         this.compraRepository = compraRepository;
         this.proveedorService = proveedorService;
         this.productoService = productoService;
+        this.tipoCambioService = tipoCambioService;
     }
 
     public List<Compra> listarTodas() {
@@ -56,13 +65,42 @@ public class CompraService {
         return compraRepository.buscar(desde, hasta, proveedorId);
     }
 
-    /** Compras por páginas, con los mismos filtros que buscar(). */
+    /** Orden de siempre: la más reciente primero. */
+    private static final Comparator<Compra> RECIENTES_PRIMERO =
+            Comparator.comparing(Compra::getFechaCompra).thenComparing(Compra::getId).reversed();
+
+    /**
+     * Columnas que la pantalla de Compras puede ordenar. El total se compara en soles: la compra no guarda
+     * tipo de cambio, así que las compras en dólares se llevan a soles con el de hoy.
+     */
+    private static Map<String, Orden.Campo<Compra>> camposOrden(BigDecimal tipoCambioHoy) {
+        return Map.of(
+                "id", Orden.valor(Compra::getId),
+                "proveedor", Orden.texto((Compra c) -> c.getProveedor() != null ? c.getProveedor().getNombreORazonSocial() : null),
+                "fecha", Orden.valor(Compra::getFechaCompra),
+                "factura", Orden.texto(Compra::getNumeroFactura),
+                "total", Orden.valor((Compra c) -> Orden.enSoles(c.getTotal(), c.getMoneda() == Producto.Moneda.DOLARES,
+                        null, tipoCambioHoy)));
+    }
+
+    /**
+     * Compras por páginas, con los mismos filtros que buscar(). Sin orden pedido pagina la base de datos;
+     * con un orden ("proveedor,asc", "total,desc"...) se ordena todo el filtro y luego se toma la página.
+     */
     @Transactional(readOnly = true)
-    public Page<Compra> buscarPagina(LocalDate desde, LocalDate hasta, Long proveedorId, Pageable pedido) {
+    public Page<Compra> buscarPagina(LocalDate desde, LocalDate hasta, Long proveedorId, Pageable pedido, String orden) {
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             throw new IllegalArgumentException("La fecha 'desde' no puede ser posterior a 'hasta'.");
         }
-        return compraRepository.buscarPagina(desde, hasta, proveedorId, pedido);
+        if (orden == null || orden.isBlank()) {
+            return compraRepository.buscarPagina(desde, hasta, proveedorId, pedido);
+        }
+        BigDecimal tipoCambioHoy = Orden.pide(orden, "total") ? tipoCambioService.resolverSiSePuede(null) : null;
+        List<Compra> ordenadas = Orden.ordenar(compraRepository.buscar(desde, hasta, proveedorId), orden,
+                camposOrden(tipoCambioHoy), RECIENTES_PRIMERO);
+        int inicio = (int) Math.min(pedido.getOffset(), ordenadas.size());
+        int fin = Math.min(inicio + pedido.getPageSize(), ordenadas.size());
+        return new PageImpl<>(ordenadas.subList(inicio, fin), pedido, ordenadas.size());
     }
 
     /** Fachada para el kardex (Inventario): líneas compradas de un producto. */

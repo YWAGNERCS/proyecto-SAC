@@ -26,8 +26,12 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bomerp.config.paginacion.Orden;
+
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -269,9 +273,28 @@ public class VentaService {
     public record ReporteVentas(com.bomerp.config.paginacion.Pagina<VentaResponseDTO> ventas, List<ResumenMoneda> resumen,
                                 long anuladas) {}
 
+    /** Orden de siempre: la más nueva primero. */
+    private static final Comparator<Venta> RECIENTES_PRIMERO =
+            Comparator.comparing(Venta::getFechaVenta).thenComparing(Venta::getId).reversed();
+
+    /**
+     * Columnas que la pantalla de Ventas puede ordenar (clic en el encabezado). El total se compara en
+     * soles, con el tipo de cambio de cada venta en dólares (o el de hoy, si la venta no lo guardó).
+     */
+    private static Map<String, Orden.Campo<Venta>> camposOrden(BigDecimal tipoCambioHoy) {
+        return Map.of(
+                "id", Orden.valor(Venta::getId),
+                "cliente", Orden.texto((Venta v) -> v.getCliente().getNombreORazonSocial()),
+                "fecha", Orden.valor(Venta::getFechaVenta),
+                "estado", Orden.texto((Venta v) -> v.getEstado().name()),
+                "total", Orden.valor((Venta v) -> Orden.enSoles(v.calcularTotal(), v.getMoneda() == Venta.Moneda.DOLARES,
+                        v.getTipoCambio(), tipoCambioHoy)));
+    }
+
+    /** @param orden columna y dirección, p. ej. "cliente,asc" (null = la más nueva primero) */
     @Transactional(readOnly = true)
     public ReporteVentas reportePagina(Venta.EstadoVenta estado, LocalDate desde, LocalDate hasta, Long clienteId,
-                                       Integer pagina, Integer tamano) {
+                                       Integer pagina, Integer tamano, String orden) {
         List<Venta> todas = buscar(estado, desde, hasta, clienteId);
         List<ResumenMoneda> resumen = new java.util.ArrayList<>();
         for (Venta.Moneda moneda : Venta.Moneda.values()) {
@@ -283,7 +306,9 @@ public class VentaService {
                     monto.divide(BigDecimal.valueOf(vigentes.size()), 2, java.math.RoundingMode.HALF_UP)));
         }
         long anuladas = todas.stream().filter(v -> v.getEstado() == Venta.EstadoVenta.ANULADA).count();
-        return new ReporteVentas(com.bomerp.config.paginacion.Pagina.deLista(todas,
+        BigDecimal tipoCambioHoy = Orden.pide(orden, "total") ? tipoCambioService.resolverSiSePuede(null) : null;
+        List<Venta> ordenadas = Orden.ordenar(todas, orden, camposOrden(tipoCambioHoy), RECIENTES_PRIMERO);
+        return new ReporteVentas(com.bomerp.config.paginacion.Pagina.deLista(ordenadas,
                 com.bomerp.config.paginacion.Pagina.pedido(pagina, tamano), VentaResponseDTO::desdeEntidad), resumen, anuladas);
     }
 

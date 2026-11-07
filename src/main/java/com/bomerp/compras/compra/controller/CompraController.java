@@ -59,8 +59,9 @@ public class CompraController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) Long proveedorId,
             @RequestParam(required = false) Integer pagina,
-            @RequestParam(required = false) Integer tamano) {
-        var page = compraService.buscarPagina(desde, hasta, proveedorId, Pagina.pedido(pagina, tamano));
+            @RequestParam(required = false) Integer tamano,
+            @RequestParam(required = false) String orden) {
+        var page = compraService.buscarPagina(desde, hasta, proveedorId, Pagina.pedido(pagina, tamano), orden);
         Map<Long, BigDecimal> pagado = cuentasPorPagarService.pagadoPorCompra(page.getContent());
         return Pagina.de(page, c -> CompraResponseDTO.desdeEntidad(c, c.getTipoPago() == Compra.TipoPago.CREDITO
                 ? pagado.getOrDefault(c.getId(), BigDecimal.ZERO) : c.getTotal()));

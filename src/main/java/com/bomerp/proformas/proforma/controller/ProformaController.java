@@ -33,8 +33,9 @@ public class ProformaController {
             @RequestParam(required = false) Proforma.EstadoProforma estado,
             @RequestParam(required = false) Long clienteId,
             @RequestParam(required = false) Integer pagina,
-            @RequestParam(required = false) Integer tamano) {
-        return proformaService.listarPagina(estado, clienteId, pagina, tamano);
+            @RequestParam(required = false) Integer tamano,
+            @RequestParam(required = false) String orden) {
+        return proformaService.listarPagina(estado, clienteId, pagina, tamano, orden);
     }
 
     @PostMapping

@@ -36,8 +36,9 @@ public class VentaController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) Long clienteId,
             @RequestParam(required = false) Integer pagina,
-            @RequestParam(required = false) Integer tamano) {
-        return ventaService.reportePagina(estado, desde, hasta, clienteId, pagina, tamano);
+            @RequestParam(required = false) Integer tamano,
+            @RequestParam(required = false) String orden) {
+        return ventaService.reportePagina(estado, desde, hasta, clienteId, pagina, tamano, orden);
     }
 
     /** Reporte de ventas con su detalle. Filtros opcionales: estado y rango de fechas (yyyy-MM-dd). */

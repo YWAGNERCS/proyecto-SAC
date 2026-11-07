@@ -27,6 +27,15 @@ public interface ProformaRepository extends JpaRepository<Proforma, Long> {
                                                                 @Param("clienteId") Long clienteId,
                                                                 org.springframework.data.domain.Pageable pedido);
 
+    /** Todas las del filtro, con cliente e ítems (para ordenar por total o por cliente antes de paginar). */
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"cliente", "items"})
+    @Query("""
+            SELECT p FROM Proforma p
+            WHERE (:estado IS NULL OR p.estado = :estado) AND (:clienteId IS NULL OR p.cliente.id = :clienteId)
+            ORDER BY p.id DESC
+            """)
+    List<Proforma> buscar(@Param("estado") Proforma.EstadoProforma estado, @Param("clienteId") Long clienteId);
+
     /** Lee la proforma bloqueando su fila hasta el fin de la transacción (conversión en venta). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))

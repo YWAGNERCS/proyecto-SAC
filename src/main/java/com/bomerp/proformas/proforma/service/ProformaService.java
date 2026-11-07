@@ -20,8 +20,13 @@ import com.bomerp.notificaciones.notificacion.service.NotificadorWhatsApp;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bomerp.config.paginacion.Orden;
+import com.bomerp.config.paginacion.Pagina;
+
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -67,13 +72,35 @@ public class ProformaService {
                 .toList();
     }
 
-    /** Proformas por páginas (pantalla de Proformas). */
+    /** Orden de siempre: la más nueva primero. */
+    private static final Comparator<Proforma> RECIENTES_PRIMERO = Comparator.comparing(Proforma::getId).reversed();
+
+    /** Columnas que la pantalla de Proformas puede ordenar; el total se compara en soles (ver Orden.enSoles). */
+    private static Map<String, Orden.Campo<Proforma>> camposOrden(java.math.BigDecimal tipoCambioHoy) {
+        return Map.of(
+                "id", Orden.valor(Proforma::getId),
+                "cliente", Orden.texto((Proforma p) -> p.getCliente().getNombreORazonSocial()),
+                "fecha", Orden.valor(Proforma::getFechaEmision),
+                "estado", Orden.texto((Proforma p) -> p.getEstado().name()),
+                "total", Orden.valor((Proforma p) -> Orden.enSoles(p.calcularTotal(),
+                        p.getMoneda() == Proforma.Moneda.DOLARES, p.getTipoCambio(), tipoCambioHoy)));
+    }
+
+    /**
+     * Proformas por páginas (pantalla de Proformas). Sin orden pedido pagina la base de datos; con un
+     * orden (p. ej. "total,desc", que no es una columna) se ordena todo el filtro y luego se pagina.
+     */
     @Transactional(readOnly = true)
-    public com.bomerp.config.paginacion.Pagina<ProformaResponseDTO> listarPagina(Proforma.EstadoProforma estado, Long clienteId,
-                                                                                Integer pagina, Integer tamano) {
-        return com.bomerp.config.paginacion.Pagina.de(
-                proformaRepository.buscarPagina(estado, clienteId, com.bomerp.config.paginacion.Pagina.pedido(pagina, tamano)),
-                ProformaResponseDTO::desdeEntidad);
+    public Pagina<ProformaResponseDTO> listarPagina(Proforma.EstadoProforma estado, Long clienteId,
+                                                    Integer pagina, Integer tamano, String orden) {
+        if (orden == null || orden.isBlank()) {
+            return Pagina.de(proformaRepository.buscarPagina(estado, clienteId, Pagina.pedido(pagina, tamano)),
+                    ProformaResponseDTO::desdeEntidad);
+        }
+        java.math.BigDecimal tipoCambioHoy = Orden.pide(orden, "total") ? tipoCambioService.resolverSiSePuede(null) : null;
+        List<Proforma> ordenadas = Orden.ordenar(proformaRepository.buscar(estado, clienteId), orden,
+                camposOrden(tipoCambioHoy), RECIENTES_PRIMERO);
+        return Pagina.deLista(ordenadas, Pagina.pedido(pagina, tamano), ProformaResponseDTO::desdeEntidad);
     }
 
     /** Fachada para Reportes: proformas PENDIENTES (entidades, con su cliente e ítems). */
