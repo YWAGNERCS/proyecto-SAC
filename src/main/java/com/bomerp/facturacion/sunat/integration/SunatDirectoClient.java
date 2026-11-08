@@ -125,7 +125,15 @@ public class SunatDirectoClient implements OseClient {
     /** Solo la SUNAT de producción da validez tributaria; la beta es de pruebas. */
     @Override
     public boolean conValidezTributaria() {
-        return props.url() != null && !props.url().toLowerCase().contains("beta");
+        return ambiente() == com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.PRODUCCION;
+    }
+
+    /** La URL decide el ambiente: la de pruebas de SUNAT contiene "beta". */
+    @Override
+    public com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision ambiente() {
+        return props.url() != null && !props.url().toLowerCase().contains("beta")
+                ? com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.PRODUCCION
+                : com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.BETA;
     }
 
     /** Se carga al primer envío: el backend arranca aunque falte el certificado y lo dice al emitir. */

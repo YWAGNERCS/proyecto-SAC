@@ -154,7 +154,13 @@ public class EnvioSunatService {
             RespuestaOse r = ose.emitir(c);
             detenerSiFallanLasCredenciales(r);
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
-            registros.save(EnvioSunatRegistro.deComprobante(c.getId(), r.resultado().name(), c.getEnvio(), r.xmlFirmado(), r.cdr()));
+            Comprobante.AmbienteEmision ambiente = ose.ambiente();
+            if (c.getEstadoSunat().valido()) {
+                // El ambiente en que SUNAT lo aceptó queda fijo: la validez para el cliente depende de él
+                c.registrarAmbiente(ambiente);
+            }
+            registros.save(EnvioSunatRegistro.deComprobante(c.getId(), r.resultado().name(), c.getEnvio(), r.xmlFirmado(), r.cdr())
+                    .conAmbiente(ambiente == null ? null : ambiente.name()));
             if (r.enlacePdf() != null) c.setEnlacePdf(r.enlacePdf());
             if (r.enlaceXml() != null) c.setEnlaceXml(r.enlaceXml());
             return c.getEstadoSunat();
@@ -222,7 +228,8 @@ public class EnvioSunatService {
             RespuestaOse r = ose.emitirNotaCredito(n);
             detenerSiFallanLasCredenciales(r);
             n.setEstadoSunat(aplicar(n.getEnvio(), r));
-            registros.save(EnvioSunatRegistro.deNota(n.getId(), r.resultado().name(), n.getEnvio(), r.xmlFirmado(), r.cdr()));
+            registros.save(EnvioSunatRegistro.deNota(n.getId(), r.resultado().name(), n.getEnvio(), r.xmlFirmado(), r.cdr())
+                    .conAmbiente(ose.ambiente() == null ? null : ose.ambiente().name()));
             if (r.enlacePdf() != null) n.setEnlacePdf(r.enlacePdf());
             if (r.enlaceXml() != null) n.setEnlaceXml(r.enlaceXml());
             return n.getEstadoSunat();

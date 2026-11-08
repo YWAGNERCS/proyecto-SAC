@@ -51,6 +51,16 @@ public class EnvioSunatRegistro {
     @Basic(fetch = FetchType.LAZY)
     private byte[] cdr;
 
+    /** Ambiente de SUNAT al que se envió este intento (PRODUCCION, BETA o SIMULADO); null en los anteriores. */
+    @Column(length = 13)
+    private String ambiente;
+
+    /** El ambiente del intento: se fija al guardarlo y no cambia (el registro solo se inserta). */
+    public EnvioSunatRegistro conAmbiente(String ambiente) {
+        this.ambiente = ambiente;
+        return this;
+    }
+
     private EnvioSunatRegistro(Long comprobanteId, Long notaCreditoId, String resultado, EnvioSunat envio,
                                byte[] xml, byte[] cdr) {
         this.comprobanteId = comprobanteId;

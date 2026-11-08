@@ -49,6 +49,25 @@ public interface EnvioCorreoRepository extends JpaRepository<EnvioCorreo, Long> 
             """)
     List<Long> porProcesar(@Param("ahora") LocalDateTime ahora, Limit limite);
 
+    /**
+     * Comprobantes aceptados (u observados) por SUNAT en PRODUCCION, entre esas horas, vigentes, de un cliente con
+     * correo y SIN envío automático: los que la conciliación tiene que recuperar.
+     */
+    @Query("""
+            SELECT c.id FROM Comprobante c JOIN c.venta v JOIN v.cliente cl
+             WHERE c.reemplazado = false
+               AND c.estadoSunat IN (com.bomerp.facturacion.comprobante.entity.Comprobante.EstadoSunat.ACEPTADO,
+                                     com.bomerp.facturacion.comprobante.entity.Comprobante.EstadoSunat.OBSERVADO)
+               AND c.ambienteEmision = com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.PRODUCCION
+               AND c.envio.ultimoIntento >= :desde AND c.envio.ultimoIntento <= :hasta
+               AND cl.correo IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM EnvioCorreo e WHERE e.comprobanteId = c.id
+                               AND e.tipo = com.bomerp.facturacion.correo.entity.EnvioCorreo.Tipo.AUTOMATICO)
+             ORDER BY c.id
+            """)
+    List<Long> aceptadosSinEnvioAutomatico(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
+                                          Limit limite);
+
     /** EN_PROCESO desde antes de esa hora: el proceso que los tomó se interrumpió. */
     List<EnvioCorreo> findByEstadoAndEnProcesoDesdeBefore(Estado estado, LocalDateTime limite);
 }

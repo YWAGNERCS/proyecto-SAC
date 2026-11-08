@@ -46,7 +46,9 @@ import static org.mockito.Mockito.*;
  * Entrega del comprobante por correo contra Oracle, de punta a punta: venta → comprobante → SUNAT (simulada aquí) acepta
  * → solicitud de envío → servidor de correo (simulado: no sale ningún correo) → resultado guardado. También los fallos:
  * SMTP caído, PDF que no se genera, XML que no corresponde, eventos repetidos, dos trabajadores a la vez, reinicio del
- * backend y la caída entre la aceptación del servidor SMTP y su registro en Oracle.
+ * backend y la caída entre la aceptación del servidor SMTP y su registro en Oracle. Además, el ambiente de emisión
+ * registrado e inmutable (lo aceptado por la beta no pasa a válido si se cambia la configuración) y la conciliación de
+ * comprobantes aceptados cuyo envío nunca se creó (evento perdido).
  *
  * No es @Transactional: el envío corre en otros hilos y necesita ver los datos confirmados. Lo que crea se borra al
  * terminar (ventas, comprobantes, envíos, el producto) y las series vuelven a su número.
@@ -93,14 +95,13 @@ class EntregaComprobanteIntegracionTest {
         p.setMoneda(Producto.Moneda.SOLES);
         productoId = productos.save(p).getId();
 
-        // SUNAT (simulada) acepta y devuelve el XML firmado de ESE comprobante y su CDR
+        // SUNAT (simulada, de PRODUCCION) acepta y devuelve el XML firmado de ESE comprobante y su CDR
         when(ose.emitir(any())).thenAnswer(i -> {
             Comprobante c = i.getArgument(0);
-            byte[] xml = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Invoice><cbc:ID>" + c.getSerie() + "-"
-                    + Integer.parseInt(c.getNumero()) + "</cbc:ID><cbc:ID schemeID=\"6\">" + ruc
-                    + "</cbc:ID><ds:SignatureValue>ñandú==</ds:SignatureValue></Invoice>").getBytes(StandardCharsets.UTF_8);
+            byte[] xml = xmlDe(c.getSerie(), c.getNumero(), c.getTipo().name(), c.getFechaEmision().toString(), c.getTotal());
             return new RespuestaOse(OseClient.Resultado.ACEPTADO, 0, "Aceptado (prueba)", null, null, xml, new byte[]{80, 75});
         });
+        when(ose.ambiente()).thenReturn(Comprobante.AmbienteEmision.PRODUCCION);
         when(ose.conValidezTributaria()).thenReturn(true);
         when(notificador.enviarConAdjuntos(any())).thenAnswer(i -> ((MensajeCorreo) i.getArgument(0)).messageId());
     }
@@ -158,13 +159,46 @@ class EntregaComprobanteIntegracionTest {
         return l.isEmpty() ? null : l.get(0).getEstado().name();
     }
 
-    /** Un comprobante aceptado SIN su envío automático (para preparar cada caso a mano). */
+    /** XML UBL como el real (ISO-8859-1, firmado) con los datos de ese comprobante. */
+    private byte[] xmlDe(String serie, String numero, String tipo, String fecha, BigDecimal total) {
+        XmlUblDePrueba x = new XmlUblDePrueba();
+        x.id = serie + "-" + Integer.parseInt(numero);
+        x.tipo = "FACTURA".equals(tipo) ? "01" : "03";
+        x.fecha = fecha;
+        x.total = total.toPlainString();
+        x.rucEmisor = ruc;
+        return x.bytes();
+    }
+
+    /**
+     * Un comprobante que SUNAT aceptó en PRODUCCION pero SIN su envío automático: el evento de aceptación se perdió
+     * (p. ej. el backend se cayó justo después). Se arma así: SUNAT no responde (queda PENDIENTE, sin evento) y luego se
+     * registra la aceptación directamente en Oracle, como la habría guardado el envío.
+     *
+     * @param haceMinutos cuándo lo aceptó SUNAT (0 = recién: dentro del margen que la conciliación respeta)
+     */
+    private Long aceptadoSinEvento(Long clienteId, long haceMinutos) throws InterruptedException {
+        doReturn(RespuestaOse.reintentar("SUNAT no respondió (prueba)", null)).when(ose).emitir(any());
+        Long ventaId = ventaService.registrarVentaDirecta(clienteId,
+                List.of(new VentaService.ItemVentaDTO(productoId, 1, BigDecimal.ZERO)),
+                Venta.TipoPago.CONTADO, null, Venta.Moneda.SOLES, null, "prueba", "prueba", null, null).id();
+        ventas.add(ventaId);
+        esperar(() -> !jdbc.queryForList("SELECT 1 FROM comprobantes WHERE venta_id = ? AND sunat_intentos > 0",
+                ventaId).isEmpty(), "primer envío a SUNAT de la venta " + ventaId);
+        Long id = comprobanteDe(ventaId);
+        Map<String, Object> f = jdbc.queryForMap("SELECT serie, numero, tipo, fecha_emision, total FROM comprobantes WHERE id = ?", id);
+        byte[] xml = xmlDe((String) f.get("SERIE"), (String) f.get("NUMERO"), (String) f.get("TIPO"),
+                ((java.sql.Timestamp) f.get("FECHA_EMISION")).toLocalDateTime().toLocalDate().toString(), (BigDecimal) f.get("TOTAL"));
+        jdbc.update("UPDATE comprobantes SET estado_sunat = 'ACEPTADO', sunat_codigo = 0, sunat_xml = ?, sunat_cdr = ?, "
+                        + "ambiente_emision = 'PRODUCCION', sunat_ultimo_intento = ? WHERE id = ?",
+                xml, new byte[]{80, 75}, LocalDateTime.now().minusMinutes(haceMinutos), id);
+        return id;
+    }
+
+    /** Aceptado en producción, sin envío automático y fuera del alcance de la conciliación (recién aceptado). */
     private Long comprobanteSinEnvioAutomatico() throws InterruptedException {
-        when(ose.conValidezTributaria()).thenReturn(false);   // como la beta: no se pide el envío automático
-        Long id = venderYAceptar(conCorreo);
-        Thread.sleep(300);
+        Long id = aceptadoSinEvento(conCorreo, 0);
         assertThat(enviosDe(id)).isEmpty();
-        when(ose.conValidezTributaria()).thenReturn(true);
         return id;
     }
 
@@ -183,6 +217,7 @@ class EntregaComprobanteIntegracionTest {
         EnvioCorreo e = enviosDe(id).get(0);
         assertThat(e.getTipo()).isEqualTo(EnvioCorreo.Tipo.AUTOMATICO);
         assertThat(e.getIntentos()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT ambiente_emision FROM comprobantes WHERE id = ?", String.class, id)).isEqualTo("PRODUCCION");
         assertThat(e.getFechaAceptacionSmtp()).isNotNull();
         assertThat(e.getMessageId()).startsWith("<").endsWith(">");
         assertThat(e.getDestinatario()).isEqualTo(jdbc.queryForObject("SELECT correo FROM clientes WHERE id = ?", String.class, conCorreo));
@@ -206,11 +241,23 @@ class EntregaComprobanteIntegracionTest {
 
     @Test
     void conLaBetaOSinCorreoNoSeEnviaYElReenvioManualDiceElMotivo() throws Exception {
-        Long beta = comprobanteSinEnvioAutomatico();
+        when(ose.ambiente()).thenReturn(Comprobante.AmbienteEmision.BETA);
         when(ose.conValidezTributaria()).thenReturn(false);
+        Long beta = venderYAceptar(conCorreo);
+        Thread.sleep(300);
+        assertThat(enviosDe(beta)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT ambiente_emision FROM comprobantes WHERE id = ?", String.class, beta)).isEqualTo("BETA");
+        assertThat(jdbc.queryForObject("SELECT ambiente FROM envios_sunat WHERE comprobante_id = ?", String.class, beta)).isEqualTo("BETA");
+
+        // Después el servidor se pasa a producción: lo aceptado por la beta sigue sin validez
+        when(ose.ambiente()).thenReturn(Comprobante.AmbienteEmision.PRODUCCION);
+        when(ose.conValidezTributaria()).thenReturn(true);
         assertThatThrownBy(() -> entrega.solicitarReenvio(beta, true, "lisandro"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("beta de SUNAT");
-        when(ose.conValidezTributaria()).thenReturn(true);
+        eventos.publishEvent(new EnvioSunatService.ComprobanteAceptadoEvent(beta));
+        assertThat(entrega.conciliarAceptadosSinEnvio()).isZero();
+        Thread.sleep(300);
+        assertThat(enviosDe(beta)).isEmpty();
 
         Long sinMail = venderYAceptar(sinCorreo);
         Thread.sleep(300);
@@ -275,8 +322,10 @@ class EntregaComprobanteIntegracionTest {
     void sinXmlOConElXmlDeOtroComprobanteNoSeEnvia() throws Exception {
         Long id = comprobanteSinEnvioAutomatico();
 
-        jdbc.update("UPDATE comprobantes SET sunat_xml = ? WHERE id = ?",
-                ("<Invoice><cbc:ID>X999-1</cbc:ID>" + ruc + "</Invoice>").getBytes(StandardCharsets.UTF_8), id);
+        XmlUblDePrueba otro = new XmlUblDePrueba();
+        otro.id = "X999-1";
+        otro.rucEmisor = ruc;
+        jdbc.update("UPDATE comprobantes SET sunat_xml = ? WHERE id = ?", otro.bytes(), id);
         Long envio = envioPendiente(id);
         assertThat(entrega.procesar(envio)).isEqualTo(EnvioCorreo.Estado.FALLIDO);
         EnvioCorreo e = envios.findById(envio).orElseThrow();
@@ -390,6 +439,37 @@ class EntregaComprobanteIntegracionTest {
         assertThatThrownBy(() -> entrega.solicitarReenvio(id, false, "lisandro")).hasMessageContaining("ya se envió");
         entrega.solicitarReenvio(id, true, "lisandro");
         esperar(() -> "ENVIADO".equals(estadoCorreo(id)), "reenvío confirmado ENVIADO");
+    }
+
+    // ── Evento de aceptación perdido: la conciliación crea el envío que falta ──
+
+    @Test
+    void laConciliacionRecuperaUnAceptadoSinEnvioYRespetaElAmbienteYElCorreo() throws Exception {
+        Long perdido = aceptadoSinEvento(conCorreo, 5);       // aceptado hace 5 min y su evento se perdió
+        Long reciente = aceptadoSinEvento(conCorreo, 0);      // recién aceptado: el camino normal todavía puede llegar
+        Long sinMail = aceptadoSinEvento(sinCorreo, 5);       // cliente sin correo: no hay a quién enviarlo
+        Long viejo = aceptadoSinEvento(conCorreo, 60 * 24 * 10);   // aceptado hace 10 días: fuera de la ventana
+
+        assertThat(entrega.conciliarAceptadosSinEnvio()).isEqualTo(1);
+        esperar(() -> "ENVIADO".equals(estadoCorreo(perdido)), "el recuperado sale por correo");
+        assertThat(enviosDe(perdido).get(0).getTipo()).isEqualTo(EnvioCorreo.Tipo.AUTOMATICO);
+        assertThat(enviosDe(reciente)).isEmpty();
+        assertThat(enviosDe(sinMail)).isEmpty();
+        assertThat(enviosDe(viejo)).isEmpty();
+
+        // Otra vuelta no lo repite: ya tiene su envío automático
+        assertThat(entrega.conciliarAceptadosSinEnvio()).isZero();
+        verify(notificador, times(1)).enviarConAdjuntos(any());
+    }
+
+    @Test
+    void elAmbienteRegistradoNoSePuedeCambiarNiDesdeSql() throws Exception {
+        Long id = comprobanteSinEnvioAutomatico();
+        assertThatThrownBy(() -> jdbc.update("UPDATE comprobantes SET ambiente_emision = 'BETA' WHERE id = ?", id))
+                .hasMessageContaining("ORA-20031");
+        assertThatThrownBy(() -> jdbc.update("UPDATE comprobantes SET ambiente_emision = NULL WHERE id = ?", id))
+                .hasMessageContaining("ORA-20031");
+        assertThat(jdbc.queryForObject("SELECT ambiente_emision FROM comprobantes WHERE id = ?", String.class, id)).isEqualTo("PRODUCCION");
     }
 
     @Test

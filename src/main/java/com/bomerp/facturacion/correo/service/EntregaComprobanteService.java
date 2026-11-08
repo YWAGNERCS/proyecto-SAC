@@ -9,7 +9,6 @@ import com.bomerp.facturacion.correo.entity.EnvioCorreo.Estado;
 import com.bomerp.facturacion.correo.entity.IntentoCorreo;
 import com.bomerp.facturacion.correo.repository.EnvioCorreoRepository;
 import com.bomerp.facturacion.correo.repository.IntentoCorreoRepository;
-import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.facturacion.pdf.service.GeneradorPdfFacturacionService;
 import com.bomerp.notificaciones.notificacion.service.NotificadorCorreo;
 import com.bomerp.notificaciones.notificacion.service.NotificadorCorreo.Adjunto;
@@ -43,8 +42,11 @@ import java.util.stream.Collectors;
  * trabajador la toma ({@link #procesar}), arma los adjuntos, la entrega al servidor SMTP y guarda el resultado.
  *
  * Garantías:
- * - Solo se envían comprobantes con validez tributaria: aceptados u observados por SUNAT de producción, con XML
- *   firmado. Nunca pendientes, rechazados, simulados ni aceptados por la beta.
+ * - Solo se envían comprobantes con validez tributaria: aceptados u observados por SUNAT y emitidos en el ambiente de
+ *   PRODUCCION, según el ambiente que quedó registrado en el propio comprobante al aceptarlo (no según la configuración
+ *   de hoy, que puede haber cambiado). Nunca pendientes, rechazados, simulados ni aceptados por la beta.
+ * - Si SUNAT acepta y el backend se cae antes de crear la solicitud, la conciliación periódica lo detecta: busca
+ *   comprobantes aceptados en producción, con cliente con correo y sin envío automático, y lo crea.
  * - Una sola solicitud automática por comprobante (índice único en Oracle): aceptarlo dos veces no manda dos correos.
  * - Un envío a la vez por comprobante: tomarlo bloquea la fila del comprobante y cambia el estado con un UPDATE
  *   condicional, así dos trabajadores (o dos backends) nunca lo mandan juntos.
@@ -70,13 +72,13 @@ public class EntregaComprobanteService {
     private final EnvioCorreoRepository envios;
     private final IntentoCorreoRepository intentos;
     private final ComprobanteRepository comprobantes;
-    private final OseClient ose;
     private final NotificadorCorreo notificador;
     private final GeneradorPdfFacturacionService generadorPdf;
     private final EmpresaProperties empresa;
     private final TransactionTemplate tx;
     private final int maxIntentos;
     private final long minutosEnProceso;
+    private final long diasConciliacion;
     private final String dominioMensajes;
 
     private final ExecutorService cola = Executors.newSingleThreadExecutor(r -> {
@@ -86,22 +88,23 @@ public class EntregaComprobanteService {
     });
 
     public EntregaComprobanteService(EnvioCorreoRepository envios, IntentoCorreoRepository intentos,
-                                     ComprobanteRepository comprobantes, OseClient ose, NotificadorCorreo notificador,
+                                     ComprobanteRepository comprobantes, NotificadorCorreo notificador,
                                      GeneradorPdfFacturacionService generadorPdf, EmpresaProperties empresa,
                                      PlatformTransactionManager txManager,
                                      @Value("${app.correo.max-intentos:5}") int maxIntentos,
                                      @Value("${app.correo.minutos-en-proceso:10}") long minutosEnProceso,
+                                     @Value("${app.correo.conciliar-dias:3}") long diasConciliacion,
                                      @Value("${spring.mail.username:}") String remitente) {
         this.envios = envios;
         this.intentos = intentos;
         this.comprobantes = comprobantes;
-        this.ose = ose;
         this.notificador = notificador;
         this.generadorPdf = generadorPdf;
         this.empresa = empresa;
         this.tx = new TransactionTemplate(txManager);
         this.maxIntentos = maxIntentos;
         this.minutosEnProceso = minutosEnProceso;
+        this.diasConciliacion = diasConciliacion;
         int arroba = remitente == null ? -1 : remitente.indexOf('@');
         this.dominioMensajes = arroba > 0 ? remitente.substring(arroba + 1) : "sgejd.local";
     }
@@ -120,12 +123,13 @@ public class EntregaComprobanteService {
 
     /**
      * Al cliente solo se le envía un comprobante con validez ante SUNAT (revisión externa F-01). Uno PENDIENTE o
-     * RECHAZADO no la tiene; uno del modo simulado tampoco, aunque figure ACEPTADO, porque nunca salió a SUNAT (el
-     * envío real siempre guarda el XML firmado; el simulado no); ni uno aceptado por la beta de SUNAT (D-12).
+     * RECHAZADO no la tiene; uno del modo simulado tampoco, aunque figure ACEPTADO, porque nunca salió a SUNAT; ni uno
+     * aceptado por la beta de SUNAT (D-12). Lo decide el ambiente que quedó REGISTRADO EN EL COMPROBANTE al aceptarlo,
+     * no la configuración actual: si el servidor pasa de beta a producción, lo aceptado por la beta sigue sin validez.
      *
      * @return el motivo para no enviarlo, o null si se puede enviar
      */
-    public static String motivoParaNoEnviar(Comprobante c, boolean conValidezTributaria) {
+    public static String motivoParaNoEnviar(Comprobante c) {
         String numero = c.getSerie() + "-" + c.getNumero();
         if (c.getEstadoSunat() == null || !c.getEstadoSunat().valido()) {
             return numero + " todavía no tiene validez ante SUNAT (estado " + c.getEstadoSunat()
@@ -134,11 +138,16 @@ public class EntregaComprobanteService {
         if (c.isReemplazado()) {
             return numero + " fue reemplazado por otro comprobante: no se envía al cliente.";
         }
-        if (c.getEnvio().getXmlFirmado() == null) {
+        Comprobante.AmbienteEmision ambiente = c.getAmbienteEmision();
+        if (ambiente == Comprobante.AmbienteEmision.SIMULADO || c.getEnvio().getXmlFirmado() == null) {
             return numero + " se emitió en modo simulado (no se envió a SUNAT): no se envía al cliente como comprobante.";
         }
-        if (!conValidezTributaria) {
+        if (ambiente == Comprobante.AmbienteEmision.BETA) {
             return numero + " fue aceptado por la beta de SUNAT (pruebas): no tiene validez tributaria y no se envía al cliente.";
+        }
+        if (ambiente == null || ambiente == Comprobante.AmbienteEmision.NO_REGISTRADO) {
+            return numero + " se aceptó antes de que SGE-JD registrara el ambiente de SUNAT (producción o pruebas): no se"
+                    + " envía como comprobante tributario. Verifique su validez en SUNAT (Consulta de validez del CPE).";
         }
         return null;
     }
@@ -185,7 +194,7 @@ public class EntregaComprobanteService {
             id = tx.execute(s -> {
                 Comprobante c = comprobantes.findById(comprobanteId).orElse(null);
                 if (c == null) return null;
-                String motivo = motivoParaNoEnviar(c, ose.conValidezTributaria());
+                String motivo = motivoParaNoEnviar(c);
                 if (motivo != null) {
                     log.info("Comprobante {}: no se envía por correo. {}", comprobanteId, motivo);
                     return null;
@@ -218,7 +227,7 @@ public class EntregaComprobanteService {
         EnvioCorreo creado = tx.execute(s -> {
             Comprobante c = comprobantes.bloquear(comprobanteId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));
-            String motivo = motivoParaNoEnviar(c, ose.conValidezTributaria());
+            String motivo = motivoParaNoEnviar(c);
             if (motivo != null) throw new ResponseStatusException(HttpStatus.CONFLICT, motivo);
             String correo = correoDelCliente(c);
             String problema = problemaConDestinatario(correo);
@@ -349,7 +358,7 @@ public class EntregaComprobanteService {
         EnvioCorreo e = envios.findById(envioId).orElseThrow();
         Comprobante c = comprobantes.findById(e.getComprobanteId()).orElse(null);
         if (c == null) return Preparado.error("El comprobante ya no existe.", true);
-        String motivo = motivoParaNoEnviar(c, ose.conValidezTributaria());
+        String motivo = motivoParaNoEnviar(c);
         if (motivo != null) return Preparado.error(motivo, true);
         String problema = problemaConDestinatario(e.getDestinatario());
         if (problema != null) return Preparado.error(problema, true);
@@ -384,6 +393,7 @@ public class EntregaComprobanteService {
     @Scheduled(fixedDelayString = "${app.correo.revision-ms:60000}", initialDelayString = "${app.correo.revision-inicial-ms:30000}")
     public void revisar() {
         recuperarInterrumpidos();
+        conciliarAceptadosSinEnvio();
         List<Long> ids = envios.porProcesar(LocalDateTime.now(), Limit.of(20));
         for (Long id : ids) {
             try {
@@ -392,6 +402,28 @@ public class EntregaComprobanteService {
                 log.error("Error al reintentar el correo del envío {}: {}", id, e.getMessage());
             }
         }
+    }
+
+    /**
+     * Conciliación: comprobantes que SUNAT aceptó en PRODUCCION en los últimos app.correo.conciliar-dias días, de un
+     * cliente con correo, y que no tienen su envío automático (p. ej. el backend se cayó justo después de la respuesta de
+     * SUNAT y el evento se perdió). Les crea el envío; las mismas reglas de siempre lo vuelven a comprobar todo. Deja
+     * 2 minutos de margen al camino normal, y el índice único impide duplicar si los dos llegan a la vez.
+     *
+     * @return cuántos envíos creó
+     */
+    public int conciliarAceptadosSinEnvio() {
+        LocalDateTime ahora = LocalDateTime.now();
+        List<Long> sinEnvio = envios.aceptadosSinEnvioAutomatico(ahora.minusDays(diasConciliacion), ahora.minusMinutes(2),
+                Limit.of(20));
+        int creados = 0;
+        for (Long id : sinEnvio) {
+            if (solicitarAutomatico(id).isPresent()) {
+                creados++;
+                log.warn("Conciliación: el comprobante {} estaba aceptado en producción sin envío por correo; se creó", id);
+            }
+        }
+        return creados;
     }
 
     /** EN_PROCESO por más de app.correo.minutos-en-proceso: se interrumpió y no se sabe si salió. Quedan INCIERTOS. */
@@ -450,11 +482,12 @@ public class EntregaComprobanteService {
     private EntregaCorreoDTO armar(Comprobante c, List<EnvioCorreo> lista, EntregaCorreoDTO.Envio ultimo,
                                    List<EntregaCorreoDTO.Envio> historial) {
         String correo = correoDelCliente(c);
-        String motivo = motivoParaNoEnviar(c, ose.conValidezTributaria());
+        String motivo = motivoParaNoEnviar(c);
         if (motivo == null && correo == null) motivo = "El cliente no tiene correo registrado: agréguelo en Clientes para poder enviárselo.";
         LocalDateTime ultimaAceptacion = lista.stream().map(EnvioCorreo::getFechaAceptacionSmtp).filter(Objects::nonNull)
                 .max(Comparator.naturalOrder()).orElse(null);
-        return new EntregaCorreoDTO(c.getId(), correo, motivo, ultimo, lista.size(), ultimaAceptacion, historial);
+        return new EntregaCorreoDTO(c.getId(), c.getAmbienteEmision() == null ? null : c.getAmbienteEmision().name(),
+                correo, motivo, ultimo, lista.size(), ultimaAceptacion, historial);
     }
 
     private Map<Long, List<IntentoCorreo>> intentosDe(List<EnvioCorreo> lista) {

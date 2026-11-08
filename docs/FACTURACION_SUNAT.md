@@ -94,6 +94,14 @@ tributaria, byte por byte el mismo que se envió a SUNAT y que está guardado en
 **Nunca se envía** un comprobante pendiente, rechazado, simulado, reemplazado o aceptado por la **beta** de SUNAT
 (no tienen validez tributaria). Tampoco si el cliente no tiene correo registrado, o es inválido.
 
+**Ambiente de emisión, fijo en cada comprobante.** Al aceptarlo SUNAT, SGE-JD guarda en el comprobante en qué ambiente
+se aceptó (`AMBIENTE_EMISION`: PRODUCCION, BETA o SIMULADO) y ya no cambia: lo impide además el disparador
+`TRG_COMPROBANTE_AMBIENTE` en Oracle, también desde SQL. El correo solo sale si ese ambiente es PRODUCCION. Así, si el
+servidor se pasa de beta a producción, lo que aceptó la beta sigue sin validez y nunca se le envía al cliente. Los
+aceptados antes del 08/11/2026 quedaron SIMULADO (sin XML) o NO_REGISTRADO (con XML, sin saber a qué ambiente fueron):
+estos últimos tampoco se envían; si alguno fuera de producción, se verifica en SUNAT (Consulta de validez del CPE).
+Cada envío a SUNAT guarda también su ambiente (`ENVIOS_SUNAT.AMBIENTE`).
+
 ### Configurar el servidor de correo
 
 En `bomerp-backend/.env.prod` (o en `application-local.properties` en desarrollo, que no se sube a git):
@@ -138,6 +146,14 @@ cambios ("Envió por correo al cliente el comprobante #…").
   nunca lo envían dos procesos a la vez. Ninguna transacción de Oracle queda abierta mientras se habla con el servidor
   de correo.
 - La revisión de cada minuto retoma lo pendiente y lo fallido cuya hora llegó (también al reiniciar el backend).
+- **Conciliación (evento perdido):** si SUNAT acepta y el backend se cae antes de crear la solicitud de envío, la misma
+  revisión busca comprobantes aceptados en PRODUCCION en los últimos 3 días (`app.correo.conciliar-dias`), de un
+  cliente con correo y sin envío automático, y lo crea (con 2 minutos de margen para el camino normal; el índice único
+  impide duplicarlo). Se vuelven a comprobar el ambiente, el destinatario y el XML.
+- **El XML se comprueba campo por campo** con un analizador XML seguro (sin DOCTYPE ni entidades externas), sobre una
+  copia de los bytes, respetando su codificación (ISO-8859-1): que sea un Invoice UBL firmado y que el número, el tipo
+  (01/03), el RUC del emisor, la fecha, la moneda y el importe total sean los del comprobante. Si algo no coincide, no se
+  envía.
 - **Política ante la duda:** el Message-ID se guarda antes de enviar. Si el proceso se cae entre que el servidor de
   correo acepta y que Oracle lo registra, el envío queda `EN_PROCESO`; pasados 10 minutos pasa a `INCIERTO` y no se
   reenvía solo. SMTP no permite garantizar "exactamente una vez": SGE-JD prefiere no duplicar y deja la decisión a

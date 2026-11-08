@@ -444,9 +444,9 @@ public class FacturacionService implements ComprobantesDeVenta {
         entrega.solicitarAutomatico(comprobanteId);
     }
 
-    /** Ver EntregaComprobanteService.motivoParaNoEnviar (se conserva por compatibilidad). */
-    static String motivoParaNoEnviarAlCliente(Comprobante c, boolean conValidezTributaria) {
-        return com.bomerp.facturacion.correo.service.EntregaComprobanteService.motivoParaNoEnviar(c, conValidezTributaria);
+    /** Ver EntregaComprobanteService.motivoParaNoEnviar: decide el ambiente registrado en el comprobante. */
+    static String motivoParaNoEnviarAlCliente(Comprobante c) {
+        return com.bomerp.facturacion.correo.service.EntregaComprobanteService.motivoParaNoEnviar(c);
     }
 
     /** Reenvío manual por correo al cliente (ver EntregaComprobanteService.solicitarReenvio). */

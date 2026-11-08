@@ -49,6 +49,17 @@ public class Comprobante {
     @Column(length = 500)
     private String enlaceXml;
 
+    /**
+     * Ambiente de SUNAT en que se aceptó el comprobante (PRODUCCION, BETA o SIMULADO). Se fija una sola vez, al
+     * aceptarlo, y no cambia aunque después se cambie la configuración: así un comprobante aceptado por la beta nunca
+     * pasa por válido si el servidor se pasa a producción. Solo PRODUCCION tiene validez tributaria. Lo protege además
+     * el disparador TRG_COMPROBANTE_AMBIENTE en Oracle. NO_REGISTRADO: aceptado antes de que existiera este dato.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ambiente_emision", length = 13)
+    @lombok.Setter(lombok.AccessLevel.NONE)
+    private AmbienteEmision ambienteEmision;
+
     /** Respuesta de SUNAT al último envío (código, mensaje, XML firmado y CDR). */
     @Embedded
     private EnvioSunat envio = new EnvioSunat();
@@ -174,6 +185,22 @@ public class Comprobante {
 
     public enum TipoComprobante {
         FACTURA, BOLETA, NOTA_CREDITO
+    }
+
+    /** Dónde se emitió: solo PRODUCCION tiene validez tributaria. */
+    public enum AmbienteEmision {
+        PRODUCCION, BETA, SIMULADO, NO_REGISTRADO;
+
+        public boolean conValidezTributaria() {
+            return this == PRODUCCION;
+        }
+    }
+
+    /** Registra el ambiente en que SUNAT lo aceptó, solo la primera vez: después no se puede cambiar. */
+    public void registrarAmbiente(AmbienteEmision ambiente) {
+        if (this.ambienteEmision == null && ambiente != null) {
+            this.ambienteEmision = ambiente;
+        }
     }
 
     /**

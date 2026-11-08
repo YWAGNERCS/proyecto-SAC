@@ -35,7 +35,15 @@ public interface OseClient {
      * beta de SUNAT no, así que lo que "aceptan" no se envía por correo al cliente (informe D-12).
      */
     default boolean conValidezTributaria() {
-        return false;
+        return ambiente() == com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.PRODUCCION;
+    }
+
+    /**
+     * Ambiente al que este cliente envía hoy: se guarda en cada comprobante al aceptarlo (no se vuelve a preguntar
+     * después, porque la configuración puede cambiar). Por defecto, simulado.
+     */
+    default com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision ambiente() {
+        return com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.SIMULADO;
     }
 
     /**
