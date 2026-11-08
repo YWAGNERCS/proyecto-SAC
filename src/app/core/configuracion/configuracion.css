@@ -136,3 +136,16 @@ kbd {
   margin: 14px 0 0;
   font-size: 0.82rem;
 }
+
+/* Topes de descuento (solo el administrador) */
+.topes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.topes .form-group {
+  margin: 0;
+  width: 150px;
+}

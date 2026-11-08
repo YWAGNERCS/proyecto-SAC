@@ -107,6 +107,38 @@
       <p class="muted nota-keycloak">Las cuentas y contraseñas viven en Keycloak (SGE-JD nunca guarda contraseñas). Para crear un
         asistente nuevo, hágalo en la <a [href]="urlAdministracion" target="_blank" rel="noopener">consola de Keycloak</a> con el rol ASISTENTE.</p>
     </section>
+
+    <!-- Topes de descuento: solo el administrador los cambia -->
+    <section class="tarjeta">
+      <div class="titulo-con-icono">
+        <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.escudo" /></svg></span>
+        <div><h2>Topes de descuento</h2><p>Solo el administrador</p></div>
+      </div>
+      <p class="texto">Descuento máximo por línea en proformas y ventas. El del administrador también lo tiene quien recibió
+        el permiso "Descuento ampliado". Este cambio no se delega y queda en el historial.</p>
+      <form class="topes" (ngSubmit)="guardarTopes()" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="topeAdmin">Administrador (%)</label>
+          <input id="topeAdmin" name="topeAdmin" type="number" min="0" max="100" step="0.5" class="form-control"
+                 [(ngModel)]="topeAdmin" [disabled]="guardandoTopes()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="topeAsistente">Asistente (%)</label>
+          <input id="topeAsistente" name="topeAsistente" type="number" min="0" max="100" step="0.5" class="form-control"
+                 [(ngModel)]="topeAsistente" [disabled]="guardandoTopes()">
+        </div>
+        <button type="submit" class="btn btn-primary" [disabled]="guardandoTopes() || !topes()">
+          {{ guardandoTopes() ? 'Guardando…' : 'Guardar topes' }}
+        </button>
+      </form>
+      @if (topes()?.actualizadoPor; as quien) {
+        <p class="muted">Último cambio: {{ quien }}, {{ fechaCambioTopes() }}.</p>
+      } @else if (topes()) {
+        <p class="muted">Son los topes iniciales del sistema (nadie los ha cambiado).</p>
+      }
+      @if (mensajeTopes()) { <div class="alert alert-success" role="status">{{ mensajeTopes() }}</div> }
+      @if (errorTopes()) { <div class="alert alert-danger" role="alert">{{ errorTopes() }}</div> }
+    </section>
   }
 
   <!-- Ayuda -->

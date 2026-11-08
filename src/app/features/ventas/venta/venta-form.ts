@@ -17,6 +17,8 @@ import { ClienteFormComponent } from '../../clientes/cliente/cliente-form';
 import { RutinaMantenimiento, RutinaMantenimientoComponent, resumenRutina } from '../../postventa/mantenimiento/rutina-mantenimiento';
 import { AuthService } from '../../../core/auth/auth.service';
 import { errorFechaVenta, fechaLarga, fechaMinimaVenta, fechaParaEnviar, hoyIso } from './fecha-venta';
+import { avisoUltimaCompra, errorPrecioEditado } from './precio-editado';
+import { EditarPrecioComponent, PrecioElegido } from './editar-precio';
 
 const IGV = 0.18;
 const MAX_SUGERENCIAS = 8;
@@ -32,7 +34,8 @@ function sinProductosRepetidos(control: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-venta-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, RutinaMantenimientoComponent],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, RutinaMantenimientoComponent,
+    EditarPrecioComponent],
   templateUrl: './venta-form.html',
   styleUrl: './venta-form.css',
 })
@@ -50,6 +53,10 @@ export class VentaFormComponent implements OnInit {
   readonly puedeFechaPasada = computed(() => this.auth.puede('VENTA_FECHA_PASADA'));
   readonly hoy = hoyIso();
   readonly fechaMinima = fechaMinimaVenta();
+  /** Subir el precio de una línea (auditoría M1): el administrador o con el permiso "Editar precio en la venta". */
+  readonly puedeEditarPrecio = computed(() => this.auth.puede('EDITAR_PRECIO'));
+  /** Línea cuyo diálogo "Editar precio" está abierto (-1 = ninguno). */
+  readonly lineaEditandoPrecio = signal(-1);
 
   clientes = signal<Cliente[]>([]);
   productos = signal<Producto[]>([]);
@@ -99,11 +106,19 @@ export class VentaFormComponent implements OnInit {
   readonly tipoCambioSunat = signal<number | null>(null);
   readonly avisoTipoCambio = signal<string | null>(null);
 
-  /** Precio unitario en la moneda de la venta (convertido si el producto está en la otra moneda). */
-  readonly preciosPorLinea = computed(() =>
+  /** Precio de catálogo en la moneda de la venta (convertido si el producto está en la otra moneda). */
+  readonly preciosCatalogoPorLinea = computed(() =>
     this.productosPorLinea().map((p) =>
       p ? convertir(precioVenta(p), p.moneda ?? 'SOLES', this.moneda(), this.tipoCambio()) : null,
     ),
+  );
+
+  /** Precio que se cobra: el editado si se cambió, si no el de catálogo. */
+  readonly preciosPorLinea = computed(() =>
+    this.preciosCatalogoPorLinea().map((c, i) => {
+      const editado = this.lineas()[i]?.precioEditado;
+      return editado !== null && editado !== undefined && c !== null ? Number(editado) : c;
+    }),
   );
 
   /** Vista previa: el subtotal real lo calcula el backend con el precio vigente al guardar. */
@@ -140,6 +155,8 @@ export class VentaFormComponent implements OnInit {
       next: (data) => this.productos.set(data),
       error: () => this.errorMessage.set('No se pudieron cargar los productos.'),
     });
+    // Otra moneda: los precios editados (que estaban en la anterior) vuelven al de catálogo
+    this.form.controls.moneda.valueChanges.subscribe(() => this.detalles.controls.forEach((_, i) => this.quitarPrecio(i)));
     // Con fecha pasada, se propone el tipo de cambio SUNAT de ese día
     this.form.controls.fechaVenta.valueChanges.subscribe((f) => {
       if (f && !errorFechaVenta(f)) this.cargarTipoCambio(f);
@@ -175,7 +192,33 @@ export class VentaFormComponent implements OnInit {
       productoId: [0, [Validators.min(1)]],
       cantidad: [1, [Validators.required, Validators.min(1)]],
       descuento: [0, [Validators.min(0), Validators.max(100)]],
+      /** Precio editado (auditoría M1) en la moneda de la venta; null = el de catálogo. */
+      precioEditado: [null as number | null],
+      motivoPrecio: [''],
     });
+  }
+
+  // ── Editar precio (auditoría M1) ────────────────────────────
+
+  /** Aviso de la línea si la última compra del producto salió más cara que su costo del catálogo. */
+  avisoCompra(i: number): string | null {
+    const p = this.productosPorLinea()[i];
+    return p ? avisoUltimaCompra(p, precioVenta(p), simboloMoneda(p.moneda)) : null;
+  }
+
+  precioEditado(i: number): boolean {
+    const v = this.lineas()[i]?.precioEditado;
+    return v !== null && v !== undefined;
+  }
+
+  guardarPrecio(i: number, e: PrecioElegido) {
+    this.detalles.at(i).patchValue({ precioEditado: e.precio, motivoPrecio: e.motivo });
+    this.lineaEditandoPrecio.set(-1);
+  }
+
+  quitarPrecio(i: number) {
+    this.detalles.at(i)?.patchValue({ precioEditado: null, motivoPrecio: '' });
+    if (this.lineaEditandoPrecio() === i) this.lineaEditandoPrecio.set(-1);
   }
 
   /** El tope depende del usuario, por eso se revisa aparte del validador fijo. */
@@ -207,11 +250,12 @@ export class VentaFormComponent implements OnInit {
   /** Al escribir se descarta la selección anterior: hay que volver a elegir de la lista. */
   onBuscar(i: number) {
     this.detalles.at(i).controls.productoId.setValue(0);
+    this.quitarPrecio(i);
     this.lineaAbierta.set(i);
   }
 
   elegirProducto(i: number, producto: Producto) {
-    this.detalles.at(i).patchValue({ productoId: producto.id, busqueda: producto.nombre });
+    this.detalles.at(i).patchValue({ productoId: producto.id, busqueda: producto.nombre, precioEditado: null, motivoPrecio: '' });
     this.lineaAbierta.set(-1);
   }
 
@@ -266,6 +310,18 @@ export class VentaFormComponent implements OnInit {
       this.errorMessage.set(this.errorFecha());
       return;
     }
+    // El tipo de cambio pudo moverse después de editar: el precio editado tiene que seguir por encima del de catálogo
+    for (let i = 0; i < this.detalles.length; i++) {
+      const l = this.lineas()[i];
+      const catalogo = this.preciosCatalogoPorLinea()[i];
+      if (this.precioEditado(i) && catalogo !== null) {
+        const error = errorPrecioEditado(catalogo, Number(l.precioEditado), l.motivoPrecio);
+        if (error) {
+          this.errorMessage.set(`${this.productosPorLinea()[i]?.nombre}: ${error}`);
+          return;
+        }
+      }
+    }
     if (this.form.invalid || this.faltaTipoCambio()) {
       this.form.markAllAsTouched();
       if (this.faltaTipoCambio()) {
@@ -278,6 +334,10 @@ export class VentaFormComponent implements OnInit {
     const cliente = this.clientes().find((c) => c.id === Number(valor.clienteId));
     const lineasTexto = this.productosPorLinea()
       .map((p, i) => `  • ${p?.nombre} × ${valor.detalles[i].cantidad}`
+        + (this.precioEditado(i)
+          ? ` a ${this.simbolo()} ${Number(valor.detalles[i].precioEditado).toFixed(2)}`
+            + ` (catálogo ${this.simbolo()} ${(this.preciosCatalogoPorLinea()[i] ?? 0).toFixed(2)}; motivo: ${valor.detalles[i].motivoPrecio})`
+          : '')
         + (Number(valor.detalles[i].descuento) > 0 ? ` (−${valor.detalles[i].descuento} %)` : ''))
       .join('\n');
     const resumen =
@@ -320,6 +380,8 @@ export class VentaFormComponent implements OnInit {
         productoId: Number(l.productoId),
         cantidad: Number(l.cantidad),
         descuentoPorcentaje: Number(l.descuento || 0),
+        precioUnitario: l.precioEditado !== null ? Number(l.precioEditado) : null,
+        motivoPrecio: l.precioEditado !== null ? l.motivoPrecio : null,
       })),
       tipoPago: valor.tipoPago,
       diasCredito: valor.tipoPago === 'CREDITO' ? Number(valor.diasCredito) : undefined,

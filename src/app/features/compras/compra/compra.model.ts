@@ -40,4 +40,7 @@ export interface CompraResponse {
   pagado: number | null;
   saldo: number | null;
   registradoPor: string | null;
+  /** Total sin IGV y el IGV de la compra (auditoría M2; el total ya lo incluye). */
+  subtotal?: number | null;
+  igv?: number | null;
 }

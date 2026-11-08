@@ -153,7 +153,9 @@
                     <tr>
                       <td>{{ d.productoNombre }}</td>
                       <td class="num">{{ d.cantidad }}</td>
-                      <td class="num">{{ d.precioUnitario | number: '1.2-2' }}</td>
+                      <td class="num">{{ d.precioUnitario | number: '1.2-2' }}
+                        @if (textoPrecio(d, v.moneda); as nota) { <small class="nota-precio">{{ nota }}</small> }
+                      </td>
                       <td class="num">{{ d.descuentoPorcentaje > 0 ? (d.descuentoPorcentaje | number: '1.0-2') + ' %' : '—' }}</td>
                       <td class="num">{{ d.subtotalDetalle | number: '1.2-2' }}</td>
                     </tr>

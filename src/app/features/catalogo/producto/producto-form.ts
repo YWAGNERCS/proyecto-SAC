@@ -28,6 +28,8 @@ export class ProductoForm {
   protected readonly error = signal<string | null>(null);
   protected readonly loading = signal(false);
   protected readonly errorCarga = signal(false);
+  /** Última compra del producto (auditoría M1): costo sin IGV y fecha, para decidir si se cambia el precio. */
+  protected readonly ultimaCompra = signal<{ costo: number; fecha: string | null } | null>(null);
 
   protected readonly form = this.fb.group({
     nombre: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(150)]),
@@ -77,6 +79,10 @@ export class ProductoForm {
             stockMinimo: p.stockMinimo ?? 0,
             visibleEnCatalogo: p.visibleEnCatalogo ?? true,
           });
+          if (p.ultimoCostoCompra !== null && p.ultimoCostoCompra !== undefined) {
+            const f = p.fechaUltimaCompra;
+            this.ultimaCompra.set({ costo: Number(p.ultimoCostoCompra), fecha: f ? `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}` : null });
+          }
           // Un producto antiguo sin categoría se marca para que el usuario la elija
           if (!p.categoriaId) this.form.controls.categoriaId.markAsTouched();
           this.loading.set(false);

@@ -14,6 +14,9 @@ export interface Producto {
   stockActual?: number | null;
   stockMinimo?: number | null;
   visibleEnCatalogo?: boolean;
+  /** Costo de la última compra, sin IGV y en la moneda del producto (null = nunca se compró; auditoría M1). */
+  ultimoCostoCompra?: number | null;
+  fechaUltimaCompra?: string | null;
 }
 
 export type Sector = 'CLIMATIZACION' | 'REFRIGERACION' | 'VENTILACION_FORZADA' | 'MATERIAL_SERVICIO' | 'SERVICIO';

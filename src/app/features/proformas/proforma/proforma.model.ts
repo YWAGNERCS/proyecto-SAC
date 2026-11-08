@@ -5,6 +5,9 @@ export interface ProformaItemDTO {
   cantidad: number;
   /** % negociado de la línea (0 a tope del usuario). */
   descuentoPorcentaje?: number;
+  /** Precio editado en la moneda de la proforma (solo sube, con motivo y permiso); sin él, el de catálogo. */
+  precioUnitario?: number | null;
+  motivoPrecio?: string | null;
 }
 
 // Modelo que devuelve el Backend (para la Lista)
@@ -27,7 +30,9 @@ export interface ProformaResponse {
   enviadoWhatsApp?: boolean;
   items?: { productoNombre: string; cantidad: number; precioUnitario: number; descuentoPorcentaje: number; subtotalItem: number;
     /** Equipo de climatización o refrigeración: al convertir se ofrece la rutina de mantenimiento. */
-    requiereMantenimiento?: boolean }[];
+    requiereMantenimiento?: boolean;
+    /** Precio editado al cotizar (auditoría M1): el de catálogo, quién y por qué; null = de catálogo. */
+    precioCatalogo?: number | null; precioEditadoPor?: string | null; motivoPrecio?: string | null }[];
 }
 
 /** Resultado de "Enviar": SIMULADO = WhatsApp aún no se envía de verdad (solo queda registrado). */

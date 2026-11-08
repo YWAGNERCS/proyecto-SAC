@@ -657,6 +657,36 @@ hr {
   max-width: 860px;
 }
 
+/* ── Precio editado de una línea (auditoría M1): ventas y proformas ── */
+.btn-editar-precio {
+  display: block;
+  margin: 2px 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--secundario);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.btn-editar-precio:hover { color: var(--primary); }
+.precio-catalogo {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-decoration: line-through;
+}
+.aviso-compra {
+  margin-top: 4px;
+  color: var(--texto-aviso);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+.nota-precio {
+  display: block;
+  color: var(--texto-aviso);
+  font-size: 0.76rem;
+}
+
 .dialogo h3 {
   margin: 0 0 4px;
   font-size: 1.1rem;

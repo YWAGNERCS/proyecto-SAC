@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { TipoCambioService } from '../../../core/services/tipo-cambio-service';
+import { Moneda, TipoCambioService, convertir, simboloMoneda } from '../../../core/services/tipo-cambio-service';
 import { DescuentoService } from '../../../core/services/descuento-service';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -10,7 +10,10 @@ import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { ProductoService } from '../../catalogo/producto/producto-service';
 import { ProformaRequest } from './proforma.model';
 import { Cliente } from '../../clientes/cliente/cliente.model';
-import { Producto } from '../../catalogo/producto/producto.model';
+import { Producto, precioVenta } from '../../catalogo/producto/producto.model';
+import { AuthService } from '../../../core/auth/auth.service';
+import { avisoUltimaCompra, errorPrecioEditado } from '../../ventas/venta/precio-editado';
+import { EditarPrecioComponent, PrecioElegido } from '../../ventas/venta/editar-precio';
 import { IconoComponent } from '../../../core/layout/icono';
 import { ClienteFormComponent } from '../../clientes/cliente/cliente-form';
 
@@ -19,13 +22,16 @@ type ItemForm = FormGroup<{
   productoId: FormControl<number>;
   cantidad: FormControl<number>;
   descuentoPorcentaje: FormControl<number>;
+  /** Precio editado (auditoría M1) en la moneda de la proforma; null = el de catálogo. */
+  precioEditado: FormControl<number | null>;
+  motivoPrecio: FormControl<string>;
 }>;
 
 /** Formulario reactivo cabecera-detalle (como VentaForm, S9): los ítems son un FormArray. */
 @Component({
   selector: 'app-proforma-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent],
+  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, EditarPrecioComponent],
   templateUrl: './proforma-form.html'
 })
 export class ProformaFormComponent implements OnInit {
@@ -39,6 +45,12 @@ export class ProformaFormComponent implements OnInit {
   topeDescuento = signal(0);
   avisoTipoCambio = signal<string>('');
   private router = inject(Router);
+  private auth = inject(AuthService);
+
+  /** Subir el precio de una línea (auditoría M1): el administrador o con el permiso "Editar precio en la venta". */
+  readonly puedeEditarPrecio = () => this.auth.puede('EDITAR_PRECIO');
+  /** Línea cuyo diálogo "Editar precio" está abierto (-1 = ninguno). */
+  readonly lineaEditandoPrecio = signal(-1);
 
   clientes = signal<Cliente[]>([]);
   productos = signal<Producto[]>([]);
@@ -76,7 +88,52 @@ export class ProformaFormComponent implements OnInit {
       productoId: [productoId],
       cantidad: [cantidad, [Validators.min(1)]],
       descuentoPorcentaje: [0, [this.dentroDelTope]],
+      precioEditado: [null as number | null],
+      motivoPrecio: [''],
     });
+  }
+
+  // ── Precio de cada línea y "Editar precio" (auditoría M1) ──
+
+  producto(id: number): Producto | undefined {
+    return this.productos().find((p) => p.id === id);
+  }
+
+  simbolo(): string {
+    return simboloMoneda(this.form.controls.moneda.value);
+  }
+
+  /** Precio de catálogo en la moneda de la proforma (null si falta el tipo de cambio). */
+  precioCatalogo(i: number): number | null {
+    const p = this.producto(this.items.at(i).controls.productoId.value);
+    if (!p) return null;
+    return convertir(precioVenta(p), p.moneda ?? 'SOLES', this.form.controls.moneda.value as Moneda,
+      this.form.controls.tipoCambio.value);
+  }
+
+  /** El precio que se cotiza: el editado o el de catálogo. */
+  precioLinea(i: number): number | null {
+    const editado = this.items.at(i).controls.precioEditado.value;
+    return editado !== null ? editado : this.precioCatalogo(i);
+  }
+
+  precioEditado(i: number): boolean {
+    return this.items.at(i).controls.precioEditado.value !== null;
+  }
+
+  avisoCompra(i: number): string | null {
+    const p = this.producto(this.items.at(i).controls.productoId.value);
+    return p ? avisoUltimaCompra(p, precioVenta(p), simboloMoneda(p.moneda)) : null;
+  }
+
+  guardarPrecio(i: number, e: PrecioElegido) {
+    this.items.at(i).patchValue({ precioEditado: e.precio, motivoPrecio: e.motivo });
+    this.lineaEditandoPrecio.set(-1);
+  }
+
+  quitarPrecio(i: number) {
+    this.items.at(i)?.patchValue({ precioEditado: null, motivoPrecio: '' });
+    if (this.lineaEditandoPrecio() === i) this.lineaEditandoPrecio.set(-1);
   }
 
   ngOnInit() {
@@ -89,6 +146,8 @@ export class ProformaFormComponent implements OnInit {
       next: (data) => this.productos.set(data),
       error: (err: HttpErrorResponse) => console.error('Error al cargar productos:', err)
     });
+    // Otra moneda: los precios editados (que estaban en la anterior) vuelven al de catálogo
+    this.form.controls.moneda.valueChanges.subscribe(() => this.items.controls.forEach((_, i) => this.quitarPrecio(i)));
     // Tipo de cambio SUNAT del día (editable). Queda fijo en la proforma y se respeta al venderla.
     this.tipoCambioService.hoy().subscribe({
       next: (tc) => {
@@ -117,6 +176,7 @@ export class ProformaFormComponent implements OnInit {
 
   eliminarItem(index: number) {
     this.items.removeAt(index);
+    this.lineaEditandoPrecio.set(-1);
   }
 
   /**
@@ -159,6 +219,18 @@ export class ProformaFormComponent implements OnInit {
       this.mostrarError(`El descuento de "${this.getNombreProducto(fueraDeTope.controls.productoId.value)}" debe estar entre 0 % y ${this.topeDescuento()} %.`);
       return;
     }
+    // El tipo de cambio pudo moverse después de editar: el precio editado tiene que seguir por encima del de catálogo
+    for (let i = 0; i < this.items.length; i++) {
+      const catalogo = this.precioCatalogo(i);
+      const item = this.items.at(i).controls;
+      if (this.precioEditado(i) && catalogo !== null) {
+        const error = errorPrecioEditado(catalogo, item.precioEditado.value, item.motivoPrecio.value);
+        if (error) {
+          this.mostrarError(`${this.getNombreProducto(item.productoId.value)}: ${error}`);
+          return;
+        }
+      }
+    }
 
     const payload: ProformaRequest = {
       clienteId: v.clienteId,
@@ -168,7 +240,9 @@ export class ProformaFormComponent implements OnInit {
       items: v.items.map(i => ({
         productoId: i.productoId,
         cantidad: i.cantidad,
-        descuentoPorcentaje: i.descuentoPorcentaje ?? 0
+        descuentoPorcentaje: i.descuentoPorcentaje ?? 0,
+        precioUnitario: i.precioEditado,
+        motivoPrecio: i.precioEditado !== null ? i.motivoPrecio : null
       }))
     };
 

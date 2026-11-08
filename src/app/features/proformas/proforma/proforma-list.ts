@@ -13,6 +13,7 @@ import { RutinaMantenimiento, RutinaMantenimientoComponent, resumenRutina } from
 import { PaginadorComponent } from '../../../core/layout/paginador';
 import { Orden, OrdenComponent, ordenParaServidor } from '../../../core/layout/orden';
 import { AuthService } from '../../../core/auth/auth.service';
+import { PrecioDeLinea, textoPrecioEditado } from '../../ventas/venta/precio-editado';
 import { errorFechaVenta, fechaLarga, fechaMinimaVenta, fechaParaEnviar, hoyIso } from '../../ventas/venta/fecha-venta';
 
 @Component({
@@ -31,6 +32,11 @@ export class ProformaListComponent implements OnInit {
 
   /** Fecha real de la venta al convertir (auditoría M3): administrador o permiso "Ventas con fecha pasada". */
   readonly puedeFechaPasada = () => this.auth.puede('VENTA_FECHA_PASADA');
+
+  /** Precio editado al cotizar (auditoría M1): pasa igual a la venta. */
+  textoPrecio(item: PrecioDeLinea, moneda: string): string | null {
+    return textoPrecioEditado(item, moneda === 'DOLARES' ? 'US$' : 'S/', 'cotizado a');
+  }
   readonly hoy = hoyIso();
   readonly fechaMinima = fechaMinimaVenta();
   fechaVenta = hoyIso();

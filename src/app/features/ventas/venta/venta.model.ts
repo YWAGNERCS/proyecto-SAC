@@ -6,6 +6,10 @@ export interface DetalleVentaResponse {
   /** % de descuento de la línea (0 si no hay). */
   descuentoPorcentaje: number;
   subtotalDetalle: number;
+  /** Precio editado al registrar (auditoría M1): el de catálogo, quién y por qué; null = de catálogo. */
+  precioCatalogo?: number | null;
+  precioEditadoPor?: string | null;
+  motivoPrecio?: string | null;
 }
 
 export type EstadoVenta = 'REGISTRADA' | 'ANULADA';
@@ -53,6 +57,9 @@ export interface ItemVentaDTO {
   cantidad: number;
   /** % negociado de la línea (0 a tope del usuario). */
   descuentoPorcentaje?: number;
+  /** Precio editado en la moneda de la venta (solo sube, con motivo y permiso); sin él, el de catálogo. */
+  precioUnitario?: number | null;
+  motivoPrecio?: string | null;
 }
 
 /** Lo único que viaja al backend: subtotales, IGV y total los calcula el servidor. */

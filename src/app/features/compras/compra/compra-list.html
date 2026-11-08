@@ -94,6 +94,11 @@
             </td>
             <td style="text-align: right; font-weight: 700; color: var(--text-main);">
               {{ c.total | currency: (c.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}
+              @if (c.igv !== null && c.igv !== undefined) {
+                <div class="muted" style="font-weight: 400;" title="Subtotal sin IGV · IGV de la compra (crédito fiscal)">
+                  {{ c.subtotal | number: '1.2-2' }} + IGV {{ c.igv | number: '1.2-2' }}
+                </div>
+              }
             </td>
             <td class="text-center">
               @if (c.tipoPago === 'CREDITO' && c.estadoPago === 'PENDIENTE') {

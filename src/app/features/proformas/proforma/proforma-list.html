@@ -119,6 +119,11 @@
         @if (p.items?.length) {
           <div><span>Productos</span><strong>{{ p.items?.length }} línea(s)</strong></div>
         }
+        @for (it of p.items ?? []; track $index) {
+          @if (textoPrecio(it, p.moneda); as nota) {
+            <div><span>{{ it.productoNombre }}</span><small class="nota-precio" style="text-align: right;">{{ nota }}</small></div>
+          }
+        }
         @if (p.subtotal != null) {
           <div><span>Subtotal</span><strong>{{ p.subtotal | currency: (p.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}</strong></div>
           <div><span>IGV (18 %)</span><strong>{{ p.igv | currency: (p.moneda === 'SOLES' ? 'PEN ' : 'USD ') }}</strong></div>

@@ -90,7 +90,7 @@
           <tr>
             <th>Producto (buscar por nombre)</th>
             <th style="width: 110px;" class="text-center">Cantidad</th>
-            <th style="width: 130px; text-align: right;">P. Unitario</th>
+            <th style="width: 150px; text-align: right;">P. Unitario</th>
             <th style="width: 110px;" class="text-center">Dscto. %<div style="font-weight: 400; font-size: 0.75rem;">máx. {{ topeDescuento() }}</div></th>
             <th style="width: 130px; text-align: right;">Subtotal</th>
             <th style="width: 60px;"></th>
@@ -125,6 +125,11 @@
                 @if (excedeStock(i)) {
                   <div class="error-text">Solo hay {{ productosPorLinea()[i]?.stockActual ?? 0 }} en stock.</div>
                 }
+                @if (avisoCompra(i); as aviso) {
+                  <div class="aviso-compra"><app-icono nombre="alerta" [tamano]="14" /> {{ aviso }}
+                    @if (puedeEditarPrecio() && !precioEditado(i)) { Puede usar "Editar precio". }
+                  </div>
+                }
               </td>
               <td class="text-center" data-label="Cantidad">
                 <input type="number" class="form-control text-center" formControlName="cantidad" min="1"
@@ -134,8 +139,18 @@
                 @if (productosPorLinea()[i]; as p) {
                   @if (preciosPorLinea()[i] !== null) {
                     {{ simbolo() }} {{ preciosPorLinea()[i] | number: '1.2-2' }}
-                    @if ((p.moneda ?? 'SOLES') !== form.controls.moneda.value) {
+                    @if (precioEditado(i)) {
+                      <div class="precio-catalogo" title="Precio editado: {{ linea.controls.motivoPrecio.value }}">
+                        catálogo {{ simbolo() }} {{ preciosCatalogoPorLinea()[i] | number: '1.2-2' }}
+                      </div>
+                    } @else if ((p.moneda ?? 'SOLES') !== form.controls.moneda.value) {
                       <div class="muted" style="font-size: 0.75rem;">{{ simboloDe(p.moneda) }} {{ precio(p) | number: '1.2-2' }}</div>
+                    }
+                    @if (puedeEditarPrecio()) {
+                      <button type="button" class="btn-editar-precio" (click)="lineaEditandoPrecio.set(i)"
+                              title="Subir el precio de esta línea (el catálogo no cambia)">
+                        {{ precioEditado(i) ? 'Precio editado' : 'Editar precio' }}
+                      </button>
                     }
                   } @else { <span class="error-text">falta T.C.</span> }
                 } @else { <span class="muted">—</span> }
@@ -183,6 +198,18 @@
     </form>
   </div>
 </div>
+
+<!-- ── Diálogo: editar el precio de una línea (auditoría M1) ── -->
+@if (lineaEditandoPrecio() >= 0 && productosPorLinea()[lineaEditandoPrecio()]; as p) {
+  <app-editar-precio [producto]="p.nombre" [simbolo]="simbolo()"
+                     [catalogo]="preciosCatalogoPorLinea()[lineaEditandoPrecio()] ?? 0"
+                     [precioActual]="detalles.at(lineaEditandoPrecio()).controls.precioEditado.value"
+                     [motivoActual]="detalles.at(lineaEditandoPrecio()).controls.motivoPrecio.value"
+                     [aviso]="avisoCompra(lineaEditandoPrecio())"
+                     (guardado)="guardarPrecio(lineaEditandoPrecio(), $event)"
+                     (quitado)="quitarPrecio(lineaEditandoPrecio())"
+                     (cancelado)="lineaEditandoPrecio.set(-1)" />
+}
 
 <!-- ── Diálogo: nuevo cliente sin salir de la venta ── -->
 @if (creandoCliente()) {

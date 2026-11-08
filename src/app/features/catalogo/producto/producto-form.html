@@ -65,6 +65,9 @@
           <input id="costoBase" type="number" step="0.01" min="0" class="form-control" formControlName="costoBase"
                  [class.is-invalid]="mensajeValidacion('costoBase')" />
           @if (mensajeValidacion('costoBase'); as m) { <span class="error-text">{{ m }}</span> }
+          @if (ultimaCompra(); as u) {
+            <small class="muted" style="display: block;">Última compra: {{ simbolo() }} {{ u.costo | number: '1.2-2' }} sin IGV{{ u.fecha ? ' (' + u.fecha + ')' : '' }}</small>
+          }
         </div>
         <div class="col-md-3 form-group">
           <label class="form-label" for="margen">Margen % <span style="color: var(--danger);">*</span></label>

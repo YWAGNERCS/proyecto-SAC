@@ -5,7 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
-import { EstadoVenta, VentaResponse } from './venta.model';
+import { DetalleVentaResponse, EstadoVenta, VentaResponse } from './venta.model';
+import { textoPrecioEditado } from './precio-editado';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { DocumentoSunat, EnvioSunat, EstadoSunatVenta, FacturacionService } from '../../../core/services/facturacion-service';
 import {
@@ -390,6 +391,11 @@ export class VentaListComponent implements OnInit {
     this.descargaService.descargar(`/v1/admin/facturacion/ventas/${v.id}/pdf`, `comprobante_venta_${v.id}.pdf`).subscribe({
       error: () => this.error.set(`No se pudo descargar el comprobante de la venta #${v.id}.`),
     });
+  }
+
+  /** "Precio de catálogo S/ 525.00, se vendió a S/ 560.00 (editado por lucy: …)" si se editó (auditoría M1). */
+  textoPrecio(d: DetalleVentaResponse, moneda: string): string | null {
+    return textoPrecioEditado(d, this.simbolo(moneda));
   }
 
   simbolo(moneda: string): string {

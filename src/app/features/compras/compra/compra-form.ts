@@ -69,6 +69,10 @@ export class CompraFormComponent implements OnInit {
   private readonly lineas = toSignal(this.detalles.valueChanges, { initialValue: this.detalles.getRawValue() });
   private readonly moneda = toSignal(this.form.controls.moneda.valueChanges, { initialValue: this.form.controls.moneda.value });
 
+  /** Auditoría M2: los precios se escriben con IGV incluido; el servidor separa igual subtotal e IGV. */
+  readonly subtotalSinIgv = computed(() => Math.round((this.total() / 1.18) * 100) / 100);
+  readonly igv = computed(() => Math.round((this.total() - this.subtotalSinIgv()) * 100) / 100);
+
   readonly total = computed(() =>
     this.lineas().reduce((suma, d) => suma + (d.cantidad ?? 0) * (d.precioUnitarioCompra ?? 0), 0));
   readonly prefijoMoneda = computed(() => (this.moneda() === 'SOLES' ? 'PEN ' : 'USD '));
