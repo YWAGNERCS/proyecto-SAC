@@ -164,3 +164,16 @@
 .sunat-plazo { font-weight: 600; color: var(--warning); }
 /* Quién anuló la venta y por qué (auditoría M4) */
 .motivo-anulacion { margin-top: 4px; font-size: 0.8rem; color: var(--texto-peligro); }
+
+/* Entrega del comprobante por correo: el estado SUNAT y el del correo se ven por separado */
+.entrega { margin: 2px 0 4px 16px; padding: 10px 12px; border: 1px solid var(--borde-tarjeta); border-radius: var(--radius-sm); background: var(--surface-muted); display: grid; gap: 6px; font-size: 0.82rem; }
+/* Correo entregado al servidor SMTP: celeste, distinto del verde de "Aceptado por SUNAT" */
+.badge-entregado { background: var(--primary-light); color: var(--secundario); }
+.entrega-titulo { font-weight: 600; color: var(--text-main); }
+.entrega-fila { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.entrega-dato { display: inline-flex; align-items: center; gap: 6px; }
+.entrega-detalle { color: var(--text-muted); }
+.entrega-error { color: var(--texto-peligro); }
+.entrega-acciones { display: flex; flex-wrap: wrap; gap: 6px; }
+.entrega-adjuntos { flex-basis: 100%; word-break: break-all; }
+@media (max-width: 600px) { .entrega { margin-left: 0; } }

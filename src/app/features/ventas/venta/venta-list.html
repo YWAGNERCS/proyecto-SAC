@@ -212,6 +212,67 @@
                         }
                       </span>
                     </div>
+                    @if (!x.esNota && !x.reemplazado && s.correo; as c) {
+                      <div class="entrega">
+                        <div class="entrega-titulo">Entrega del comprobante</div>
+                        <div class="entrega-fila">
+                          <span class="entrega-dato"><span class="muted">SUNAT</span>
+                            <span class="badge" [class]="claseSunat(x.d)">{{ etiquetaSunat(x.d, false) }}</span></span>
+                          <span class="entrega-dato"><span class="muted">Correo</span>
+                            @if (c.ultimo; as u) {
+                              <span [class]="claseCorreo(u.estado)" [title]="u.estado === 'ENVIADO' ? 'El servidor de correo lo aceptó; no confirma que el cliente lo haya leído' : ''">{{ etiquetaCorreo(u.estado) }}</span>
+                            } @else {
+                              <span class="badge badge-neutro">{{ c.motivoNoSeEnvia ? 'No se envía' : 'Sin enviar' }}</span>
+                            }
+                          </span>
+                          <span class="entrega-dato"><span class="muted">Para</span> {{ c.ultimo?.destinatario ?? c.correoCliente ?? 'el cliente no tiene correo' }}</span>
+                          @if (c.ultimo; as u) {
+                            <span class="entrega-dato"><span class="muted">Intentos</span> {{ u.intentos }}@if (c.envios > 1) { · {{ c.envios }} envíos }</span>
+                          }
+                          <span class="entrega-dato"><span class="muted">Adjuntos</span> PDF y XML firmado</span>
+                        </div>
+                        @if (detalleEntrega(c); as det) { <div class="entrega-detalle">{{ det }}</div> }
+                        @if (c.ultimo?.ultimoError; as err) { <div class="entrega-error">{{ err }}</div> }
+                        <div class="entrega-acciones">
+                          <button class="btn btn-sm btn-outline-secondary" (click)="descargarPdfComprobante(x.d)" title="El PDF que se adjunta al correo">PDF</button>
+                          @if (x.d.tieneXml) {
+                            <button class="btn btn-sm btn-outline-secondary" (click)="descargarSunat(x.d, false, 'xml')" title="XML firmado: el mismo que se adjunta al correo">XML</button>
+                          }
+                          @if (x.d.tieneCdr) {
+                            <button class="btn btn-sm btn-outline-secondary" (click)="descargarSunat(x.d, false, 'cdr')" title="Constancia de recepción de SUNAT">CDR</button>
+                          }
+                          @if (c.envios > 0) {
+                            <button class="btn btn-sm btn-outline-secondary" (click)="alternarHistorialCorreo(c.comprobanteId)">
+                              {{ historialCorreo().has(c.comprobanteId) ? 'Ocultar intentos' : 'Historial de intentos' }}</button>
+                          }
+                          @if (puedeReenviarCorreo(c)) {
+                            <button class="btn btn-sm btn-primary" [disabled]="reenviandoCorreo() === c.comprobanteId"
+                                    (click)="reenviarCorreo(c, x.d.numero)" title="Al correo registrado del cliente, con el PDF y el XML">
+                              {{ c.ultimo ? 'Reenviar por correo' : 'Enviar por correo' }}</button>
+                          }
+                        </div>
+                        @if (historialCorreo().get(c.comprobanteId); as h) {
+                          <div class="sunat-envios">
+                            @for (e of h.historial; track e.id) {
+                              @for (i of e.intentosDetalle; track i.intento) {
+                                <div class="sunat-envio">
+                                  <span class="muted">{{ fechaHora(i.inicio) }} · {{ origenEnvio(e) }} · intento {{ i.intento }}</span>
+                                  <span [class]="claseCorreo(i.resultado)">{{ etiquetaCorreo(i.resultado) }}</span>
+                                  <span class="muted">a {{ e.destinatario }}</span>
+                                  @if (i.mensaje) { <span class="sunat-mensaje">{{ i.mensaje }}</span> }
+                                  @if (i.adjuntos) { <span class="muted entrega-adjuntos">{{ i.adjuntos }}</span> }
+                                </div>
+                              } @empty {
+                                <div class="sunat-envio"><span class="muted">{{ fechaHora(e.fechaCreacion) }} · {{ origenEnvio(e) }}</span>
+                                  <span [class]="claseCorreo(e.estado)">{{ etiquetaCorreo(e.estado) }}</span></div>
+                              }
+                            } @empty {
+                              <div class="muted">Sin envíos por correo.</div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
                     @if (historialDe(x.d, x.esNota); as envios) {
                       <div class="sunat-envios">
                         @for (e of envios; track e.id) {

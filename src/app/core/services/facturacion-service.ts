@@ -52,6 +52,56 @@ export interface EstadoSunatVenta {
    * No usó número ni corre su plazo; se emite solo cuando el dato esté. null si ya tiene comprobante.
    */
   porEmitir: string | null;
+  /** Entrega del comprobante vigente por correo al cliente (null si todavía no tiene comprobante). */
+  correo?: EntregaCorreo | null;
+}
+
+/**
+ * Estado del correo del comprobante. ENVIADO = el servidor de correo (SMTP) lo aceptó, no que el cliente lo leyó.
+ * INCIERTO = se interrumpió en pleno envío y no se sabe si salió: no se reenvía solo.
+ */
+export type EstadoCorreo = 'PENDIENTE' | 'EN_PROCESO' | 'ENVIADO' | 'FALLIDO' | 'INCIERTO';
+
+export interface IntentoCorreo {
+  intento: number;
+  inicio: string;
+  fin: string | null;
+  resultado: 'ENVIADO' | 'FALLIDO' | 'INCIERTO';
+  mensaje: string | null;
+  messageId: string | null;
+  /** Nombre, tamaño y huella SHA-256 de cada archivo adjunto. */
+  adjuntos: string | null;
+}
+
+/** Una solicitud de envío por correo (la automática al aceptarlo SUNAT, o un reenvío). */
+export interface EnvioCorreo {
+  id: number;
+  destinatario: string;
+  tipo: 'AUTOMATICO' | 'MANUAL';
+  estado: EstadoCorreo;
+  solicitadoPor: string | null;
+  fechaCreacion: string;
+  fechaUltimoIntento: string | null;
+  fechaAceptacionSmtp: string | null;
+  intentos: number;
+  ultimoError: string | null;
+  messageId: string | null;
+  /** FALLIDO: cuándo se vuelve a intentar solo (null = ya no se reintenta solo). */
+  proximoIntento: string | null;
+  intentosDetalle: IntentoCorreo[];
+}
+
+export interface EntregaCorreo {
+  comprobanteId: number;
+  /** Correo registrado del cliente hoy. */
+  correoCliente: string | null;
+  /** Por qué no se envía (todavía no válido, beta de SUNAT, cliente sin correo…); null si se puede. */
+  motivoNoSeEnvia: string | null;
+  ultimo: EnvioCorreo | null;
+  envios: number;
+  ultimaAceptacionSmtp: string | null;
+  /** Todos los envíos con sus intentos (solo en el detalle). */
+  historial: EnvioCorreo[];
 }
 
 /** Una respuesta de SUNAT del historial de envíos de un documento. */
@@ -84,6 +134,25 @@ export class FacturacionService {
   reenviar(id: number, esNota: boolean) {
     const ruta = esNota ? `${this.endpoint}/notas-credito/${id}/reenviar` : `${this.endpoint}/${id}/reenviar`;
     return this.http.post<void>(this.api.buildUrl(ruta), {});
+  }
+
+  /** Entrega por correo de un comprobante, con cada envío e intento. */
+  entregaCorreo(id: number) {
+    return this.http.get<EntregaCorreo>(this.api.buildUrl(`${this.endpoint}/${id}/correo`));
+  }
+
+  /**
+   * Envía (o reenvía) el comprobante por correo al correo registrado del cliente. confirmar = true cuando ya se había
+   * enviado: sin eso, el servidor responde 409.
+   */
+  reenviarCorreo(id: number, confirmar: boolean) {
+    const params = new HttpParams().set('confirmar', confirmar);
+    return this.http.post<EntregaCorreo>(this.api.buildUrl(`${this.endpoint}/${id}/enviar`), {}, { params });
+  }
+
+  /** Ruta del PDF del comprobante (el mismo que se adjunta al correo), para DescargaService. */
+  rutaPdf(id: number): string {
+    return `${this.endpoint}/${id}/pdf`;
   }
 
   /** Emite el comprobante de reemplazo de uno que SUNAT rechazó con CDR (número nuevo, misma venta). */

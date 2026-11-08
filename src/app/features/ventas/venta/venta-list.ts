@@ -7,6 +7,9 @@ import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
 import { DetalleVentaResponse, EstadoVenta, VentaResponse } from './venta.model';
 import { textoPrecioEditado } from './precio-editado';
+import { claseCorreo, confirmacionReenvio, detalleEntrega, etiquetaCorreo, fechaHora, origenEnvio, puedeReenviarCorreo,
+  yaSeEnvio } from './entrega-correo';
+import { EntregaCorreo } from '../../../core/services/facturacion-service';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { DocumentoSunat, EnvioSunat, EstadoSunatVenta, FacturacionService } from '../../../core/services/facturacion-service';
 import {
@@ -383,6 +386,56 @@ export class VentaListComponent implements OnInit {
     const nombre = archivo === 'xml' ? `${d.numero}.xml` : `CDR_${d.numero}.zip`;
     this.descargaService.descargar(this.facturacion.rutaArchivo(d.id, esNota, archivo), nombre).subscribe({
       error: () => this.error.set(`No se pudo descargar el ${archivo === 'xml' ? 'XML' : 'CDR'} de ${d.numero}.`),
+    });
+  }
+
+  // ── Entrega del comprobante por correo (estado, historial y reenvío) ──
+  etiquetaCorreo = etiquetaCorreo;
+  claseCorreo = claseCorreo;
+  detalleEntrega = detalleEntrega;
+  puedeReenviarCorreo = puedeReenviarCorreo;
+  fechaHora = fechaHora;
+  origenEnvio = origenEnvio;
+  /** Historial de envíos por correo abierto, por id de comprobante. */
+  historialCorreo = signal(new Map<number, EntregaCorreo>());
+  reenviandoCorreo = signal<number | null>(null);
+
+  alternarHistorialCorreo(comprobanteId: number) {
+    if (this.historialCorreo().has(comprobanteId)) {
+      const mapa = new Map(this.historialCorreo());
+      mapa.delete(comprobanteId);
+      this.historialCorreo.set(mapa);
+      return;
+    }
+    this.facturacion.entregaCorreo(comprobanteId).subscribe({
+      next: (e) => this.historialCorreo.set(new Map(this.historialCorreo()).set(comprobanteId, e)),
+      error: () => this.error.set('No se pudo cargar el historial de envíos por correo.'),
+    });
+  }
+
+  /** Reenvío al correo registrado del cliente; si ya se había enviado, el servidor exige confirmarlo. */
+  reenviarCorreo(c: EntregaCorreo, numero: string) {
+    if (!confirm(confirmacionReenvio(c, numero))) return;
+    this.error.set('');
+    this.reenviandoCorreo.set(c.comprobanteId);
+    this.facturacion.reenviarCorreo(c.comprobanteId, yaSeEnvio(c)).subscribe({
+      next: () => {
+        this.reenviandoCorreo.set(null);
+        this.mensaje.set(`${numero} se está enviando por correo a ${c.correoCliente}. El estado se actualiza en unos segundos.`);
+        if (this.historialCorreo().has(c.comprobanteId)) this.alternarHistorialCorreo(c.comprobanteId);
+        setTimeout(() => this.cargarEstadosSunat(), 4000);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.reenviandoCorreo.set(null);
+        this.error.set(err.error?.message ?? `No se pudo enviar ${numero} por correo.`);
+      },
+    });
+  }
+
+  /** PDF del comprobante: el mismo que se adjunta al correo. */
+  descargarPdfComprobante(d: DocumentoSunat) {
+    this.descargaService.descargar(this.facturacion.rutaPdf(d.id), `${d.numero}.pdf`).subscribe({
+      error: () => this.error.set(`No se pudo descargar el PDF de ${d.numero}.`),
     });
   }
 
