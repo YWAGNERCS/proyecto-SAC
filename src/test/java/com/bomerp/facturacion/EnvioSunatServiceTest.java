@@ -12,6 +12,7 @@ import com.bomerp.facturacion.ose.integration.OseClient;
 import com.bomerp.facturacion.ose.integration.OseClient.RespuestaOse;
 import com.bomerp.facturacion.ose.integration.OseClient.Resultado;
 import com.bomerp.ventas.venta.entity.Venta;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,6 +46,16 @@ class EnvioSunatServiceTest {
         ose = mock(OseClient.class);
         eventos = mock(ApplicationEventPublisher.class);
         servicio = new EnvioSunatService(comprobantes, notas, registros, ose, eventos, mock(PlatformTransactionManager.class), 0);
+    }
+
+    /**
+     * Auditoría B10: cada prueba espera a que su cola de envíos termine. Antes, un envío que dejaba en cola una
+     * prueba (p. ej. un reenvío) corría después de ella, contra mocks sin respuesta, y escribía un
+     * NullPointerException en el registro: una carrera entre pruebas que podía volverlas inestables.
+     */
+    @AfterEach
+    void esperarLaCola() throws InterruptedException {
+        servicio.detener();
     }
 
     private Comprobante comprobante(long id, EstadoSunat estado) {
@@ -192,12 +203,19 @@ class EnvioSunatServiceTest {
 
     /** Excepción (0200-1999): SUNAT no registró el comprobante, así que se reenvía con el mismo número. */
     @Test
-    void reenviarUnaExcepcionLaVuelvePendienteConLosIntentosEnCero() {
+    void reenviarUnaExcepcionLaVuelvePendienteConLosIntentosEnCero() throws InterruptedException {
         Comprobante c = comprobante(13, EstadoSunat.RECHAZADO);
         c.getEnvio().registrarIntento(305, "El RUC del receptor no existe", null, null);
+        when(ose.emitir(c)).thenReturn(respuesta(Resultado.REINTENTAR, null, "sin respuesta"));
+
         servicio.reenviarComprobante(13L);
+        // El reenvío va a la cola en otro hilo: se espera a que termine antes de mirar el resultado (B10)
+        servicio.detener();
+
+        verify(ose, times(1)).emitir(c);
         assertThat(c.getEstadoSunat()).isEqualTo(EstadoSunat.PENDIENTE);
-        assertThat(c.getEnvio().getIntentos()).isZero();
+        // Tenía 1 intento; el reenvío los pone en cero y el envío cuenta uno: si no se pusieran en cero, serían 2
+        assertThat(c.getEnvio().getIntentos()).isEqualTo(1);
     }
 
     /** Rechazo con CDR (2000-3999) o 1032: el número quedó usado; no se reenvía, se emite un reemplazo (D-2). */

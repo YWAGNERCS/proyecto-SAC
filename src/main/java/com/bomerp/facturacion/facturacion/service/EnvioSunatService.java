@@ -364,8 +364,13 @@ public class EnvioSunatService {
         }
     }
 
+    /**
+     * Deja de aceptar envíos y espera hasta 10 s a que la cola termine los que ya tiene: al apagar el backend
+     * y al final de cada prueba (auditoría B10: un envío pendiente de una prueba corría después contra los
+     * mocks de otra y dejaba un NullPointerException en el registro).
+     */
     @PreDestroy
-    void detener() throws InterruptedException {
+    public void detener() throws InterruptedException {
         cola.shutdown();
         cola.awaitTermination(10, TimeUnit.SECONDS);
     }
