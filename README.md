@@ -23,17 +23,21 @@
 | 🏠 Inicio | `/` | Panel de bienvenida |
 | 📦 Catálogo | `/catalogo/productos`, `/catalogo/productos/:id/kardex`, `/catalogo/categorias` | Productos con categoría, **kardex** por producto (Excel) y CRUD de categorías |
 | 📄 Proformas *(antes Cotizaciones)* | `/proformas`, `/proformas/nueva` | Listado con filtro por cliente, nueva proforma con **descuento por línea**, enviar (muestra si salió), aceptar, rechazar (con confirmación) y **convertir en venta** (contado o crédito) |
-| 🛒 Ventas | `/ventas`, `/ventas/nueva` | Venta directa cabecera-detalle con descuento por línea y **reporte** con filtros, totales, detalle, anulación (solo ADMIN; avisa si hay que devolver dinero), **Excel** y **PDF del comprobante** |
+| 🛒 Ventas | `/ventas`, `/ventas/nueva` | Venta directa cabecera-detalle con descuento por línea, **editar precio** con motivo (solo sube; aviso de la última compra) y fecha real con permiso; **reporte** con filtros, totales y detalle; anulación con **motivo**; estado SUNAT de cada comprobante (XML, CDR, reenvío, reemplazo) y **Entrega del comprobante** por correo (estado, ambiente, intentos, historial y reenvío); **Excel** y **PDF** |
 | 💰 Cobranza | `/cobranza` | Ventas a crédito con saldo y días de atraso, **abonos** parciales o totales con `FormArray` (un pago puede cubrir varias ventas), historial de cobros y **devoluciones** de ventas anuladas (las registra el ADMIN) |
 | 🔧 Postventa | `/postventa` | Agenda de mantenimientos: vencidos, próximos, realizados; marcar realizado y reprogramar; contacto por WhatsApp |
 | 🛠️ Órdenes de trabajo | `/servicios/ordenes`, `/servicios/ordenes/nueva`, `/servicios/ordenes/:id` | Programar con técnico y sede; **cerrar** con materiales usados (`FormArray`, descuentan stock) y equipos instalados; facturar la mano de obra; cancelar (solo ADMIN) |
 | 📟 Equipos instalados | `/servicios/equipos` | Parque instalado por cliente y sede: serie, garantía, frecuencia de mantenimiento; registrar, editar y retirar (ADMIN) |
 | 📅 Contratos | `/servicios/contratos` | Contratos de mantenimiento con vista previa de visitas; crear y cancelar solo ADMIN |
-| 🏭 Compras | `/compras`, `/compras/nueva` | Registro de compras; listado con filtros por fecha y proveedor y **Excel** |
+| 🏭 Compras | `/compras`, `/compras/nueva`, `/compras/por-pagar` | Registro de compras con precios **con IGV** (subtotal e IGV separados); listado con filtros y **Excel**; cuentas por pagar |
 | 👥 Clientes | `/clientes`, `/clientes/nuevo`, `/clientes/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** (ventas, total comprado, pendiente de pago, Excel) |
 | 🚚 Proveedores | `/proveedores`, `/proveedores/nuevo`, `/proveedores/:id/historial` | Nuevo/editar con búsqueda RUC/DNI, eliminar e **historial** de compras (Excel) |
 
-*Pendientes en la SPA:* pantallas de inventario (alertas) y facturación (comprobantes y notas de crédito).
+| ⚙️ Configuración | `/configuracion`, `/configuracion/permisos`, `/configuracion/historial` | Cuenta, preferencias, tipo de cambio; **topes de descuento**, permisos delegables e historial de cambios (solo ADMIN) |
+
+*Pendientes en la SPA:* pantalla propia de facturación (hoy los comprobantes y notas de crédito se ven en Ventas) y de alertas de inventario.
+
+Pruebas: `npx ng test --watch=false` corre **33 pruebas** (Vitest) de las reglas de pantalla: comprobante electrónico, avisos de facturación, fecha de la venta, precio editado y entrega por correo.
 
 ---
 
