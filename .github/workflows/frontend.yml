@@ -1,0 +1,49 @@
+# Integración continua del frontend: en cada push a la rama frontend (y en cada pull request hacia ella)
+# instala exactamente lo del package-lock.json, revisa vulnerabilidades altas, compila para producción
+# (con la verificación de la Content-Security-Policy de nginx) y corre las pruebas.
+name: Frontend
+
+on:
+  push:
+    branches: [frontend]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  pull_request:
+    branches: [frontend]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    name: Auditar, compilar y probar
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Dependencias (package-lock.json)
+        run: npm ci
+
+      # Auditoría B5: falla si aparece una vulnerabilidad alta o crítica en lo que llega al navegador
+      - name: npm audit (producción)
+        run: npm audit --omit=dev --audit-level=high
+
+      # Compila en modo producción (apunta a localhost:48088 y 48080) y verifica las huellas de la CSP
+      - name: Compilación de producción
+        run: npm run build:prod
+
+      - name: Pruebas
+        run: npx ng test --watch=false
