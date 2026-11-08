@@ -9,6 +9,8 @@ import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.reporte.service.VentaReporteService;
 import com.bomerp.config.exportacion.ExcelBuilder;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -92,8 +94,12 @@ public class VentaController {
     /** Cuerpo opcional de la conversión: la rutina de mantenimiento elegida (null = sin mantenimientos). */
     public record ConversionRequest(RutinaMantenimiento rutinaMantenimiento) {}
 
+    /**
+     * Venta directa. @Valid aplica las restricciones del cuerpo (auditoría B9): antes no se aplicaban y una
+     * llamada sin tipoPago se registraba como contado sin avisar; ahora responde 400 con el campo que falta.
+     */
     @PostMapping("/directa")
-    public VentaResponseDTO registrarVentaDirecta(@RequestBody VentaDirectaRequest request,
+    public VentaResponseDTO registrarVentaDirecta(@Valid @RequestBody VentaDirectaRequest request,
                                                   @AuthenticationPrincipal Jwt jwt) {
         return ventaService.registrarVentaDirecta(
                 request.clienteId(), request.items(), request.tipoPago(), request.diasCredito(),
@@ -107,9 +113,9 @@ public class VentaController {
     }
 
     public record VentaDirectaRequest(
-            @NotNull Long clienteId,
-            @NotNull List<VentaService.ItemVentaDTO> items,
-            @NotNull Venta.TipoPago tipoPago,
+            @NotNull(message = "Indique el cliente.") Long clienteId,
+            @NotEmpty(message = "La venta necesita al menos un producto.") @Valid List<VentaService.ItemVentaDTO> items,
+            @NotNull(message = "Indique la forma de pago (CONTADO o CREDITO).") Venta.TipoPago tipoPago,
             Integer diasCredito,
             Venta.Moneda moneda,                     // opcional: moneda en la que se cobra
             java.math.BigDecimal tipoCambio,         // opcional: soles por dólar (null = SUNAT del día)

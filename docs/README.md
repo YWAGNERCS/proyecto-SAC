@@ -107,7 +107,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 ### Requerimientos No Funcionales (RNF)
 
 - **RNF-01 (Arquitectura):** monolito modular en capas (controladores, servicios, repositorios), un módulo por paquete. Los módulos se comunican solo por fachadas de servicio y eventos; `ModularityTests` (Spring Modulith) lo verifica en cada `mvn test` (resuelto el 31/10/2026, ver 5, punto 21).
-- **RNF-02 (Rendimiento):** endpoints por debajo de 1000 ms con carga estándar. *Objetivo, aún sin medición formal.*
+- **RNF-02 (Rendimiento):** endpoints por debajo de 1000 ms con carga estándar. Medido el 07/11/2026 con los datos simulados (232 ventas, 219 proformas): las listas completas de ventas y proformas tardaban 570 y 360 ms con 380 y 256 consultas cada una (auditoría M9: una por cada venta para su detalle, cliente y productos). Con `hibernate.default_batch_fetch_size=100`, que carga esas relaciones de a 100 con un `IN (...)`, bajaron a 185 y 155 ms con 7 y 5 consultas, con la misma respuesta. Las usan Inicio, la campana y la orden de trabajo.
 - **RNF-03 (Interoperabilidad):** backend desacoplado del frontend, solo API REST en JSON, versionada en `/api/v1/...`.
 - **RNF-04 (Mantenibilidad e IoC):** inyección de dependencias de Spring; credenciales externalizadas: el backend las lee de variables de entorno o de `application-local.properties`, y Docker y Keycloak de `.env` (ambos ignorados por git, con plantilla `.example`). ✅ Cumplido; ver 5 sobre el historial de git.
 - **RNF-05 (Seguridad):** `/api/v1/admin/**` exige un JWT emitido por Keycloak (RS256, validado por `issuer-uri`); autorización por rol (ADMIN, ASISTENTE) y por permiso delegado (`PERM_*`, RF-28); cada cambio queda en el historial (RF-29). Las contraseñas viven solo en Keycloak, con protección contra fuerza bruta (5 intentos) y política de contraseñas.
@@ -772,7 +772,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **151 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **154 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. Las marcadas *(Oracle)* son de
 integración y necesitan la base encendida; todas deshacen lo que guardan. La trazabilidad de cada requisito con su
 prueba está en [RTM.md](RTM.md).
@@ -787,6 +787,7 @@ prueba está en [RTM.md](RTM.md).
 | `AgendaHorarioTest` | Cruces de horario del técnico, bordes exactos, sin hora, medianoche, rango de la agenda | 6 |
 | `CompraServiceTest` | N° de factura, factura duplicada, stock solo de materiales, contado/crédito y vencimiento | 5 |
 | `DeduccionTributariaServiceTest` | Detracción 12 % (soles enteros), retención 3 %, umbral S/ 700, dólares con tipo de cambio | 5 |
+| `VentaDirectaValidacionTest` | Auditoría B9: `POST /ventas/directa` sin forma de pago, sin cliente, sin productos o con una línea sin producto o con cantidad 0 responde 400 con el campo y el motivo, sin registrar nada (antes, sin `tipoPago` quedaba como contado) | 3 |
 | `VentaCostoTest` | Costo guardado en cada línea y su conversión de moneda; subtotal, IGV y total | 5 |
 | `RentabilidadServiceTest` | Ganancia en soles, líneas sin costo, rentabilidad por técnico | 4 |
 | `StockProductoTest` | Stock: suma de líneas repetidas, todo o nada, bloqueo en orden de id, equipos sin stock, editar un producto no cambia su stock | 6 |

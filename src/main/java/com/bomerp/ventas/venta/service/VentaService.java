@@ -504,7 +504,11 @@ public class VentaService {
     }
 
     /** descuentoPorcentaje: opcional, % negociado de la línea (0 a tope del rol). */
-    public record ItemVentaDTO(Long productoId, Integer cantidad, BigDecimal descuentoPorcentaje) {}
+    public record ItemVentaDTO(
+            @jakarta.validation.constraints.NotNull(message = "Cada línea necesita un producto.") Long productoId,
+            @jakarta.validation.constraints.NotNull(message = "Cada línea necesita una cantidad.")
+            @jakarta.validation.constraints.Positive(message = "La cantidad debe ser mayor que cero.") Integer cantidad,
+            BigDecimal descuentoPorcentaje) {}
 
     /**
      * Contado: la venta queda PAGADA. Crédito: queda pendiente con fecha límite
