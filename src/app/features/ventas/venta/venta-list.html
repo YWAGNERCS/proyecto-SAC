@@ -162,8 +162,9 @@
               </table>
               @if (sunat(v); as s) {
                 <div class="sunat">
-                  @for (x of documentosSunat(s); track x.esNota) {
-                    <div class="sunat-linea" [class.sunat-problema]="x.d.estado === 'RECHAZADO' || (x.d.estado === 'PENDIENTE' && x.d.intentos > 0)">
+                  @for (x of documentosSunat(s); track (x.esNota ? 'n' : 'c') + x.d.id) {
+                    <div class="sunat-linea" [class.sunat-reemplazado]="x.reemplazado"
+                         [class.sunat-problema]="!x.reemplazado && (x.d.estado === 'RECHAZADO' || (x.d.estado === 'PENDIENTE' && x.d.intentos > 0))">
                       <span class="sunat-doc">{{ x.titulo }} {{ x.d.numero }}</span>
                       <span class="badge" [class]="claseSunat(x.d)">{{ etiquetaSunat(x.d) }}</span>
                       @if (x.d.codigo !== null) { <span class="muted">código {{ x.d.codigo }}</span> }
@@ -176,12 +177,41 @@
                         @if (x.d.tieneCdr) {
                           <button class="btn btn-sm btn-outline-secondary" (click)="descargarSunat(x.d, x.esNota, 'cdr')" title="Constancia de recepción de SUNAT (CDR)">CDR</button>
                         }
-                        @if (puedeReenviar(x.d)) {
+                        @if (x.d.intentos > 0) {
+                          <button class="btn btn-sm btn-outline-secondary" (click)="alternarHistorial(x.d, x.esNota)"
+                                  title="Cada respuesta de SUNAT a este documento, con su constancia">
+                            {{ historialDe(x.d, x.esNota) ? 'Ocultar envíos' : 'Envíos' }}</button>
+                        }
+                        @if (!x.reemplazado && puedeReenviar(x.d)) {
                           <button class="btn btn-sm btn-primary" (click)="reenviarSunat(x.d, x.esNota)"
-                                  [title]="x.d.estado === 'RECHAZADO' ? 'Corrija el dato que indica SUNAT (p. ej. el cliente) y vuelva a enviar con el mismo número' : 'Volver a intentar el envío ahora'">Reenviar</button>
+                                  [title]="x.d.estado === 'RECHAZADO' ? 'SUNAT no lo recibió: corrija el dato que indica (p. ej. el cliente) y vuelva a enviarlo con el mismo número' : 'Volver a intentar el envío ahora'">Reenviar</button>
+                        }
+                        @if (!x.esNota && x.d.puedeReemplazar) {
+                          <button class="btn btn-sm btn-primary" (click)="reemplazarSunat(x.d, v)"
+                                  title="SUNAT lo rechazó: emitir un comprobante nuevo, con otro número, para esta venta">Emitir comprobante de reemplazo</button>
                         }
                       </span>
                     </div>
+                    @if (historialDe(x.d, x.esNota); as envios) {
+                      <div class="sunat-envios">
+                        @for (e of envios; track e.id) {
+                          <div class="sunat-envio">
+                            <span class="muted">Intento {{ e.intento }} · {{ e.fecha | date: 'dd/MM/yyyy HH:mm' }}</span>
+                            <span>{{ etiquetaResultado(e) }}</span>
+                            @if (e.codigo !== null) { <span class="muted">código {{ e.codigo }}</span> }
+                            @if (e.mensaje) { <span class="sunat-mensaje">{{ e.mensaje }}</span> }
+                            @if (e.tieneXml) {
+                              <button class="btn btn-sm btn-outline-secondary" (click)="descargarEnvio(x.d, e, 'xml')">XML</button>
+                            }
+                            @if (e.tieneCdr) {
+                              <button class="btn btn-sm btn-outline-secondary" (click)="descargarEnvio(x.d, e, 'cdr')">CDR</button>
+                            }
+                          </div>
+                        } @empty {
+                          <div class="muted">Sin envíos registrados.</div>
+                        }
+                      </div>
+                    }
                   }
                 </div>
               }

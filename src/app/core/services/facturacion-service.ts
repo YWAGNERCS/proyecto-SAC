@@ -17,12 +17,31 @@ export interface DocumentoSunat {
   tieneCdr: boolean;
   /** "Aceptado" por el envío simulado: nunca llegó a SUNAT y no tiene validez tributaria. */
   simulado: boolean;
+  /** SUNAT lo rechazó con constancia (CDR): su número quedó usado y no puede reenviarse. */
+  rechazoDefinitivo: boolean;
+  /** Rechazo definitivo de un comprobante vigente de una venta no anulada: se puede emitir el reemplazo. */
+  puedeReemplazar: boolean;
 }
 
 export interface EstadoSunatVenta {
   ventaId: number;
   comprobante: DocumentoSunat;
   notaCredito: DocumentoSunat | null;
+  /** Comprobantes anteriores de la venta que SUNAT rechazó y se reemplazaron (historial de emisiones). */
+  reemplazados: DocumentoSunat[];
+}
+
+/** Una respuesta de SUNAT del historial de envíos de un documento. */
+export interface EnvioSunat {
+  id: number;
+  intento: number;
+  fecha: string;
+  /** ACEPTADO, OBSERVADO, RECHAZADO, REINTENTAR (sin respuesta) o POR_CONFIRMAR (1033). */
+  resultado: string;
+  codigo: number | null;
+  mensaje: string | null;
+  tieneXml: boolean;
+  tieneCdr: boolean;
 }
 
 /** Facturación electrónica: estado ante SUNAT de los comprobantes y reenvío manual. */
@@ -42,6 +61,22 @@ export class FacturacionService {
   reenviar(id: number, esNota: boolean) {
     const ruta = esNota ? `${this.endpoint}/notas-credito/${id}/reenviar` : `${this.endpoint}/${id}/reenviar`;
     return this.http.post<void>(this.api.buildUrl(ruta), {});
+  }
+
+  /** Emite el comprobante de reemplazo de uno que SUNAT rechazó con CDR (número nuevo, misma venta). */
+  reemplazar(id: number) {
+    return this.http.post<{ serie: string; numero: string }>(this.api.buildUrl(`${this.endpoint}/${id}/reemplazar`), {});
+  }
+
+  /** Historial de envíos a SUNAT de un comprobante o nota de crédito, el más reciente primero. */
+  envios(id: number, esNota: boolean) {
+    const ruta = esNota ? `${this.endpoint}/notas-credito/${id}/envios` : `${this.endpoint}/${id}/envios`;
+    return this.http.get<EnvioSunat[]>(this.api.buildUrl(ruta));
+  }
+
+  /** Ruta del XML o CDR de un envío del historial (para DescargaService). */
+  rutaArchivoEnvio(envioId: number, archivo: 'xml' | 'cdr'): string {
+    return `${this.endpoint}/envios/${envioId}/${archivo}`;
   }
 
   /** Ruta del XML firmado o del CDR (para DescargaService). */

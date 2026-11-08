@@ -153,4 +153,10 @@
 .sunat-problema { outline: 1px solid var(--aviso-borde, #e0b84d); }
 .sunat-doc { font-weight: 600; }
 .sunat-mensaje { flex: 1 1 260px; color: var(--text-muted); }
-.sunat-acciones { margin-left: auto; display: flex; gap: 6px; }
+.sunat-acciones { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+/* Comprobante rechazado y sustituido: queda solo como historial */
+.sunat-reemplazado { opacity: 0.75; }
+.sunat-reemplazado .sunat-doc { text-decoration: line-through; }
+/* Historial de envíos a SUNAT de un documento */
+.sunat-envios { display: grid; gap: 4px; margin: -2px 0 2px 16px; padding-left: 10px; border-left: 2px solid var(--suave); font-size: 0.8rem; }
+.sunat-envio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

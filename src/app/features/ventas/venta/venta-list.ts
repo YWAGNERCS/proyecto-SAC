@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
 import { EstadoVenta, VentaResponse } from './venta.model';
 import { DescargaService } from '../../../core/services/descarga-service';
-import { DocumentoSunat, EstadoSunatVenta, FacturacionService } from '../../../core/services/facturacion-service';
+import { DocumentoSunat, EnvioSunat, EstadoSunatVenta, FacturacionService } from '../../../core/services/facturacion-service';
 import { CobranzaService } from '../../cobranza/cobro/cobranza-service';
 import { IconoComponent } from '../../../core/layout/icono';
 import { PaginadorComponent } from '../../../core/layout/paginador';
@@ -57,6 +57,8 @@ export class VentaListComponent implements OnInit {
     this.vista() === 'ATRASADAS' ? ordenarLista(this.ventas(), this.orden(), CAMPOS_ORDEN) : this.ventas());
   /** Estado ante SUNAT del comprobante (y nota de crédito) de cada venta de la página. */
   private estadosSunat = signal(new Map<number, EstadoSunatVenta>());
+  /** Historial de envíos a SUNAT abierto por documento ('c' + id o 'n' + id), cargado al abrirlo. */
+  historialSunat = signal(new Map<string, EnvioSunat[]>());
   // Paginación del reporte (en "Pagos atrasados" se muestra la lista completa, que es corta)
   pagina = signal(0);
   tamano = signal(20);
@@ -297,21 +299,26 @@ export class VentaListComponent implements OnInit {
     switch (d.estado) {
       case 'ACEPTADO': return 'Aceptado por SUNAT';
       case 'OBSERVADO': return 'Aceptado con observaciones';
-      case 'RECHAZADO': return 'Rechazado por SUNAT';
+      case 'RECHAZADO': return d.rechazoDefinitivo ? 'Rechazado por SUNAT: no es válido' : 'SUNAT no lo recibió: corrija y reenvíe';
       default: return 'Pendiente de envío';
     }
   }
 
-  /** Comprobante y, si existe, nota de crédito de la venta, para la línea "Comprobante electrónico". */
-  documentosSunat(s: EstadoSunatVenta): { d: DocumentoSunat; esNota: boolean; titulo: string }[] {
-    const docs = [{ d: s.comprobante, esNota: false, titulo: 'Comprobante' }];
-    if (s.notaCredito) docs.push({ d: s.notaCredito, esNota: true, titulo: 'Nota de crédito' });
+  /**
+   * Comprobante vigente y, si existe, nota de crédito de la venta, para la línea "Comprobante electrónico".
+   * Después, los comprobantes anteriores que SUNAT rechazó y se reemplazaron (historial de emisiones).
+   */
+  documentosSunat(s: EstadoSunatVenta): { d: DocumentoSunat; esNota: boolean; titulo: string; reemplazado: boolean }[] {
+    const docs = [{ d: s.comprobante, esNota: false, titulo: 'Comprobante', reemplazado: false }];
+    if (s.notaCredito) docs.push({ d: s.notaCredito, esNota: true, titulo: 'Nota de crédito', reemplazado: false });
+    [...(s.reemplazados ?? [])].reverse().forEach(d => docs.push({ d, esNota: false, titulo: 'Reemplazado', reemplazado: true }));
     return docs;
   }
 
   etiquetaCorta(d: DocumentoSunat): string {
     if (d.simulado) return 'SUNAT: simulado';
     if (this.porConfirmar(d)) return 'SUNAT: por confirmar';
+    if (d.estado === 'RECHAZADO' && !d.rechazoDefinitivo) return 'SUNAT: no recibido';
     return { ACEPTADO: 'SUNAT: aceptado', OBSERVADO: 'SUNAT: observado', RECHAZADO: 'SUNAT: rechazado', PENDIENTE: 'SUNAT: pendiente' }[d.estado];
   }
 
@@ -326,7 +333,8 @@ export class VentaListComponent implements OnInit {
    * No lo que está por confirmar (1033): SUNAT respondería lo mismo; hay que verificarlo en SUNAT.
    */
   puedeReenviar(d: DocumentoSunat): boolean {
-    if (this.porConfirmar(d)) return false;
+    // Rechazado con CDR: el número quedó usado; se emite un comprobante de reemplazo, no se reenvía
+    if (this.porConfirmar(d) || d.rechazoDefinitivo) return false;
     return d.estado === 'RECHAZADO' || (d.estado === 'PENDIENTE' && d.intentos > 0);
   }
 
@@ -338,6 +346,69 @@ export class VentaListComponent implements OnInit {
         setTimeout(() => this.cargarEstadosSunat(), 4000);
       },
       error: (err: HttpErrorResponse) => this.error.set(err.error?.message ?? `No se pudo reenviar ${d.numero}.`),
+    });
+  }
+
+  /**
+   * Comprobante de reemplazo: SUNAT rechazó este comprobante con constancia, su número ya no sirve y se emite
+   * otro con número nuevo para la misma venta. No cambia el stock, el cobro ni los mantenimientos.
+   */
+  reemplazarSunat(d: DocumentoSunat, v: VentaResponse) {
+    const ok = confirm(
+      `SUNAT rechazó ${d.numero}${d.codigo !== null ? ` (código ${d.codigo})` : ''}, así que ese comprobante no es válido ` +
+        `y su número ya no puede usarse.\n\n` +
+        `¿Emitir un comprobante nuevo para la venta #${v.id} de ${v.clienteNombre}?\n\n` +
+        `Antes, corrija en Clientes el dato que indica SUNAT: el comprobante nuevo sale con los datos actuales del cliente. ` +
+        `La venta, el stock, el cobro y los mantenimientos no cambian; ${d.numero} queda en el historial con su constancia de rechazo.`,
+    );
+    if (!ok) return;
+    this.error.set('');
+    this.facturacion.reemplazar(d.id).subscribe({
+      next: (nuevo) => {
+        this.mensaje.set(`Se emitió ${nuevo.serie}-${Number(nuevo.numero)} en reemplazo de ${d.numero}. ` +
+          `Se envía a SUNAT en segundo plano; el estado se actualiza en unos segundos.`);
+        this.cargarEstadosSunat();
+        setTimeout(() => this.cargarEstadosSunat(), 4000);
+      },
+      error: (err: HttpErrorResponse) => this.error.set(err.error?.message ?? `No se pudo reemplazar ${d.numero}.`),
+    });
+  }
+
+  private claveHistorial(d: DocumentoSunat, esNota: boolean): string {
+    return (esNota ? 'n' : 'c') + d.id;
+  }
+
+  historialDe(d: DocumentoSunat, esNota: boolean): EnvioSunat[] | undefined {
+    return this.historialSunat().get(this.claveHistorial(d, esNota));
+  }
+
+  /** Abre o cierra el historial de envíos a SUNAT de un documento (cada respuesta, con su constancia). */
+  alternarHistorial(d: DocumentoSunat, esNota: boolean) {
+    const clave = this.claveHistorial(d, esNota);
+    if (this.historialSunat().has(clave)) {
+      const mapa = new Map(this.historialSunat());
+      mapa.delete(clave);
+      this.historialSunat.set(mapa);
+      return;
+    }
+    this.facturacion.envios(d.id, esNota).subscribe({
+      next: (envios) => this.historialSunat.set(new Map(this.historialSunat()).set(clave, envios)),
+      error: () => this.error.set(`No se pudo cargar el historial de envíos de ${d.numero}.`),
+    });
+  }
+
+  etiquetaResultado(e: EnvioSunat): string {
+    return ({
+      ACEPTADO: 'Aceptado', OBSERVADO: 'Aceptado con observaciones', RECHAZADO: 'Rechazado',
+      REINTENTAR: 'Sin respuesta de SUNAT', POR_CONFIRMAR: 'Ya registrado: por confirmar',
+    } as Record<string, string>)[e.resultado] ?? e.resultado;
+  }
+
+  /** XML o CDR de un envío del historial (p. ej. la constancia de un rechazo anterior). */
+  descargarEnvio(d: DocumentoSunat, e: EnvioSunat, archivo: 'xml' | 'cdr') {
+    const nombre = archivo === 'xml' ? `${d.numero}_intento${e.intento}.xml` : `CDR_${d.numero}_intento${e.intento}.zip`;
+    this.descargaService.descargar(this.facturacion.rutaArchivoEnvio(e.id, archivo), nombre).subscribe({
+      error: () => this.error.set(`No se pudo descargar el ${archivo === 'xml' ? 'XML' : 'CDR'} del intento ${e.intento} de ${d.numero}.`),
     });
   }
 
