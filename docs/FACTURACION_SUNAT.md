@@ -142,13 +142,17 @@ cambios ("Envió por correo al cliente el comprobante #…").
 - Cada solicitud queda en `ENVIOS_CORREO` (estado, destinatario, intentos, último error, Message-ID, próximo
   intento) y cada intento en `INTENTOS_CORREO` (solo se agregan). Migración: `migracion_envio_correo.sql`.
 - Un solo envío automático por comprobante (índice único `UX_ENVIO_CORREO_AUTOMATICO`): si SUNAT avisa dos veces, sale
-  un correo. Para enviar, el trabajador bloquea la fila del comprobante y toma el envío con un `UPDATE` condicional:
+  un correo. Y ninguno automático si el comprobante ya tiene cualquier envío (p. ej. Lisandro lo mandó a mano): ni el
+  evento tardío ni la conciliación lo duplican.
+- **Reenvío manual y reintento automático:** al pedir un reenvío, en la misma transacción se cancela el reintento
+  automático que estuviera programado ("Reintento cancelado: … pidió un reenvío manual"). Y un reintento automático nunca
+  sale si otro envío del mismo comprobante ya se entregó o quedó por confirmar. Para enviar, el trabajador bloquea la fila del comprobante y toma el envío con un `UPDATE` condicional:
   nunca lo envían dos procesos a la vez. Ninguna transacción de Oracle queda abierta mientras se habla con el servidor
   de correo.
 - La revisión de cada minuto retoma lo pendiente y lo fallido cuya hora llegó (también al reiniciar el backend).
 - **Conciliación (evento perdido):** si SUNAT acepta y el backend se cae antes de crear la solicitud de envío, la misma
   revisión busca comprobantes aceptados en PRODUCCION en los últimos 3 días (`app.correo.conciliar-dias`), de un
-  cliente con correo y sin envío automático, y lo crea (con 2 minutos de margen para el camino normal; el índice único
+  cliente con correo y sin ningún envío por correo (ni automático ni manual), y lo crea (con 2 minutos de margen para el camino normal; el índice único
   impide duplicarlo). Se vuelven a comprobar el ambiente, el destinatario y el XML.
 - **El XML se comprueba campo por campo** con un analizador XML seguro (sin DOCTYPE ni entidades externas), sobre una
   copia de los bytes, respetando su codificación (ISO-8859-1): que sea un Invoice UBL firmado y que el número, el tipo

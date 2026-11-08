@@ -774,7 +774,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **206 pruebas** (08/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **210 pruebas** (08/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. Las marcadas *(Oracle)* son de
 integración y necesitan la base encendida; todas deshacen lo que guardan. La trazabilidad de cada requisito con su
 prueba está en [RTM.md](RTM.md).
@@ -790,7 +790,7 @@ prueba está en [RTM.md](RTM.md).
 | `CompraServiceTest` | N° de factura, factura duplicada, stock solo de materiales, contado/crédito y vencimiento; subtotal e IGV de la compra y último costo del producto | 5 |
 | `ReglasCorreoComprobanteTest` | Correo del comprobante: solo aceptados u observados en el ambiente de PRODUCCION registrado en el comprobante (no pendientes, rechazados, simulados, reemplazados, de la beta ni sin ambiente registrado) y el ambiente no cambia; destinatario válido; esperas entre reintentos; el XML leído con un analizador seguro (número, tipo, RUC del emisor, fecha, moneda, total y firma; rechaza DOCTYPE/XXE; no toca los bytes; lo que una búsqueda de texto aceptaba por error); nombres de SUNAT; plantilla HTML | 14 |
 | `NotificadorCorreoRealTest` | Contra un servidor SMTP de prueba en la misma PC: el PDF y el XML llegan con sus bytes exactos (en base64), se respeta el Message-ID; si el servidor rechaza, no responde o no está configurado, se informa el error | 5 |
-| `EntregaComprobanteIntegracionTest` (Oracle) | De punta a punta con SUNAT y SMTP simulados: aceptado → ENVIADO con PDF y XML del mismo comprobante; beta (aunque después el servidor pase a producción) y cliente sin correo no se envían; SMTP caído → FALLIDO y reintento; reinicio con pendientes; PDF que falla; XML ajeno; evento repetido; dos trabajadores a la vez; reenvío que pide confirmación; caída entre SMTP y Oracle → INCIERTO; conciliación de aceptados sin envío (respeta margen, ventana y correo); el ambiente no se cambia ni desde SQL | 13 |
+| `EntregaComprobanteIntegracionTest` (Oracle) | De punta a punta con SUNAT y SMTP simulados: aceptado → ENVIADO con PDF y XML del mismo comprobante; beta (aunque después el servidor pase a producción) y cliente sin correo no se envían; SMTP caído → FALLIDO y reintento; reinicio con pendientes; PDF que falla; XML ajeno; evento repetido; dos trabajadores a la vez; reenvío que pide confirmación; caída entre SMTP y Oracle → INCIERTO; conciliación de aceptados sin envío (respeta margen, ventana y correo); el ambiente no se cambia ni desde SQL; sin duplicados entre automático y manual (el reenvío cancela el reintento programado, un reintento no sale si otro envío ya se entregó, ni la conciliación ni el evento tardío duplican un envío manual) | 17 |
 | `PrecioDeLineaTest` | Auditoría M1 y M2: el precio de una línea solo sube, con permiso y motivo de 5 a 200 caracteres; texto del historial; la compra separa el IGV; el producto guarda el costo de la compra más reciente | 5 |
 | `TopeDescuentoServiceTest` | Topes de descuento: los iniciales, los que fija el administrador (rigen enseguida) y los rechazados (fuera de 0–100 o asistente mayor que administrador) | 3 |
 | `PrecioEditadoIntegracionTest` (Oracle) | La compra separa el IGV y deja el último costo sin tocar el precio; la venta usa ese costo; con permiso sube el precio y guarda las dos cifras; sin permiso, para bajarlo o sin motivo no se registra; el precio editado en la proforma pasa a la venta | 4 |
@@ -838,9 +838,9 @@ el reemplazo y por qué, el aviso del plazo con la fecha local y el orden de las
 `avisos-facturacion.spec.ts` (5): los avisos de la campana por vencer, fuera de plazo, envíos detenidos y ventas por
 emitir. `fecha-venta.spec.ts` (3): la fecha real de la venta (hoy, hasta 30 días atrás, nunca futura, en hora local). `precio-editado.spec.ts` (3): el precio editado (solo sube, con motivo), su texto y el aviso de la última compra. `entrega-correo.spec.ts` (5): el estado del correo (distinto del de SUNAT), el ambiente en que se aceptó, cuándo se ofrece reenviar y la confirmación cuando ya se envió o quedó por confirmar.
 
-Las 10 clases marcadas `@Tag("oracle")` (las de integración y la punta a punta, 40 pruebas) usan la base de desarrollo
+Las 10 clases marcadas `@Tag("oracle")` (las de integración y la punta a punta, 44 pruebas) usan la base de desarrollo
 con sus datos, que no existe en GitHub: la integración continua las salta (`-DexcludedGroups=oracle`) y se corren en
-la PC con `mvn test`, que sigue corriendo las 206. Las pruebas leen además `src/test/resources/config/application.properties`, que apaga las tareas programadas (reintento a SUNAT y revisión de correos) para que un contexto de Spring que queda vivo no envíe nada a la beta por su cuenta. Los cambios solo de documentación (`docs/`, `*.md`) no disparan
+la PC con `mvn test`, que sigue corriendo las 210. Las pruebas leen además `src/test/resources/config/application.properties`, que apaga las tareas programadas (reintento a SUNAT y revisión de correos) para que un contexto de Spring que queda vivo no envíe nada a la beta por su cuenta. Los cambios solo de documentación (`docs/`, `*.md`) no disparan
 las pruebas.
 
 ### Guía de instalación

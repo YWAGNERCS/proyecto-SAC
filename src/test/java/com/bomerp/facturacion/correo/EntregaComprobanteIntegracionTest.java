@@ -462,6 +462,76 @@ class EntregaComprobanteIntegracionTest {
         verify(notificador, times(1)).enviarConAdjuntos(any());
     }
 
+    // ── Duplicados entre el envío automático y el manual ──
+
+    @Test
+    void elReenvioManualCancelaElReintentoAutomaticoProgramado() throws Exception {
+        doThrow(new CorreoNoEnviadoException("El servidor de correo no aceptó el mensaje: 421 ocupado")).when(notificador).enviarConAdjuntos(any());
+        Long id = venderYAceptar(conCorreo);
+        esperar(() -> "FALLIDO".equals(estadoCorreo(id)), "automático FALLIDO con reintento");
+        Long automatico = enviosDe(id).get(0).getId();
+        assertThat(envios.findById(automatico).orElseThrow().getProximoIntento()).isNotNull();
+
+        reset(notificador);
+        when(notificador.enviarConAdjuntos(any())).thenAnswer(i -> ((MensajeCorreo) i.getArgument(0)).messageId());
+        entrega.solicitarReenvio(id, false, "lisandro");
+        esperar(() -> "ENVIADO".equals(estadoCorreo(id)), "reenvío manual ENVIADO");
+
+        EnvioCorreo auto = envios.findById(automatico).orElseThrow();
+        assertThat(auto.getEstado()).isEqualTo(EnvioCorreo.Estado.FALLIDO);
+        assertThat(auto.getProximoIntento()).isNull();
+        assertThat(auto.getUltimoError()).contains("Reintento cancelado: lisandro pidió un reenvío manual");
+        // Llega la hora en que se iba a reintentar: no sale
+        entrega.revisar();
+        verify(notificador, times(1)).enviarConAdjuntos(any());
+    }
+
+    @Test
+    void unReintentoAutomaticoNoSaleSiOtroEnvioYaSeEntrego() throws Exception {
+        Long id = comprobanteSinEnvioAutomatico();
+        String correo = jdbc.queryForObject("SELECT correo FROM clientes WHERE id = ?", String.class, conCorreo);
+        // Estado a evitar: el automático con su reintento vencido y un manual ya entregado al servidor de correo
+        EnvioCorreo auto = envios.save(EnvioCorreo.nuevo(id, correo, EnvioCorreo.Tipo.AUTOMATICO, null));
+        EnvioCorreo manual = envios.save(EnvioCorreo.nuevo(id, correo, EnvioCorreo.Tipo.MANUAL, "lisandro"));
+        jdbc.update("UPDATE envios_correo SET estado = 'FALLIDO', intentos = 1, ultimo_error = '421 ocupado.', proximo_intento = ? WHERE id = ?",
+                LocalDateTime.now().minusMinutes(1), auto.getId());
+        jdbc.update("UPDATE envios_correo SET estado = 'ENVIADO', intentos = 1, fecha_aceptacion_smtp = ? WHERE id = ?",
+                LocalDateTime.now(), manual.getId());
+
+        entrega.revisar();
+
+        EnvioCorreo despues = envios.findById(auto.getId()).orElseThrow();
+        assertThat(despues.getEstado()).isEqualTo(EnvioCorreo.Estado.FALLIDO);
+        assertThat(despues.getProximoIntento()).isNull();
+        assertThat(despues.getUltimoError()).contains("ya se entregó en otro envío");
+        verify(notificador, never()).enviarConAdjuntos(any());
+    }
+
+    @Test
+    void laConciliacionYElEventoTardioNoDuplicanUnEnvioManual() throws Exception {
+        Long id = aceptadoSinEvento(conCorreo, 5);   // el evento se perdió y la conciliación todavía no pasó
+        entrega.solicitarReenvio(id, false, "lisandro");
+        esperar(() -> "ENVIADO".equals(estadoCorreo(id)), "envío manual ENVIADO");
+
+        assertThat(entrega.conciliarAceptadosSinEnvio()).isZero();
+        eventos.publishEvent(new EnvioSunatService.ComprobanteAceptadoEvent(id));   // y el evento llega tarde
+        Thread.sleep(500);
+
+        assertThat(enviosDe(id)).extracting(EnvioCorreo::getTipo).containsExactly(EnvioCorreo.Tipo.MANUAL);
+        verify(notificador, times(1)).enviarConAdjuntos(any());
+    }
+
+    @Test
+    void laConciliacionTampocoCreaUnoSiElManualFallo() throws Exception {
+        Long id = aceptadoSinEvento(conCorreo, 5);
+        doThrow(new CorreoNoEnviadoException("El servidor de correo no aceptó el mensaje: 550 rechazado")).when(notificador).enviarConAdjuntos(any());
+        entrega.solicitarReenvio(id, false, "lisandro");
+        esperar(() -> "FALLIDO".equals(estadoCorreo(id)), "envío manual FALLIDO");
+
+        assertThat(entrega.conciliarAceptadosSinEnvio()).isZero();
+        assertThat(enviosDe(id)).hasSize(1);
+    }
+
     @Test
     void elAmbienteRegistradoNoSePuedeCambiarNiDesdeSql() throws Exception {
         Long id = comprobanteSinEnvioAutomatico();

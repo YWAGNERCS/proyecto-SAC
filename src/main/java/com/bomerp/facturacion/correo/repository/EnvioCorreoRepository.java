@@ -20,6 +20,12 @@ public interface EnvioCorreoRepository extends JpaRepository<EnvioCorreo, Long> 
 
     boolean existsByComprobanteIdAndTipo(Long comprobanteId, EnvioCorreo.Tipo tipo);
 
+    /** El comprobante ya tiene algún envío por correo (automático o manual, en cualquier estado). */
+    boolean existsByComprobanteId(Long comprobanteId);
+
+    /** FALLIDOS que esperan su reintento automático. */
+    List<EnvioCorreo> findByComprobanteIdAndEstadoAndProximoIntentoIsNotNull(Long comprobanteId, Estado estado);
+
     boolean existsByComprobanteIdAndEstadoIn(Long comprobanteId, Collection<Estado> estados);
 
     /**
@@ -51,7 +57,8 @@ public interface EnvioCorreoRepository extends JpaRepository<EnvioCorreo, Long> 
 
     /**
      * Comprobantes aceptados (u observados) por SUNAT en PRODUCCION, entre esas horas, vigentes, de un cliente con
-     * correo y SIN envío automático: los que la conciliación tiene que recuperar.
+     * correo y SIN NINGÚN envío por correo (ni automático ni manual, en ningún estado): los que la conciliación tiene que
+     * recuperar. Si Lisandro ya lo envió a mano, no se le crea otro.
      */
     @Query("""
             SELECT c.id FROM Comprobante c JOIN c.venta v JOIN v.cliente cl
@@ -61,8 +68,7 @@ public interface EnvioCorreoRepository extends JpaRepository<EnvioCorreo, Long> 
                AND c.ambienteEmision = com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.PRODUCCION
                AND c.envio.ultimoIntento >= :desde AND c.envio.ultimoIntento <= :hasta
                AND cl.correo IS NOT NULL
-               AND NOT EXISTS (SELECT 1 FROM EnvioCorreo e WHERE e.comprobanteId = c.id
-                               AND e.tipo = com.bomerp.facturacion.correo.entity.EnvioCorreo.Tipo.AUTOMATICO)
+               AND NOT EXISTS (SELECT 1 FROM EnvioCorreo e WHERE e.comprobanteId = c.id)
              ORDER BY c.id
             """)
     List<Long> aceptadosSinEnvioAutomatico(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,

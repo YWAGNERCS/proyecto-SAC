@@ -48,6 +48,10 @@ import java.util.stream.Collectors;
  * - Si SUNAT acepta y el backend se cae antes de crear la solicitud, la conciliación periódica lo detecta: busca
  *   comprobantes aceptados en producción, con cliente con correo y sin envío automático, y lo crea.
  * - Una sola solicitud automática por comprobante (índice único en Oracle): aceptarlo dos veces no manda dos correos.
+ *   Y ninguna automática si el comprobante ya tiene CUALQUIER envío (p. ej. un reenvío manual): ni el evento tardío ni
+ *   la conciliación lo duplican.
+ * - El reenvío manual cancela, en la misma transacción, el reintento automático que estuviera programado; y un
+ *   reintento automático nunca sale si el comprobante ya se entregó (o quedó por confirmar) en otro envío.
  * - Un envío a la vez por comprobante: tomarlo bloquea la fila del comprobante y cambia el estado con un UPDATE
  *   condicional, así dos trabajadores (o dos backends) nunca lo mandan juntos.
  * - Ninguna transacción queda abierta mientras se habla con el servidor SMTP: tomar, enviar y registrar son pasos aparte.
@@ -192,7 +196,8 @@ public class EntregaComprobanteService {
         Long id;
         try {
             id = tx.execute(s -> {
-                Comprobante c = comprobantes.findById(comprobanteId).orElse(null);
+                // Bloqueado: el reenvío manual y la conciliación deciden en orden, nunca a la vez
+                Comprobante c = comprobantes.bloquear(comprobanteId).orElse(null);
                 if (c == null) return null;
                 String motivo = motivoParaNoEnviar(c);
                 if (motivo != null) {
@@ -204,8 +209,9 @@ public class EntregaComprobanteService {
                     log.info("Comprobante {} aceptado; no se envía por correo: el cliente no tiene correo", comprobanteId);
                     return null;
                 }
-                if (envios.existsByComprobanteIdAndTipo(comprobanteId, EnvioCorreo.Tipo.AUTOMATICO)) {
-                    log.info("Comprobante {}: ya tiene su envío automático por correo; no se repite", comprobanteId);
+                if (envios.existsByComprobanteId(comprobanteId)) {
+                    // Ya tiene su envío automático, o se envió a mano (p. ej. el evento llegó tarde): no se duplica
+                    log.info("Comprobante {}: ya tiene un envío por correo; no se crea el automático", comprobanteId);
                     return null;
                 }
                 return envios.saveAndFlush(EnvioCorreo.nuevo(comprobanteId, correo, EnvioCorreo.Tipo.AUTOMATICO, null)).getId();
@@ -240,7 +246,16 @@ public class EntregaComprobanteService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "Este comprobante ya se envió por correo. Confirme si quiere enviarlo otra vez.");
             }
-            return envios.save(EnvioCorreo.nuevo(comprobanteId, correo, EnvioCorreo.Tipo.MANUAL, usuario));
+            EnvioCorreo manual = envios.save(EnvioCorreo.nuevo(comprobanteId, correo, EnvioCorreo.Tipo.MANUAL, usuario));
+            // Los FALLIDOS que iban a reintentarse solos ya no: este reenvío los reemplaza (si no, saldría dos veces).
+            // Es la misma transacción y el comprobante sigue bloqueado: ningún trabajador los puede tomar a la vez.
+            for (EnvioCorreo programado : envios.findByComprobanteIdAndEstadoAndProximoIntentoIsNotNull(comprobanteId, Estado.FALLIDO)) {
+                programado.setProximoIntento(null);
+                programado.setUltimoError(Objects.toString(programado.getUltimoError(), "") + " Reintento cancelado: " + (usuario == null ? "se" : usuario)
+                        + " pidió un reenvío manual (envío #" + manual.getId() + ").");
+                envios.save(programado);
+            }
+            return manual;
         });
         log.info("Reenvío por correo del comprobante {} pedido por {}", comprobanteId, usuario);
         encolar(creado.getId());
@@ -295,6 +310,14 @@ public class EntregaComprobanteService {
             if (e == null) return false;
             comprobantes.bloquear(e.getComprobanteId());
             if (envios.existsByComprobanteIdAndEstadoIn(e.getComprobanteId(), List.of(Estado.EN_PROCESO))) return false;
+            if (e.getTipo() == EnvioCorreo.Tipo.AUTOMATICO && e.getEstado() == Estado.FALLIDO
+                    && envios.existsByComprobanteIdAndEstadoIn(e.getComprobanteId(), List.of(Estado.ENVIADO, Estado.INCIERTO))) {
+                // Otro envío del mismo comprobante ya se entregó (o quedó por confirmar): reintentar lo duplicaría
+                e.setProximoIntento(null);
+                e.setUltimoError((Objects.toString(e.getUltimoError(), "") + " No se reintenta: el comprobante ya se entregó en otro envío.").trim());
+                envios.save(e);
+                return false;
+            }
             return envios.tomar(envioId, inicio, messageId) == 1;
         });
         if (!Boolean.TRUE.equals(tomado)) return null;
