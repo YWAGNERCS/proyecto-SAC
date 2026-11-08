@@ -15,12 +15,14 @@ import java.util.List;
  *                     (historial de emisiones), del más antiguo al más reciente; vacío si no hubo reemplazos
  * @param porEmitir    la venta todavía no tiene comprobante porque falta un dato de JD (p. ej. la cuenta de
  *                     detracciones): el motivo. Entonces comprobante es null. Null si ya tiene comprobante.
+ * @param correo       entrega del comprobante vigente por correo al cliente (estado, destinatario, intentos); null
+ *                     si la venta todavía no tiene comprobante
  */
 public record EstadoSunatVentaDTO(Long ventaId, Documento comprobante, Documento notaCredito, List<Documento> reemplazados,
-                                  String porEmitir) {
+                                  String porEmitir, com.bomerp.facturacion.correo.dto.EntregaCorreoDTO correo) {
 
     public static EstadoSunatVentaDTO porEmitir(Long ventaId, String motivo) {
-        return new EstadoSunatVentaDTO(ventaId, null, null, List.of(), motivo);
+        return new EstadoSunatVentaDTO(ventaId, null, null, List.of(), motivo, null);
     }
 
     /**
@@ -66,8 +68,13 @@ public record EstadoSunatVentaDTO(Long ventaId, Documento comprobante, Documento
     }
 
     public static EstadoSunatVentaDTO de(Comprobante c, NotaCredito nota, List<Comprobante> reemplazados) {
+        return de(c, nota, reemplazados, null);
+    }
+
+    public static EstadoSunatVentaDTO de(Comprobante c, NotaCredito nota, List<Comprobante> reemplazados,
+                                         com.bomerp.facturacion.correo.dto.EntregaCorreoDTO correo) {
         return new EstadoSunatVentaDTO(c.getVenta().getId(), Documento.de(c),
                 nota == null ? null : Documento.de(nota),
-                reemplazados.stream().map(Documento::de).toList(), null);
+                reemplazados.stream().map(Documento::de).toList(), null, correo);
     }
 }

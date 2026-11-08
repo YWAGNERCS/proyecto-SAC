@@ -38,7 +38,11 @@ public class VentasFacturacionListener {
                         comp.getSerie(), comp.getNumero(), evento.ventaId()));
     }
 
-    /** Comprobante aceptado por SUNAT: recién ahora se envía por correo al cliente (si tiene correo). */
+    /**
+     * Comprobante aceptado por SUNAT: recién ahora se pide su envío por correo al cliente (PDF + XML firmado). Solo deja
+     * la solicitud en Oracle y la pone en la cola de correos: no frena la cola de envíos a SUNAT. Si el evento llega
+     * dos veces, la segunda no crea otra solicitud.
+     */
     @EventListener
     public void alAceptarComprobante(EnvioSunatService.ComprobanteAceptadoEvent evento) {
         try {

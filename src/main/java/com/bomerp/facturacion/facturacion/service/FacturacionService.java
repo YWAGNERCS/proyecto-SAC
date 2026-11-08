@@ -30,7 +30,8 @@ public class FacturacionService implements ComprobantesDeVenta {
     private final ComprobanteRepository comprobanteRepository;
     private final VentaService ventaService;
     private final EnvioSunatService envioSunat;
-    private final com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo;
+    /** Entrega del comprobante por correo (PDF + XML firmado), con seguimiento en Oracle. */
+    private final com.bomerp.facturacion.correo.service.EntregaComprobanteService entrega;
     private final GeneradorPdfFacturacionService generadorPdfFacturacionService;
     private final NotaCreditoRepository notaCreditoRepository;
     private final CorrelativoService correlativoService;
@@ -51,14 +52,14 @@ public class FacturacionService implements ComprobantesDeVenta {
     @org.springframework.beans.factory.annotation.Value("${app.facturacion.series.nota-boleta:BC01}")
     private String serieNotaBoleta;
 
-    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, EnvioSunatService envioSunat, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
+    public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, EnvioSunatService envioSunat, com.bomerp.facturacion.correo.service.EntregaComprobanteService entrega, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
                               CorrelativoService correlativoService, EnvioSunatRegistroRepository registrosEnvio,
                               com.bomerp.facturacion.ose.integration.OseClient ose,
                               org.springframework.transaction.PlatformTransactionManager txManager) {
         this.comprobanteRepository = comprobanteRepository;
         this.ventaService = ventaService;
         this.envioSunat = envioSunat;
-        this.notificadorCorreo = notificadorCorreo;
+        this.entrega = entrega;
         this.generadorPdfFacturacionService = generadorPdfFacturacionService;
         this.notaCreditoRepository = notaCreditoRepository;
         this.correlativoService = correlativoService;
@@ -280,6 +281,26 @@ public class FacturacionService implements ComprobantesDeVenta {
 
     public record PdfComprobante(String nombreArchivo, byte[] contenido) {}
 
+    /** PDF de un comprobante por su id (el mismo que se adjunta al correo), con el nombre del archivo de SUNAT. */
+    @Transactional(readOnly = true)
+    public PdfComprobante pdfDeComprobante(Long comprobanteId) {
+        Comprobante comprobante = comprobanteRepository.findById(comprobanteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));
+        try {
+            return new PdfComprobante(com.bomerp.facturacion.correo.service.AdjuntosComprobante.nombreBase(empresaRuc(), comprobante) + ".pdf",
+                    generadorPdfFacturacionService.generarFacturaPdfBytes(comprobante));
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo generar el PDF del comprobante: " + e.getMessage(), e);
+        }
+    }
+
+    @org.springframework.beans.factory.annotation.Value("${app.empresa.ruc:}")
+    private String rucEmpresa;
+
+    private String empresaRuc() {
+        return rucEmpresa;
+    }
+
     /** Estado ante SUNAT del comprobante (y su nota de crédito) de cada venta pedida; las que no tienen comprobante no aparecen. */
     @Transactional(readOnly = true)
     public List<com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO> estadosDeVentas(List<Long> ventaIds) {
@@ -290,10 +311,12 @@ public class FacturacionService implements ComprobantesDeVenta {
         // Por venta: el vigente y, si hubo reemplazos, los rechazados anteriores (historial de emisiones)
         var reemplazados = lista.stream().filter(Comprobante::isReemplazado)
                 .collect(java.util.stream.Collectors.groupingBy(c -> c.getVenta().getId()));
+        // Entrega por correo de cada comprobante vigente (una sola consulta para todos)
+        var correos = entrega.resumenes(lista.stream().filter(c -> !c.isReemplazado()).toList());
         List<com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO> estados = new java.util.ArrayList<>(lista.stream()
                 .filter(c -> !c.isReemplazado())
                 .map(c -> com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO.de(c, notas.get(c.getId()),
-                        reemplazados.getOrDefault(c.getVenta().getId(), List.of())))
+                        reemplazados.getOrDefault(c.getVenta().getId(), List.of()), correos.get(c.getId())))
                 .toList());
         // Ventas sin comprobante todavía (esperan un dato de JD): se muestran como "por emitir"
         var pedidas = new java.util.HashSet<>(ventaIds);
@@ -413,90 +436,25 @@ public class FacturacionService implements ComprobantesDeVenta {
         return ComprobanteResponseDTO.desdeEntidad(emitirComprobanteParaVenta(ventaId));
     }
 
-    /** Tras la aceptación de SUNAT: envía el comprobante por correo solo si el cliente tiene uno. */
-    @Transactional(readOnly = true)
-    public void enviarFacturaCorreoSiTieneCorreo(Long comprobanteId) {
-        Comprobante comprobante = comprobanteRepository.findById(comprobanteId).orElse(null);
-        String correo = comprobante == null ? null : comprobante.getVenta().getCliente().getCorreo();
-        if (correo == null || correo.isBlank()) {
-            log.info("Comprobante {} aceptado; no se envía por correo: el cliente no tiene correo", comprobanteId);
-            return;
-        }
-        String motivo = motivoParaNoEnviarAlCliente(comprobante, ose.conValidezTributaria());
-        if (motivo != null) {
-            log.info("Comprobante {}: no se envía por correo. {}", comprobanteId, motivo);
-            return;
-        }
-        enviarFacturaCorreo(comprobanteId);
-    }
-
     /**
-     * Al cliente solo se le envía un comprobante con validez ante SUNAT (revisión externa F-01): el correo
-     * dice "ha sido emitida". Uno PENDIENTE o RECHAZADO no la tiene; uno del modo simulado tampoco, aunque
-     * figure ACEPTADO, porque nunca salió a SUNAT (el envío real siempre guarda el XML firmado; el simulado no).
-     *
-     * @return el motivo para no enviarlo, o null si se puede enviar
+     * Tras la aceptación de SUNAT: deja el envío automático del comprobante por correo (PDF + XML firmado), si
+     * corresponde. Lo entrega en segundo plano EntregaComprobanteService, que registra cada intento en Oracle.
      */
+    public void enviarFacturaCorreoSiTieneCorreo(Long comprobanteId) {
+        entrega.solicitarAutomatico(comprobanteId);
+    }
+
+    /** Ver EntregaComprobanteService.motivoParaNoEnviar (se conserva por compatibilidad). */
     static String motivoParaNoEnviarAlCliente(Comprobante c, boolean conValidezTributaria) {
-        String numero = c.getSerie() + "-" + c.getNumero();
-        if (c.getEstadoSunat() == null || !c.getEstadoSunat().valido()) {
-            return numero + " todavía no tiene validez ante SUNAT (estado " + c.getEstadoSunat()
-                    + "): se podrá enviar al cliente cuando SUNAT lo acepte.";
-        }
-        if (c.getEnvio().getXmlFirmado() == null) {
-            return numero + " se emitió en modo simulado (no se envió a SUNAT): no se envía al cliente como comprobante.";
-        }
-        if (!conValidezTributaria) {
-            // D-12: la beta de SUNAT devuelve XML y CDR como la real, pero lo que acepta no tiene validez
-            return numero + " fue aceptado por la beta de SUNAT (pruebas): no tiene validez tributaria y no se envía al cliente.";
-        }
-        return null;
+        return com.bomerp.facturacion.correo.service.EntregaComprobanteService.motivoParaNoEnviar(c, conValidezTributaria);
     }
 
-    /** Nombre del receptor tal como se emitió; en comprobantes sin esos datos, el del cliente actual. */
-    private static String nombreReceptor(Comprobante c) {
-        return c.getReceptorNombre() != null ? c.getReceptorNombre() : c.getVenta().getCliente().getNombreORazonSocial();
+    /** Reenvío manual por correo al cliente (ver EntregaComprobanteService.solicitarReenvio). */
+    public com.bomerp.facturacion.correo.dto.EntregaCorreoDTO enviarFacturaCorreo(Long comprobanteId, boolean confirmar, String usuario) {
+        return entrega.solicitarReenvio(comprobanteId, confirmar, usuario);
     }
 
-    @Transactional(readOnly = true)
-    public void enviarFacturaCorreo(Long comprobanteId) {
-        Comprobante comprobante = comprobanteRepository.findById(comprobanteId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));
-        String motivo = motivoParaNoEnviarAlCliente(comprobante, ose.conValidezTributaria());
-        if (motivo != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, motivo);
-        }
-
-        String correoDestino = comprobante.getVenta().getCliente().getCorreo();
-        if (correoDestino == null || correoDestino.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cliente no tiene correo registrado");
-        }
-
-        String tipoDoc = comprobante.getTipo() == Comprobante.TipoComprobante.FACTURA ? "Factura Electrónica" : "Boleta Electrónica";
-        String numeroDoc = comprobante.getSerie() + "-" + comprobante.getNumero();
-        
-        String cuerpoHtml = "<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;'>" +
-                            "<div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>" +
-                            "<h2 style='color: #0078d4;'>Documento Emitido: " + tipoDoc + "</h2>" +
-                            "<p>Estimado cliente <strong>" + org.springframework.web.util.HtmlUtils.htmlEscape(nombreReceptor(comprobante)) + "</strong>,</p>" +
-                            "<p>Le informamos que se ha emitido su comprobante de pago <strong>" + numeroDoc + "</strong> por el monto de <strong>" + comprobante.getVenta().getMoneda() + " " + comprobante.getTotal() + "</strong>.</p>" +
-                            "<p>Adjunto a este correo encontrará la representación impresa de su documento (PDF).</p>" +
-                            "<hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'/>" +
-                            "<p style='color: #888; font-size: 12px;'>Este documento es una representación impresa de un comprobante de pago electrónico.</p>" +
-                            "</div></body></html>";
-        
-        java.io.File pdfAdjunto = null;
-        try {
-            pdfAdjunto = generadorPdfFacturacionService.generarFacturaPdf(comprobante);
-            notificadorCorreo.enviarCorreoConAdjunto(correoDestino, "Su " + tipoDoc + " " + numeroDoc + " ha sido emitida", cuerpoHtml, pdfAdjunto);
-        } catch (Exception e) {
-            log.error("Error generando PDF de factura: {}", e.getMessage(), e);
-            // Fallback sin adjunto si falla la generación
-            notificadorCorreo.enviarCorreo(correoDestino, "Su " + tipoDoc + " " + numeroDoc + " ha sido emitida", cuerpoHtml);
-        } finally {
-            if (pdfAdjunto != null && pdfAdjunto.exists()) {
-                pdfAdjunto.delete();
-            }
-        }
+    public com.bomerp.facturacion.correo.dto.EntregaCorreoDTO entregaPorCorreo(Long comprobanteId) {
+        return entrega.entrega(comprobanteId);
     }
 }

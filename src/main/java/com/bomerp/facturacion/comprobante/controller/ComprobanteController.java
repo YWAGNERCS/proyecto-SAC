@@ -100,9 +100,34 @@ public class ComprobanteController {
         return facturacionService.emitir(ventaId);
     }
 
+    /**
+     * Reenvía el comprobante por correo al cliente (a su correo registrado; nunca a una dirección escrita a mano).
+     * 409 si no tiene validez tributaria (pendiente, rechazado, simulado o de la beta), si hay un envío en curso o si ya
+     * se envió y no se confirmó (confirmar=true). 400 si el cliente no tiene un correo válido. Responde 202: el correo
+     * sale en segundo plano y su resultado se ve en GET /{id}/correo.
+     */
     @PostMapping("/{id}/enviar")
-    public void enviarFactura(@PathVariable Long id) {
-        facturacionService.enviarFacturaCorreo(id);
+    public ResponseEntity<com.bomerp.facturacion.correo.dto.EntregaCorreoDTO> enviarFactura(
+            @PathVariable Long id, @RequestParam(defaultValue = "false") boolean confirmar,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) {
+        String usuario = jwt != null ? jwt.getClaimAsString("preferred_username") : null;
+        return ResponseEntity.accepted().body(facturacionService.enviarFacturaCorreo(id, confirmar, usuario));
+    }
+
+    /** Entrega por correo del comprobante: estado, destinatario, cada envío y cada intento (historial). */
+    @GetMapping("/{id}/correo")
+    public com.bomerp.facturacion.correo.dto.EntregaCorreoDTO correo(@PathVariable Long id) {
+        return facturacionService.entregaPorCorreo(id);
+    }
+
+    /** PDF del comprobante por su id (el mismo que se adjunta al correo). */
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> pdfComprobante(@PathVariable Long id) {
+        FacturacionService.PdfComprobante pdf = facturacionService.pdfDeComprobante(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(pdf.nombreArchivo()).build().toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf.contenido());
     }
 
     /** Descarga el PDF de la factura o boleta de una venta (404 si no tiene comprobante). */

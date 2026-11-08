@@ -84,7 +84,76 @@ En la computadora donde corre SGE-JD en modo producción (`compose-prod.yml`, ve
 La nota de crédito de una venta anulada sale cuando SUNAT aceptó el comprobante original. Si el
 original fue rechazado, no se crea nota: no había nada válido que anular.
 
-## 5. Cuidados
+## 5. Entrega del comprobante por correo al cliente
+
+Cuando SUNAT acepta una factura o boleta (también con observaciones), SGE-JD se la envía al cliente por correo,
+solo, con dos archivos adjuntos: el **PDF** (representación impresa) y el **XML firmado** (el comprobante con validez
+tributaria, byte por byte el mismo que se envió a SUNAT y que está guardado en Oracle). Se nombran como SUNAT:
+`20521632268-01-F001-125.pdf` y `.xml`. La venta no espera al correo: sale en segundo plano.
+
+**Nunca se envía** un comprobante pendiente, rechazado, simulado, reemplazado o aceptado por la **beta** de SUNAT
+(no tienen validez tributaria). Tampoco si el cliente no tiene correo registrado, o es inválido.
+
+### Configurar el servidor de correo
+
+En `bomerp-backend/.env.prod` (o en `application-local.properties` en desarrollo, que no se sube a git):
+
+```properties
+MAIL_USERNAME=<cuenta que envía, p. ej. facturacion@...>
+MAIL_PASSWORD=<en Gmail: una "contraseña de aplicación", no la clave normal>
+# Opcionales: contacto oficial que se muestra al pie del correo (vacíos = no se muestran; no se inventan)
+EMPRESA_TELEFONO=
+EMPRESA_CORREO=
+EMPRESA_WEB=
+```
+
+El servidor (`spring.mail.host`, Gmail por defecto, puerto 587 con STARTTLS) está en `application.properties`. Los
+reintentos se ajustan con `app.correo.max-intentos` (5), `app.correo.revision-ms` (cada 60 s) y
+`app.correo.minutos-en-proceso` (10). Después, reiniciar el backend.
+
+### Qué ve Lisandro en Ventas
+
+Cada venta muestra **Entrega del comprobante**: el estado de SUNAT y, aparte, el del correo, porque no son lo mismo.
+
+| Estado del correo | Qué pasó | Qué hacer |
+|---|---|---|
+| Entregado al servidor de correo | El servidor de correo (SMTP) aceptó el mensaje. **No garantiza** que el cliente lo haya leído (puede ir a spam o rebotar después) | Nada |
+| Por enviar / Enviando | En cola o saliendo | Esperar unos segundos |
+| No se pudo enviar | El servidor de correo no lo aceptó (caído, clave SMTP mal, dirección rechazada) o no se pudo armar el PDF | Si dice "Se vuelve a intentar solo el …", nada: se reintenta a los 2, 10, 30 y 120 minutos (5 intentos). Si no, corregir el dato (p. ej. el correo del cliente) y pulsar **Reenviar por correo** |
+| Envío por confirmar | El backend se apagó en pleno envío y no se sabe si el servidor de correo llegó a aceptarlo | No se reenvía solo, para no mandarlo dos veces. Preguntar al cliente y, si no le llegó, **Reenviar por correo** |
+| No se envía | El comprobante no tiene validez (pendiente, rechazado, beta…) o el cliente no tiene correo | El motivo aparece debajo; para el correo, agregarlo en Clientes y pulsar **Enviar por correo** |
+
+Botones: **PDF**, **XML**, **CDR** (constancia de SUNAT), **Historial de intentos** (cada intento con fecha, resultado,
+mensaje del servidor y los archivos adjuntos con su huella SHA-256) y **Reenviar por correo**. El reenvío va siempre al
+correo registrado del cliente (no se puede escribir otra dirección); si ya se había entregado, pide confirmarlo. No
+crea otra venta ni otro comprobante, no usa otro número y no toca el stock ni la cobranza. Queda en el historial de
+cambios ("Envió por correo al cliente el comprobante #…").
+
+### Cómo funciona por dentro (para soporte)
+
+- Cada solicitud queda en `ENVIOS_CORREO` (estado, destinatario, intentos, último error, Message-ID, próximo
+  intento) y cada intento en `INTENTOS_CORREO` (solo se agregan). Migración: `migracion_envio_correo.sql`.
+- Un solo envío automático por comprobante (índice único `UX_ENVIO_CORREO_AUTOMATICO`): si SUNAT avisa dos veces, sale
+  un correo. Para enviar, el trabajador bloquea la fila del comprobante y toma el envío con un `UPDATE` condicional:
+  nunca lo envían dos procesos a la vez. Ninguna transacción de Oracle queda abierta mientras se habla con el servidor
+  de correo.
+- La revisión de cada minuto retoma lo pendiente y lo fallido cuya hora llegó (también al reiniciar el backend).
+- **Política ante la duda:** el Message-ID se guarda antes de enviar. Si el proceso se cae entre que el servidor de
+  correo acepta y que Oracle lo registra, el envío queda `EN_PROCESO`; pasados 10 minutos pasa a `INCIERTO` y no se
+  reenvía solo. SMTP no permite garantizar "exactamente una vez": SGE-JD prefiere no duplicar y deja la decisión a
+  Lisandro.
+- API: `GET /api/v1/admin/facturacion/{id}/correo` (estado e historial), `POST /{id}/enviar?confirmar=true|false`
+  (reenvío; 409 si no tiene validez, si hay un envío en curso o si ya se envió sin confirmar; 400 sin correo válido) y
+  `GET /{id}/pdf`.
+
+### Probarlo sin enviar correos reales
+
+Las pruebas automáticas usan un servidor SMTP de prueba dentro de la misma PC o un notificador simulado
+(`NotificadorCorreoRealTest`, `EntregaComprobanteIntegracionTest`): ningún correo sale. En desarrollo, lo que acepta la
+beta de SUNAT nunca se envía. Para ver el correo de verdad antes de producción, configurar `MAIL_USERNAME` con una
+cuenta propia y registrar una venta de prueba con un cliente cuyo correo sea el suyo, ya con SUNAT de producción.
+
+## 6. Cuidados
 
 - **Certificado y claves:** viven solo en `.env.prod` y en `certificados/`, que nunca van a git ni a la
   imagen Docker. Incluir ambos en el respaldo del servidor, protegido.
@@ -97,7 +166,7 @@ original fue rechazado, no se crea nota: no había nada válido que anular.
 - **Si un cliente cambia de empresa a persona natural** (o al revés) después de una venta cuyo comprobante SUNAT no
   recibió, ese comprobante no se reenvía: se pulsa **Emitir comprobante de reemplazo** y sale del tipo correcto.
 
-## 6. Lo que SGE-JD todavía no hace
+## 7. Lo que SGE-JD todavía no hace
 
 - **Comunicación de baja:** una venta se anula con nota de crédito, que es lo habitual. La baja de un
   comprobante por error material no está implementada.

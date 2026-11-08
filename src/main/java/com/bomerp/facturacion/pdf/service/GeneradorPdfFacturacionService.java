@@ -23,6 +23,24 @@ public class GeneradorPdfFacturacionService {
         this.empresa = empresa;
     }
 
+    /** El PDF en memoria (para adjuntarlo al correo o descargarlo), sin dejar archivos temporales. */
+    public byte[] generarFacturaPdfBytes(Comprobante comprobante) throws Exception {
+        File archivo = generarFacturaPdf(comprobante);
+        try {
+            return java.nio.file.Files.readAllBytes(archivo.toPath());
+        } finally {
+            archivo.delete();
+        }
+    }
+
+    /** Logo de JD desde el classpath: funciona igual en desarrollo y dentro de la imagen Docker. */
+    private static Image logo() throws Exception {
+        try (java.io.InputStream in = GeneradorPdfFacturacionService.class.getResourceAsStream("/static/images/logo.png")) {
+            if (in == null) throw new java.io.FileNotFoundException("static/images/logo.png");
+            return Image.getInstance(in.readAllBytes());
+        }
+    }
+
     public File generarFacturaPdf(Comprobante comprobante) throws Exception {
         String fileName = comprobante.getTipo().name() + "_" + comprobante.getSerie() + "-" + comprobante.getNumero() + ".pdf";
         File pdfFile = File.createTempFile("Comprobante_", "_" + fileName);
@@ -47,7 +65,7 @@ public class GeneradorPdfFacturacionService {
             PdfPCell leftCell = new PdfPCell();
             leftCell.setBorder(Rectangle.NO_BORDER);
             try {
-                Image logo = Image.getInstance("src/main/resources/static/images/logo.png");
+                Image logo = logo();
                 logo.scaleToFit(140, 140);
                 logo.setAlignment(Element.ALIGN_LEFT);
                 leftCell.addElement(logo);

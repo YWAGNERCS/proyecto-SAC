@@ -110,6 +110,10 @@ services:
       CORREO_OFICINA: ${CORREO_OFICINA:-}
       DECOLECTA_TOKEN: ${DECOLECTA_TOKEN:-}
       CUENTA_DETRACCIONES: ${CUENTA_DETRACCIONES:-}
+      # Contacto oficial de JD en el correo del comprobante (vacíos = no se muestran)
+      EMPRESA_TELEFONO: ${EMPRESA_TELEFONO:-}
+      EMPRESA_CORREO: ${EMPRESA_CORREO:-}
+      EMPRESA_WEB: ${EMPRESA_WEB:-}
       # Facturación electrónica (docs/FACTURACION_SUNAT.md): "simulado" hasta tener las credenciales de JD
       FACTURACION_MODO: ${FACTURACION_MODO:-simulado}
       SUNAT_URL: ${SUNAT_URL:-https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService}

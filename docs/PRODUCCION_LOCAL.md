@@ -31,7 +31,7 @@ Todos los puertos escuchan solo en `127.0.0.1`.
 | `compose-prod.yml` | Oracle, Keycloak, su Postgres y el backend de prod |
 | `.env.prod.example` | Plantilla de secretos de prod (el `.env.prod` real no se versiona) |
 | `scripts/prod/generar_env_prod.py` | Crea `.env.prod` con secretos aleatorios, sin mostrarlos |
-| `scripts/prod/esquema_jdrefrigeracion.sql` | Esquema vacío (27 tablas, índices y claves foráneas), sacado del esquema real con `DBMS_METADATA`; al 07/11/2026 incluye `migracion_comprobante_reemplazo.sql` (comprobante de reemplazo, receptor fijo y `ENVIOS_SUNAT`) |
+| `scripts/prod/esquema_jdrefrigeracion.sql` | Esquema vacío (29 tablas, índices y claves foráneas), sacado del esquema real con `DBMS_METADATA`; al 07/11/2026 incluye `migracion_comprobante_reemplazo.sql` (comprobante de reemplazo, receptor fijo y `ENVIOS_SUNAT`) |
 | `keycloak/configurar_realm.py --prod` | El mismo script de dev contra el Keycloak de prod (SPA en 4300, sin el cliente de pruebas) |
 | `bomerp-frontend/src/environments/environment.prod.ts` | URLs de prod del SPA (reemplaza `environment.ts` en el build) |
 | `bomerp-frontend/Dockerfile`, `nginx.conf`, `compose-prod.yml` | El build servido por nginx en 4300 |
@@ -67,7 +67,7 @@ docker cp scripts/prod/esquema_jdrefrigeracion.sql sge-jd-oracle-prod:/tmp/esque
 
 Debe decir 26 veces `Table created.`, 10 `Index created.` y 44 `Table altered.` (comprobado el 07/11/2026 en un esquema vacío: mismas columnas, índices y restricciones que la base de desarrollo, que desde la auditoría B7 tampoco tiene la tabla `USUARIOS`).
 
-**Base de producción ya creada antes del 07/11/2026:** en lugar del paso 3, aplicar una vez `migracion_comprobante_reemplazo.sql`, `migracion_venta_anulacion.sql` y `migracion_costos_precios.sql` (se pueden ejecutar varias veces) antes de encender el backend nuevo; si no, `ddl-auto=validate` no lo deja arrancar. Se aplican igual que esta, cambiando el nombre del archivo:
+**Base de producción ya creada antes del 07/11/2026:** en lugar del paso 3, aplicar una vez `migracion_comprobante_reemplazo.sql`, `migracion_venta_anulacion.sql`, `migracion_costos_precios.sql` y `migracion_envio_correo.sql` (se pueden ejecutar varias veces) antes de encender el backend nuevo; si no, `ddl-auto=validate` no lo deja arrancar. Se aplican igual que esta, cambiando el nombre del archivo:
 
 ```powershell
 docker cp migracion_comprobante_reemplazo.sql sge-jd-oracle-prod:/tmp/m.sql

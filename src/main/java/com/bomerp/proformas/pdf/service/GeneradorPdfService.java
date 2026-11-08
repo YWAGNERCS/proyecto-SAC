@@ -39,9 +39,12 @@ public class GeneradorPdfService {
 
             // Agregar Logo (desde resources si es posible, o usar texto si falla)
             try {
-                // OpenPDF permite cargar imágenes locales o del classpath si las leemos como byte[] o URL
-                // Por simplicidad, leeremos la imagen estática directamente. Como el contexto es local:
-                Image logo = Image.getInstance("src/main/resources/static/images/logo.png");
+                // Desde el classpath: la ruta del disco no existe dentro de la imagen Docker de producción
+                Image logo;
+                try (java.io.InputStream in = GeneradorPdfService.class.getResourceAsStream("/static/images/logo.png")) {
+                    if (in == null) throw new java.io.FileNotFoundException("static/images/logo.png");
+                    logo = Image.getInstance(in.readAllBytes());
+                }
                 logo.scaleToFit(150, 150);
                 logo.setAlignment(Element.ALIGN_RIGHT);
                 document.add(logo);

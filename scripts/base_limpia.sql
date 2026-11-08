@@ -19,7 +19,7 @@
 --
 -- Orden de borrado según las llaves foráneas (de hijos a padres):
 --   (se sueltan antes las referencias circulares orden ↔ equipo ↔ mantenimiento)
---   devoluciones → notas_credito → comprobantes → detalle_cobro → cobros → mantenimientos
+--   devoluciones → notas_credito → intentos_correo → envios_correo → comprobantes → detalle_cobro → cobros → mantenimientos
 --   → materiales_orden → ordenes_trabajo → equipos_instalados → contratos_mantenimiento
 --   → detalle_venta → ventas → items_proforma → proformas → pagos_proveedor → detalle_compra → compras
 --   → ajustes_inventario
@@ -126,6 +126,13 @@ begin
     delete from notas_credito where comprobante_id in
         (select id from comprobantes where venta_id in (select column_value from table(v_ven)));
     contar('notas_credito', sql%rowcount);
+    -- Envíos del comprobante por correo y sus intentos (historial de entrega)
+    delete from intentos_correo where envio_correo_id in (select id from envios_correo where comprobante_id in
+        (select id from comprobantes where venta_id in (select column_value from table(v_ven))));
+    contar('intentos_correo', sql%rowcount);
+    delete from envios_correo where comprobante_id in
+        (select id from comprobantes where venta_id in (select column_value from table(v_ven)));
+    contar('envios_correo', sql%rowcount);
     delete from comprobantes where venta_id in (select column_value from table(v_ven));
     contar('comprobantes', sql%rowcount);
     delete from detalle_cobro where cobro_id in (select column_value from table(v_cob))
@@ -219,7 +226,7 @@ begin
             -- Las tablas de movimientos quedaron vacías: su próximo id vuelve a 1.
             -- (DDL: va después del COMMIT porque Oracle confirma solo al ejecutarlo.)
             for t in (select column_value nombre from table(sys.odcivarchar2list(
-                        'DEVOLUCIONES', 'NOTAS_CREDITO', 'COMPROBANTES', 'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS',
+                        'DEVOLUCIONES', 'NOTAS_CREDITO', 'INTENTOS_CORREO', 'ENVIOS_CORREO', 'COMPROBANTES', 'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS',
                         'DETALLE_VENTA', 'VENTAS', 'ITEMS_PROFORMA', 'PROFORMAS',
                         'DETALLE_COMPRA', 'COMPRAS', 'PAGOS_PROVEEDOR', 'AJUSTES_INVENTARIO', 'MATERIALES_ORDEN', 'ORDENES_TRABAJO',
                         'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO', 'HISTORIAL_CAMBIOS'))) loop

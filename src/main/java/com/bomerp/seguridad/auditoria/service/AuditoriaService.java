@@ -59,7 +59,7 @@ public class AuditoriaService {
             r("POST", "/cuentas-por-pagar/pagos", "Compras", "Registró el pago a proveedor #{nuevo}"),
             r("POST", "/inventario/ajustes", "Inventario", "Ajustó el inventario (ajuste #{nuevo})"),
             r("POST", "/facturacion/emitir/{n}", "Facturación", "Emitió el comprobante de la venta #{id}"),
-            r("POST", "/facturacion/{n}/enviar", "Facturación", "Envió el comprobante #{id}"),
+            r("POST", "/facturacion/{n}/enviar", "Facturación", "Envió por correo al cliente el comprobante #{id}"),
             r("POST", "/facturacion/{n}/reemplazar", "Facturación", "Emitió un comprobante de reemplazo del comprobante rechazado #{id}"),
             r("POST", "/facturacion/{n}/reenviar", "Facturación", "Reenvió a SUNAT el comprobante #{id}"),
             r("PUT", "/descuentos/topes", "Configuración", "Cambió los topes de descuento"),
