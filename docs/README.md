@@ -817,8 +817,15 @@ GitHub, pestaña **Actions** (en verde o en rojo, con el resumen de cada clase d
 | Flujo | Rama | Qué hace |
 |---|---|---|
 | `Backend` (`.github/workflows/backend.yml`) | `master` | Java 21: compila y corre las **134 pruebas que no necesitan Oracle** (~20 s). Si falla, guarda los informes de Surefire |
-| `Frontend` (`.github/workflows/frontend.yml`, en la rama `frontend`) | `frontend` | Node 24: `npm ci`, `npm audit --omit=dev --audit-level=high` (falla con una vulnerabilidad alta), `npm run build:prod` (con la verificación de la CSP) y las pruebas |
+| `Frontend` (`.github/workflows/frontend.yml`, en la rama `frontend`) | `frontend` | Node 24: `npm ci`, `npm audit --omit=dev --audit-level=high` (falla con una vulnerabilidad alta), `npm run build:prod` (con la verificación de la CSP) y las **22 pruebas** del frontend |
 | `Documentación` (`docs.yml`) | `master` | Publica este sitio (solo si cambia `docs/` o `sitio/`) |
+
+Pruebas del frontend (Vitest, `npx ng test --watch=false`): las reglas de pantalla del comprobante electrónico
+viven en funciones puras para poder probarlas solas. `sunat-documento.spec.ts` (16): etiquetas (aceptado, simulado,
+rechazo con CDR frente a "no recibido", 1033 por confirmar, fuera de plazo, reemplazado), cuándo se ofrece Reenviar o
+el reemplazo y por qué, el aviso del plazo con la fecha local y el orden de las líneas de la venta.
+`avisos-facturacion.spec.ts` (5): los avisos de la campana por vencer, fuera de plazo, envíos detenidos y ventas por
+emitir.
 
 Las 7 clases marcadas `@Tag("oracle")` (las de integración y la punta a punta, 20 pruebas) usan la base de desarrollo
 con sus datos, que no existe en GitHub: la integración continua las salta (`-DexcludedGroups=oracle`) y se corren en
