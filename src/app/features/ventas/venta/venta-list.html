@@ -100,8 +100,12 @@
             <td class="text-center">
               <span class="badge" [class.badge-success]="v.estado === 'REGISTRADA'" [class.badge-danger]="v.estado === 'ANULADA'">{{ v.estado }}</span>
               @if (sunat(v); as s) {
-                <div class="sunat-corta"><span class="badge" [class]="claseSunat(s.comprobante)"
-                     [title]="s.comprobante.mensaje ?? etiquetaSunat(s.comprobante)">{{ etiquetaCorta(s.comprobante) }}</span></div>
+                @if (s.comprobante; as c) {
+                  <div class="sunat-corta"><span class="badge" [class]="claseSunat(c)"
+                       [title]="c.mensaje ?? etiquetaSunat(c)">{{ etiquetaCorta(c) }}</span></div>
+                } @else if (s.porEmitir) {
+                  <div class="sunat-corta"><span class="badge badge-warning" [title]="s.porEmitir">SUNAT: por emitir</span></div>
+                }
               }
             </td>
             <td class="text-center">
@@ -115,7 +119,9 @@
             </td>
             <td class="text-center acciones">
               @if (v.comprobanteId) {
-                <button class="btn btn-sm btn-outline-secondary" (click)="descargarComprobante(v)" title="Descargar factura o boleta en PDF">PDF</button>
+                @if (!sunat(v)?.porEmitir) {
+                  <button class="btn btn-sm btn-outline-secondary" (click)="descargarComprobante(v)" title="Descargar factura o boleta en PDF">PDF</button>
+                }
               }
               @if (v.estado === 'REGISTRADA') {
                 @if (v.estadoPago !== 'PAGADO') {
@@ -162,6 +168,13 @@
               </table>
               @if (sunat(v); as s) {
                 <div class="sunat">
+                  @if (s.porEmitir) {
+                    <div class="sunat-linea sunat-problema">
+                      <span class="sunat-doc">Comprobante</span>
+                      <span class="badge badge-warning">Por emitir</span>
+                      <span class="sunat-mensaje">{{ s.porEmitir }}</span>
+                    </div>
+                  }
                   @for (x of documentosSunat(s); track (x.esNota ? 'n' : 'c') + x.d.id) {
                     <div class="sunat-linea" [class.sunat-reemplazado]="x.reemplazado"
                          [class.sunat-problema]="!x.reemplazado && (x.d.fueraDePlazo || x.d.estado === 'RECHAZADO' || (x.d.estado === 'PENDIENTE' && x.d.intentos > 0))">

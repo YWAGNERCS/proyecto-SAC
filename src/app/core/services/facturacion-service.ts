@@ -33,14 +33,23 @@ export interface PlazoEnvio {
   fueraDePlazo: number;
   numerosPorVencer: string[];
   numerosFueraDePlazo: string[];
+  /** Ventas sin comprobante todavía porque falta un dato de JD (cuenta de detracciones). */
+  porEmitir: number;
+  ventasPorEmitir: number[];
 }
 
 export interface EstadoSunatVenta {
   ventaId: number;
-  comprobante: DocumentoSunat;
+  /** null mientras la venta está por emitir (ver porEmitir). */
+  comprobante: DocumentoSunat | null;
   notaCredito: DocumentoSunat | null;
   /** Comprobantes anteriores de la venta que SUNAT rechazó y se reemplazaron (historial de emisiones). */
   reemplazados: DocumentoSunat[];
+  /**
+   * La venta todavía no tiene comprobante porque falta un dato de JD (la cuenta de detracciones): el motivo.
+   * No usó número ni corre su plazo; se emite solo cuando el dato esté. null si ya tiene comprobante.
+   */
+  porEmitir: string | null;
 }
 
 /** Una respuesta de SUNAT del historial de envíos de un documento. */

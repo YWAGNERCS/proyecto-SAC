@@ -96,6 +96,11 @@ export class AlertasComponent implements OnInit {
         lista.push({ nivel: 'alta', titulo: plural(r.plazo.fueraDePlazo, 'comprobante fuera de plazo', 'comprobantes fuera de plazo'),
           detalle: `No llegaron a SUNAT a tiempo: emita un comprobante de reemplazo (${primeros(r.plazo.numerosFueraDePlazo)})`, ruta: '/ventas' });
       }
+      if (r.plazo && r.plazo.porEmitir > 0) {
+        lista.push({ nivel: 'alta', titulo: plural(r.plazo.porEmitir, 'venta sin comprobante', 'ventas sin comprobante'),
+          detalle: `Falta configurar la cuenta de detracciones para emitirlo (venta ${r.plazo.ventasPorEmitir.slice(0, 3).map((id) => '#' + id).join(', ')}${r.plazo.ventasPorEmitir.length > 3 ? '…' : ''})`,
+          ruta: '/ventas' });
+      }
       if (r.plazo && r.plazo.porVencer > 0) {
         lista.push({ nivel: 'alta', titulo: plural(r.plazo.porVencer, 'comprobante sin enviar a SUNAT', 'comprobantes sin enviar a SUNAT'),
           detalle: `El plazo vence hoy o mañana (${primeros(r.plazo.numerosPorVencer)})`, ruta: '/ventas' });

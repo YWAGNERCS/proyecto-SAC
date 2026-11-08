@@ -269,7 +269,8 @@ export class VentaListComponent implements OnInit {
 
   /** Pide el estado SUNAT de los comprobantes de las ventas mostradas (Facturación es otro módulo). */
   private cargarEstadosSunat() {
-    const ids = this.ventas().filter((v) => v.comprobanteId).map((v) => v.id);
+    // También las registradas sin comprobante: pueden estar "por emitir" (falta la cuenta de detracciones)
+    const ids = this.ventas().filter((v) => v.comprobanteId || v.estado === 'REGISTRADA').map((v) => v.id);
     if (!ids.length) {
       this.estadosSunat.set(new Map());
       return;
@@ -312,6 +313,7 @@ export class VentaListComponent implements OnInit {
    * Después, los comprobantes anteriores que SUNAT rechazó y se reemplazaron (historial de emisiones).
    */
   documentosSunat(s: EstadoSunatVenta): { d: DocumentoSunat; esNota: boolean; titulo: string; reemplazado: boolean }[] {
+    if (!s.comprobante) return [];   // por emitir: se muestra aparte
     const docs = [{ d: s.comprobante, esNota: false, titulo: 'Comprobante', reemplazado: false }];
     if (s.notaCredito) docs.push({ d: s.notaCredito, esNota: true, titulo: 'Nota de crédito', reemplazado: false });
     [...(s.reemplazados ?? [])].reverse().forEach(d => docs.push({ d, esNota: false, titulo: 'Reemplazado', reemplazado: true }));
