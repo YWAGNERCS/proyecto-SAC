@@ -16,14 +16,8 @@ import { ProformaResponse } from '../../features/proformas/proforma/proforma.mod
 import { OrdenService } from '../../features/servicios/orden/orden-service';
 import { OrdenTrabajo } from '../../features/servicios/orden/orden.model';
 import { FacturacionService, PlazoEnvio } from '../services/facturacion-service';
+import { Alerta, avisosDeFacturacion, plural } from './avisos-facturacion';
 
-interface Alerta {
-  nivel: 'alta' | 'media' | 'info';
-  titulo: string;
-  detalle: string;
-  ruta: string;
-  query?: Record<string, string>;
-}
 
 function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -88,27 +82,9 @@ export class AlertasComponent implements OnInit {
       plazo: this.facturacion.plazoEnvio().pipe(catchError(() => of(null as PlazoEnvio | null))),
     }).subscribe((r) => {
       const lista: Alerta[] = [];
-      const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
-      const primeros = (numeros: string[]) => numeros.slice(0, 3).join(', ') + (numeros.length > 3 ? '…' : '');
 
-      // Plazo de 3 días para que SUNAT reciba facturas y boletas: lo enviado tarde no tiene validez
-      if (r.plazo && r.plazo.fueraDePlazo > 0) {
-        lista.push({ nivel: 'alta', titulo: plural(r.plazo.fueraDePlazo, 'comprobante fuera de plazo', 'comprobantes fuera de plazo'),
-          detalle: `No llegaron a SUNAT a tiempo: emita un comprobante de reemplazo (${primeros(r.plazo.numerosFueraDePlazo)})`, ruta: '/ventas' });
-      }
-      if (r.plazo?.envioDetenido) {
-        lista.push({ nivel: 'alta', titulo: 'Envíos a SUNAT detenidos',
-          detalle: 'SUNAT rechazó el usuario o la clave SOL: corríjalos y reinicie el sistema', ruta: '/ventas' });
-      }
-      if (r.plazo && r.plazo.porEmitir > 0) {
-        lista.push({ nivel: 'alta', titulo: plural(r.plazo.porEmitir, 'venta sin comprobante', 'ventas sin comprobante'),
-          detalle: `Falta configurar la cuenta de detracciones para emitirlo (venta ${r.plazo.ventasPorEmitir.slice(0, 3).map((id) => '#' + id).join(', ')}${r.plazo.ventasPorEmitir.length > 3 ? '…' : ''})`,
-          ruta: '/ventas' });
-      }
-      if (r.plazo && r.plazo.porVencer > 0) {
-        lista.push({ nivel: 'alta', titulo: plural(r.plazo.porVencer, 'comprobante sin enviar a SUNAT', 'comprobantes sin enviar a SUNAT'),
-          detalle: `El plazo vence hoy o mañana (${primeros(r.plazo.numerosPorVencer)})`, ruta: '/ventas' });
-      }
+      // Facturación electrónica: plazo de envío, envíos detenidos y ventas por emitir (avisos-facturacion.ts)
+      lista.push(...avisosDeFacturacion(r.plazo));
 
       const vencidas = r.cuentas.filter((c) => c.diasAtraso > 0);
       if (vencidas.length) {

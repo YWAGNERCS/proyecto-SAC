@@ -8,6 +8,10 @@ import { VentaService } from './venta-service';
 import { EstadoVenta, VentaResponse } from './venta.model';
 import { DescargaService } from '../../../core/services/descarga-service';
 import { DocumentoSunat, EnvioSunat, EstadoSunatVenta, FacturacionService } from '../../../core/services/facturacion-service';
+import {
+  avisoPlazo, claseSunat, documentosSunat, etiquetaCorta, etiquetaResultado, etiquetaSunat, fechaCorta,
+  motivoReemplazo, porConfirmar, puedeReenviar,
+} from './sunat-documento';
 import { CobranzaService } from '../../cobranza/cobro/cobranza-service';
 import { IconoComponent } from '../../../core/layout/icono';
 import { PaginadorComponent } from '../../../core/layout/paginador';
@@ -286,66 +290,16 @@ export class VentaListComponent implements OnInit {
     return this.estadosSunat().get(v.id);
   }
 
-  /**
-   * SUNAT respondió 1033: ya tenía ese número por un envío anterior y no dice si fue aceptado o rechazado.
-   * No tiene validez hasta verificarlo en SUNAT, y reenviarlo solo repetiría la misma respuesta.
-   */
-  porConfirmar(d: DocumentoSunat): boolean {
-    return d.estado === 'PENDIENTE' && d.codigo === 1033;
-  }
-
-  etiquetaSunat(d: DocumentoSunat, reemplazado = false): string {
-    if (d.simulado) return 'Simulado (sin envío a SUNAT)';
-    // Reemplazado sin rechazo de SUNAT: pasó su plazo sin llegar a SUNAT
-    if (reemplazado && !d.rechazoDefinitivo && (d.estado === 'PENDIENTE' || d.estado === 'RECHAZADO')) return 'No llegó a SUNAT a tiempo';
-    if (this.porConfirmar(d)) return 'Por confirmar en SUNAT';
-    if (d.fueraDePlazo) return 'Fuera de plazo: no es válido';
-    switch (d.estado) {
-      case 'ACEPTADO': return 'Aceptado por SUNAT';
-      case 'OBSERVADO': return 'Aceptado con observaciones';
-      case 'RECHAZADO': return d.rechazoDefinitivo ? 'Rechazado por SUNAT: no es válido' : 'SUNAT no lo recibió: corrija y reenvíe';
-      default: return 'Pendiente de envío';
-    }
-  }
-
-  /**
-   * Comprobante vigente y, si existe, nota de crédito de la venta, para la línea "Comprobante electrónico".
-   * Después, los comprobantes anteriores que SUNAT rechazó y se reemplazaron (historial de emisiones).
-   */
-  documentosSunat(s: EstadoSunatVenta): { d: DocumentoSunat; esNota: boolean; titulo: string; reemplazado: boolean }[] {
-    if (!s.comprobante) return [];   // por emitir: se muestra aparte
-    const docs = [{ d: s.comprobante, esNota: false, titulo: 'Comprobante', reemplazado: false }];
-    if (s.notaCredito) docs.push({ d: s.notaCredito, esNota: true, titulo: 'Nota de crédito', reemplazado: false });
-    [...(s.reemplazados ?? [])].reverse().forEach(d => docs.push({ d, esNota: false, titulo: 'Reemplazado', reemplazado: true }));
-    return docs;
-  }
-
-  etiquetaCorta(d: DocumentoSunat): string {
-    if (d.simulado) return 'SUNAT: simulado';
-    if (this.porConfirmar(d)) return 'SUNAT: por confirmar';
-    if (d.fueraDePlazo) return 'SUNAT: fuera de plazo';
-    if (d.estado === 'RECHAZADO' && !d.rechazoDefinitivo) return 'SUNAT: no recibido';
-    return { ACEPTADO: 'SUNAT: aceptado', OBSERVADO: 'SUNAT: observado', RECHAZADO: 'SUNAT: rechazado', PENDIENTE: 'SUNAT: pendiente' }[d.estado];
-  }
-
-  claseSunat(d: DocumentoSunat): string {
-    if (d.simulado) return 'badge-neutro';
-    if (d.fueraDePlazo) return 'badge-danger';
-    const estado = d.estado;
-    return estado === 'ACEPTADO' ? 'badge-success' : estado === 'RECHAZADO' ? 'badge-danger' : 'badge-warning';
-  }
-
-  /**
-   * Se puede reenviar lo rechazado (ya corregido) y lo pendiente que tiene un aviso o agotó los reintentos.
-   * No lo que está por confirmar (1033): SUNAT respondería lo mismo; hay que verificarlo en SUNAT.
-   */
-  puedeReenviar(d: DocumentoSunat): boolean {
-    // Rechazado con CDR: el número quedó usado; se emite un comprobante de reemplazo, no se reenvía
-    // Fuera de plazo: lo que llega tarde a SUNAT no tiene validez; también se reemplaza
-    // Si se ofrece un reemplazo (p. ej. el cliente cambió de tipo), reenviar con el mismo número no sirve
-    if (this.porConfirmar(d) || d.rechazoDefinitivo || d.fueraDePlazo || d.puedeReemplazar) return false;
-    return d.estado === 'RECHAZADO' || (d.estado === 'PENDIENTE' && d.intentos > 0);
-  }
+  // Reglas de pantalla del comprobante electrónico: viven en sunat-documento.ts (funciones puras, con pruebas)
+  porConfirmar = porConfirmar;
+  etiquetaSunat = etiquetaSunat;
+  documentosSunat = documentosSunat;
+  etiquetaCorta = etiquetaCorta;
+  claseSunat = claseSunat;
+  puedeReenviar = puedeReenviar;
+  fechaCorta = fechaCorta;
+  avisoPlazo = (d: DocumentoSunat) => avisoPlazo(d);
+  etiquetaResultado = etiquetaResultado;
 
   reenviarSunat(d: DocumentoSunat, esNota: boolean) {
     this.error.set('');
@@ -363,14 +317,7 @@ export class VentaListComponent implements OnInit {
    * otro con número nuevo para la misma venta. No cambia el stock, el cobro ni los mantenimientos.
    */
   reemplazarSunat(d: DocumentoSunat, v: VentaResponse) {
-    const motivo = d.fueraDePlazo
-      ? `${d.numero} no llegó a SUNAT dentro del plazo de 3 días (vencía el ${this.fechaCorta(d.fechaLimiteEnvio)}), ` +
-        `así que enviarlo ahora ya no le daría validez.\n\n`
-      : !d.rechazoDefinitivo
-        ? `SUNAT no recibió ${d.numero} y el cliente cambió de tipo (empresa o persona natural): reenviado con su número ` +
-          `saldría el tipo de comprobante equivocado.\n\n`
-        : `SUNAT rechazó ${d.numero}${d.codigo !== null ? ` (código ${d.codigo})` : ''}, así que ese comprobante no es válido ` +
-          `y su número ya no puede usarse.\n\n`;
+    const motivo = motivoReemplazo(d) + '\n\n';
     const ok = confirm(
       motivo +
         `¿Emitir un comprobante nuevo para la venta #${v.id} de ${v.clienteNombre}?\n\n` +
@@ -391,20 +338,6 @@ export class VentaListComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => this.error.set(err.error?.message ?? `No se pudo reemplazar ${d.numero}.`),
     });
-  }
-
-  /** AAAA-MM-DD a DD/MM. */
-  fechaCorta(iso: string | null): string {
-    return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '';
-  }
-
-  /** Aviso del plazo de envío para un documento que SUNAT todavía no registró (null si no aplica). */
-  avisoPlazo(d: DocumentoSunat): string | null {
-    if (!d.fechaLimiteEnvio || d.fueraDePlazo || d.simulado) return null;
-    const hoy = new Date();
-    const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-    if (d.fechaLimiteEnvio === hoyIso) return 'Vence hoy el plazo para enviarlo a SUNAT';
-    return `Enviar a SUNAT a más tardar el ${this.fechaCorta(d.fechaLimiteEnvio)}`;
   }
 
   private claveHistorial(d: DocumentoSunat, esNota: boolean): string {
@@ -428,14 +361,6 @@ export class VentaListComponent implements OnInit {
       next: (envios) => this.historialSunat.set(new Map(this.historialSunat()).set(clave, envios)),
       error: () => this.error.set(`No se pudo cargar el historial de envíos de ${d.numero}.`),
     });
-  }
-
-  etiquetaResultado(e: EnvioSunat): string {
-    return ({
-      ACEPTADO: 'Aceptado', OBSERVADO: 'Aceptado con observaciones', RECHAZADO: 'Rechazado',
-      REINTENTAR: 'Sin respuesta de SUNAT', POR_CONFIRMAR: 'Ya registrado: por confirmar',
-      CREDENCIALES: 'Usuario o clave SOL rechazados',
-    } as Record<string, string>)[e.resultado] ?? e.resultado;
   }
 
   /** XML o CDR de un envío del historial (p. ej. la constancia de un rechazo anterior). */
