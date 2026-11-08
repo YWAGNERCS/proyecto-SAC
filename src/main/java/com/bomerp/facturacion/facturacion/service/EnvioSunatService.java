@@ -3,6 +3,8 @@ package com.bomerp.facturacion.facturacion.service;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.facturacion.comprobante.entity.Comprobante.EstadoSunat;
 import com.bomerp.facturacion.comprobante.entity.EnvioSunat;
+import com.bomerp.facturacion.comprobante.entity.EnvioSunatRegistro;
+import com.bomerp.facturacion.comprobante.repository.EnvioSunatRegistroRepository;
 import com.bomerp.facturacion.comprobante.repository.ComprobanteRepository;
 import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 import com.bomerp.facturacion.notacredito.repository.NotaCreditoRepository;
@@ -49,6 +51,7 @@ public class EnvioSunatService {
 
     private final ComprobanteRepository comprobantes;
     private final NotaCreditoRepository notas;
+    private final EnvioSunatRegistroRepository registros;
     private final OseClient ose;
     private final ApplicationEventPublisher eventos;
     private final TransactionTemplate tx;
@@ -59,11 +62,13 @@ public class EnvioSunatService {
         return t;
     });
 
-    public EnvioSunatService(ComprobanteRepository comprobantes, NotaCreditoRepository notas, OseClient ose,
+    public EnvioSunatService(ComprobanteRepository comprobantes, NotaCreditoRepository notas,
+                             EnvioSunatRegistroRepository registros, OseClient ose,
                              ApplicationEventPublisher eventos, PlatformTransactionManager txManager,
                              @Value("${app.facturacion.pausa-entre-envios-ms:1500}") long pausaMs) {
         this.comprobantes = comprobantes;
         this.notas = notas;
+        this.registros = registros;
         this.ose = ose;
         this.eventos = eventos;
         this.tx = new TransactionTemplate(txManager);
@@ -120,6 +125,7 @@ public class EnvioSunatService {
             }
             RespuestaOse r = ose.emitir(c);
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
+            registros.save(EnvioSunatRegistro.deComprobante(c.getId(), r.resultado().name(), c.getEnvio(), r.xmlFirmado(), r.cdr()));
             if (r.enlacePdf() != null) c.setEnlacePdf(r.enlacePdf());
             if (r.enlaceXml() != null) c.setEnlaceXml(r.enlaceXml());
             return c.getEstadoSunat();
@@ -176,6 +182,7 @@ public class EnvioSunatService {
             }
             RespuestaOse r = ose.emitirNotaCredito(n);
             n.setEstadoSunat(aplicar(n.getEnvio(), r));
+            registros.save(EnvioSunatRegistro.deNota(n.getId(), r.resultado().name(), n.getEnvio(), r.xmlFirmado(), r.cdr()));
             if (r.enlacePdf() != null) n.setEnlacePdf(r.enlacePdf());
             if (r.enlaceXml() != null) n.setEnlaceXml(r.enlaceXml());
             return n.getEstadoSunat();
@@ -183,22 +190,45 @@ public class EnvioSunatService {
     }
 
     /**
-     * Reenvío manual (botón "Reenviar"): un comprobante RECHAZADO (después de corregir el dato, p. ej. el
-     * RUC del cliente; SUNAT permite reenviar el mismo número) o PENDIENTE que agotó los reintentos.
-     * Vuelve a PENDIENTE con los intentos en cero y entra a la cola. 409 si ya tiene validez.
+     * Reenvío manual (botón "Reenviar") con el MISMO número: solo cuando SUNAT no llegó a registrar el
+     * comprobante, es decir, una excepción (0200-1999: se corrige el dato, p. ej. el RUC del cliente, y se
+     * reenvía; los datos del receptor se toman otra vez del cliente) o un PENDIENTE que agotó los reintentos.
+     * Vuelve a PENDIENTE con los intentos en cero y entra a la cola.
+     *
+     * 409 si ya tiene validez, si ya fue reemplazado o si SUNAT lo rechazó con CDR: ese número quedó usado y
+     * reenviarlo devolvería "ya registrado" (informe de rechazos SUNAT, D-2). Para esos está el comprobante
+     * de reemplazo (FacturacionService.emitirReemplazo).
      */
     public void reenviarComprobante(Long id) {
         tx.executeWithoutResult(s -> {
             Comprobante c = comprobantes.findById(id).orElseThrow(() -> noEncontrado("Comprobante", id));
-            reabrir(c.getEstadoSunat(), c.getEnvio(), c.getSerie() + "-" + Integer.parseInt(c.getNumero()));
+            String numero = c.getSerie() + "-" + Integer.parseInt(c.getNumero());
+            if (c.isReemplazado()) {
+                throw conflicto(numero + " ya fue reemplazado por otro comprobante: no se vuelve a enviar.");
+            }
+            if (c.rechazoDefinitivo()) {
+                throw conflicto("SUNAT rechazó " + numero + " (código " + c.getEnvio().getCodigo() + "): ese número ya "
+                        + "no puede volver a enviarse. Corrija el dato que indica SUNAT y emita un comprobante de reemplazo.");
+            }
+            reabrir(c.getEstadoSunat(), c.getEnvio(), numero);
+            if (c.getEstadoSunat() == EstadoSunat.RECHAZADO && c.getVenta() != null) {
+                c.fijarReceptor(c.getVenta().getCliente());   // excepción: SUNAT no lo registró, sale con el dato corregido
+            }
             c.setEstadoSunat(EstadoSunat.PENDIENTE);
         });
         encolar(() -> enviarComprobante(id));
     }
 
+    /** Igual que reenviarComprobante. Una nota rechazada con CDR tampoco puede reenviarse con su número. */
     public void reenviarNota(Long id) {
         tx.executeWithoutResult(s -> {
             NotaCredito n = notas.findById(id).orElseThrow(() -> noEncontrado("Nota de crédito", id));
+            Integer codigo = n.getEnvio().getCodigo();
+            if (n.getEstadoSunat() == EstadoSunat.RECHAZADO && codigo != null
+                    && ((codigo >= 2000 && codigo <= 3999) || codigo == Comprobante.CODIGO_YA_RECHAZADO)) {
+                throw conflicto("SUNAT rechazó la nota " + n.getSerie() + "-" + Integer.parseInt(n.getNumero()) + " (código "
+                        + codigo + "): ese número ya no puede volver a enviarse.");
+            }
             reabrir(n.getEstadoSunat(), n.getEnvio(), n.getSerie() + "-" + Integer.parseInt(n.getNumero()));
             n.setEstadoSunat(EstadoSunat.PENDIENTE);
         });
@@ -211,6 +241,10 @@ public class EnvioSunatService {
                     numero + " ya fue aceptado por SUNAT: no se vuelve a enviar.");
         }
         envio.setIntentos(0);
+    }
+
+    private static org.springframework.web.server.ResponseStatusException conflicto(String mensaje) {
+        return new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, mensaje);
     }
 
     private static org.springframework.web.server.ResponseStatusException noEncontrado(String que, Long id) {

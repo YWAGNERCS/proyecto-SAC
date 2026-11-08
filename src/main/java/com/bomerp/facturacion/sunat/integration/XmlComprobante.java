@@ -75,7 +75,7 @@ class XmlComprobante {
                 .moneda(moneda(venta))
                 .proveedor(proveedor())
                 .firmante(firmante())
-                .cliente(cliente(venta.getCliente()))
+                .cliente(receptor(comprobante))
                 .detalles(detalles(venta.getDetalles()));
 
         if (venta.getTipoPago() == Venta.TipoPago.CREDITO && venta.getFechaLimitePago() != null) {
@@ -109,7 +109,7 @@ class XmlComprobante {
                 .moneda(moneda(venta))
                 .proveedor(proveedor())
                 .firmante(firmante())
-                .cliente(cliente(venta.getCliente()))
+                .cliente(receptor(original))
                 .comprobanteAfectadoSerieNumero(original.getSerie() + "-" + Integer.parseInt(original.getNumero()))
                 .comprobanteAfectadoTipo(tipoDocumento(original))
                 .tipoNota("01")
@@ -146,6 +146,22 @@ class XmlComprobante {
         return Firmante.builder().ruc(empresa.ruc()).razonSocial(empresa.razonSocial()).build();
     }
 
+    /**
+     * Receptor tal como quedó al emitir el comprobante (editar el cliente después no lo cambia). La nota de
+     * crédito usa el del comprobante que anula. Comprobantes sin esos datos (no debería haber tras la
+     * migración) toman el cliente actual.
+     */
+    private static io.github.project.openubl.xbuilder.content.models.common.Cliente receptor(Comprobante c) {
+        if (c.getReceptorNumDoc() == null) {
+            return cliente(c.getVenta().getCliente());
+        }
+        return io.github.project.openubl.xbuilder.content.models.common.Cliente.builder()
+                .tipoDocumentoIdentidad(c.getReceptorTipoDoc())
+                .numeroDocumentoIdentidad(c.getReceptorNumDoc())
+                .nombre(c.getReceptorNombre())
+                .build();
+    }
+
     /** Catálogo 06: 6 = RUC, 1 = DNI, 0 = sin documento (boletas menores). */
     private static io.github.project.openubl.xbuilder.content.models.common.Cliente cliente(Cliente c) {
         String tipo;
@@ -170,7 +186,7 @@ class XmlComprobante {
     /** Cada línea con su valor unitario sin IGV y ya descontado; servicios en ZZ, bienes en NIU. */
     private static List<DocumentoVentaDetalle> detalles(List<DetalleVenta> lineas) {
         return lineas.stream().map(d -> DocumentoVentaDetalle.builder()
-                .descripcion(d.getProducto().getNombre())
+                .descripcion(d.getDescripcion())
                 .unidadMedida(d.getProducto().getSector() == Producto.Sector.SERVICIO ? "ZZ" : "NIU")
                 .cantidad(BigDecimal.valueOf(d.getCantidad()))
                 .precio(d.calcularSubtotalDetalle().divide(BigDecimal.valueOf(d.getCantidad()), 10, RoundingMode.HALF_UP))

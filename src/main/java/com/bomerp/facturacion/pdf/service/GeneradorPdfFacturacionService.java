@@ -85,14 +85,22 @@ public class GeneradorPdfFacturacionService {
             document.add(new Paragraph(" "));
             
             // Datos del Cliente
-            document.add(new Paragraph("SEÑOR(ES): " + comprobante.getVenta().getCliente().getNombreORazonSocial(), boldFont));
-            if (comprobante.getVenta().getCliente().getRuc() != null) {
-                document.add(new Paragraph("RUC: " + comprobante.getVenta().getCliente().getRuc(), normalFont));
-            } else if (comprobante.getVenta().getCliente().getDni() != null) {
-                document.add(new Paragraph("DNI: " + comprobante.getVenta().getCliente().getDni(), normalFont));
+            // El receptor tal como se emitió el comprobante: debe coincidir con el XML que recibió SUNAT, aunque
+            // el cliente se haya editado después. Sin datos guardados (no debería haber), los del cliente actual.
+            boolean guardado = comprobante.getReceptorNumDoc() != null;
+            var cliente = comprobante.getVenta().getCliente();
+            String nombreReceptor = guardado ? comprobante.getReceptorNombre() : cliente.getNombreORazonSocial();
+            String ruc = guardado ? ("6".equals(comprobante.getReceptorTipoDoc()) ? comprobante.getReceptorNumDoc() : null) : cliente.getRuc();
+            String dni = guardado ? ("1".equals(comprobante.getReceptorTipoDoc()) ? comprobante.getReceptorNumDoc() : null) : cliente.getDni();
+            String direccion = guardado ? comprobante.getReceptorDireccion() : cliente.getDireccion();
+            document.add(new Paragraph("SEÑOR(ES): " + nombreReceptor, boldFont));
+            if (ruc != null) {
+                document.add(new Paragraph("RUC: " + ruc, normalFont));
+            } else if (dni != null) {
+                document.add(new Paragraph("DNI: " + dni, normalFont));
             }
-            if (comprobante.getVenta().getCliente().getDireccion() != null) {
-                document.add(new Paragraph("DIRECCIÓN: " + comprobante.getVenta().getCliente().getDireccion(), normalFont));
+            if (direccion != null) {
+                document.add(new Paragraph("DIRECCIÓN: " + direccion, normalFont));
             }
             document.add(new Paragraph("FECHA DE EMISIÓN: " + comprobante.getFechaEmision(), normalFont));
             document.add(new Paragraph("MONEDA: " + comprobante.getVenta().getMoneda(), normalFont));
@@ -116,7 +124,8 @@ public class GeneradorPdfFacturacionService {
             agregarCeldaCabecera(table, "Subtotal", headerFont);
             
             for (DetalleVenta item : comprobante.getVenta().getDetalles()) {
-                agregarCeldaItem(table, item.getProducto().getNombre() + "\n" + item.getProducto().getDescripcion(), normalFont, Element.ALIGN_LEFT);
+                // El nombre guardado al vender, el mismo que va en el XML (renombrar el producto no lo cambia)
+                agregarCeldaItem(table, item.getDescripcion(), normalFont, Element.ALIGN_LEFT);
                 agregarCeldaItem(table, String.valueOf(item.getCantidad()), normalFont, Element.ALIGN_CENTER);
                 agregarCeldaItem(table, comprobante.getVenta().getMoneda() + " " + item.getPrecioUnitario().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
                 agregarCeldaItem(table, porcentaje(item.getDescuentoPorcentaje()), normalFont, Element.ALIGN_CENTER);

@@ -60,6 +60,8 @@ public class AuditoriaService {
             r("POST", "/inventario/ajustes", "Inventario", "Ajustó el inventario (ajuste #{nuevo})"),
             r("POST", "/facturacion/emitir/{n}", "Facturación", "Emitió el comprobante de la venta #{id}"),
             r("POST", "/facturacion/{n}/enviar", "Facturación", "Envió el comprobante #{id}"),
+            r("POST", "/facturacion/{n}/reemplazar", "Facturación", "Emitió un comprobante de reemplazo del comprobante rechazado #{id}"),
+            r("POST", "/facturacion/{n}/reenviar", "Facturación", "Reenvió a SUNAT el comprobante #{id}"),
             r("POST", "/productos", "Catálogo", "Creó el producto #{nuevo}"),
             r("PUT", "/productos/{n}", "Catálogo", "Modificó el producto #{id}"),
             r("DELETE", "/productos/{n}", "Catálogo", "Eliminó el producto #{id}"),

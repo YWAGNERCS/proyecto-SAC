@@ -50,6 +50,25 @@ public class DetalleVenta {
     @Column(name = "costo_unitario", precision = 12, scale = 2)
     private BigDecimal costoUnitario;
 
+    /**
+     * Nombre del producto al vender: es lo que sale en el comprobante (XML y PDF). Se guarda aparte para que
+     * renombrar el producto después no cambie un comprobante ya emitido.
+     */
+    @Column(length = 150)
+    private String descripcion;
+
+    /** El nombre guardado al vender; en filas sin él (no debería haber tras la migración), el actual del producto. */
+    public String getDescripcion() {
+        return descripcion != null ? descripcion : (producto != null ? producto.getNombre() : null);
+    }
+
+    @PrePersist
+    void fijarDescripcion() {
+        if (descripcion == null && producto != null) {
+            descripcion = producto.getNombre();
+        }
+    }
+
     public DetalleVenta(Producto producto, Integer cantidad, BigDecimal precioUnitario) {
         this(producto, cantidad, precioUnitario, BigDecimal.ZERO);
     }

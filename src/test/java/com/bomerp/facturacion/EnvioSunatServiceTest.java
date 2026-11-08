@@ -2,7 +2,9 @@ package com.bomerp.facturacion;
 
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.facturacion.comprobante.entity.Comprobante.EstadoSunat;
+import com.bomerp.facturacion.comprobante.entity.EnvioSunatRegistro;
 import com.bomerp.facturacion.comprobante.repository.ComprobanteRepository;
+import com.bomerp.facturacion.comprobante.repository.EnvioSunatRegistroRepository;
 import com.bomerp.facturacion.facturacion.service.EnvioSunatService;
 import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 import com.bomerp.facturacion.notacredito.repository.NotaCreditoRepository;
@@ -30,6 +32,7 @@ class EnvioSunatServiceTest {
 
     private ComprobanteRepository comprobantes;
     private NotaCreditoRepository notas;
+    private EnvioSunatRegistroRepository registros;
     private OseClient ose;
     private ApplicationEventPublisher eventos;
     private EnvioSunatService servicio;
@@ -38,9 +41,10 @@ class EnvioSunatServiceTest {
     void preparar() {
         comprobantes = mock(ComprobanteRepository.class);
         notas = mock(NotaCreditoRepository.class);
+        registros = mock(EnvioSunatRegistroRepository.class);
         ose = mock(OseClient.class);
         eventos = mock(ApplicationEventPublisher.class);
-        servicio = new EnvioSunatService(comprobantes, notas, ose, eventos, mock(PlatformTransactionManager.class), 0);
+        servicio = new EnvioSunatService(comprobantes, notas, registros, ose, eventos, mock(PlatformTransactionManager.class), 0);
     }
 
     private Comprobante comprobante(long id, EstadoSunat estado) {
@@ -68,6 +72,31 @@ class EnvioSunatServiceTest {
         assertThat(c.getEnvio().getXmlFirmado()).isNotNull();
         assertThat(c.getEnvio().getCdr()).isNotNull();
         verify(eventos).publishEvent(new EnvioSunatService.ComprobanteAceptadoEvent(1L));
+    }
+
+    /** Cada respuesta de SUNAT queda en el historial con su propio XML y CDR (informe de rechazos SUNAT, D-3). */
+    @Test
+    void cadaRespuestaQuedaEnElHistorialSinPisarLaAnterior() {
+        Comprobante c = comprobante(30, EstadoSunat.PENDIENTE);
+        when(ose.emitir(c)).thenReturn(
+                RespuestaOse.reintentar("SUNAT no respondió", new byte[]{1}),
+                respuesta(Resultado.RECHAZADO, 2800, "Tipo de documento del receptor no permitido"));
+
+        servicio.enviarComprobante(30L);
+        servicio.enviarComprobante(30L);
+
+        var guardados = org.mockito.ArgumentCaptor.forClass(EnvioSunatRegistro.class);
+        verify(registros, times(2)).save(guardados.capture());
+        var primero = guardados.getAllValues().get(0);
+        var segundo = guardados.getAllValues().get(1);
+        assertThat(primero.getComprobanteId()).isEqualTo(30L);
+        assertThat(primero.getResultado()).isEqualTo("REINTENTAR");
+        assertThat(primero.getIntento()).isEqualTo(1);
+        assertThat(primero.tieneCdr()).isFalse();
+        assertThat(segundo.getResultado()).isEqualTo("RECHAZADO");
+        assertThat(segundo.getIntento()).isEqualTo(2);
+        assertThat(segundo.getCodigo()).isEqualTo(2800);
+        assertThat(segundo.tieneCdr()).isTrue();   // la constancia del rechazo queda guardada
     }
 
     @Test
@@ -160,13 +189,39 @@ class EnvioSunatServiceTest {
         verifyNoInteractions(eventos);
     }
 
+    /** Excepción (0200-1999): SUNAT no registró el comprobante, así que se reenvía con el mismo número. */
     @Test
-    void reenviarUnRechazadoLoVuelvePendienteConLosIntentosEnCero() {
+    void reenviarUnaExcepcionLaVuelvePendienteConLosIntentosEnCero() {
         Comprobante c = comprobante(13, EstadoSunat.RECHAZADO);
-        c.getEnvio().registrarIntento(2800, "Tipo de documento del receptor no permitido", null, null);
+        c.getEnvio().registrarIntento(305, "El RUC del receptor no existe", null, null);
         servicio.reenviarComprobante(13L);
         assertThat(c.getEstadoSunat()).isEqualTo(EstadoSunat.PENDIENTE);
         assertThat(c.getEnvio().getIntentos()).isZero();
+    }
+
+    /** Rechazo con CDR (2000-3999) o 1032: el número quedó usado; no se reenvía, se emite un reemplazo (D-2). */
+    @Test
+    void unRechazoDefinitivoNoSeReenviaConElMismoNumero() {
+        Comprobante c = comprobante(15, EstadoSunat.RECHAZADO);
+        c.getEnvio().registrarIntento(2800, "Tipo de documento del receptor no permitido", null, new byte[]{2});
+        assertThatThrownBy(() -> servicio.reenviarComprobante(15L))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("comprobante de reemplazo");
+
+        Comprobante yaRechazado = comprobante(16, EstadoSunat.RECHAZADO);
+        yaRechazado.getEnvio().registrarIntento(1032, "El comprobante ya esta informado y se encuentra con estado anulado o rechazado", null, null);
+        assertThatThrownBy(() -> servicio.reenviarComprobante(16L)).isInstanceOf(ResponseStatusException.class);
+
+        assertThat(c.getEstadoSunat()).isEqualTo(EstadoSunat.RECHAZADO);
+        verify(ose, after(300).never()).emitir(any());
+    }
+
+    @Test
+    void unComprobanteReemplazadoNoSeReenvia() {
+        Comprobante c = comprobante(17, EstadoSunat.RECHAZADO);
+        c.getEnvio().registrarIntento(305, "excepción", null, null);
+        c.setReemplazado(true);
+        assertThatThrownBy(() -> servicio.reenviarComprobante(17L))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("ya fue reemplazado");
     }
 
     @Test

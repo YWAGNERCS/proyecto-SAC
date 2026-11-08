@@ -38,6 +38,33 @@ public class ComprobanteController {
         return ResponseEntity.accepted().build();
     }
 
+    /**
+     * Comprobante de reemplazo: SUNAT rechazó este comprobante con CDR (su número quedó usado) y se emite otro,
+     * con número nuevo, para la misma venta. 409 si no tiene un rechazo definitivo, ya fue reemplazado o la venta
+     * está anulada.
+     */
+    @PostMapping("/{id}/reemplazar")
+    public ComprobanteResponseDTO reemplazar(@PathVariable Long id) {
+        return facturacionService.reemplazar(id);
+    }
+
+    /** Historial de envíos a SUNAT del comprobante (cada respuesta, con su código y mensaje), el último primero. */
+    @GetMapping("/{id}/envios")
+    public List<FacturacionService.EnvioSunatDTO> envios(@PathVariable Long id) {
+        return facturacionService.historialEnvios(false, id);
+    }
+
+    @GetMapping("/notas-credito/{id}/envios")
+    public List<FacturacionService.EnvioSunatDTO> enviosNota(@PathVariable Long id) {
+        return facturacionService.historialEnvios(true, id);
+    }
+
+    /** XML o CDR de un envío del historial (p. ej. la constancia de un rechazo anterior). */
+    @GetMapping("/envios/{envioId}/{archivo:xml|cdr}")
+    public ResponseEntity<byte[]> archivoEnvio(@PathVariable Long envioId, @PathVariable String archivo) {
+        return descargar(facturacionService.archivoDeEnvio(envioId, "cdr".equals(archivo)));
+    }
+
     @PostMapping("/notas-credito/{id}/reenviar")
     public ResponseEntity<Void> reenviarNota(@PathVariable Long id) {
         envioSunat.reenviarNota(id);

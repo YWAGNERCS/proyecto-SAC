@@ -5,6 +5,8 @@ import com.bomerp.facturacion.serie.service.CorrelativoService;
 import com.bomerp.facturacion.pdf.service.GeneradorPdfFacturacionService;
 import com.bomerp.facturacion.comprobante.entity.Comprobante;
 import com.bomerp.facturacion.comprobante.repository.ComprobanteRepository;
+import com.bomerp.facturacion.comprobante.entity.EnvioSunatRegistro;
+import com.bomerp.facturacion.comprobante.repository.EnvioSunatRegistroRepository;
 import com.bomerp.facturacion.notacredito.entity.NotaCredito;
 import com.bomerp.facturacion.notacredito.repository.NotaCreditoRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ public class FacturacionService implements ComprobantesDeVenta {
     private final GeneradorPdfFacturacionService generadorPdfFacturacionService;
     private final NotaCreditoRepository notaCreditoRepository;
     private final CorrelativoService correlativoService;
+    private final EnvioSunatRegistroRepository registrosEnvio;
 
     /**
      * Series de SGE-JD (app.facturacion.series.*). Si JD ya emite con F001/B001 desde el portal de
@@ -47,7 +50,7 @@ public class FacturacionService implements ComprobantesDeVenta {
     private String serieNotaBoleta;
 
     public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, EnvioSunatService envioSunat, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
-                              CorrelativoService correlativoService) {
+                              CorrelativoService correlativoService, EnvioSunatRegistroRepository registrosEnvio) {
         this.comprobanteRepository = comprobanteRepository;
         this.ventaService = ventaService;
         this.envioSunat = envioSunat;
@@ -55,22 +58,65 @@ public class FacturacionService implements ComprobantesDeVenta {
         this.generadorPdfFacturacionService = generadorPdfFacturacionService;
         this.notaCreditoRepository = notaCreditoRepository;
         this.correlativoService = correlativoService;
+        this.registrosEnvio = registrosEnvio;
     }
 
     @Transactional
     public Comprobante emitirComprobanteParaVenta(Long ventaId) {
         Venta venta = ventaService.obtenerPorIdPublico(ventaId);   // 404 si no existe
 
-        // Verificamos si ya tiene comprobante
-        if (comprobanteRepository.findByVentaId(ventaId).isPresent()) {
+        // Una venta tiene un solo comprobante vigente (el rechazado con CDR se sustituye con emitirReemplazo)
+        if (comprobanteRepository.findByVentaIdAndReemplazadoFalse(ventaId).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La venta ya tiene un comprobante emitido.");
         }
+        return crearComprobante(venta, null);
+    }
 
+    /**
+     * Comprobante de reemplazo (informe de rechazos SUNAT, D-2 y D-4): SUNAT rechazó el comprobante con
+     * constancia (CDR), su número quedó usado y no puede reenviarse. Se emite otro, con número nuevo, fecha
+     * de hoy y los datos actuales del cliente (ya corregidos), para la MISMA venta. No se tocan el stock, el
+     * cobro ni los mantenimientos de la venta: solo cambia el documento tributario. El rechazado queda como
+     * historial, marcado como reemplazado, con su CDR.
+     *
+     * 409 si el comprobante no tiene un rechazo definitivo (válido, pendiente o una excepción que se corrige
+     * reenviando el mismo número), si ya fue reemplazado o si la venta está anulada (ya no necesita comprobante).
+     */
+    @Transactional
+    public Comprobante emitirReemplazo(Long comprobanteId) {
+        Comprobante rechazado = comprobanteRepository.bloquear(comprobanteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));
+        String numero = rechazado.getSerie() + "-" + Integer.parseInt(rechazado.getNumero());
+        if (rechazado.isReemplazado()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, numero + " ya fue reemplazado por otro comprobante.");
+        }
+        if (!rechazado.rechazoDefinitivo()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, rechazado.getEstadoSunat().valido()
+                    ? numero + " tiene validez ante SUNAT: no se reemplaza. Para anularlo, anule la venta (se emite una nota de crédito)."
+                    : numero + " no fue rechazado con constancia de SUNAT: no se reemplaza. Si SUNAT no lo recibió, corrija el dato y reenvíelo con el mismo número.");
+        }
+        Venta venta = rechazado.getVenta();
+        if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La venta #" + venta.getId()
+                    + " está anulada: ya no necesita comprobante.");
+        }
+        rechazado.setReemplazado(true);
+        comprobanteRepository.saveAndFlush(rechazado);   // antes del nuevo: el índice admite un solo vigente por venta
+
+        Comprobante nuevo = crearComprobante(venta, rechazado);
+        log.info("{} (rechazado por SUNAT, código {}) reemplazado por {}-{} en la venta #{}", numero,
+                rechazado.getEnvio().getCodigo(), nuevo.getSerie(), nuevo.getNumero(), venta.getId());
+        return nuevo;
+    }
+
+    /** Crea el comprobante PENDIENTE de la venta con los datos actuales del cliente y lo programa para SUNAT. */
+    private Comprobante crearComprobante(Venta venta, Comprobante reemplazaA) {
         Comprobante comprobante = new Comprobante();
         comprobante.setVenta(venta);
+        comprobante.setReemplazaA(reemplazaA);
         comprobante.setTotal(venta.calcularTotal());
+        comprobante.fijarReceptor(venta.getCliente());
 
-        // Lógica Simple (Patrón O - Open/Closed aplicable a futuro aquí)
         if (venta.getCliente().getTipo() == Cliente.TipoCliente.EMPRESA) {
             comprobante.setTipo(Comprobante.TipoComprobante.FACTURA);
             comprobante.setSerie(serieFactura);
@@ -82,18 +128,21 @@ public class FacturacionService implements ComprobantesDeVenta {
         // Correlativo por serie: 00000001, 00000002, ... sin saltos ni repetidos (SUNAT)
         comprobante.setNumero(correlativoService.siguiente(comprobante.getSerie()));
 
-        // Guardamos antes de enviar al OSE
         Comprobante comprobanteGuardado = comprobanteRepository.save(comprobante);
+        ventaService.asignarComprobante(venta.getId(), comprobanteGuardado.getId());
 
-        // Actualizamos la venta
-        ventaService.asignarComprobante(ventaId, comprobanteGuardado.getId());
-
-        // Queda PENDIENTE: se envía a SUNAT cuando la venta se confirme (EnvioSunatService), así
+        // Queda PENDIENTE: se envía a SUNAT cuando la transacción se confirme (EnvioSunatService), así
         // una SUNAT lenta o caída no traba ni deshace la venta; si no responde, se reintenta solo.
         envioSunat.programarComprobante(comprobanteGuardado.getId());
         return comprobanteGuardado;
     }
-    
+
+    /** Reemplazo desde la API: responde con el DTO del comprobante nuevo. */
+    @Transactional
+    public ComprobanteResponseDTO reemplazar(Long comprobanteId) {
+        return ComprobanteResponseDTO.desdeEntidad(emitirReemplazo(comprobanteId));
+    }
+
     /**
      * Emite la nota de crédito que anula el comprobante de una venta.
      * Solo aplica si el comprobante fue ACEPTADO por SUNAT: uno pendiente o rechazado
@@ -104,7 +153,7 @@ public class FacturacionService implements ComprobantesDeVenta {
      */
     @Transactional
     public Optional<NotaCredito> emitirNotaCreditoPorAnulacion(Long ventaId, String motivo) {
-        Optional<Comprobante> comprobante = comprobanteRepository.findByVentaId(ventaId);
+        Optional<Comprobante> comprobante = comprobanteRepository.findByVentaIdAndReemplazadoFalse(ventaId);
         // Un comprobante rechazado no tiene validez: no hay nada que anular ante SUNAT. Uno pendiente
         // sí: la nota se crea ya y sale cuando SUNAT acepte el original (EnvioSunatService).
         if (comprobante.isEmpty() || comprobante.get().getEstadoSunat() == Comprobante.EstadoSunat.RECHAZADO) {
@@ -136,14 +185,14 @@ public class FacturacionService implements ComprobantesDeVenta {
     @Override
     @Transactional(readOnly = true)
     public Optional<String> numeroComprobanteDeVenta(Long ventaId) {
-        return comprobanteRepository.findByVentaId(ventaId).map(c -> c.getSerie() + "-" + c.getNumero());
+        return comprobanteRepository.findByVentaIdAndReemplazadoFalse(ventaId).map(c -> c.getSerie() + "-" + c.getNumero());
     }
 
     /** Número de la nota de crédito que anuló el comprobante de una venta, si existe. */
     @Override
     @Transactional(readOnly = true)
     public Optional<String> numeroNotaCreditoDeVenta(Long ventaId) {
-        return comprobanteRepository.findByVentaId(ventaId)
+        return comprobanteRepository.findByVentaIdAndReemplazadoFalse(ventaId)
                 .flatMap(c -> notaCreditoRepository.findByComprobanteReferencia_Id(c.getId()))
                 .map(nc -> nc.getSerie() + "-" + nc.getNumero());
     }
@@ -151,7 +200,7 @@ public class FacturacionService implements ComprobantesDeVenta {
     /** PDF del comprobante (factura o boleta) de una venta, para descargarlo. 404 si la venta no tiene comprobante. */
     @Transactional(readOnly = true)
     public PdfComprobante pdfDeVenta(Long ventaId) {
-        Comprobante comprobante = comprobanteRepository.findByVentaId(ventaId)
+        Comprobante comprobante = comprobanteRepository.findByVentaIdAndReemplazadoFalse(ventaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "La venta #" + ventaId + " no tiene comprobante emitido."));
         java.io.File archivo = null;
@@ -172,10 +221,16 @@ public class FacturacionService implements ComprobantesDeVenta {
     @Transactional(readOnly = true)
     public List<com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO> estadosDeVentas(List<Long> ventaIds) {
         if (ventaIds == null || ventaIds.isEmpty()) return List.of();
-        List<Comprobante> lista = comprobanteRepository.findByVenta_IdIn(ventaIds.stream().limit(200).toList());
+        List<Comprobante> lista = comprobanteRepository.findByVenta_IdInOrderByIdAsc(ventaIds.stream().limit(200).toList());
         var notas = notaCreditoRepository.findByComprobanteReferencia_IdIn(lista.stream().map(Comprobante::getId).toList())
                 .stream().collect(java.util.stream.Collectors.toMap(n -> n.getComprobanteReferencia().getId(), n -> n));
-        return lista.stream().map(c -> com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO.de(c, notas.get(c.getId()))).toList();
+        // Por venta: el vigente y, si hubo reemplazos, los rechazados anteriores (historial de emisiones)
+        var reemplazados = lista.stream().filter(Comprobante::isReemplazado)
+                .collect(java.util.stream.Collectors.groupingBy(c -> c.getVenta().getId()));
+        return lista.stream().filter(c -> !c.isReemplazado())
+                .map(c -> com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO.de(c, notas.get(c.getId()),
+                        reemplazados.getOrDefault(c.getVenta().getId(), List.of())))
+                .toList();
     }
 
     /** Archivo guardado del envío a SUNAT: XML firmado o CDR (constancia de recepción, ZIP). */
@@ -203,6 +258,47 @@ public class FacturacionService implements ComprobantesDeVenta {
                     : numero + " todavía no tiene XML firmado (no se ha enviado a SUNAT).");
         }
         return new ArchivoSunat(cdr ? "CDR_" + numero + ".zip" : numero + ".xml", contenido, cdr);
+    }
+
+    /** Una respuesta de SUNAT del historial de envíos (sin el XML ni el CDR: esos se descargan aparte). */
+    public record EnvioSunatDTO(Long id, int intento, java.time.LocalDateTime fecha, String resultado, Integer codigo,
+                                String mensaje, boolean tieneXml, boolean tieneCdr) {
+        static EnvioSunatDTO de(EnvioSunatRegistro r) {
+            return new EnvioSunatDTO(r.getId(), r.getIntento(), r.getFecha(), r.getResultado(), r.getCodigo(),
+                    r.getMensaje(), r.tieneXml(), r.tieneCdr());
+        }
+    }
+
+    /** Historial de envíos a SUNAT de un comprobante o de una nota de crédito, el más reciente primero. */
+    @Transactional(readOnly = true)
+    public List<EnvioSunatDTO> historialEnvios(boolean esNota, Long id) {
+        if (esNota ? !notaCreditoRepository.existsById(id) : !comprobanteRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, (esNota ? "Nota de crédito" : "Comprobante") + " no encontrado: " + id);
+        }
+        var registros = esNota ? registrosEnvio.findByNotaCreditoIdOrderByIdDesc(id) : registrosEnvio.findByComprobanteIdOrderByIdDesc(id);
+        return registros.stream().map(EnvioSunatDTO::de).toList();
+    }
+
+    /** XML o CDR de un envío del historial (p. ej. la constancia de un rechazo que después se reenvió). */
+    @Transactional(readOnly = true)
+    public ArchivoSunat archivoDeEnvio(Long envioId, boolean cdr) {
+        EnvioSunatRegistro r = registrosEnvio.findById(envioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Envío a SUNAT no encontrado: " + envioId));
+        String numero;
+        if (r.getComprobanteId() != null) {
+            Comprobante c = comprobanteRepository.findById(r.getComprobanteId()).orElseThrow();
+            numero = c.getSerie() + "-" + Integer.parseInt(c.getNumero());
+        } else {
+            NotaCredito n = notaCreditoRepository.findById(r.getNotaCreditoId()).orElseThrow();
+            numero = n.getSerie() + "-" + Integer.parseInt(n.getNumero());
+        }
+        byte[] contenido = cdr ? r.getCdr() : r.getXml();
+        if (contenido == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, numero + ": el intento " + r.getIntento()
+                    + (cdr ? " no tiene constancia de SUNAT (CDR)." : " no tiene XML firmado."));
+        }
+        String sufijo = "_intento" + r.getIntento();
+        return new ArchivoSunat(cdr ? "CDR_" + numero + sufijo + ".zip" : numero + sufijo + ".xml", contenido, cdr);
     }
 
     @Transactional(readOnly = true)
@@ -252,6 +348,11 @@ public class FacturacionService implements ComprobantesDeVenta {
         return null;
     }
 
+    /** Nombre del receptor tal como se emitió; en comprobantes sin esos datos, el del cliente actual. */
+    private static String nombreReceptor(Comprobante c) {
+        return c.getReceptorNombre() != null ? c.getReceptorNombre() : c.getVenta().getCliente().getNombreORazonSocial();
+    }
+
     @Transactional(readOnly = true)
     public void enviarFacturaCorreo(Long comprobanteId) {
         Comprobante comprobante = comprobanteRepository.findById(comprobanteId)
@@ -272,7 +373,7 @@ public class FacturacionService implements ComprobantesDeVenta {
         String cuerpoHtml = "<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;'>" +
                             "<div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>" +
                             "<h2 style='color: #0078d4;'>Documento Emitido: " + tipoDoc + "</h2>" +
-                            "<p>Estimado cliente <strong>" + org.springframework.web.util.HtmlUtils.htmlEscape(comprobante.getVenta().getCliente().getNombreORazonSocial()) + "</strong>,</p>" +
+                            "<p>Estimado cliente <strong>" + org.springframework.web.util.HtmlUtils.htmlEscape(nombreReceptor(comprobante)) + "</strong>,</p>" +
                             "<p>Le informamos que se ha emitido su comprobante de pago <strong>" + numeroDoc + "</strong> por el monto de <strong>" + comprobante.getVenta().getMoneda() + " " + comprobante.getTotal() + "</strong>.</p>" +
                             "<p>Adjunto a este correo encontrará la representación impresa de su documento (PDF).</p>" +
                             "<hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'/>" +

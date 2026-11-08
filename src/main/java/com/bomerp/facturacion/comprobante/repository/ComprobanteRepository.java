@@ -11,9 +11,17 @@ import java.util.Optional;
 
 @Repository
 public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> {
-    Optional<Comprobante> findByVentaId(Long ventaId);
+    /** El comprobante vigente de la venta: el que no fue reemplazado (hay uno como máximo, por índice único). */
+    Optional<Comprobante> findByVentaIdAndReemplazadoFalse(Long ventaId);
 
-    List<Comprobante> findByVenta_IdIn(List<Long> ventaIds);
+    /** Todos los comprobantes de esas ventas, vigentes y reemplazados, en orden de emisión. */
+    List<Comprobante> findByVenta_IdInOrderByIdAsc(List<Long> ventaIds);
+
+    /** Bloquea el comprobante hasta el fin de la transacción: dos reemplazos simultáneos no pueden cruzarse. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
+    @Query("SELECT c FROM Comprobante c WHERE c.id = :id")
+    Optional<Comprobante> bloquear(@Param("id") Long id);
 
     /**
      * Pendientes que el reintento automático puede volver a enviar, los más antiguos primero. Se filtran aquí,

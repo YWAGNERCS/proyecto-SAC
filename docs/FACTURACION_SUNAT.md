@@ -59,8 +59,12 @@ En la computadora donde corre SGE-JD en modo producción (`compose-prod.yml`, ve
 
 - Registrar una venta real y, en **Ventas**, revisar que su comprobante diga **Aceptado por SUNAT**
   (código 0). Descargar el **CDR**: es la constancia oficial de SUNAT.
-- Si sale **Rechazado**, el mensaje dice qué dato corregir (por ejemplo, el RUC del cliente). Se corrige
-  el dato y se pulsa **Reenviar**: SUNAT permite reenviar un comprobante rechazado con el mismo número.
+- Si sale **Rechazado por SUNAT: no es válido** (código 2000-3999), el mensaje dice qué dato corregir (por
+  ejemplo, el RUC del cliente). Ese número ya quedó usado en SUNAT y no se puede volver a enviar: se corrige
+  el dato en Clientes y se pulsa **Emitir comprobante de reemplazo**, que emite otro número para la misma
+  venta. El rechazado queda en el historial (botón **Envíos**) con su constancia, que hay que conservar.
+- Si sale **SUNAT no lo recibió: corrija y reenvíe**, SUNAT no registró ese número: se corrige el dato y
+  se pulsa **Reenviar** (sale con el mismo número).
 - Los comprobantes emitidos antes (datos de prueba o de antes de activar SUNAT) aparecen como
   **Simulado (sin envío a SUNAT)**: no tienen validez tributaria.
 
@@ -70,7 +74,9 @@ En la computadora donde corre SGE-JD en modo producción (`compose-prod.yml`, ve
 |---|---|---|
 | Aceptado por SUNAT | Código 0: válido | Nada. XML y CDR quedan guardados |
 | Aceptado con observaciones | Código 4000 o más: válido, con una observación | Revisar la observación para las próximas ventas |
-| Rechazado por SUNAT | Código 2000-3999: no tiene validez | Corregir el dato que indica el mensaje y pulsar **Reenviar** |
+| Rechazado por SUNAT: no es válido | Código 2000-3999 (o 1032): no tiene validez y su número ya quedó usado | Corregir el dato en Clientes y pulsar **Emitir comprobante de reemplazo** (número nuevo, misma venta; no cambian el stock ni el cobro) |
+| SUNAT no lo recibió: corrija y reenvíe | Excepción: SUNAT no registró el comprobante | Corregir el dato que indica el mensaje y pulsar **Reenviar** (mismo número) |
+| Por confirmar en SUNAT | Código 1033: SUNAT ya tiene ese número de un envío anterior y no dice si lo aceptó | Consultarlo en SUNAT (Consulta de validez del CPE) antes de entregarlo al cliente |
 | Pendiente de envío | SUNAT no respondió o falta un dato de JD | Se reintenta solo cada 3 minutos (hasta 20 veces). Si el mensaje indica un dato de JD (cuenta de detracciones), configurarlo y pulsar **Reenviar** |
 
 La nota de crédito de una venta anulada sale cuando SUNAT aceptó el comprobante original. Si el
@@ -89,6 +95,7 @@ original fue rechazado, no se crea nota: no había nada válido que anular.
 - **Comunicación de baja:** una venta se anula con nota de crédito, que es lo habitual. La baja de un
   comprobante por error material no está implementada.
 - **Consulta del CDR de un envío cuya respuesta se perdió:** si SUNAT recibió el comprobante pero la
-  respuesta no llegó, el reintento obtiene el código 1033 ("ya registrado") y se marca aceptado, sin CDR.
+  respuesta no llegó, el reintento obtiene el código 1033 ("ya registrado") y queda **por confirmar**, sin
+  CDR: hay que verificarlo a mano en SUNAT. La consulta automática (getStatusCdr) solo existe en producción.
 - **Guías de remisión electrónicas**, retenciones y percepciones emitidas por JD.
 - **Resumen diario de boletas:** no hace falta; SUNAT acepta las boletas una por una (probado en beta).
