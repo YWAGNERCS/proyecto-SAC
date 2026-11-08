@@ -16,7 +16,7 @@ Cómo funciona por dentro: ver *Facturación electrónica: envío directo a SUNA
 | 2 | Crear un **usuario SOL secundario** con permiso solo para comprobantes electrónicos | SGE-JD se identifica ante SUNAT con este usuario | **No usar la Clave SOL principal de Lisandro**: si alguien obtiene el usuario secundario, no puede ver ni cambiar nada más del RUC |
 | 3 | Obtener el **certificado digital** y registrarlo en SOL | Firma cada comprobante; sin firma válida SUNAT lo rechaza | SUNAT entrega gratis el *Certificado Digital Tributario* (hasta el 31/12/2027), solicitándolo desde SOL. Se recibe un archivo `.pfx` o `.p12` con su contraseña |
 | 4 | Decidir las **series** de SGE-JD | Un mismo número no puede emitirse dos veces | Si JD ya emite con F001 o B001 desde el portal de SUNAT u otro sistema, SGE-JD debe usar otras (por ejemplo F002 y B002). Facturas y sus notas empiezan con F; boletas y sus notas con B; 4 caracteres |
-| 5 | Dar la **cuenta de detracciones** del Banco de la Nación | Va obligatoriamente en las facturas con detracción (servicios desde S/ 700) | Sin ella SUNAT rechaza esas facturas (código 3034). SGE-JD no las envía y las deja **pendientes** hasta que se configure |
+| 5 | Dar la **cuenta de detracciones** del Banco de la Nación | Va obligatoriamente en las facturas con detracción (servicios desde S/ 700) | Sin ella SUNAT rechaza esas facturas (código 3034). SGE-JD guarda la venta **por emitir**, sin comprobante ni número (no corre el plazo de 3 días), y la emite sola cuando se configure |
 
 ## 2. Configurar el servidor
 
@@ -78,6 +78,7 @@ En la computadora donde corre SGE-JD en modo producción (`compose-prod.yml`, ve
 | SUNAT no lo recibió: corrija y reenvíe | Excepción: SUNAT no registró el comprobante | Corregir el dato que indica el mensaje y pulsar **Reenviar** (mismo número) |
 | Por confirmar en SUNAT | Código 1033: SUNAT ya tiene ese número de un envío anterior y no dice si lo aceptó | Consultarlo en SUNAT (Consulta de validez del CPE) antes de entregarlo al cliente |
 | Pendiente de envío | SUNAT no respondió o falta un dato de JD | Se reintenta solo cada 3 minutos (hasta 20 veces). Si el mensaje indica un dato de JD (cuenta de detracciones), configurarlo y pulsar **Reenviar**. Debajo dice hasta qué día SUNAT lo recibe |
+| Por emitir | Venta con detracción y la cuenta de detracciones todavía sin configurar: no tiene comprobante ni número | Configurar `CUENTA_DETRACCIONES` en `.env.prod` y reiniciar el backend: el comprobante se emite solo en unos minutos |
 | Fuera de plazo: no es válido | Pasaron 3 días desde la emisión sin que SUNAT lo registrara: lo que llega tarde no tiene validez | Pulsar **Emitir comprobante de reemplazo** (número nuevo, fecha de hoy, misma venta). La campana avisa antes de que venza |
 
 La nota de crédito de una venta anulada sale cuando SUNAT aceptó el comprobante original. Si el

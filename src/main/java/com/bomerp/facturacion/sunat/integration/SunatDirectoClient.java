@@ -35,13 +35,25 @@ public class SunatDirectoClient implements OseClient {
         log.info("Facturación: envío directo a SUNAT ({})", props.url());
     }
 
+    /**
+     * Una factura con detracción sin la cuenta del Banco de la Nación la rechaza SUNAT (3034). Es un dato que
+     * le falta a JD, no a la venta: el comprobante no se crea (ni toma número) hasta que se configure.
+     */
+    @Override
+    public String motivoParaNoEmitir(Venta venta) {
+        if (venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION
+                && (empresa.cuentaDetracciones() == null || empresa.cuentaDetracciones().isBlank())) {
+            return "Falta configurar la cuenta de detracciones de JD en el Banco de la Nación (CUENTA_DETRACCIONES). "
+                    + "El comprobante se emite solo cuando esté configurada; mientras tanto no usa número ni corre su plazo.";
+        }
+        return null;
+    }
+
     @Override
     public RespuestaOse emitir(Comprobante comprobante) {
-        // Una factura con detracción sin la cuenta del Banco de la Nación la rechaza SUNAT (3034). Es un
-        // dato que le falta a JD, no al comprobante: no se envía y queda PENDIENTE; al configurar la
-        // cuenta, el reintento automático la envía.
-        if (comprobante.getVenta().getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION
-                && (empresa.cuentaDetracciones() == null || empresa.cuentaDetracciones().isBlank())) {
+        // Comprobantes que ya tenían número cuando faltaba la cuenta (antes del 07/11/2026): no se envían y
+        // quedan PENDIENTES; al configurarla, el reintento automático los envía (si siguen en plazo).
+        if (motivoParaNoEmitir(comprobante.getVenta()) != null) {
             return RespuestaOse.reintentar("No se envió: falta configurar la cuenta de detracciones de JD en el "
                     + "Banco de la Nación (CUENTA_DETRACCIONES). Se enviará sola cuando esté configurada.", null);
         }

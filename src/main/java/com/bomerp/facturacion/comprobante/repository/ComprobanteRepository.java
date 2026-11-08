@@ -37,6 +37,14 @@ public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> 
                                                @Param("emitidosDesde") java.time.LocalDate emitidosDesde,
                                                org.springframework.data.domain.Limit lote);
 
+    /**
+     * Ventas registradas (no anuladas) sin comprobante vigente: las que esperan un dato de JD para emitirlo
+     * (OseClient.motivoParaNoEmitir). Toda otra venta recibe su comprobante en la misma transacción.
+     */
+    @Query("SELECT v FROM Venta v WHERE v.estado = com.bomerp.ventas.venta.entity.Venta.EstadoVenta.REGISTRADA"
+            + " AND NOT EXISTS (SELECT c.id FROM Comprobante c WHERE c.venta = v AND c.reemplazado = false) ORDER BY v.id")
+    List<com.bomerp.ventas.venta.entity.Venta> ventasPorEmitir();
+
     /** Comprobantes vigentes que SUNAT aún no tiene (pendientes o rechazados), para el aviso del plazo de envío. */
     List<Comprobante> findByReemplazadoFalseAndEstadoSunatIn(java.util.Collection<Comprobante.EstadoSunat> estados);
 

@@ -13,8 +13,15 @@ import java.util.List;
  *
  * @param reemplazados comprobantes anteriores de la misma venta que SUNAT rechazó con CDR y se sustituyeron
  *                     (historial de emisiones), del más antiguo al más reciente; vacío si no hubo reemplazos
+ * @param porEmitir    la venta todavía no tiene comprobante porque falta un dato de JD (p. ej. la cuenta de
+ *                     detracciones): el motivo. Entonces comprobante es null. Null si ya tiene comprobante.
  */
-public record EstadoSunatVentaDTO(Long ventaId, Documento comprobante, Documento notaCredito, List<Documento> reemplazados) {
+public record EstadoSunatVentaDTO(Long ventaId, Documento comprobante, Documento notaCredito, List<Documento> reemplazados,
+                                  String porEmitir) {
+
+    public static EstadoSunatVentaDTO porEmitir(Long ventaId, String motivo) {
+        return new EstadoSunatVentaDTO(ventaId, null, null, List.of(), motivo);
+    }
 
     /**
      * @param tieneXml          hay XML firmado guardado (para descargarlo)
@@ -61,6 +68,6 @@ public record EstadoSunatVentaDTO(Long ventaId, Documento comprobante, Documento
     public static EstadoSunatVentaDTO de(Comprobante c, NotaCredito nota, List<Comprobante> reemplazados) {
         return new EstadoSunatVentaDTO(c.getVenta().getId(), Documento.de(c),
                 nota == null ? null : Documento.de(nota),
-                reemplazados.stream().map(Documento::de).toList());
+                reemplazados.stream().map(Documento::de).toList(), null);
     }
 }

@@ -22,6 +22,15 @@ public interface OseClient {
     RespuestaOse emitirNotaCredito(NotaCredito notaCredito);
 
     /**
+     * Por qué el comprobante de esta venta todavía no se puede emitir, o null si se puede. Se pregunta ANTES
+     * de darle número: mientras falte un dato de JD (p. ej. la cuenta de detracciones), la venta queda sin
+     * comprobante, así no consume un correlativo ni corre el plazo de 3 días para enviarlo a SUNAT.
+     */
+    default String motivoParaNoEmitir(com.bomerp.ventas.venta.entity.Venta venta) {
+        return null;
+    }
+
+    /**
      * Cómo terminó un envío. REINTENTAR: SUNAT caída, lenta o limitando envíos (no es culpa del comprobante).
      * POR_CONFIRMAR: SUNAT ya tiene registrado ese número por un envío anterior (código 1033), pero no dice si
      * ese envío fue aceptado o rechazado: no tiene validez hasta verificarlo, y reenviarlo solo repetiría el 1033.

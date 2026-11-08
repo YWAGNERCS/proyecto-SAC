@@ -35,6 +35,8 @@ public class FacturacionService implements ComprobantesDeVenta {
     private final NotaCreditoRepository notaCreditoRepository;
     private final CorrelativoService correlativoService;
     private final EnvioSunatRegistroRepository registrosEnvio;
+    private final com.bomerp.facturacion.ose.integration.OseClient ose;
+    private final org.springframework.transaction.support.TransactionTemplate tx;
 
     /**
      * Series de SGE-JD (app.facturacion.series.*). Si JD ya emite con F001/B001 desde el portal de
@@ -50,7 +52,9 @@ public class FacturacionService implements ComprobantesDeVenta {
     private String serieNotaBoleta;
 
     public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, EnvioSunatService envioSunat, com.bomerp.notificaciones.notificacion.service.NotificadorCorreo notificadorCorreo, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
-                              CorrelativoService correlativoService, EnvioSunatRegistroRepository registrosEnvio) {
+                              CorrelativoService correlativoService, EnvioSunatRegistroRepository registrosEnvio,
+                              com.bomerp.facturacion.ose.integration.OseClient ose,
+                              org.springframework.transaction.PlatformTransactionManager txManager) {
         this.comprobanteRepository = comprobanteRepository;
         this.ventaService = ventaService;
         this.envioSunat = envioSunat;
@@ -59,6 +63,8 @@ public class FacturacionService implements ComprobantesDeVenta {
         this.notaCreditoRepository = notaCreditoRepository;
         this.correlativoService = correlativoService;
         this.registrosEnvio = registrosEnvio;
+        this.ose = ose;
+        this.tx = new org.springframework.transaction.support.TransactionTemplate(txManager);
     }
 
     @Transactional
@@ -69,7 +75,53 @@ public class FacturacionService implements ComprobantesDeVenta {
         if (comprobanteRepository.findByVentaIdAndReemplazadoFalse(ventaId).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La venta ya tiene un comprobante emitido.");
         }
+        String motivo = ose.motivoParaNoEmitir(venta);
+        if (motivo != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Comprobante de la venta #" + ventaId + " por emitir: " + motivo);
+        }
         return crearComprobante(venta, null);
+    }
+
+    /**
+     * Al registrar la venta (VentasFacturacionListener). Si falta un dato de JD para emitir el comprobante
+     * (p. ej. la cuenta de detracciones), la venta se guarda igual y queda "por emitir", sin número: así no
+     * consume un correlativo ni corre el plazo de 3 días para enviarlo (informe de rechazos SUNAT, D-6).
+     * emitirVentasPorEmitir lo emite cuando el dato ya está.
+     *
+     * @return el comprobante creado, o vacío si quedó por emitir
+     */
+    @Transactional
+    public Optional<Comprobante> emitirAlRegistrar(Long ventaId) {
+        Venta venta = ventaService.obtenerPorIdPublico(ventaId);
+        String motivo = ose.motivoParaNoEmitir(venta);
+        if (motivo != null) {
+            log.warn("Venta #{} registrada sin comprobante (por emitir): {}", ventaId, motivo);
+            return Optional.empty();
+        }
+        return Optional.of(emitirComprobanteParaVenta(ventaId));
+    }
+
+    /**
+     * Emite el comprobante de las ventas que quedaron por emitir, en cuanto se puede (p. ej. al arrancar con la
+     * cuenta de detracciones ya configurada). Cada una en su propia transacción: una que falle no frena a las demás.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(initialDelayString = "${app.facturacion.reintento-inicial-ms:60000}",
+            fixedDelayString = "${app.facturacion.reintento-ms:180000}")
+    public void emitirVentasPorEmitir() {
+        List<Long> listas = tx.execute(s -> comprobanteRepository.ventasPorEmitir().stream()
+                .filter(v -> ose.motivoParaNoEmitir(v) == null).map(Venta::getId).toList());
+        if (listas == null || listas.isEmpty()) return;
+        log.info("Emitiendo el comprobante de {} venta(s) que estaban por emitir", listas.size());
+        for (Long ventaId : listas) {
+            try {
+                tx.executeWithoutResult(s -> {
+                    Comprobante c = emitirComprobanteParaVenta(ventaId);
+                    log.info("Venta #{}: comprobante {}-{} emitido (estaba por emitir)", ventaId, c.getSerie(), c.getNumero());
+                });
+            } catch (Exception e) {
+                log.error("No se pudo emitir el comprobante de la venta #{} (por emitir): {}", ventaId, e.getMessage());
+            }
+        }
     }
 
     /**
@@ -104,6 +156,11 @@ public class FacturacionService implements ComprobantesDeVenta {
         if (venta.getEstado() == Venta.EstadoVenta.ANULADA) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La venta #" + venta.getId()
                     + " está anulada: ya no necesita comprobante.");
+        }
+        String motivo = ose.motivoParaNoEmitir(venta);
+        if (motivo != null) {
+            // Un reemplazo con número nuevo tampoco podría enviarse: se gastaría otro número
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Todavía no se puede emitir el reemplazo de " + numero + ": " + motivo);
         }
         rechazado.setReemplazado(true);
         comprobanteRepository.saveAndFlush(rechazado);   // antes del nuevo: el índice admite un solo vigente por venta
@@ -233,10 +290,17 @@ public class FacturacionService implements ComprobantesDeVenta {
         // Por venta: el vigente y, si hubo reemplazos, los rechazados anteriores (historial de emisiones)
         var reemplazados = lista.stream().filter(Comprobante::isReemplazado)
                 .collect(java.util.stream.Collectors.groupingBy(c -> c.getVenta().getId()));
-        return lista.stream().filter(c -> !c.isReemplazado())
+        List<com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO> estados = new java.util.ArrayList<>(lista.stream()
+                .filter(c -> !c.isReemplazado())
                 .map(c -> com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO.de(c, notas.get(c.getId()),
                         reemplazados.getOrDefault(c.getVenta().getId(), List.of())))
-                .toList();
+                .toList());
+        // Ventas sin comprobante todavía (esperan un dato de JD): se muestran como "por emitir"
+        var pedidas = new java.util.HashSet<>(ventaIds);
+        comprobanteRepository.ventasPorEmitir().stream().filter(v -> pedidas.contains(v.getId()))
+                .forEach(v -> estados.add(com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO.porEmitir(v.getId(),
+                        java.util.Objects.requireNonNullElse(ose.motivoParaNoEmitir(v), "Se emite en unos minutos."))));
+        return estados;
     }
 
     /**
@@ -244,7 +308,8 @@ public class FacturacionService implements ComprobantesDeVenta {
      * envío de 3 días (informe D-6). Por vencer: vence hoy o mañana. Fuera de plazo: ya venció, hay que
      * emitir un comprobante de reemplazo.
      */
-    public record PlazoEnvioDTO(int porVencer, int fueraDePlazo, List<String> numerosPorVencer, List<String> numerosFueraDePlazo) {}
+    public record PlazoEnvioDTO(int porVencer, int fueraDePlazo, List<String> numerosPorVencer, List<String> numerosFueraDePlazo,
+                                int porEmitir, List<Long> ventasPorEmitir) {}
 
     @Transactional(readOnly = true)
     public PlazoEnvioDTO plazoDeEnvio() {
@@ -261,7 +326,10 @@ public class FacturacionService implements ComprobantesDeVenta {
                     if (c.fueraDePlazo(hoy)) fuera.add(numero);
                     else if (!hoy.isBefore(c.fechaLimiteEnvio().minusDays(1))) porVencer.add(numero);
                 });
-        return new PlazoEnvioDTO(porVencer.size(), fuera.size(), porVencer, fuera);
+        // Ventas sin comprobante porque falta un dato de JD: no corre plazo, pero el cliente espera su comprobante
+        List<Long> porEmitir = comprobanteRepository.ventasPorEmitir().stream()
+                .filter(v -> ose.motivoParaNoEmitir(v) != null).map(Venta::getId).toList();
+        return new PlazoEnvioDTO(porVencer.size(), fuera.size(), porVencer, fuera, porEmitir.size(), porEmitir);
     }
 
     /** Archivo guardado del envío a SUNAT: XML firmado o CDR (constancia de recepción, ZIP). */
