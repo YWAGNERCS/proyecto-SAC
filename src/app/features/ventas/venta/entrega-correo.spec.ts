@@ -1,5 +1,5 @@
 import { EntregaCorreo, EnvioCorreo } from '../../../core/services/facturacion-service';
-import { confirmacionReenvio, detalleEntrega, etiquetaCorreo, puedeReenviarCorreo, yaSeEnvio } from './entrega-correo';
+import { confirmacionReenvio, detalleEntrega, etiquetaAmbiente, etiquetaCorreo, puedeReenviarCorreo, yaSeEnvio } from './entrega-correo';
 
 function envio(parcial: Partial<EnvioCorreo>): EnvioCorreo {
   return {
@@ -21,6 +21,13 @@ describe('Entrega del comprobante por correo', () => {
     expect(etiquetaCorreo('ENVIADO')).toBe('Entregado al servidor de correo');
     expect(etiquetaCorreo('FALLIDO')).toBe('No se pudo enviar');
     expect(etiquetaCorreo('INCIERTO')).toBe('Envío por confirmar');
+  });
+
+  it('muestra el ambiente en que SUNAT lo aceptó (solo producción tiene validez)', () => {
+    expect(etiquetaAmbiente('PRODUCCION')).toBe('Producción');
+    expect(etiquetaAmbiente('BETA')).toBe('Beta (pruebas, sin validez)');
+    expect(etiquetaAmbiente('NO_REGISTRADO')).toBe('No registrado');
+    expect(etiquetaAmbiente(null)).toBeNull();
   });
 
   it('dice cuándo salió, cuándo se reintenta o por qué no sale', () => {

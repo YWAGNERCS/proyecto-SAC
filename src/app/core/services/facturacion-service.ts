@@ -93,6 +93,11 @@ export interface EnvioCorreo {
 
 export interface EntregaCorreo {
   comprobanteId: number;
+  /**
+   * Ambiente de SUNAT en que se aceptó, registrado al aceptarlo y fijo: PRODUCCION (con validez tributaria), BETA
+   * (pruebas), SIMULADO o NO_REGISTRADO (aceptado antes de que se guardara este dato). null si aún no se aceptó.
+   */
+  ambienteEmision?: 'PRODUCCION' | 'BETA' | 'SIMULADO' | 'NO_REGISTRADO' | null;
   /** Correo registrado del cliente hoy. */
   correoCliente: string | null;
   /** Por qué no se envía (todavía no válido, beta de SUNAT, cliente sin correo…); null si se puede. */

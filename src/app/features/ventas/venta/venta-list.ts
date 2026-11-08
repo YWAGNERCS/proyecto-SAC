@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
 import { VentaService } from './venta-service';
 import { DetalleVentaResponse, EstadoVenta, VentaResponse } from './venta.model';
 import { textoPrecioEditado } from './precio-editado';
-import { claseCorreo, confirmacionReenvio, detalleEntrega, etiquetaCorreo, fechaHora, origenEnvio, puedeReenviarCorreo,
+import { claseCorreo, confirmacionReenvio, detalleEntrega, etiquetaAmbiente, etiquetaCorreo, fechaHora, origenEnvio, puedeReenviarCorreo,
   yaSeEnvio } from './entrega-correo';
 import { EntregaCorreo } from '../../../core/services/facturacion-service';
 import { DescargaService } from '../../../core/services/descarga-service';
@@ -391,6 +391,7 @@ export class VentaListComponent implements OnInit {
 
   // ── Entrega del comprobante por correo (estado, historial y reenvío) ──
   etiquetaCorreo = etiquetaCorreo;
+  etiquetaAmbiente = etiquetaAmbiente;
   claseCorreo = claseCorreo;
   detalleEntrega = detalleEntrega;
   puedeReenviarCorreo = puedeReenviarCorreo;

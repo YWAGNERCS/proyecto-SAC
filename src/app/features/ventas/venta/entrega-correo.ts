@@ -25,6 +25,17 @@ export function claseCorreo(estado: EstadoCorreo): string {
   }
 }
 
+/** Ambiente de SUNAT en que se aceptó el comprobante (solo producción tiene validez tributaria). */
+export function etiquetaAmbiente(ambiente: EntregaCorreo['ambienteEmision']): string | null {
+  switch (ambiente) {
+    case 'PRODUCCION': return 'Producción';
+    case 'BETA': return 'Beta (pruebas, sin validez)';
+    case 'SIMULADO': return 'Simulado (sin validez)';
+    case 'NO_REGISTRADO': return 'No registrado';
+    default: return null;
+  }
+}
+
 /** "automático" / "reenvío de lisandro" */
 export function origenEnvio(e: EnvioCorreo): string {
   return e.tipo === 'AUTOMATICO' ? 'automático' : `reenvío${e.solicitadoPor ? ' de ' + e.solicitadoPor : ''}`;

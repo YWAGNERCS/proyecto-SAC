@@ -218,6 +218,10 @@
                         <div class="entrega-fila">
                           <span class="entrega-dato"><span class="muted">SUNAT</span>
                             <span class="badge" [class]="claseSunat(x.d)">{{ etiquetaSunat(x.d, false) }}</span></span>
+                          @if (etiquetaAmbiente(c.ambienteEmision); as amb) {
+                            <span class="entrega-dato" title="Ambiente de SUNAT en que se aceptó: queda fijo y solo producción tiene validez tributaria">
+                              <span class="muted">Ambiente</span> {{ amb }}</span>
+                          }
                           <span class="entrega-dato"><span class="muted">Correo</span>
                             @if (c.ultimo; as u) {
                               <span [class]="claseCorreo(u.estado)" [title]="u.estado === 'ENVIADO' ? 'El servidor de correo lo aceptó; no confirma que el cliente lo haya leído' : ''">{{ etiquetaCorreo(u.estado) }}</span>
