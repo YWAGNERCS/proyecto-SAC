@@ -11,7 +11,7 @@ class DetraccionSinCuentaTest {
 
     private static SunatDirectoClient cliente(String cuenta) {
         return new SunatDirectoClient(
-                new SunatProperties("https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService", "MODDATOS", "x", null, null),
+                new SunatProperties("BETA", "https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService", "MODDATOS", "x", null, null),
                 new EmpresaProperties("JD Refrigeración S.A.C.", "20000000001", "Lima", cuenta));
     }
 
@@ -32,7 +32,7 @@ class DetraccionSinCuentaTest {
     void soloLaSunatDeProduccionDaValidez() {
         assertThat(cliente(null).conValidezTributaria()).isFalse();
         SunatDirectoClient produccion = new SunatDirectoClient(
-                new SunatProperties("https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService", "USUARIO1", "x", null, null),
+                new SunatProperties("PRODUCCION", "https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService", "USUARIO1", "x", null, null),
                 new EmpresaProperties("JD Refrigeración S.A.C.", "20000000001", "Lima", null));
         assertThat(produccion.conValidezTributaria()).isTrue();
     }

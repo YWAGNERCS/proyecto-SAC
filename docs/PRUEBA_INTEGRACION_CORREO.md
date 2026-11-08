@@ -6,6 +6,13 @@ Oracle temporal (borrado al terminar), el backend real, Keycloak de desarrollo, 
 local que guarda los mensajes sin reenviarlos. Los correos de todos los clientes de esa copia se cambiaron a
 `@sgejd.test`. Nada se envió a la SUNAT de producción ni a ningún cliente. Herramientas: `pruebas-integracion/`.
 
+> **Actualización (08/11/2026, después de esta prueba):** la fase B usó un intermediario local hacia la beta cuya
+> dirección no decía "beta", y SGE-JD lo registró como PRODUCCION. Eso mostró el problema de deducir el ambiente por la
+> dirección: desde entonces el ambiente se declara en `SUNAT_AMBIENTE` y solo se aceptan las direcciones oficiales de
+> SUNAT (`AmbienteSunat`, `AmbienteSunatTest`). Ese intermediario ya **no funcionaría** (el backend no arranca con él)
+> y se quitó del repositorio. La fase B queda como evidencia de esa fecha; el camino del correo lo siguen cubriendo
+> `EntregaComprobanteIntegracionTest` y `NotificadorCorreoRealTest`.
+
 ## 1. Migraciones
 
 | Cadena | Punto de partida | Migraciones | Resultado |

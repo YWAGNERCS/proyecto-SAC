@@ -116,6 +116,8 @@ services:
       EMPRESA_WEB: ${EMPRESA_WEB:-}
       # Facturación electrónica (docs/FACTURACION_SUNAT.md): "simulado" hasta tener las credenciales de JD
       FACTURACION_MODO: ${FACTURACION_MODO:-simulado}
+      # Con FACTURACION_MODO=sunat, SUNAT_AMBIENTE (PRODUCCION o BETA) es obligatorio y SUNAT_URL tiene que ser la oficial
+      SUNAT_AMBIENTE: ${SUNAT_AMBIENTE:-}
       SUNAT_URL: ${SUNAT_URL:-https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService}
       SUNAT_USUARIO: ${SUNAT_USUARIO:-MODDATOS}
       SUNAT_CLAVE: ${SUNAT_CLAVE:-MODDATOS}

@@ -38,7 +38,7 @@ class SunatBetaTest {
                 .filter(l -> l.startsWith("SUNAT_CERT_CLAVE=")).map(l -> l.substring(17).trim()).findFirst().orElseThrow();
         EmpresaProperties empresa = new EmpresaProperties("JD REFRIGERACIÓN S.A.C.", "20521632268",
                 "Jr. Jorge Chávez N° 184 / 206, Breña, Lima", "00-000-123456");
-        cliente = new SunatDirectoClient(new SunatProperties(BETA, "MODDATOS", "MODDATOS", "certificados/beta-prueba.p12", clave), empresa);
+        cliente = new SunatDirectoClient(new SunatProperties("BETA", BETA, "MODDATOS", "MODDATOS", "certificados/beta-prueba.p12", clave), empresa);
     }
 
     /** La beta corta los envíos en ráfaga (HTTP 401): una pausa entre pruebas, como hace la cola real. */

@@ -26,7 +26,9 @@ class SunatSoapClient {
 
     private static final Duration ESPERA = Duration.ofSeconds(30);
 
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    // Sin seguir redirecciones: una respuesta 3xx no puede llevar el comprobante a otro servidor
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NEVER).build();
     private final String url;
     private final String usuario;
     private final String clave;

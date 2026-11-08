@@ -29,6 +29,7 @@ En la computadora donde corre SGE-JD en modo producción (`compose-prod.yml`, ve
 
    ```properties
    FACTURACION_MODO=sunat
+   SUNAT_AMBIENTE=PRODUCCION
    SUNAT_URL=https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService
    SUNAT_USUARIO=<usuario SOL secundario, sin el RUC>
    SUNAT_CLAVE=<su clave>
@@ -47,10 +48,24 @@ En la computadora donde corre SGE-JD en modo producción (`compose-prod.yml`, ve
    docker compose -f compose-prod.yml --env-file .env.prod up -d backend
    ```
 
-   El log debe decir `Facturación: envío directo a SUNAT (https://e-factura.sunat.gob.pe/...)`.
+   El log debe decir `Facturación: envío directo a SUNAT, ambiente PRODUCCION (https://e-factura.sunat.gob.pe/...)`.
+
+   **`SUNAT_AMBIENTE` es obligatorio** con `FACTURACION_MODO=sunat` (PRODUCCION o BETA, sin valor por defecto) y
+   `SUNAT_URL` tiene que ser **exactamente la dirección oficial** de ese ambiente:
+
+   | SUNAT_AMBIENTE | SUNAT_URL |
+   |---|---|
+   | `PRODUCCION` | `https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService` |
+   | `BETA` | `https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService` |
+
+   Si falta el ambiente, si no corresponde a la dirección o si la dirección no es la oficial (otro servidor, un
+   intermediario o proxy, `http`, otro puerto, parámetros), **el backend no arranca** y el log dice exactamente qué
+   corregir. Antes el ambiente se deducía buscando "beta" en la dirección, y cualquier otra dirección quedaba como
+   producción: comprobantes de pruebas habrían salido por correo a los clientes como válidos. Ese ambiente es el que
+   queda fijo en cada comprobante aceptado (sección 5).
 
 > **Antes de producción, conviene probar en beta en esa misma computadora:** con
-> `FACTURACION_MODO=sunat`, la URL de beta (`https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService`),
+> `FACTURACION_MODO=sunat`, `SUNAT_AMBIENTE=BETA`, la URL de beta (`https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService`),
 > `SUNAT_USUARIO=MODDATOS` y `SUNAT_CLAVE=MODDATOS`, y el certificado de JD. Así se comprueba que el
 > certificado abre y que la red llega a SUNAT, sin emitir nada real. En producción **no hay "prueba"**:
 > cada comprobante enviado es real.

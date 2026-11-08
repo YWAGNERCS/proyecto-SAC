@@ -12,8 +12,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Envío directo a SUNAT con el usuario SOL y el certificado digital de JD (SEE - Del Contribuyente).
- * Se activa con app.facturacion.modo=sunat; la URL decide si es el ambiente beta (pruebas, sin
- * efecto tributario) o producción. Sin esa propiedad se usa el envío simulado.
+ * Se activa con app.facturacion.modo=sunat. El ambiente (PRODUCCION o BETA) lo declara SUNAT_AMBIENTE y tiene que
+ * corresponder a la dirección oficial de SUNAT (AmbienteSunat): si no, el backend no arranca. Sin esa propiedad se usa
+ * el envío simulado.
  */
 @Slf4j
 @Component
@@ -24,15 +25,19 @@ public class SunatDirectoClient implements OseClient {
     private final SunatSoapClient sunat;
     private final SunatProperties props;
     private final EmpresaProperties empresa;
+    /** Ambiente declarado y comprobado al arrancar: es el que queda registrado en cada comprobante aceptado. */
+    private final com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision ambiente;
     private CertificadoSunat certificado;
 
     public SunatDirectoClient(SunatProperties props, EmpresaProperties empresa) {
         this.props = props;
         this.empresa = empresa;
+        // Antes de nada: ambiente declarado + dirección oficial de ese ambiente (si no, no arranca)
+        this.ambiente = AmbienteSunat.validar(props.ambiente(), props.url());
         this.xml = new XmlComprobante(empresa);
         // SUNAT pide el usuario como RUC + usuario SOL (en beta: RUC + MODDATOS)
         this.sunat = new SunatSoapClient(props.url(), empresa.ruc() + props.usuario(), props.clave());
-        log.info("Facturación: envío directo a SUNAT ({})", props.url());
+        log.info("Facturación: envío directo a SUNAT, ambiente {} ({})", ambiente, props.url());
     }
 
     /**
@@ -128,12 +133,10 @@ public class SunatDirectoClient implements OseClient {
         return ambiente() == com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.PRODUCCION;
     }
 
-    /** La URL decide el ambiente: la de pruebas de SUNAT contiene "beta". */
+    /** El ambiente declarado en SUNAT_AMBIENTE y comprobado contra la dirección oficial al arrancar. */
     @Override
     public com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision ambiente() {
-        return props.url() != null && !props.url().toLowerCase().contains("beta")
-                ? com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.PRODUCCION
-                : com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision.BETA;
+        return ambiente;
     }
 
     /** Se carga al primer envío: el backend arranca aunque falte el certificado y lo dice al emitir. */
