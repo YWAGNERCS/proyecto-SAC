@@ -9,6 +9,7 @@ import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.event.RutinaMantenimiento;
 import com.bomerp.ventas.venta.service.VentaService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Venta real contra Oracle (se deshace al terminar: no deja ventas ni envía nada a SUNAT): con la rutina
  * del botón "Implementar rutinas de mantenimiento" se programan sus visitas; sin rutina, ninguna.
  */
+// Necesita Oracle con los datos de desarrollo: la integración continua la salta (-DexcludedGroups=oracle)
+@Tag("oracle")
 @SpringBootTest
 @Transactional
 class RutinaMantenimientoIntegracionTest {

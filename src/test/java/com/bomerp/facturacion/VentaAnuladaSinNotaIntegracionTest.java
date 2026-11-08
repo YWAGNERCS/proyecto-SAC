@@ -11,6 +11,7 @@ import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.service.VentaService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +33,8 @@ import static org.mockito.Mockito.*;
  * a SUNAT está reemplazado por un mock (no sale nada, ni a la beta) y todo se deshace al terminar.
  */
 // Reintento automático apagado: con el mock, tomaría los comprobantes PENDIENTES reales de la base
+// Necesita Oracle con los datos de desarrollo: la integración continua la salta (-DexcludedGroups=oracle)
+@Tag("oracle")
 @SpringBootTest(properties = "app.facturacion.reintento-inicial-ms=86400000")
 @Transactional
 class VentaAnuladaSinNotaIntegracionTest {

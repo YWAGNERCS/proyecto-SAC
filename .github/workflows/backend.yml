@@ -1,0 +1,74 @@
+# Integración continua del backend: en cada push a master (y en cada pull request hacia master) compila con
+# Java 21 y corre las pruebas que no necesitan Oracle.
+#
+# Las pruebas marcadas @Tag("oracle") (7 clases: integración y punta a punta) usan la base de desarrollo con
+# sus datos (clientes, comprobantes, series...), que no existe en GitHub: se corren en la PC con `mvn test`.
+# Aquí se saltan con -DexcludedGroups=oracle. SunatBetaTest tampoco corre (solo con SUNAT_BETA=1).
+name: Backend
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - 'sitio/**'
+      - '**.md'
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Compilar y probar (sin Oracle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: America/Lima
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Pruebas sin Oracle
+        run: mvn -B -ntp test -DexcludedGroups=oracle
+
+      - name: Resumen de pruebas
+        if: always()
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import glob, re
+          filas, t, f, e, s = [], 0, 0, 0, 0
+          for p in sorted(glob.glob('target/surefire-reports/TEST-*.xml')):
+              cab = re.search(r'<testsuite [^>]*', open(p, encoding='utf-8').read(4000)).group(0)
+              g = lambda k: int(re.search(k + r'="(\d+)"', cab).group(1))
+              nombre = re.search(r'name="([^"]+)"', cab).group(1).split('.')[-1]
+              t += g('tests'); f += g('failures'); e += g('errors'); s += g('skipped')
+              estado = 'falló' if g('failures') or g('errors') else 'ok'
+              filas.append(f'| {nombre} | {g("tests")} | {estado} |')
+          print('### Pruebas del backend (sin Oracle)')
+          print(f'**{t} pruebas**: {f} fallas, {e} errores, {s} omitidas.')
+          print('')
+          print('| Clase | Pruebas | Resultado |')
+          print('|---|---|---|')
+          print('\n'.join(filas))
+          EOF
+
+      - name: Informes de Surefire (si falló)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-surefire
+          path: target/surefire-reports/
+          retention-days: 7

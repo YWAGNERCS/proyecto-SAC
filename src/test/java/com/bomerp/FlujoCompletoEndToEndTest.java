@@ -2,6 +2,7 @@ package com.bomerp;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * Requiere Oracle encendido (Keycloak no: el token se simula con {@code jwt()}).
  */
+// Necesita Oracle con los datos de desarrollo: la integración continua la salta (-DexcludedGroups=oracle)
+@Tag("oracle")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

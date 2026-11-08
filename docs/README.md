@@ -460,7 +460,7 @@ src/main/java/com/bomerp/
 └── ventas/          venta/ (event/: VentaRegistradaEvent y VentaAnuladaEvent), detalleventa/, tributos/ (detracción y retención), reporte/
 ```
 
-Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el sitio MkDocs), `scripts/` (arranque, respaldo, restauración y base limpia), `keycloak/` (realm y `configurar_realm.py`), `pruebas-seguridad/` (matriz de permisos), los `migracion_*.sql` y `.github/workflows/docs.yml` (publica esta documentación).
+Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el sitio MkDocs), `scripts/` (arranque, respaldo, restauración y base limpia), `keycloak/` (realm y `configurar_realm.py`), `pruebas-seguridad/` (matriz de permisos), los `migracion_*.sql` y `.github/workflows/` (`docs.yml` publica esta documentación y `backend.yml` es la integración continua).
 
 ### Modelo de datos (tablas reales, esquema `JDREFRIGERACION`)
 
@@ -808,6 +808,22 @@ prueba está en [RTM.md](RTM.md).
 
 La seguridad por rol y permiso se prueba además de punta a punta con `pruebas-seguridad/05_matriz.ps1` (14 casos,
 con Keycloak y el backend encendidos).
+
+### Integración continua (GitHub Actions, 07/11/2026)
+
+Cada `git push` prueba el código solo, sin depender de que alguien corra la suite a mano. El resultado se ve en
+GitHub, pestaña **Actions** (en verde o en rojo, con el resumen de cada clase de prueba).
+
+| Flujo | Rama | Qué hace |
+|---|---|---|
+| `Backend` (`.github/workflows/backend.yml`) | `master` | Java 21: compila y corre las **134 pruebas que no necesitan Oracle** (~20 s). Si falla, guarda los informes de Surefire |
+| `Frontend` (`.github/workflows/frontend.yml`, en la rama `frontend`) | `frontend` | Node 24: `npm ci`, `npm audit --omit=dev --audit-level=high` (falla con una vulnerabilidad alta), `npm run build:prod` (con la verificación de la CSP) y las pruebas |
+| `Documentación` (`docs.yml`) | `master` | Publica este sitio (solo si cambia `docs/` o `sitio/`) |
+
+Las 7 clases marcadas `@Tag("oracle")` (las de integración y la punta a punta, 20 pruebas) usan la base de desarrollo
+con sus datos, que no existe en GitHub: la integración continua las salta (`-DexcludedGroups=oracle`) y se corren en
+la PC con `mvn test`, que sigue corriendo las 154. Los cambios solo de documentación (`docs/`, `*.md`) no disparan
+las pruebas.
 
 ### Guía de instalación
 

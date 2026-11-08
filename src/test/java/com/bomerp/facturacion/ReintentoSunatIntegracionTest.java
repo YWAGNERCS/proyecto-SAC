@@ -5,6 +5,7 @@ import com.bomerp.facturacion.comprobante.entity.Comprobante.EstadoSunat;
 import com.bomerp.facturacion.comprobante.repository.ComprobanteRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tampoco toma uno por confirmar (1033) ni uno que pasó el plazo de envío de 3 días (informe D-6); el
  * emitido hace justo 3 días todavía está en plazo.
  */
+// Necesita Oracle con los datos de desarrollo: la integración continua la salta (-DexcludedGroups=oracle)
+@Tag("oracle")
 @SpringBootTest(properties = "app.facturacion.reintento-inicial-ms=86400000")
 @Transactional
 class ReintentoSunatIntegracionTest {

@@ -3,6 +3,7 @@ package com.bomerp.catalogo;
 import com.bomerp.catalogo.producto.entity.Producto;
 import com.bomerp.catalogo.producto.repository.ProductoRepository;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+// Necesita Oracle con los datos de desarrollo: la integración continua la salta (-DexcludedGroups=oracle)
+@Tag("oracle")
 @SpringBootTest
 @Transactional
 public class ProductoCrudTest {
