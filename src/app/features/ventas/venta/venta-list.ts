@@ -342,7 +342,8 @@ export class VentaListComponent implements OnInit {
   puedeReenviar(d: DocumentoSunat): boolean {
     // Rechazado con CDR: el número quedó usado; se emite un comprobante de reemplazo, no se reenvía
     // Fuera de plazo: lo que llega tarde a SUNAT no tiene validez; también se reemplaza
-    if (this.porConfirmar(d) || d.rechazoDefinitivo || d.fueraDePlazo) return false;
+    // Si se ofrece un reemplazo (p. ej. el cliente cambió de tipo), reenviar con el mismo número no sirve
+    if (this.porConfirmar(d) || d.rechazoDefinitivo || d.fueraDePlazo || d.puedeReemplazar) return false;
     return d.estado === 'RECHAZADO' || (d.estado === 'PENDIENTE' && d.intentos > 0);
   }
 
@@ -365,8 +366,11 @@ export class VentaListComponent implements OnInit {
     const motivo = d.fueraDePlazo
       ? `${d.numero} no llegó a SUNAT dentro del plazo de 3 días (vencía el ${this.fechaCorta(d.fechaLimiteEnvio)}), ` +
         `así que enviarlo ahora ya no le daría validez.\n\n`
-      : `SUNAT rechazó ${d.numero}${d.codigo !== null ? ` (código ${d.codigo})` : ''}, así que ese comprobante no es válido ` +
-        `y su número ya no puede usarse.\n\n`;
+      : !d.rechazoDefinitivo
+        ? `SUNAT no recibió ${d.numero} y el cliente cambió de tipo (empresa o persona natural): reenviado con su número ` +
+          `saldría el tipo de comprobante equivocado.\n\n`
+        : `SUNAT rechazó ${d.numero}${d.codigo !== null ? ` (código ${d.codigo})` : ''}, así que ese comprobante no es válido ` +
+          `y su número ya no puede usarse.\n\n`;
     const ok = confirm(
       motivo +
         `¿Emitir un comprobante nuevo para la venta #${v.id} de ${v.clienteNombre}?\n\n` +
@@ -430,6 +434,7 @@ export class VentaListComponent implements OnInit {
     return ({
       ACEPTADO: 'Aceptado', OBSERVADO: 'Aceptado con observaciones', RECHAZADO: 'Rechazado',
       REINTENTAR: 'Sin respuesta de SUNAT', POR_CONFIRMAR: 'Ya registrado: por confirmar',
+      CREDENCIALES: 'Usuario o clave SOL rechazados',
     } as Record<string, string>)[e.resultado] ?? e.resultado;
   }
 

@@ -36,6 +36,8 @@ export interface PlazoEnvio {
   /** Ventas sin comprobante todavía porque falta un dato de JD (cuenta de detracciones). */
   porEmitir: number;
   ventasPorEmitir: number[];
+  /** SUNAT rechazó el usuario o la clave SOL: no se envía nada hasta corregirlos y reiniciar. null si todo va bien. */
+  envioDetenido: string | null;
 }
 
 export interface EstadoSunatVenta {
