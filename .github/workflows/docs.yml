@@ -30,16 +30,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Traer lp2-demo.md de la rama frontend
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: frontend
           path: frontend
           sparse-checkout: docs
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -51,11 +51,11 @@ jobs:
           python sitio/armar.py --lp2 frontend/docs/lp2-demo.md
           mkdocs build --strict -f sitio/mkdocs.yml -d ../_site
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
