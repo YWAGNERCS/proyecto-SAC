@@ -168,6 +168,10 @@ cambios ("Envió por correo al cliente el comprobante #…").
 
 ### Probarlo sin enviar correos reales
 
+**Prueba de integración real del 08/11/2026** (migraciones sobre respaldos reales y correo de punta a punta con el
+backend de verdad, la beta de SUNAT y un servidor SMTP local): resultados en
+[PRUEBA_INTEGRACION_CORREO.md](PRUEBA_INTEGRACION_CORREO.md); herramientas en `pruebas-integracion/`.
+
 Las pruebas automáticas usan un servidor SMTP de prueba dentro de la misma PC o un notificador simulado
 (`NotificadorCorreoRealTest`, `EntregaComprobanteIntegracionTest`): ningún correo sale. En desarrollo, lo que acepta la
 beta de SUNAT nunca se envía. Para ver el correo de verdad antes de producción, configurar `MAIL_USERNAME` con una

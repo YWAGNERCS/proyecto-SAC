@@ -100,7 +100,9 @@ class NotificadorCorreoRealTest {
     void siElServidorRechazaSeInformaElMotivo() {
         smtp.modo(ServidorSmtpDePrueba.Modo.RECHAZAR);
         assertThatThrownBy(() -> notificador.enviarConAdjuntos(mensaje()))
-                .isInstanceOf(CorreoNoEnviadoException.class).hasMessageContaining("no aceptó");
+                .isInstanceOf(CorreoNoEnviadoException.class).hasMessageContaining("no aceptó")
+                .hasMessageContaining("550 5.1.1 Buzon no disponible")      // la respuesta del servidor, tal cual
+                .hasMessageNotContaining("Failed messages").hasMessageNotContaining("SendFailedException");
         assertThat(smtp.mensajes()).isEmpty();
     }
 

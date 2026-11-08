@@ -96,10 +96,32 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
         } catch (CorreoNoEnviadoException e) {
             throw e;
         } catch (Exception e) {
-            String motivo = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            String motivo = motivo(e);
             log.warn("El servidor SMTP no aceptó el correo para {}: {}", NotificadorCorreo.ocultar(m.destinatario()), motivo);
             throw new CorreoNoEnviadoException("El servidor de correo no aceptó el mensaje: " + motivo, e);
         }
+    }
+
+    /**
+     * La respuesta del servidor, sin el texto técnico de JavaMail: "451 4.3.0 Servidor ocupado" en lugar de "Failed
+     * messages: jakarta.mail.SendFailedException: Invalid Addresses; nested exception is: ...". Es la causa más interna
+     * con mensaje: Spring la guarda en MailSendException.getMessageExceptions() y JavaMail anida la respuesta SMTP en
+     * MessagingException.getNextException().
+     */
+    static String motivo(Throwable e) {
+        String mensaje = null;
+        Throwable t = e;
+        for (int i = 0; t != null && i < 10; i++) {
+            if (t.getMessage() != null && !t.getMessage().isBlank()) mensaje = t.getMessage();
+            Throwable siguiente = null;
+            if (t instanceof org.springframework.mail.MailSendException mse && mse.getMessageExceptions().length > 0) {
+                siguiente = mse.getMessageExceptions()[0];
+            } else if (t instanceof jakarta.mail.MessagingException me) {
+                siguiente = me.getNextException();
+            }
+            t = siguiente != null ? siguiente : t.getCause();
+        }
+        return mensaje == null ? e.getClass().getSimpleName() : mensaje.replaceAll("\\s+", " ").trim();
     }
 
     /**

@@ -1,0 +1,5 @@
+# Correos que guarda el servidor SMTP de prueba y sus archivos de control
+buzon/
+RECHAZAR
+LENTO
+*.log
