@@ -11,7 +11,9 @@ import com.bomerp.config.exportacion.ExcelBuilder;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -71,11 +73,19 @@ public class VentaController {
         return ventaReporteService.historialCliente(clienteId);
     }
 
-    /** Transición REGISTRADA -> ANULADA; restaura el stock. 409 si ya estaba anulada. */
+    /**
+     * Transición REGISTRADA -> ANULADA; restaura el stock. 409 si ya estaba anulada. Motivo obligatorio y quién
+     * anuló (del token), como en Cobranza (auditoría M4).
+     */
     @PatchMapping("/{id}/anular")
-    public VentaResponseDTO anular(@PathVariable Long id) {
-        return ventaService.anular(id);
+    public VentaResponseDTO anular(@PathVariable Long id, @Valid @RequestBody AnulacionVentaRequest request,
+                                   @AuthenticationPrincipal Jwt jwt) {
+        return ventaService.anular(id, request.motivo(), jwt.getClaimAsString("preferred_username"));
     }
+
+    public record AnulacionVentaRequest(
+            @NotBlank(message = "Indique el motivo de la anulación")
+            @Size(min = 5, max = 300, message = "El motivo debe tener entre 5 y 300 caracteres") String motivo) {}
 
     /** Endpoint estrella: conversión de proforma aceptada en venta */
     @PostMapping("/desde-proforma/{proformaId}")
@@ -88,11 +98,15 @@ public class VentaController {
         // El vendedor sale del token ya validado (sub), nunca de un campo del request
         return ventaService.convertirProformaEnVenta(proformaId, tipoPago, diasCredito,
                 jwt.getSubject(), jwt.getClaimAsString("preferred_username"),
-                cuerpo != null ? cuerpo.rutinaMantenimiento() : null);
+                cuerpo != null ? cuerpo.rutinaMantenimiento() : null,
+                cuerpo != null ? cuerpo.fechaVenta() : null);
     }
 
-    /** Cuerpo opcional de la conversión: la rutina de mantenimiento elegida (null = sin mantenimientos). */
-    public record ConversionRequest(RutinaMantenimiento rutinaMantenimiento) {}
+    /**
+     * Cuerpo opcional de la conversión: la rutina de mantenimiento elegida (null = sin mantenimientos) y la fecha
+     * real de la venta (null = hoy; con otra fecha, hasta 30 días atrás y con permiso: auditoría M3).
+     */
+    public record ConversionRequest(RutinaMantenimiento rutinaMantenimiento, LocalDate fechaVenta) {}
 
     /**
      * Venta directa. @Valid aplica las restricciones del cuerpo (auditoría B9): antes no se aplicaban y una
@@ -104,7 +118,8 @@ public class VentaController {
         return ventaService.registrarVentaDirecta(
                 request.clienteId(), request.items(), request.tipoPago(), request.diasCredito(),
                 request.moneda(), request.tipoCambio(),
-                jwt.getSubject(), jwt.getClaimAsString("preferred_username"), request.rutinaMantenimiento());
+                jwt.getSubject(), jwt.getClaimAsString("preferred_username"), request.rutinaMantenimiento(),
+                request.fechaVenta());
     }
 
     @GetMapping("/pagos-atrasados")
@@ -119,6 +134,7 @@ public class VentaController {
             Integer diasCredito,
             Venta.Moneda moneda,                     // opcional: moneda en la que se cobra
             java.math.BigDecimal tipoCambio,         // opcional: soles por dólar (null = SUNAT del día)
-            RutinaMantenimiento rutinaMantenimiento  // opcional: botón "Implementar rutinas de mantenimiento"
+            RutinaMantenimiento rutinaMantenimiento, // opcional: botón "Implementar rutinas de mantenimiento"
+            LocalDate fechaVenta                     // opcional: fecha real (null = hoy; hasta 30 días atrás, con permiso)
     ) {}
 }

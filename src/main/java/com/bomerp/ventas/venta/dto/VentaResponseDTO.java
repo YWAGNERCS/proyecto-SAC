@@ -26,7 +26,10 @@ public record VentaResponseDTO(
         BigDecimal porcentajeDeduccion,
         BigDecimal montoDeduccion,
         BigDecimal netoACobrar,
-        List<DetalleResponseDTO> detalles
+        List<DetalleResponseDTO> detalles,
+        LocalDate fechaAnulacion,
+        String anuladoPor,
+        String motivoAnulacion
 ) {
     public record DetalleResponseDTO(
             String productoNombre,
@@ -67,7 +70,10 @@ public record VentaResponseDTO(
                 v.getPorcentajeDeduccion(),
                 v.getMontoDeduccion(),
                 v.calcularNetoACobrar(),
-                detalles
+                detalles,
+                v.getFechaAnulacion(),
+                v.getAnuladoPor(),
+                v.getMotivoAnulacion()
         );
     }
 }

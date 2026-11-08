@@ -1,5 +1,6 @@
 package com.bomerp.ventas.venta.service;
 
+import com.bomerp.seguridad.acceso.AccesoUsuario;
 import com.bomerp.seguridad.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.ventas.tributos.DeduccionTributariaService;
@@ -50,6 +51,12 @@ public class VentaService {
     private final DeduccionTributariaService deduccionTributariaService;
     private final ApplicationEventPublisher eventos;
 
+    /** Quién puede registrar una venta con fecha pasada (ADMIN o el permiso VENTA_FECHA_PASADA). */
+    private final AccesoUsuario acceso;
+
+    /** Una venta puede registrarse con su fecha real hasta tantos días atrás (auditoría M3). */
+    public static final int DIAS_FECHA_PASADA = 30;
+
     public VentaService(VentaRepository ventaRepository,
                         ProformaService proformaService,
                         ClienteService clienteService,
@@ -57,7 +64,9 @@ public class VentaService {
                         TipoCambioService tipoCambioService,
                         TopeDescuentoService topeDescuentoService,
                         DeduccionTributariaService deduccionTributariaService,
-                        ApplicationEventPublisher eventos) {
+                        ApplicationEventPublisher eventos,
+                        AccesoUsuario acceso) {
+        this.acceso = acceso;
         this.ventaRepository = ventaRepository;
         this.proformaService = proformaService;
         this.clienteService = clienteService;
@@ -101,7 +110,15 @@ public class VentaService {
     public VentaResponseDTO convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito,
                                                      String vendedorId, String vendedorNombre,
                                                      RutinaMantenimiento rutina) {
+        return convertirProformaEnVenta(proformaId, tipoPago, diasCredito, vendedorId, vendedorNombre, rutina, null);
+    }
+
+    /** @param fechaVenta fecha real de la venta (null = hoy); ver resolverFechaVenta */
+    public VentaResponseDTO convertirProformaEnVenta(Long proformaId, Venta.TipoPago tipoPago, Integer diasCredito,
+                                                     String vendedorId, String vendedorNombre,
+                                                     RutinaMantenimiento rutina, LocalDate fechaVenta) {
         log.info("Iniciando transaccion: Convertir Proforma {} en Venta", proformaId);
+        LocalDate fecha = resolverFechaVenta(fechaVenta);
 
         Proforma proforma = proformaService.obtenerParaConvertir(proformaId);   // bloqueada hasta el final
 
@@ -133,7 +150,7 @@ public class VentaService {
         Venta venta = new Venta();
         venta.setCliente(proforma.getCliente());
         venta.setProformaOrigen(proforma);
-        venta.setFechaVenta(LocalDate.now());
+        venta.setFechaVenta(fecha);
         venta.setVendedorId(vendedorId);
         venta.setVendedorNombre(vendedorNombre);
         venta.setTipoPago(tipoPago);
@@ -187,17 +204,28 @@ public class VentaService {
                 vendedorId, vendedorNombre, null);
     }
 
-    /**
-     * @param monedaVenta moneda en la que se cobra (null = la del primer producto)
-     * @param tipoCambio  soles por dólar negociado (null = venta SUNAT del día)
-     * @param rutina      mantenimientos que se programan con la venta (null = ninguno)
-     */
     public VentaResponseDTO registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
                                                   Venta.TipoPago tipoPago, Integer diasCredito,
                                                   Venta.Moneda monedaVenta, BigDecimal tipoCambio,
                                                   String vendedorId, String vendedorNombre,
                                                   RutinaMantenimiento rutina) {
+        return registrarVentaDirecta(clienteId, items, tipoPago, diasCredito, monedaVenta, tipoCambio,
+                vendedorId, vendedorNombre, rutina, null);
+    }
+
+    /**
+     * @param monedaVenta moneda en la que se cobra (null = la del primer producto)
+     * @param tipoCambio  soles por dólar negociado (null = venta SUNAT del día)
+     * @param rutina      mantenimientos que se programan con la venta (null = ninguno)
+     * @param fechaVenta  fecha real de la venta (null = hoy); ver resolverFechaVenta
+     */
+    public VentaResponseDTO registrarVentaDirecta(Long clienteId, List<ItemVentaDTO> items,
+                                                  Venta.TipoPago tipoPago, Integer diasCredito,
+                                                  Venta.Moneda monedaVenta, BigDecimal tipoCambio,
+                                                  String vendedorId, String vendedorNombre,
+                                                  RutinaMantenimiento rutina, LocalDate fechaVenta) {
         log.info("Iniciando transaccion: Registrar Venta directa para Cliente ID {}", clienteId);
+        LocalDate fecha = resolverFechaVenta(fechaVenta);
 
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("La venta debe tener al menos un producto.");
@@ -229,13 +257,14 @@ public class VentaService {
         Venta.Moneda moneda = monedaVenta != null ? monedaVenta
                 : Venta.Moneda.valueOf(productos.get(0).getMoneda().name());
         boolean requiereConversion = productos.stream().anyMatch(p -> !p.getMoneda().name().equals(moneda.name()));
+        // El tipo de cambio SUNAT es el del día de la venta (con fecha pasada, el de ese día)
         BigDecimal tc = requiereConversion
-                ? tipoCambioService.resolver(tipoCambio)              // obligatorio: 503 si SUNAT no responde y no se escribió
-                : tipoCambioService.resolverSiSePuede(tipoCambio);    // solo como referencia
+                ? tipoCambioService.resolver(tipoCambio, fecha)              // obligatorio: 503 si SUNAT no responde y no se escribió
+                : tipoCambioService.resolverSiSePuede(tipoCambio, fecha);    // solo como referencia
 
         Venta venta = new Venta();
         venta.setCliente(cliente);
-        venta.setFechaVenta(LocalDate.now());
+        venta.setFechaVenta(fecha);
         venta.setVendedorId(vendedorId);
         venta.setVendedorNombre(vendedorNombre);
         venta.setTipoPago(tipoPago);
@@ -262,6 +291,30 @@ public class VentaService {
         log.info("Transaccion exitosa: Venta registrada con ID {} en {} (tipo de cambio {})",
                 ventaGuardada.getId(), moneda, tc);
         return VentaResponseDTO.desdeEntidad(ventaGuardada);
+    }
+
+    /**
+     * Fecha de la venta (auditoría M3). Sin fecha, hoy. Con otra fecha: nunca futura, hasta DIAS_FECHA_PASADA días
+     * atrás y solo para el ADMIN o quien tenga el permiso VENTA_FECHA_PASADA (403 si no). Es la fecha de la
+     * operación: con ella se cuentan los reportes, el crédito, el tipo de cambio y los mantenimientos. El
+     * comprobante sale igual con fecha de hoy, así que siempre está dentro del plazo de 3 días de SUNAT.
+     */
+    LocalDate resolverFechaVenta(LocalDate pedida) {
+        LocalDate hoy = LocalDate.now();
+        if (pedida == null || pedida.equals(hoy)) return hoy;
+        if (pedida.isAfter(hoy)) {
+            throw new IllegalArgumentException("La fecha de la venta no puede ser futura.");
+        }
+        if (pedida.isBefore(hoy.minusDays(DIAS_FECHA_PASADA))) {
+            throw new IllegalArgumentException("La fecha de la venta puede ser de hasta " + DIAS_FECHA_PASADA
+                    + " días atrás (desde el " + hoy.minusDays(DIAS_FECHA_PASADA) + ").");
+        }
+        if (!acceso.puedeRegistrarVentasConFechaPasada()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,
+                    "No tiene permiso para registrar ventas con fecha pasada. El administrador puede dárselo en "
+                            + "Configuración › Usuarios y permisos.");
+        }
+        return pedida;
     }
 
     /**
@@ -420,7 +473,15 @@ public class VentaService {
      *    2) con VentaAnuladaEvent: Postventa cancela los mantenimientos aún pendientes, Facturación
      *       emite la nota de crédito y Cobranza deja pendiente la devolución de lo ya pagado.
      */
-    public VentaResponseDTO anular(Long ventaId) {
+    public VentaResponseDTO anular(Long ventaId, String motivo, String usuario) {
+        // Auditoría M4: como en Cobranza, la venta guarda quién la anuló y por qué (motivo obligatorio)
+        String motivoLimpio = motivo == null ? "" : motivo.trim();
+        if (motivoLimpio.length() < 5) {
+            throw new IllegalArgumentException("Indique el motivo de la anulación (al menos 5 caracteres).");
+        }
+        if (motivoLimpio.length() > 300) {
+            throw new IllegalArgumentException("El motivo de la anulación puede tener hasta 300 caracteres.");
+        }
         // Fila bloqueada hasta el fin de la transacción (revisión externa): dos anulaciones simultáneas
         // de la misma venta devolverían el stock dos veces; la segunda espera y encuentra ANULADA (409).
         Venta venta = ventaRepository.bloquear(ventaId)
@@ -436,11 +497,13 @@ public class VentaService {
         productoService.sumarStock(devueltas);
         venta.setEstado(Venta.EstadoVenta.ANULADA);
         venta.setFechaAnulacion(LocalDate.now());
+        venta.setAnuladoPor(usuario);
+        venta.setMotivoAnulacion(motivoLimpio);
 
         Venta anulada = ventaRepository.save(venta);
         eventos.publishEvent(new VentaAnuladaEvent(ventaId));
 
-        log.info("Venta {} anulada: stock restaurado", ventaId);
+        log.info("Venta {} anulada por {}: stock restaurado. Motivo: {}", ventaId, usuario, motivoLimpio);
         return VentaResponseDTO.desdeEntidad(anulada);
     }
 
@@ -521,7 +584,8 @@ public class VentaService {
                 throw new IllegalArgumentException("Los días de crédito deben estar entre 1 y 365.");
             }
             venta.setDiasCredito(dias);
-            venta.setFechaLimitePago(LocalDate.now().plusDays(dias));
+            // El crédito corre desde la fecha de la venta (con fecha pasada, desde ese día)
+            venta.setFechaLimitePago(venta.getFechaVenta().plusDays(dias));
         } else {
             venta.setEstadoPago(Venta.EstadoPago.PAGADO);
         }

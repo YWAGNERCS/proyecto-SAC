@@ -92,7 +92,7 @@ class VentaAnuladaSinNotaIntegracionTest {
 
     @Test
     void ventaAnuladaNormalmenteNoDuplicaLaNota() {
-        ventaService.anular(ventaId);
+        ventaService.anular(ventaId, "Prueba de anulación", "prueba");
         assertThat(notasDelComprobante()).isEqualTo(1);
 
         envioSunat.enviarComprobante(comprobanteId);

@@ -128,7 +128,7 @@ class VentaPorEmitirIntegracionTest {
     @Test
     void unaVentaPorEmitirSeAnulaSinNotaDeCredito() {
         Long ventaId = venderServicio();
-        ventaService.anular(ventaId);
+        ventaService.anular(ventaId, "Prueba de anulación", "prueba");
         em.flush();
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM comprobantes WHERE venta_id = ?", Integer.class, ventaId)).isZero();

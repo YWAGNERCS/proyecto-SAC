@@ -69,19 +69,28 @@ public class TipoCambioService {
      * si no escribió ninguno, el de venta SUNAT de hoy.
      */
     public BigDecimal resolver(BigDecimal tipoCambioManual) {
+        return resolver(tipoCambioManual, null);
+    }
+
+    /** Como resolver(), con el tipo de cambio SUNAT de esa fecha (null = hoy): una venta con fecha pasada usa el de su día. */
+    public BigDecimal resolver(BigDecimal tipoCambioManual, LocalDate fecha) {
         if (tipoCambioManual != null) {
             if (tipoCambioManual.compareTo(MINIMO) < 0 || tipoCambioManual.compareTo(MAXIMO) > 0) {
                 throw new IllegalArgumentException("El tipo de cambio debe estar entre 1 y 10 soles por dólar.");
             }
             return tipoCambioManual.setScale(4, RoundingMode.HALF_UP);
         }
-        return obtener(null).venta();
+        return obtener(fecha).venta();
     }
 
     /** Como resolver(), pero devuelve null en vez de fallar si SUNAT no responde (para guardarlo solo como referencia). */
     public BigDecimal resolverSiSePuede(BigDecimal tipoCambioManual) {
+        return resolverSiSePuede(tipoCambioManual, null);
+    }
+
+    public BigDecimal resolverSiSePuede(BigDecimal tipoCambioManual, LocalDate fecha) {
         try {
-            return resolver(tipoCambioManual);
+            return resolver(tipoCambioManual, fecha);
         } catch (ResponseStatusException e) {
             return null;
         }

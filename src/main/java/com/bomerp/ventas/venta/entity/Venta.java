@@ -84,6 +84,13 @@ public class Venta {
     @Column(name = "fecha_anulacion")
     private LocalDate fechaAnulacion;
 
+    /** Usuario que la anuló y por qué (auditoría M4; migracion_venta_anulacion.sql). Null si está REGISTRADA. */
+    @Column(name = "anulado_por", length = 100)
+    private String anuladoPor;
+
+    @Column(name = "motivo_anulacion", length = 300)
+    private String motivoAnulacion;
+
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleVenta> detalles = new ArrayList<>();
 

@@ -3,6 +3,7 @@
 -- Generado con DBMS_METADATA desde el esquema real de desarrollo (JDREFRIGERACION, 06/11/2026: incluye la respuesta de SUNAT por comprobante):
 -- 26 tablas, sus índices (incluidos UX_VENTAS_PROFORMA y UX_COMPRAS_PROVEEDOR_FACTURA, 07/11/2026) y las claves foráneas, sin datos.
 -- 07/11/2026: comprobante de reemplazo, datos del receptor fijos y ENVIOS_SUNAT (migracion_comprobante_reemplazo.sql).
+-- 07/11/2026: quién anuló una venta y por qué, VENTAS.ANULADO_POR y MOTIVO_ANULACION (migracion_venta_anulacion.sql).
 -- No incluye USUARIOS (tabla antigua que el código ya no usa: los usuarios viven en Keycloak).
 --
 -- Se ejecuta UNA vez, como el usuario de la aplicación, sobre el PDB vacío:
@@ -455,6 +456,8 @@ CREATE TABLE "AJUSTES_INVENTARIO"
 	"TIPO_DEDUCCION" VARCHAR2(12) DEFAULT 'NINGUNA' NOT NULL ENABLE,
 	"PORCENTAJE_DEDUCCION" NUMBER(5,2),
 	"MONTO_DEDUCCION" NUMBER(12,2),
+	"ANULADO_POR" VARCHAR2(100 CHAR),
+	"MOTIVO_ANULACION" VARCHAR2(300 CHAR),
 	 CHECK (estado_pago in ('PENDIENTE','PAGADO','ATRASADO')) ENABLE,
 	 CHECK (moneda in ('SOLES','DOLARES')) ENABLE,
 	 CHECK (tipo_pago in ('CONTADO','CREDITO')) ENABLE,

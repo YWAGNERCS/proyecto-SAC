@@ -203,18 +203,25 @@ class FlujoCompletoEndToEndTest {
                 "$[?(@.ventaId == " + ventaId + ")]")).as("saldo 0: ya no está por cobrar").isEmpty();
 
         // 8. Seguridad: sin token 401; la asistente sin permiso no anula (403)
-        enviar("PATCH", API + "/ventas/" + ventaId + "/anular", null, null).andExpect(status().isUnauthorized());
-        enviar("PATCH", API + "/ventas/" + ventaId + "/anular", null, "ASISTENTE").andExpect(status().isForbidden());
+        String motivo = """
+                {"motivo": "Prueba S14: el cliente desistió"}""";
+        enviar("PATCH", API + "/ventas/" + ventaId + "/anular", motivo, null).andExpect(status().isUnauthorized());
+        enviar("PATCH", API + "/ventas/" + ventaId + "/anular", motivo, "ASISTENTE").andExpect(status().isForbidden());
+        // Sin motivo no se anula (auditoría M4)
+        enviar("PATCH", API + "/ventas/" + ventaId + "/anular", "{}", "ADMIN").andExpect(status().isBadRequest());
 
         // 9. El ADMIN anula: vuelve el stock, se cancelan las visitas y queda una devolución por lo pagado
-        String anulada = ok("PATCH", API + "/ventas/" + ventaId + "/anular", null);
+        String anulada = ok("PATCH", API + "/ventas/" + ventaId + "/anular", motivo);
         assertThat((String) JsonPath.read(anulada, "$.estado")).isEqualTo("ANULADA");
+        // La venta guarda quién la anuló y por qué (auditoría M4)
+        assertThat((String) JsonPath.read(anulada, "$.anuladoPor")).isEqualTo(USUARIO);
+        assertThat((String) JsonPath.read(anulada, "$.motivoAnulacion")).isEqualTo("Prueba S14: el cliente desistió");
         assertThat(stock(material)).isEqualTo(10);
         assertThat(visitasDeLaVenta(ventaId)).extracting(m -> m.get("estado")).containsOnly("CANCELADO");
         List<Number> porDevolver = JsonPath.read(ok("GET", API + "/cobranza/devoluciones", null),
                 "$[?(@.ventaId == " + ventaId + ")].monto");
         assertThat(new BigDecimal(porDevolver.get(0).toString())).isEqualByComparingTo(total);
-        enviar("PATCH", API + "/ventas/" + ventaId + "/anular", null, "ADMIN").andExpect(status().isConflict());
+        enviar("PATCH", API + "/ventas/" + ventaId + "/anular", motivo, "ADMIN").andExpect(status().isConflict());
 
         // 10. Auditoría: quién hizo qué, sobre qué venta, incluidos los intentos rechazados
         List<String> acciones = jdbc.queryForList(
