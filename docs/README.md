@@ -1,6 +1,6 @@
 # DOCUMENTACIÓN DEL SISTEMA WEB "JD REFRIGERACIÓN" (SGE-JD / BomERP)
 
-> Última revisión contra el código: **25/10/2026** (sesión S12 de LP2, cierre de la Unidad II). Equipo **CherryTree**.
+> Última revisión contra el código: **08/11/2026** (entrega de comprobantes por correo, ambiente de SUNAT declarado y prueba de integración real). Equipo **CherryTree**.
 > Repositorio: `https://github.com/YWAGNERCS/proyecto-SAC` — backend en la rama `master`, frontend en la rama `frontend`.
 > Publicado en **https://ywagnercs.github.io/proyecto-SAC/** junto con el producto de LP2 (`lp2-demo.md`) y la hoja para el cliente; se actualiza solo al subir cambios de `docs/` a `master`.
 > Lo que no coincide entre el código, esta documentación o la guía del curso está listado en **[5. Por verificar](#por-verificar)**.
@@ -30,7 +30,9 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 - Clientes y Proveedores con autocompletado por RUC (SUNAT) y DNI (RENIEC) vía apis.net.pe v1; Decolecta como respaldo opcional.
 - Proformas con exportación a PDF y envío por correo (SMTP).
 - Ventas al contado o a crédito: venta directa (cabecera-detalle) y conversión desde una proforma aceptada; anulación con restauración de stock, nota de crédito y, si el cliente ya pagó, devolución pendiente del dinero.
-- Facturación electrónica con correlativo real por serie y envío directo a SUNAT (SEE - Del Contribuyente) probado en el ambiente beta; en producción falta el usuario SOL y el certificado digital de JD.
+- Facturación electrónica con correlativo real por serie y envío directo a SUNAT (SEE - Del Contribuyente) probado en el ambiente beta; en producción falta el usuario SOL y el certificado digital de JD. El ambiente (PRODUCCION o BETA) se declara en `SUNAT_AMBIENTE` y solo se aceptan las direcciones oficiales de SUNAT.
+- Entrega de la factura o boleta por correo al cliente, con el PDF y el XML firmado, solo si tiene validez tributaria: seguimiento de cada envío e intento en Oracle, reintentos, reenvío manual y conciliación (ver [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md), sección 5).
+- Compras con el IGV separado y el último costo de compra en cada producto; precio de una línea editable al vender o cotizar (solo sube, con motivo y permiso); topes de descuento que fija el administrador.
 - Postventa: mantenimientos preventivos con alertas automáticas (tarea programada diaria) y pantalla de agenda (vencidos, próximos, realizado, reprogramar).
 - Inventario: descuento al vender, incremento al comprar y alertas de stock mínimo.
 - Cobranza: ventas a crédito con su saldo, abonos parciales o totales (un pago puede repartirse entre varias ventas), historial de cobros y devoluciones de ventas anuladas.
@@ -774,7 +776,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **210 pruebas** (08/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **215 pruebas** (08/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. Las marcadas *(Oracle)* son de
 integración y necesitan la base encendida; todas deshacen lo que guardan. La trazabilidad de cada requisito con su
 prueba está en [RTM.md](RTM.md).
@@ -788,6 +790,7 @@ prueba está en [RTM.md](RTM.md).
 | `PermisosServiceTest` | Permisos delegables: diferencia de roles, no a uno mismo ni a un ADMIN, permiso desconocido | 6 |
 | `AgendaHorarioTest` | Cruces de horario del técnico, bordes exactos, sin hora, medianoche, rango de la agenda | 6 |
 | `CompraServiceTest` | N° de factura, factura duplicada, stock solo de materiales, contado/crédito y vencimiento; subtotal e IGV de la compra y último costo del producto | 5 |
+| `AmbienteSunatTest` | El ambiente de SUNAT se declara y se comprueba contra la dirección oficial: producción y beta con sus direcciones; ambiente obligatorio; ambiente que no corresponde; 9 direcciones no oficiales bloqueadas (intermediario, http, imitación del servidor, otro puerto, parámetros…); el cliente no se construye con una configuración inválida | 5 |
 | `ReglasCorreoComprobanteTest` | Correo del comprobante: solo aceptados u observados en el ambiente de PRODUCCION registrado en el comprobante (no pendientes, rechazados, simulados, reemplazados, de la beta ni sin ambiente registrado) y el ambiente no cambia; destinatario válido; esperas entre reintentos; el XML leído con un analizador seguro (número, tipo, RUC del emisor, fecha, moneda, total y firma; rechaza DOCTYPE/XXE; no toca los bytes; lo que una búsqueda de texto aceptaba por error); nombres de SUNAT; plantilla HTML | 14 |
 | `NotificadorCorreoRealTest` | Contra un servidor SMTP de prueba en la misma PC: el PDF y el XML llegan con sus bytes exactos (en base64), se respeta el Message-ID; si el servidor rechaza, no responde o no está configurado, se informa el error | 5 |
 | `EntregaComprobanteIntegracionTest` (Oracle) | De punta a punta con SUNAT y SMTP simulados: aceptado → ENVIADO con PDF y XML del mismo comprobante; beta (aunque después el servidor pase a producción) y cliente sin correo no se envían; SMTP caído → FALLIDO y reintento; reinicio con pendientes; PDF que falla; XML ajeno; evento repetido; dos trabajadores a la vez; reenvío que pide confirmación; caída entre SMTP y Oracle → INCIERTO; conciliación de aceptados sin envío (respeta margen, ventana y correo); el ambiente no se cambia ni desde SQL; sin duplicados entre automático y manual (el reenvío cancela el reintento programado, un reintento no sale si otro envío ya se entregó, ni la conciliación ni el evento tardío duplican un envío manual) | 17 |
@@ -827,7 +830,7 @@ GitHub, pestaña **Actions** (en verde o en rojo, con el resumen de cada clase d
 
 | Flujo | Rama | Qué hace |
 |---|---|---|
-| `Backend` (`.github/workflows/backend.yml`) | `master` | Java 21: compila y corre las **166 pruebas que no necesitan Oracle** (~20 s). Si falla, guarda los informes de Surefire |
+| `Backend` (`.github/workflows/backend.yml`) | `master` | Java 21: compila y corre las **171 pruebas que no necesitan Oracle** (~20 s). Si falla, guarda los informes de Surefire |
 | `Frontend` (`.github/workflows/frontend.yml`, en la rama `frontend`) | `frontend` | Node 24: `npm ci`, `npm audit --omit=dev --audit-level=high` (falla con una vulnerabilidad alta), `npm run build:prod` (con la verificación de la CSP) y las **33 pruebas** del frontend |
 | `Documentación` (`docs.yml`) | `master` | Publica este sitio (solo si cambia `docs/` o `sitio/`) |
 
@@ -840,7 +843,7 @@ emitir. `fecha-venta.spec.ts` (3): la fecha real de la venta (hoy, hasta 30 día
 
 Las 10 clases marcadas `@Tag("oracle")` (las de integración y la punta a punta, 44 pruebas) usan la base de desarrollo
 con sus datos, que no existe en GitHub: la integración continua las salta (`-DexcludedGroups=oracle`) y se corren en
-la PC con `mvn test`, que sigue corriendo las 210. Las pruebas leen además `src/test/resources/config/application.properties`, que apaga las tareas programadas (reintento a SUNAT y revisión de correos) para que un contexto de Spring que queda vivo no envíe nada a la beta por su cuenta. Los cambios solo de documentación (`docs/`, `*.md`) no disparan
+la PC con `mvn test`, que sigue corriendo las 215. Las pruebas leen además `src/test/resources/config/application.properties`, que apaga las tareas programadas (reintento a SUNAT y revisión de correos) para que un contexto de Spring que queda vivo no envíe nada a la beta por su cuenta. Los cambios solo de documentación (`docs/`, `*.md`) no disparan
 las pruebas.
 
 ### Guía de instalación
@@ -854,7 +857,7 @@ las pruebas.
    ```properties
    spring.datasource.password=<APP_USER_PASSWORD del docker-compose>
    ```
-   También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`.
+   También se aceptan variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `DECOLECTA_TOKEN`, `CORREO_OFICINA`, `CORS_ALLOWED_ORIGINS`, `EMPRESA_TELEFONO`, `EMPRESA_CORREO`, `EMPRESA_WEB` y, para SUNAT, `FACTURACION_MODO`, `SUNAT_AMBIENTE` (obligatorio en modo sunat), `SUNAT_URL`, `SUNAT_USUARIO`, `SUNAT_CLAVE`, `SUNAT_CERT_RUTA`, `SUNAT_CERT_CLAVE`.
 4. Ejecutar `mvn spring-boot:run` (puerto 8080). Swagger: `http://localhost:8080/swagger-ui.html`.
    - **Probar la API en Swagger:** sin token todo responde 401. Para tener uno:
      1. En PowerShell, desde `bomerp-backend\pruebas-seguridad`, ejecutar
@@ -982,13 +985,24 @@ Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) t
 | 4 | Modelado de procesos (BPMN AS-IS/TO-BE) | ✅ 2 procesos en BPMN 2.0 (`docs/diagramas/`); los AS-IS son borrador con supuestos S1–S9 por confirmar con el cliente |
 | 5 | Análisis del sistema (casos de uso UML) | ✅ CU-01 a CU-11 y diagrama de casos de uso |
 | 6 | Diseño del sistema (C1–C4, SOLID, BD) | ✅ Completo, con diagrama de clases del dominio (UML) |
-| 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos (S1–S11), con Spring Boot 4.0.7 y Keycloak. Simulados: WhatsApp y, hasta tener las credenciales de JD, el envío real a SUNAT (probado en beta); correo real por Gmail (configurado en la laptop de desarrollo el 26/10/2026). Pendiente repartir `reportes` entre sus módulos |
-| 8 | Pruebas y validación | 🔄 Recorridos completos por API como Lisandro y Lucy, matriz de seguridad 14/14 y pruebas de cada corrección de la auditoría; pruebas automatizadas mínimas (ver 5) |
+| 7 | Desarrollo | 🔄 Backend y SPA operativos en todos los módulos, con Spring Boot 4.0.7 y Keycloak, más la entrega de comprobantes por correo con seguimiento (08/11/2026). Simulados: WhatsApp y, hasta tener las credenciales de JD, el envío real a SUNAT (probado en beta) y el correo (falta la cuenta de la empresa). Pendiente repartir `reportes` entre módulos |
+| 8 | Pruebas y validación | ✅ 215 pruebas JUnit (171 en la integración continua de GitHub) y 33 del frontend, matriz de seguridad 14/14 y una **prueba de integración real** (migraciones sobre respaldos reales y correo de punta a punta, 08/11/2026: [PRUEBA_INTEGRACION_CORREO.md](PRUEBA_INTEGRACION_CORREO.md)) |
 | 9 | Implementación/despliegue | 🔄 Instalación local en una PC, con arranque, apagado, respaldo y limpieza de un clic (`scripts/`, 25/10/2026). Configuración de producción verificada de punta a punta en contenedores (perfil `prod`, imagen Docker del backend, Oracle y Keycloak propios, SPA en nginx): [PRODUCCION_LOCAL.md](PRODUCCION_LOCAL.md) y [S13](S13_optimizacion_produccion.md) (05/11/2026). Pendiente el servidor de JD y HTTPS |
 | 10 | Documentación técnica | ✅ Este documento, `CONTEXTO.md`, los `README.md` y `lp2-demo.md`, publicados en https://ywagnercs.github.io/proyecto-SAC/ |
-| 11 | Manual de usuario | 🔄 Sección 3 y hoja para el cliente [`LIMITACIONES.md`](LIMITACIONES.md) (25/10/2026); falta un manual con capturas por pantalla |
+| 11 | Manual de usuario | 🔄 Sección 3 y hoja para el cliente [`LIMITACIONES.md`](LIMITACIONES.md) (actualizada el 08/11/2026); falta un manual con capturas por pantalla |
 | 12 | Trazabilidad (RTM) | ✅ [RTM.md](RTM.md): RF-01 a RF-35 y RNF-01 a RNF-09 con arquitectura, base de datos, API, pantalla y prueba; pruebas que faltan registradas (07/11/2026). Integración y estabilización (S14, LP2): [S14_integracion_estabilizacion.md](S14_integracion_estabilizacion.md); ADR-006, atributos de calidad y trazado de punta a punta (S14, ADS): [S14_ADS_decisiones_trazabilidad.md](S14_ADS_decisiones_trazabilidad.md) |
 | 13 | Mantenimiento y evolución | ✅ Git/GitHub (`YWAGNERCS/proyecto-SAC`, con topics) y publicación automática de la documentación |
+
+### Avances del 07 y 08/11/2026
+
+| Tema | Qué se hizo | Dónde |
+|---|---|---|
+| Facturación SUNAT | Plazo de 3 días, comprobante de reemplazo para rechazos con CDR, historial de envíos, receptor fijo al emitir, ventas "por emitir" sin cuenta de detracciones, envíos detenidos si SUNAT rechaza el usuario SOL | [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md) |
+| Entrega de comprobantes por correo | PDF + XML firmado al cliente solo con validez tributaria; seguimiento en `ENVIOS_CORREO` e `INTENTOS_CORREO`; reintentos, reenvío con confirmación, estado INCIERTO ante una caída, conciliación de eventos perdidos y sin duplicados entre automático y manual; XML validado con un analizador seguro | [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md), sección 5 |
+| Ambiente de SUNAT | Registrado e inmutable en cada comprobante; `SUNAT_AMBIENTE` obligatorio y solo direcciones oficiales (el backend no arranca con un intermediario o una dirección que no corresponde) | (13b) |
+| Auditoría (M1–M4, B5–B10, M9) | Precio editable con motivo y último costo de compra; IGV de compras; ventas con fecha pasada (permiso delegable); anulación con motivo y quién; topes de descuento editables por el administrador; dependencias fijadas; tabla `USUARIOS` retirada; validación de la venta directa | `AUDITORIA_SGE-JD_2026-11-07.md` (fuera del repositorio) |
+| Integración continua | GitHub Actions: backend (pruebas sin Oracle), frontend (auditoría de dependencias, compilación de producción y pruebas) y esta documentación | *Integración continua* en [2. Documentación técnica](#doc-tecnica) |
+| Prueba de integración real | Migraciones sobre un respaldo con datos y sobre el de producción, y correo de punta a punta con el backend real, la beta de SUNAT y un servidor SMTP local | [PRUEBA_INTEGRACION_CORREO.md](PRUEBA_INTEGRACION_CORREO.md) |
 
 ### Avances del 05/11/2026
 
@@ -1018,7 +1032,7 @@ necesita Python, que la PC de JD probablemente no tenga.
   administrador total de Keycloak, y si se compromete el backend se compromete el control de todos los usuarios.
 - **Sigue en Python** solo lo de desarrollo: `sitio/armar.py` (este sitio) y `docs/diagramas/generar_bpmn.py`.
 
-### Pendientes (al 31/10/2026)
+### Pendientes (al 08/11/2026)
 
 Resumen de lo que falta, según de quién depende. El detalle de cada punto está en [5. Por verificar](#por-verificar) (n.º entre paréntesis).
 
@@ -1026,16 +1040,16 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 
 | Pendiente | Qué hace falta | Ref. |
 |---|---|---|
-| Facturación electrónica real | El envío directo a SUNAT ya funciona en beta. Falta que Lisandro cree un usuario SOL secundario (solo comprobantes electrónicos), saque el Certificado Digital Tributario y confirme series y la cuenta de detracciones | (13b) |
+| Facturación electrónica real | El envío directo a SUNAT ya funciona en beta. Falta que Lisandro cree un usuario SOL secundario (solo comprobantes electrónicos), saque el Certificado Digital Tributario y confirme series y la cuenta de detracciones. Al configurarlo: `SUNAT_AMBIENTE=PRODUCCION` con la dirección oficial | (13b) |
 | Acceso desde otra PC o desde el celular | Contratar un servidor o VPS con HTTPS; al instalarlo, eliminar el cliente `sgejd-pruebas` de Keycloak | — |
 | Respaldo automático diario | Elegir la carpeta fuera de la PC (USB, OneDrive o Google Drive de la empresa, red) y ejecutar `programar_respaldo.bat -Destino` | (36) |
 | AS-IS de los procesos | Confirmar los supuestos [S1]–[S9] de los diagramas BPMN | *Modelado de procesos* |
-| Correo de la empresa | Cuenta para enviar proformas y facturas (la Gmail de prueba de Aron se revocó el 05/11/2026: hoy no sale ningún correo) y correo de la oficina para el resumen diario | — |
+| Correo de la empresa | Cuenta para enviar facturas, boletas y proformas (`MAIL_USERNAME`/`MAIL_PASSWORD`). La entrega con seguimiento ya está lista; sin la cuenta no sale ningún correo | (13c) |
 | WhatsApp real | Cuenta de WhatsApp Business API (pagada); hoy el envío de proformas por WhatsApp es simulado | (13) |
-| Topes de descuento | Confirmar 30 % (Lisandro) y 10 % (Lucy) | (25b) |
+| ~~Topes de descuento~~ | ✅ Ya no hace falta confirmarlos: Lisandro los fija en Configuración › Topes de descuento (08/11/2026) | (25b) |
 | Costos visibles para Lucy | Decidir si Lucy debe ver costo y margen en la lista de productos | — |
 | Mantenimiento de ventilación forzada | Confirmar si también lleva mantenimiento preventivo | (14) |
-| Datos impresos | Teléfono y correo de la empresa para facturas y proformas | — |
+| Datos de contacto | Teléfono, correo y web de la empresa para facturas, proformas y el pie del correo del comprobante (`EMPRESA_TELEFONO`, `EMPRESA_CORREO`, `EMPRESA_WEB`; vacíos no se muestran) | — |
 
 **Depende del equipo (se puede hacer sin esperar al cliente)**
 
@@ -1043,11 +1057,11 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 |---|---|---|
 | Credenciales en el historial de git | Gmail ya revocada (05/11/2026). Falta regenerar el token de Decolecta si alguna vez se subió uno real | (2) |
 | Costos y márgenes visibles para asistentes | Si deben ser privados, filtrarlos en el backend (hoy `GET /productos` los devuelve a todos; solo el reporte de Rentabilidad está protegido) | (39) |
-| Costo de compra | Definir si el costo se actualiza con el último costo o con promedio ponderado: hoy una compra sube el stock pero no cambia `costoBase` | (40) |
+| ~~Costo de compra~~ | ✅ Resuelto (08/11/2026): último costo de compra sin IGV, aviso en la venta y precio editable | (40) |
 | Pruebas de seguridad en JUnit | `@WebMvcTest` por rol y permiso (hoy solo `pruebas-seguridad/05_matriz.ps1`) | (28) |
 | DTO en todos los controladores | Categoría, Cliente y Proveedor todavía responden la entidad | (34) |
 | Perfil de pruebas con H2 | Configurarlo o quitar la dependencia del `pom.xml` | (29) |
-| Dependencias del frontend | Revisar los 2 avisos de `npm audit` | (34c) |
+| ~~Dependencias del frontend~~ | ✅ Resuelto (07/11/2026): versiones fijadas; la integración continua falla si aparece una vulnerabilidad alta | (34c) |
 | Esquemas Oracle por módulo | Decidir si se separa `JDREFRIGERACION` en esquemas como propone el curso | (22) |
 
 **Antes de entregar el sistema al cliente**
@@ -1056,7 +1070,8 @@ Resumen de lo que falta, según de quién depende. El detalle de cada punto est�
 2. Stock inicial con un conteo físico: Inventario › Ajustes de inventario › "+ Conteo físico".
 3. Lisandro y Lucy cambian su contraseña (Configuración › "Cambiar mi contraseña").
 4. Activar el respaldo automático (cuando esté elegida la carpeta).
-5. Configurar el correo de la empresa en `application-local.properties`.
+5. Configurar el correo de la empresa (`MAIL_USERNAME`/`MAIL_PASSWORD` en `.env.prod`) y, al pasar a SUNAT real, `SUNAT_AMBIENTE=PRODUCCION` con la dirección oficial ([FACTURACION_SUNAT.md](FACTURACION_SUNAT.md)).
+6. Primer día: una venta propia con el correo de Lisandro como cliente, para ver llegar la factura (también en spam).
 
 ### Equipo y responsables
 
@@ -1110,8 +1125,8 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 11. ~~**Autocompletado RUC/DNI simulado.**~~ ✅ **Resuelto (13/10/2026):** proveedor principal apis.net.pe v1 (sin token), respaldo Decolecta con `DECOLECTA_TOKEN` (RUC por SUNAT, DNI por RENIEC) y modo simulado solo con `CONSULTA_DOCUMENTOS_SIMULADO=true`. ⚠️ La v1 limita las consultas seguidas (429): se responde 503 "intente en unos segundos" y se recomienda registrar un token gratuito de Decolecta como respaldo. La API oficial de RENIEC (PIDE) requiere convenio institucional y no está disponible para el proyecto.
 12. ~~**Correlativo de comprobantes aleatorio.**~~ ✅ **Resuelto (15/10/2026):** cada serie (F001, B001, FC01, BC01) numera 00000001, 00000002… sin saltos ni repetidos, con un contador por serie (`SERIES_COMPROBANTE`) bloqueado durante la venta y la restricción única (serie, número). Probado con 5 ventas simultáneas: números consecutivos, 0 repetidos. Las bases existentes deben correr `migracion_correlativos.sql` una vez (renumera los comprobantes ya emitidos).
 13. **WhatsApp simulado:** `NotificadorSimulado` solo escribe en el log.
-13b. **Facturación electrónica (06/11/2026): envío directo a SUNAT probado en beta.** Con `app.facturacion.modo=sunat`, SGE-JD arma el XML UBL 2.1 (xbuilder de OpenUBL), lo firma con el certificado de JD y lo envía a SUNAT (sendBill); en beta fueron aceptadas facturas, boletas y notas de crédito, y un rechazo real (3034, falta la cuenta de detracciones) quedó registrado con su motivo. Ver *Facturación electrónica: envío directo a SUNAT* en la documentación técnica. **Pendiente para producción:** usuario SOL secundario, Certificado Digital Tributario, series y cuenta de detracciones (decisiones de Lisandro y su contador).
-13c. ~~**Correo sin configurar.**~~ ✅ **Resuelto en desarrollo (26/10/2026):** sale por Gmail con una contraseña de aplicación puesta en `application-local.properties` (ignorado por git), con el correo de Aron como remitente y como `correo-oficina`; probado con una boleta enviada con su PDF adjunto. Cada máquina que corra el backend debe poner sus propias credenciales, y para producción falta la cuenta de correo de la empresa. Corregido el 28/10/2026: las alertas diarias de stock y de mantenimientos tenían el correo de oficina escrito en el código (`yoelwagnercs@gmail.com`); ahora usan `app.notificaciones.correo-oficina`. Al emitir una factura: si el cliente no tiene correo queda en INFO, si el envío falla queda en WARN y solo un fallo de emisión es ERROR.
+13b. **Facturación electrónica (06/11/2026): envío directo a SUNAT probado en beta.** Con `app.facturacion.modo=sunat`, SGE-JD arma el XML UBL 2.1 (xbuilder de OpenUBL), lo firma con el certificado de JD y lo envía a SUNAT (sendBill); en beta fueron aceptadas facturas, boletas y notas de crédito, y un rechazo real (3034, falta la cuenta de detracciones) quedó registrado con su motivo. Ver *Facturación electrónica: envío directo a SUNAT* en la documentación técnica. **Pendiente para producción:** usuario SOL secundario, Certificado Digital Tributario, series y cuenta de detracciones (decisiones de Lisandro y su contador). **Ambiente (08/11/2026):** se declara en `SUNAT_AMBIENTE` (PRODUCCION o BETA, obligatorio) y solo se aceptan las direcciones oficiales de SUNAT; queda registrado e inmutable en cada comprobante aceptado y solo PRODUCCION se envía por correo al cliente.
+13c. ~~**Correo sin configurar.**~~ ✅ **Listo para usar (08/11/2026):** la entrega de facturas y boletas al cliente (PDF + XML firmado) tiene seguimiento, reintentos y reenvío en Ventas. Solo falta la cuenta de correo de la empresa (`MAIL_USERNAME`/`MAIL_PASSWORD`); la Gmail de prueba de Aron se revocó el 05/11/2026.
 14. **Mantenimientos solo para CLIMATIZACIÓN y REFRIGERACIÓN.** Confirmar con el cliente si VENTILACIÓN FORZADA también los requiere.
 15. ~~**Alerta de stock mínimo sobre todos los productos.**~~ ✅ **Resuelto (15/10/2026):** las alertas (pantalla y correo diario) consideran solo materiales (`MATERIAL_SERVICIO`); los equipos no controlan stock y ya no generan alertas falsas.
 16. ~~**Proformas vencidas sin programar.**~~ ✅ **Resuelto (15/10/2026):** `ProformaScheduledService` vence las proformas PENDIENTES todos los días a las 00:05 y también al iniciar el backend (por si estuvo apagado). Ejecución manual: `POST /proformas/marcar-vencidas`.
@@ -1126,7 +1141,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 23. **Paquete raíz.** Documentaciones anteriores decían `com.jdrefrigeracion` o `pe.edu.upeu.sgejd`; el real es `com.bomerp`.
 24. ~~**Seguridad con Keycloak sin responsable.**~~ ✅ **Hecho (18/10/2026):** Keycloak 26.8 + Postgres en `docker-compose.yml`, backend como Resource Server y SPA adaptada. **Confirmar con el docente** que la ruta S10b es válida para la evaluación de S10 (la guía S10b dice que no se evalúa). S11 hecho (19/10/2026): login con redirección y PKCE, y *Direct access grants* desactivado (ver punto 5).
 25. ~~**Cobranza por separar.**~~ ✅ **Resuelto (15/10/2026):** paquete `cobranza` con `Cobro`–`DetalleCobro`, abonos parciales y saldos; usa Ventas solo por su fachada (`listarPendientesDeCobro`, `obtenerPorIdPublico`, `marcarComoPagada`). (a) ✅ **Resuelto (25/10/2026, A8):** anular una venta que el cliente ya pagó (al contado o con abonos) avisa el monto antes de confirmar y deja una **devolución PENDIENTE** en Cobranza › Devoluciones; el ADMIN registra cuándo y cómo se devolvió. Ventas publica `VentaAnuladaEvent` y Cobranza lo escucha en la misma transacción, así Ventas no depende de Cobranza. (b) ✅ **Resuelto (25/10/2026, A7):** se retiró `POST /ventas/{id}/marcar-pagada`, que también podía llamar ASISTENTE y marcaba PAGADA sin cobro; una venta solo pasa a PAGADO por sus abonos. Pendiente: (c) `/reportes/cobranza` sigue en `reportes`.
-25b. **Topes de descuento por confirmar.** 30 % para Lisandro (ADMIN) y 10 % para Lucy (ASISTENTE) son una propuesta: confirmarlos con el cliente (`app.descuentos.*`). El tope sale del rol del JWT; sin sesión la API responde 401.
+25b. ~~**Topes de descuento por confirmar.**~~ ✅ **Resuelto (08/11/2026):** el administrador los fija en Configuración › Topes de descuento (tabla `TOPES_DESCUENTO`; no se delega y queda en el historial). Mientras no los cambie valen 30 % (administrador y "Descuento ampliado") y 10 % (asistente).
 26. **Migración de base de datos para Proformas.** Cada integrante debe ejecutar `migracion_proforma.sql` en su Oracle local antes de arrancar el backend nuevo; si no, Hibernate crea tablas `PROFORMAS` vacías.
 27. **Herramienta de modernización:** `C:\SGE-JD\.github\modernize\` (fuera de los repositorios) registra un intento de migrar a Java 25 / Boot 3.5.16 que no se aplicó. Se puede borrar.
 
@@ -1142,7 +1157,7 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 33. ~~**`System.out` en vez de logger**~~ ✅ **Resuelto (05/11/2026, S13):** las 7 clases que lo usaban (las 5 anotadas más `FacturacionService` y `ProformaService`) usan SLF4J, así que el nivel de cada perfil (`logback-spring.xml`) también las controla. El WhatsApp simulado, que escribía el teléfono y el mensaje del cliente, quedó en DEBUG: no sale en el log de producción.
 34. **Algunos controllers todavía responden entidades:** Categoría, Cliente y Proveedor (el resto ya usa DTO).
 34b. ~~**La SPA todavía dice "BomERP".**~~ ✅ **Resuelto (25/10/2026):** pestaña, títulos de las 25 rutas, menú (ícono "JD") e Inicio dicen SGE-JD, y el Inicio tiene accesos a Ventas, Proformas, Cobranza y Postventa. (`bomerp` sigue siendo el nombre técnico del realm y del cliente de Keycloak.) Pendiente: indicadores en el Inicio (ventas del mes, por cobrar, stock en alerta).
-34c. **Dependencias:** (el `console.log` que `categoria-form.ts` arrastraba del ejemplo de ciclo de vida de la S07 se quitó el 26/10/2026) `npm audit` marca 2 avisos altos en `@angular/router` (solo afecta a SSR, que no se usa) y `zod`, ambos con actualización menor.
+34c. ~~**Dependencias.**~~ ✅ **Resuelto (07/11/2026, auditoría B5):** Angular y zod en versiones exactas sin avisos altos; la integración continua corre `npm audit --audit-level=high` en cada cambio del frontend.
 
 ### Operación
 35. **Base con datos simulados para la demostración (31/10/2026).** Tiene un año ficticio (11/2025 → 10/2026) cargado por la API como lo harían Lucy y Lisandro: 34 clientes, 8 proveedores, 39 productos, 219 proformas, 224 ventas (3 anuladas con su devolución), cobros con detracción y retención, 48 compras con pagos, 58 órdenes de trabajo, mantenimientos, 5 contratos y ajustes de inventario. Las fechas se corrieron por SQL y las facturas se renumeraron por fecha. **Antes de entregar:** `restaurar_sgejd.bat` con `respaldos/sgejd_entrega_vacia_20261107.dmp` (base vacía, series en 0). Es el respaldo vacío del 30/10 con `migracion_proforma_unica.sql`, `migracion_envio_sunat.sql` y `migracion_compra_factura_unica.sql` aplicadas (07/11/2026, auditoría A10 y revisión externa) y, desde la noche del 07/11/2026, también `migracion_comprobante_reemplazo.sql` (comprobante de reemplazo e historial de envíos; la versión anterior quedó como `sgejd_entrega_vacia_20261107_sin_reemplazo.dmp`), `migracion_quitar_usuarios.sql` (26 tablas, sin `USUARIOS`; la anterior quedó como `sgejd_entrega_vacia_20261107_con_usuarios.dmp`) y `migracion_venta_anulacion.sql` (quién anuló y por qué; la anterior quedó como `sgejd_entrega_vacia_20261107_sin_anulacion.dmp`). Desde el 08/11/2026 incluye también `migracion_costos_precios.sql` (IGV de compras, último costo, precio editado y `TOPES_DESCUENTO`: 27 tablas; la anterior quedó como `sgejd_entrega_vacia_20261107_sin_costos_precios.dmp`) y `migracion_envio_correo.sql` (`ENVIOS_CORREO` e `INTENTOS_CORREO`: 29 tablas; la anterior quedó como `sgejd_entrega_vacia_20261107_sin_envio_correo.dmp`) y `migracion_ambiente_emision.sql` (ambiente de emisión y su disparador; la anterior quedó como `sgejd_entrega_vacia_20261107_sin_ambiente.dmp`). Restaurado en un esquema aparte: 0 diferencias con la base de desarrollo: el del 30/10 restauraba el esquema de ese día, sin las columnas de la respuesta de SUNAT ni el índice de proforma única. Se comprobó restaurándolo en un esquema aparte: 0 diferencias de columnas, índices y restricciones con la base actual. **Si después se cambia el esquema, hay que volver a generarlo.** Los datos de prueba anteriores siguen en `sgejd_antes_de_entrega_20261030_2224.dmp`.

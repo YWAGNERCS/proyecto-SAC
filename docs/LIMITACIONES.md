@@ -1,7 +1,7 @@
 # SGE-JD: qué hace hoy y qué todavía no
 
 **Para:** Lisandro y Lucy · JD Refrigeración S.A.C.
-**Versión del sistema:** 31 de octubre de 2026 (entrega académica de LP2)
+**Versión del sistema:** 8 de noviembre de 2026
 
 Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cuáles todavía son una **simulación** o necesitan una decisión de ustedes. Léanla antes de usar SGE-JD con clientes reales.
 
@@ -12,9 +12,12 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 - Catálogo de productos y categorías, con precios calculados desde el costo y el margen.
 - Clientes y proveedores, con búsqueda del nombre y la dirección por RUC (SUNAT) o DNI (RENIEC).
 - Proformas en soles o dólares, con descuento por línea, aceptación, rechazo y conversión en venta.
-- Ventas al contado y a crédito, anulación con devolución de stock. Si la venta anulada ya tenía pagos, queda como devolución pendiente en Cobranza › Devoluciones.
+- Ventas al contado y a crédito, anulación con devolución de stock. Si la venta anulada ya tenía pagos, queda como devolución pendiente en Cobranza › Devoluciones. Al anular se pide el **motivo** y queda quién la anuló.
+- **Precio de una línea editable** al vender o cotizar (por ejemplo, si el proveedor subió el costo): solo puede subir, pide el motivo y lo puede hacer Lisandro o quien él autorice. El catálogo no cambia; la venta guarda los dos precios y el historial lo registra. Si la última compra salió más cara que el costo del catálogo, la línea lo avisa.
+- **Ventas con su fecha real** (hasta 30 días atrás) cuando se registran tarde: solo Lisandro o quien él autorice; la factura sale con la fecha de hoy.
+- **Topes de descuento:** Lisandro los fija en Configuración › Topes de descuento (nadie más puede cambiarlos).
 - Detracción (12 % en servicios) y retención del IGV (3 % si el cliente es agente de retención), con su registro en Cobranza.
-- Compras a proveedores, que suben el stock de los materiales, al contado o a crédito.
+- Compras a proveedores, que suben el stock de los materiales, al contado o a crédito. Los precios se escriben como en la factura del proveedor (**con IGV**) y el sistema separa el subtotal y el IGV (crédito fiscal); cada compra deja en el producto su último costo.
 - **Cuentas por pagar:** lo que JD le debe a cada proveedor, lo vencido y lo que vence en 7 días, con pagos parciales.
 - Cobranza: abonos parciales, saldos por venta, días de atraso y recordatorio por WhatsApp. Un cobro mal registrado se anula con su motivo.
 - Servicios: órdenes de trabajo con técnico, hora y materiales; **agenda semanal de técnicos** que no deja cruzar dos visitas; sedes de cada cliente, equipos instalados con garantía y contratos de mantenimiento.
@@ -32,7 +35,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 |---|---|---|
 | **Facturas y boletas electrónicas** | El sistema ya sabe enviarlas directamente a SUNAT y mostrar si las aceptó o rechazó: se probó en el ambiente de pruebas de SUNAT. Pero mientras no tenga las credenciales de JD, **no envía nada real**: los comprobantes aparecen como "Simulado" y **no tienen validez tributaria**. Lo mismo pasa con las notas de crédito. | Un usuario SOL secundario solo para comprobantes electrónicos, el certificado digital (SUNAT lo da gratis), las series y la cuenta de detracciones. Ver [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md). |
 | **WhatsApp** | Al "enviar" una proforma por WhatsApp, el sistema solo lo anota internamente; **el cliente no recibe nada**. Sí funciona el enlace de WhatsApp de Postventa, que abre la conversación en su celular. | Una cuenta de WhatsApp Business API (tiene costo mensual). |
-| **Correo** | El envío de proformas y facturas por correo y el resumen diario de mantenimientos están programados, pero **hoy no sale ningún correo**: la cuenta Gmail de prueba se dio de baja (05/11/2026). | Una cuenta de correo de la empresa para enviar (por ejemplo Gmail con "contraseña de aplicación") y el correo de la oficina que recibe el resumen diario. |
+| **Correo** | Todo está listo: cuando SUNAT acepta una factura o boleta, el sistema se la envía al cliente con el PDF y el XML, y en Ventas se ve si salió, cuántas veces se intentó y se puede reenviar. También las proformas y el resumen diario de mantenimientos. Pero **hoy no sale ningún correo**: falta la cuenta de la empresa (la Gmail de prueba se dio de baja el 05/11/2026), y además solo se envían facturas con validez tributaria (punto anterior). | Una cuenta de correo de la empresa para enviar (por ejemplo Gmail con "contraseña de aplicación") y el correo de la oficina que recibe el resumen diario. |
 
 ## 3. Límites que conviene conocer
 
@@ -50,13 +53,13 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 
 ## 4. Decisiones que necesitamos de ustedes
 
-1. **Topes de descuento:** hoy Lisandro puede dar hasta 30 % y Lucy hasta 10 % por línea. ¿Están bien?
+1. ~~**Topes de descuento**~~ — ya no hace falta decidirlo con nosotros: Lisandro los cambia cuando quiera en Configuración › Topes de descuento (hoy 30 % para él y 10 % para Lucy).
 2. **Costos y márgenes:** el reporte de Rentabilidad ya es solo de Lisandro (o de quien él autorice), pero en la lista de productos Lucy todavía ve el costo y el margen de cada uno. ¿Debe verlos?
 3. **Mantenimientos:** hoy solo se programan para equipos de climatización y refrigeración. ¿Ventilación forzada también los necesita?
-4. **Teléfono y correo de la empresa** que deben salir impresos en las facturas y proformas.
+4. **Teléfono, correo y página web de la empresa** que deben salir en las facturas, las proformas y el pie del correo que reciben los clientes (si no los tenemos, no se muestran: no inventamos ninguno).
 5. **Facturación electrónica real:** crear el usuario SOL secundario, sacar el certificado digital y confirmar con su contador las series y desde qué fecha emitir (ver [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md)).
 6. **Respaldo automático:** ¿en qué carpeta fuera de la PC se guarda la copia diaria (un USB, el OneDrive o Google Drive de la empresa)?
-7. **Servidor:** para entrar desde otra PC o desde el celular hay que instalar el sistema en un servidor en internet (tiene costo mensual). ¿Lo quieren?
+7. **Servidor:** para entrar desde otra PC o desde el celular hay que instalar el sistema en un servidor en internet con su propio nombre (dominio) y conexión segura (tiene costo mensual). Si solo lo usan en la oficina, basta esta PC. ¿Desde dónde lo van a usar?
 8. **Correo de la empresa:** ¿con qué cuenta salen las proformas y facturas, y a qué correo de la oficina llega el resumen diario de mantenimientos?
 9. **Cómo trabajan hoy:** para la documentación del proyecto necesitamos confirmar cómo hacen hoy las cotizaciones, el control de stock, la facturación, la agenda de los técnicos y las deudas (son 9 preguntas cortas; se las llevamos impresas).
 
@@ -68,6 +71,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 4. Cada uno cambia su contraseña: Configuración › "Cambiar mi contraseña".
 5. Activar el respaldo automático en la carpeta que elijan (punto 6).
 6. Configurar el correo de la empresa (punto 8).
+7. **Primer día con SUNAT real:** registrar una venta con el correo de Lisandro como cliente y comprobar que le llega la factura (revisen también la carpeta de spam).
 
 ---
 

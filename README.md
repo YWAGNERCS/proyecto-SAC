@@ -39,13 +39,13 @@ Es el **Proyecto Integrador** de ADS, BD2 y LP2 (Universidad Peruana Unión), co
 | Maestro | 👥 **Clientes** | Datos maestros con autocompletado por RUC (SUNAT) y DNI (RENIEC) vía apis.net.pe |
 | Maestro | 🚚 **Proveedores** | Datos maestros de proveedores con autocompletado por RUC/DNI |
 | Transaccional | 📄 **Proformas** | Cálculo de IGV y totales, PDF corporativo y envío por correo; aceptar o rechazar |
-| Transaccional | 🛒 **Ventas** | Venta directa cabecera-detalle o desde una proforma aceptada; contado o crédito; **anulación con restauración de stock** y aviso de devolución si el cliente ya pagó |
-| Transaccional | 🏭 **Compras** | Compras a proveedor que suben el stock automáticamente |
+| Transaccional | 🛒 **Ventas** | Venta directa cabecera-detalle o desde una proforma aceptada; contado o crédito; precio de una línea editable con motivo (solo sube); fecha real hasta 30 días atrás con permiso; **anulación con motivo y restauración de stock** y aviso de devolución si el cliente ya pagó |
+| Transaccional | 🏭 **Compras** | Compras a proveedor que suben el stock automáticamente, con el **IGV separado** y el último costo de compra en cada producto; cuentas por pagar |
 | Soporte | 📉 **Inventario** | Alertas diarias de stock mínimo |
 | Operativo | 🔧 **Postventa** | 4 mantenimientos preventivos automáticos (3/6/9/12 meses) tras vender equipos, y alertas a la oficina |
 | Transaccional | 💰 **Cobranza** | Cuentas por cobrar: saldo por venta, abonos parciales o totales (un pago puede cubrir varias ventas), historial de cobros y **devoluciones** de ventas anuladas |
-| Integración | 🧾 **Facturación** | Comprobante electrónico UBL 2.1 *(OSE simulado)* |
-| Integración | ✉️ **Notificaciones** | Correo SMTP real y WhatsApp *(simulado)* |
+| Integración | 🧾 **Facturación** | Comprobante electrónico UBL 2.1 firmado y enviado directo a SUNAT (probado en beta; ambiente declarado en `SUNAT_AMBIENTE`); reemplazos, plazo de 3 días y **entrega al cliente por correo** (PDF + XML) con seguimiento |
+| Integración | ✉️ **Notificaciones** | Correo SMTP real (varios adjuntos, error explícito si no sale) y WhatsApp *(simulado)* |
 | Transversal | 🔐 **Seguridad** | **Keycloak** (S10b): usuarios, roles y login fuera del backend; el backend valida el JWT (RS256) y autoriza por rol: ADMIN (Lisandro) y ASISTENTE (Lucy) |
 
 📤 **Exportaciones e historial:** Excel de ventas y compras (con detalle línea por línea), PDF del comprobante, historial por cliente y por proveedor, y **kardex** de inventario por producto.
@@ -136,7 +136,9 @@ npm start
 | Variable | Uso |
 |---|---|
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexión a Oracle |
-| `MAIL_USERNAME`, `MAIL_PASSWORD` | Envío de correos (SMTP Gmail) |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | Envío de correos (SMTP Gmail): proformas, facturas y boletas al cliente, alertas |
+| `EMPRESA_TELEFONO`, `EMPRESA_CORREO`, `EMPRESA_WEB` | Contacto de JD en el pie del correo del comprobante (vacíos = no se muestran) |
+| `FACTURACION_MODO`, `SUNAT_AMBIENTE`, `SUNAT_URL` | `simulado` o `sunat`; con `sunat`, el ambiente (PRODUCCION o BETA) es obligatorio y la dirección tiene que ser la oficial de SUNAT |
 | `DECOLECTA_TOKEN` | Respaldo para RUC/DNI si apis.net.pe no responde (token gratuito en decolecta.com) |
 | `CONSULTA_DOCUMENTOS_SIMULADO` | `true` = RUC/DNI con datos de prueba, sin internet |
 | `CORREO_OFICINA` | Destino de las alertas automáticas |
@@ -199,9 +201,9 @@ La identidad no es un paquete: vive en **Keycloak** (`keycloak/`), y el backend 
 - [x] **S10** · Seguridad backend con roles (ruta **Keycloak**, S10b): Resource Server, ADMIN/ASISTENTE, perfil desde el JWT
 - [x] **S11** · Seguridad frontend: login con Authorization Code + PKCE, `authGuard`/`rolGuard`, interceptor con refresco ante 401, menú por rol
 - [x] **S12** · Evaluación de la Unidad II: producto [`lp2-demo.md`](https://ywagnercs.github.io/proyecto-SAC/#/lp2-demo) publicado
-- [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue
+- [ ] **U3** · Optimización, paginación, pruebas end-to-end y despliegue (✅ paginación, integración continua, despliegue en contenedores y prueba de integración real; falta el servidor definitivo)
 
-> ⚠️ **Pendientes conocidos:** las integraciones OSE y WhatsApp son simuladas y el correo no está configurado; falta repartir `reportes` entre sus módulos. Qué significa para el cliente: [LIMITACIONES.md](docs/LIMITACIONES.md). Lista completa en **[Por verificar](docs/README.md#por-verificar)**.
+> ⚠️ **Pendientes conocidos:** el envío real a SUNAT y el correo esperan las credenciales y la cuenta de JD (todo lo demás está listo y probado en beta); WhatsApp es simulado; falta repartir `reportes` entre sus módulos. Qué significa para el cliente: [LIMITACIONES.md](docs/LIMITACIONES.md). Lista completa en **[Por verificar](docs/README.md#por-verificar)**.
 
 ---
 

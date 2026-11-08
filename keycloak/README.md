@@ -9,7 +9,8 @@ Keycloak emite los tokens (JWT RS256) que el backend valida. Corre aparte del ba
 | Roles | `ADMIN` (Lisandro) · `ASISTENTE` (Lucy) |
 | Cliente de la SPA | `bomerp-frontend`: público, solo *Standard flow* (Authorization Code) con **PKCE S256 obligatorio**; *Direct access grants* desactivado. Retorno: `http://localhost:4200/auth/callback` |
 | Cliente de pruebas | `sgejd-pruebas`: solo para `pruebas-seguridad/*.ps1` (PowerShell no puede hacer el login con redirección). Usa contraseña directa: **no crearlo en producción** |
-| Usuarios | `lisandro` · `lucy` — contraseñas en `../.env` (`SGEJD_CLAVE_LISANDRO`, `SGEJD_CLAVE_LUCY`) |
+| Usuarios | `lisandro` · `lucy` — contraseñas en `../.env` (`SGEJD_CLAVE_LISANDRO`, `SGEJD_CLAVE_LUCY`); en producción, en `../.env.prod` |
+| Permisos delegables | `PERM_ANULAR_VENTAS`, `PERM_ANULAR_COBROS`, `PERM_DEVOLUCIONES`, `PERM_CATALOGO`, `PERM_ELIMINAR`, `PERM_SERVICIOS`, `PERM_DESCUENTO_AMPLIADO`, `PERM_AJUSTAR_INVENTARIO`, `PERM_VER_RENTABILIDAD`, `PERM_VENTA_FECHA_PASADA`, `PERM_EDITAR_PRECIO`: los crea `configurar_realm.py` y Lisandro se los da a un asistente en Configuración › Usuarios y permisos. Los topes de descuento y los permisos mismos no se delegan |
 | Access token | 5 minutos; ante un 401 la SPA lo renueva con el refresh token |
 | Eventos | Activados (login, canje de código, refresco, logout): consola → *Events* |
 

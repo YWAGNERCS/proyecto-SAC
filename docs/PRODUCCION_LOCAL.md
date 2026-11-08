@@ -112,6 +112,36 @@ docker compose -f compose-prod.yml up -d --build
 
 Abrir http://localhost:4300 e iniciar sesión con `lisandro` o `lucy` (clave en `.env.prod`).
 
+## Encender y apagar (ya instalado)
+
+Con producción ya instalada (pasos anteriores hechos una vez), el día a día es encender los contenedores, sin volver a
+compilar. Primero se apaga lo de desarrollo si está encendido (la PC tiene 8 GB: un solo Oracle a la vez):
+
+```powershell
+scripts\detener_sgejd.bat
+```
+
+```powershell
+cd C:\SGE-JD\bomerp-backend
+```
+
+```powershell
+docker compose -f compose-prod.yml --env-file .env.prod up -d
+```
+
+```powershell
+docker compose -f ..\bomerp-frontend\compose-prod.yml up -d
+```
+
+Esperar uno o dos minutos (Oracle y el backend tardan en arrancar) y abrir http://localhost:4300. Para apagarlo, los
+dos `stop` de *Volver a desarrollo*. Las claves de `lisandro` y `lucy` de producción están en `.env.prod`
+(`SGEJD_CLAVE_LISANDRO`, `SGEJD_CLAVE_LUCY`) y son distintas de las de desarrollo (`.env`).
+
+**Facturación real:** el backend de producción viene con `FACTURACION_MODO=simulado`. Para enviar a SUNAT, poner en
+`.env.prod` `FACTURACION_MODO=sunat`, `SUNAT_AMBIENTE` (PRODUCCION o BETA, obligatorio) y la dirección oficial de ese
+ambiente en `SUNAT_URL` ([FACTURACION_SUNAT.md](FACTURACION_SUNAT.md)); si no corresponden, el backend no arranca y su log
+(`docker logs sge-jd-backend-prod`) dice qué corregir.
+
 ## Verificación
 
 ```powershell

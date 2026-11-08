@@ -5,7 +5,7 @@
 **Curso:** Proyecto Integrador — ADS / BD2 / LP2, Universidad Peruana Unión (base académica: BomERP)
 **Repositorio:** `https://github.com/YWAGNERCS/proyecto-SAC` (backend: rama `master` · frontend: rama `frontend`)
 **Equipo:** CherryTree
-**Última revisión contra el código:** 25/10/2026 (sesión S12 de LP2, cierre de la Unidad II)
+**Última revisión contra el código:** 08/11/2026 (entrega de comprobantes por correo, ambiente de SUNAT declarado, prueba de integración real)
 **Documentación publicada:** https://ywagnercs.github.io/proyecto-SAC/
 
 ---
@@ -135,16 +135,16 @@ El sistema tiene **12 módulos**, agrupados en 4 tipos:
 
 | Área | Estado |
 |---|---|
-| Módulos backend (los 12) | ✅ Operativos; integraciones OSE y WhatsApp **simuladas**; RUC/DNI real vía apis.net.pe v1 (respaldo opcional: Decolecta) |
+| Módulos backend (los 12) | ✅ Operativos; WhatsApp **simulado**; RUC/DNI real vía apis.net.pe v1 (respaldo opcional: Decolecta) |
 | Reorganización | ✅ Cotizaciones → **Proformas** y Mantenimiento → **Postventa** (código, BD y SPA; migración en `migracion_proforma.sql`). ✅ **Cobranza** separada de ventas (15/10/2026). ⏳ Repartir el paquete `reportes` |
-| Facturación electrónica | ⚠️ OSE real pendiente. ✅ Correlativo secuencial por serie (F001, B001, FC01, BC01) y datos reales de JD en el PDF |
+| Facturación electrónica | ✅ Envío directo a SUNAT probado en beta (firma, CDR, rechazos, reemplazos, plazo de 3 días, historial de envíos); ambiente declarado en `SUNAT_AMBIENTE` y solo direcciones oficiales. ✅ Entrega al cliente por correo (PDF + XML) con seguimiento, reintentos y reenvío. ⏳ Producción: falta el usuario SOL y el certificado de JD |
 | Frontend / SPA | ✅ Angular 22: login con Keycloak, catálogo, clientes, proveedores, proformas, ventas, compras, cobranza (con devoluciones) y postventa. **Diseño responsivo** (celular, tablet y escritorio). Faltan pantallas de alertas de inventario y de facturación |
 | Seguridad | ✅ Keycloak 26.8 + Postgres; `/api/v1/admin/**` exige JWT; reglas por rol verificadas (matriz de 14 casos). ✅ S11: la SPA inicia sesión con Authorization Code + PKCE (sin formulario propio), guards por sesión y por rol, refresco del token ante 401. ✅ Protección contra fuerza bruta y política de contraseñas (25/10/2026) |
 | Modelo relacional Oracle | ✅ Corregido (relaciones cabecera-detalle con dirección de FK validada). ✅ `Producto` → `Categoria` (13/10/2026; hoy ningún producto queda sin categoría). Tablas `NOTAS_CREDITO` y `DEVOLUCIONES` |
-| Credenciales | ✅ Externalizadas en `.env` y `application-local.properties`; las de desarrollo se cambiaron el 25/10/2026. ⚠️ Confirmar que se revocaron la contraseña de Gmail y el token de Decolecta que quedaron en el historial de git |
+| Credenciales | ✅ Externalizadas en `.env`, `.env.prod` y `application-local.properties` (ninguno se sube a git). La contraseña de Gmail del historial se revocó (05/11/2026); falta regenerar el token de Decolecta si alguna vez se subió uno real |
 | Control de versiones | ✅ GitHub compartido (`YWAGNERCS/proyecto-SAC`, con topics); documentación publicada en https://ywagnercs.github.io/proyecto-SAC/ |
-| Operación | ✅ `scripts/`: arranque, apagado, respaldo, restauración y base limpia de un clic |
-| Pruebas automatizadas | ⚠️ Mínimas (sin pruebas de ventas ni de módulos) |
+| Operación | ✅ `scripts/`: arranque, apagado, respaldo, restauración y base limpia de un clic. ✅ Producción en contenedores (`compose-prod.yml`, puerto 4300): `docs/PRODUCCION_LOCAL.md` |
+| Pruebas automatizadas | ✅ 215 pruebas JUnit (171 sin Oracle, en GitHub Actions), 33 del frontend (Vitest) y una prueba de integración real del 08/11/2026 (`docs/PRUEBA_INTEGRACION_CORREO.md`) |
 
 La lista completa de inconsistencias y pendientes está en la documentación completa (`docs/README.md`, publicada en https://ywagnercs.github.io/proyecto-SAC/), sección **5. Por verificar**.
 
