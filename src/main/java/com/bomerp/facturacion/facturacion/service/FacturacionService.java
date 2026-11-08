@@ -79,8 +79,12 @@ public class FacturacionService implements ComprobantesDeVenta {
      * cobro ni los mantenimientos de la venta: solo cambia el documento tributario. El rechazado queda como
      * historial, marcado como reemplazado, con su CDR.
      *
-     * 409 si el comprobante no tiene un rechazo definitivo (válido, pendiente o una excepción que se corrige
-     * reenviando el mismo número), si ya fue reemplazado o si la venta está anulada (ya no necesita comprobante).
+     * También para uno que pasó su plazo de envío (3 días, D-6) sin que SUNAT lo registrara: enviarlo ya no le
+     * daría validez. Ese número nunca llegó a SUNAT.
+     *
+     * 409 si el comprobante no tiene un rechazo definitivo ni está fuera de plazo (válido, pendiente o una
+     * excepción que todavía se corrige reenviando el mismo número), si ya fue reemplazado o si la venta está
+     * anulada (ya no necesita comprobante).
      */
     @Transactional
     public Comprobante emitirReemplazo(Long comprobanteId) {
@@ -90,7 +94,8 @@ public class FacturacionService implements ComprobantesDeVenta {
         if (rechazado.isReemplazado()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, numero + " ya fue reemplazado por otro comprobante.");
         }
-        if (!rechazado.rechazoDefinitivo()) {
+        boolean fueraDePlazo = rechazado.fueraDePlazo(java.time.LocalDate.now());
+        if (!rechazado.rechazoDefinitivo() && !fueraDePlazo) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, rechazado.getEstadoSunat().valido()
                     ? numero + " tiene validez ante SUNAT: no se reemplaza. Para anularlo, anule la venta (se emite una nota de crédito)."
                     : numero + " no fue rechazado con constancia de SUNAT: no se reemplaza. Si SUNAT no lo recibió, corrija el dato y reenvíelo con el mismo número.");
@@ -104,8 +109,9 @@ public class FacturacionService implements ComprobantesDeVenta {
         comprobanteRepository.saveAndFlush(rechazado);   // antes del nuevo: el índice admite un solo vigente por venta
 
         Comprobante nuevo = crearComprobante(venta, rechazado);
-        log.info("{} (rechazado por SUNAT, código {}) reemplazado por {}-{} en la venta #{}", numero,
-                rechazado.getEnvio().getCodigo(), nuevo.getSerie(), nuevo.getNumero(), venta.getId());
+        log.info("{} ({}) reemplazado por {}-{} en la venta #{}", numero,
+                fueraDePlazo ? "fuera del plazo de envío" : "rechazado por SUNAT, código " + rechazado.getEnvio().getCodigo(),
+                nuevo.getSerie(), nuevo.getNumero(), venta.getId());
         return nuevo;
     }
 
@@ -231,6 +237,31 @@ public class FacturacionService implements ComprobantesDeVenta {
                 .map(c -> com.bomerp.facturacion.comprobante.dto.EstadoSunatVentaDTO.de(c, notas.get(c.getId()),
                         reemplazados.getOrDefault(c.getVenta().getId(), List.of())))
                 .toList();
+    }
+
+    /**
+     * Para la campana: facturas y boletas de ventas vigentes que SUNAT todavía no registró, según su plazo de
+     * envío de 3 días (informe D-6). Por vencer: vence hoy o mañana. Fuera de plazo: ya venció, hay que
+     * emitir un comprobante de reemplazo.
+     */
+    public record PlazoEnvioDTO(int porVencer, int fueraDePlazo, List<String> numerosPorVencer, List<String> numerosFueraDePlazo) {}
+
+    @Transactional(readOnly = true)
+    public PlazoEnvioDTO plazoDeEnvio() {
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        List<String> porVencer = new java.util.ArrayList<>();
+        List<String> fuera = new java.util.ArrayList<>();
+        comprobanteRepository.findByReemplazadoFalseAndEstadoSunatIn(
+                        List.of(Comprobante.EstadoSunat.PENDIENTE, Comprobante.EstadoSunat.RECHAZADO)).stream()
+                .filter(Comprobante::faltaQueSunatLoRegistre)
+                .filter(c -> c.getVenta() == null || c.getVenta().getEstado() != Venta.EstadoVenta.ANULADA)
+                .sorted(java.util.Comparator.comparing(Comprobante::getFechaEmision).thenComparing(Comprobante::getId))
+                .forEach(c -> {
+                    String numero = c.getSerie() + "-" + Integer.parseInt(c.getNumero());
+                    if (c.fueraDePlazo(hoy)) fuera.add(numero);
+                    else if (!hoy.isBefore(c.fechaLimiteEnvio().minusDays(1))) porVencer.add(numero);
+                });
+        return new PlazoEnvioDTO(porVencer.size(), fuera.size(), porVencer, fuera);
     }
 
     /** Archivo guardado del envío a SUNAT: XML firmado o CDR (constancia de recepción, ZIP). */

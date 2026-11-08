@@ -118,6 +118,40 @@ public class Comprobante {
     /** SUNAT: el comprobante ya está informado y figura anulado o rechazado. */
     public static final int CODIGO_YA_RECHAZADO = 1032;
 
+    /** SUNAT: ya tiene ese número por un envío anterior, sin decir si lo aceptó (queda por confirmar). */
+    public static final int CODIGO_YA_REGISTRADO = 1033;
+
+    /**
+     * Plazo para enviar facturas y boletas a SUNAT: 3 días calendario contados desde el día siguiente a la
+     * emisión (RS 003-2023/SUNAT). Lo que se envía después no tiene calidad de comprobante electrónico.
+     */
+    public static final int DIAS_PLAZO_ENVIO = 3;
+
+    /** Último día en que SUNAT todavía recibe el comprobante: emitido el 7, se puede enviar hasta el 10 inclusive. */
+    public LocalDate fechaLimiteEnvio() {
+        return fechaEmision.plusDays(DIAS_PLAZO_ENVIO);
+    }
+
+    /**
+     * SUNAT todavía no registró el comprobante, así que aún hay que hacerlo llegar: pendiente de envío (salvo
+     * el 1033, que SUNAT ya tiene) o una excepción que se corrige y se reenvía con el mismo número.
+     */
+    public boolean faltaQueSunatLoRegistre() {
+        if (reemplazado) return false;
+        if (estadoSunat == EstadoSunat.PENDIENTE) {
+            return getEnvio().getCodigo() == null || getEnvio().getCodigo() != CODIGO_YA_REGISTRADO;
+        }
+        return estadoSunat == EstadoSunat.RECHAZADO && !rechazoDefinitivo();
+    }
+
+    /**
+     * Pasó el plazo sin que SUNAT lo registrara (informe de rechazos SUNAT, D-6): ya no se envía, porque lo
+     * que llega tarde no tiene validez aunque SUNAT lo reciba, y la venta necesita un comprobante de reemplazo.
+     */
+    public boolean fueraDePlazo(LocalDate hoy) {
+        return faltaQueSunatLoRegistre() && hoy.isAfter(fechaLimiteEnvio());
+    }
+
     public enum TipoComprobante {
         FACTURA, BOLETA, NOTA_CREDITO
     }

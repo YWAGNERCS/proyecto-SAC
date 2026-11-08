@@ -77,7 +77,8 @@ En la computadora donde corre SGE-JD en modo producción (`compose-prod.yml`, ve
 | Rechazado por SUNAT: no es válido | Código 2000-3999 (o 1032): no tiene validez y su número ya quedó usado | Corregir el dato en Clientes y pulsar **Emitir comprobante de reemplazo** (número nuevo, misma venta; no cambian el stock ni el cobro) |
 | SUNAT no lo recibió: corrija y reenvíe | Excepción: SUNAT no registró el comprobante | Corregir el dato que indica el mensaje y pulsar **Reenviar** (mismo número) |
 | Por confirmar en SUNAT | Código 1033: SUNAT ya tiene ese número de un envío anterior y no dice si lo aceptó | Consultarlo en SUNAT (Consulta de validez del CPE) antes de entregarlo al cliente |
-| Pendiente de envío | SUNAT no respondió o falta un dato de JD | Se reintenta solo cada 3 minutos (hasta 20 veces). Si el mensaje indica un dato de JD (cuenta de detracciones), configurarlo y pulsar **Reenviar** |
+| Pendiente de envío | SUNAT no respondió o falta un dato de JD | Se reintenta solo cada 3 minutos (hasta 20 veces). Si el mensaje indica un dato de JD (cuenta de detracciones), configurarlo y pulsar **Reenviar**. Debajo dice hasta qué día SUNAT lo recibe |
+| Fuera de plazo: no es válido | Pasaron 3 días desde la emisión sin que SUNAT lo registrara: lo que llega tarde no tiene validez | Pulsar **Emitir comprobante de reemplazo** (número nuevo, fecha de hoy, misma venta). La campana avisa antes de que venza |
 
 La nota de crédito de una venta anulada sale cuando SUNAT aceptó el comprobante original. Si el
 original fue rechazado, no se crea nota: no había nada válido que anular.

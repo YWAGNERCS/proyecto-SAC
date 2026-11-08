@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
  *   (la beta responde HTTP 401 al tercer envío seguido en menos de un segundo).
  * - Lo que queda PENDIENTE (SUNAT no respondió) se reintenta cada pocos minutos, hasta un máximo.
  * - Una nota de crédito sale recién cuando su comprobante original fue aceptado.
+ * - Una factura o boleta que pasó su plazo de envío (3 días, Comprobante.fueraDePlazo) ya no se envía.
  */
 @Service
 @Slf4j
@@ -44,7 +45,7 @@ public class EnvioSunatService {
     static final int MAX_INTENTOS = 20;
 
     /** Código 1033 de SUNAT: el número ya estaba registrado por un envío anterior (ver SunatDirectoClient). */
-    static final int CODIGO_POR_CONFIRMAR = 1033;
+    static final int CODIGO_POR_CONFIRMAR = Comprobante.CODIGO_YA_REGISTRADO;
 
     /** Cuántos pendientes toma cada vuelta del reintento automático. */
     static final org.springframework.data.domain.Limit LOTE = org.springframework.data.domain.Limit.of(20);
@@ -123,6 +124,12 @@ public class EnvioSunatService {
                         + " está anulada y no se pudo crear su nota de crédito. Revise el registro del backend.", null, null);
                 return EstadoSunat.PENDIENTE;
             }
+            if (c.fueraDePlazo(java.time.LocalDate.now())) {
+                // Lo que llega a SUNAT pasado el plazo no tiene validez aunque lo reciba (informe D-6)
+                c.getEnvio().registrarIntento(null, mensajeFueraDePlazo(c), null, null);
+                log.warn("{}-{} no se envía: venció su plazo de envío a SUNAT ({})", c.getSerie(), c.getNumero(), c.fechaLimiteEnvio());
+                return EstadoSunat.PENDIENTE;
+            }
             RespuestaOse r = ose.emitir(c);
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
             registros.save(EnvioSunatRegistro.deComprobante(c.getId(), r.resultado().name(), c.getEnvio(), r.xmlFirmado(), r.cdr()));
@@ -158,6 +165,13 @@ public class EnvioSunatService {
                     c.getSerie(), c.getNumero(), c.getVenta().getId());
         }
         return creada;
+    }
+
+    /** Por qué un comprobante fuera de plazo ya no se envía y qué hacer. */
+    static String mensajeFueraDePlazo(Comprobante c) {
+        return "No se envía: venció el plazo para enviarlo a SUNAT (hasta el "
+                + c.fechaLimiteEnvio().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                + "). Lo enviado fuera de plazo no tiene validez: emita un comprobante de reemplazo.";
     }
 
     /** Comprobante de una venta anulada que se iba a enviar sin su nota de crédito: Facturación la crea. */
@@ -209,6 +223,9 @@ public class EnvioSunatService {
             if (c.rechazoDefinitivo()) {
                 throw conflicto("SUNAT rechazó " + numero + " (código " + c.getEnvio().getCodigo() + "): ese número ya "
                         + "no puede volver a enviarse. Corrija el dato que indica SUNAT y emita un comprobante de reemplazo.");
+            }
+            if (c.fueraDePlazo(java.time.LocalDate.now())) {
+                throw conflicto(mensajeFueraDePlazo(c).replace("No se envía: venció", numero + ": venció"));
             }
             reabrir(c.getEstadoSunat(), c.getEnvio(), numero);
             if (c.getEstadoSunat() == EstadoSunat.RECHAZADO && c.getVenta() != null) {
@@ -277,7 +294,9 @@ public class EnvioSunatService {
         // después, 20 comprobantes agotados al principio de la lista taparían para siempre a los siguientes.
         // Los que SUNAT respondió con 1033 (ya registrado, por confirmar) también quedan fuera: reenviarlos solo
         // repetiría el 1033 cada pocos minutos. Se ven en Ventas con el aviso para verificarlos en SUNAT.
-        var pendientes = comprobantes.pendientesParaReintentar(EstadoSunat.PENDIENTE, MAX_INTENTOS, CODIGO_POR_CONFIRMAR, LOTE)
+        // Los que pasaron el plazo de envío tampoco: ya no tendrían validez (informe D-6).
+        var emitidosDesde = java.time.LocalDate.now().minusDays(Comprobante.DIAS_PLAZO_ENVIO);
+        var pendientes = comprobantes.pendientesParaReintentar(EstadoSunat.PENDIENTE, MAX_INTENTOS, CODIGO_POR_CONFIRMAR, emitidosDesde, LOTE)
                 .stream().map(Comprobante::getId).toList();
         var notasPendientes = notas.pendientesParaReintentar(EstadoSunat.PENDIENTE, MAX_INTENTOS, CODIGO_POR_CONFIRMAR, LOTE)
                 .stream().map(NotaCredito::getId).toList();

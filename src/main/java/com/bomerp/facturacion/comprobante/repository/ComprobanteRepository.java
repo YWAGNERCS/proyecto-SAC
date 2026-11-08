@@ -29,11 +29,16 @@ public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> 
      * "ya registrado" (1033): esos quedan por confirmar y reenviarlos solo repetiría la misma respuesta.
      */
     @Query("SELECT c FROM Comprobante c WHERE c.estadoSunat = :estado AND c.envio.intentos < :maxIntentos"
-            + " AND (c.envio.codigo IS NULL OR c.envio.codigo <> :codigoPorConfirmar) ORDER BY c.id")
+            + " AND (c.envio.codigo IS NULL OR c.envio.codigo <> :codigoPorConfirmar)"
+            + " AND c.fechaEmision >= :emitidosDesde ORDER BY c.id")
     List<Comprobante> pendientesParaReintentar(@Param("estado") Comprobante.EstadoSunat estado,
                                                @Param("maxIntentos") int maxIntentos,
                                                @Param("codigoPorConfirmar") int codigoPorConfirmar,
+                                               @Param("emitidosDesde") java.time.LocalDate emitidosDesde,
                                                org.springframework.data.domain.Limit lote);
+
+    /** Comprobantes vigentes que SUNAT aún no tiene (pendientes o rechazados), para el aviso del plazo de envío. */
+    List<Comprobante> findByReemplazadoFalseAndEstadoSunatIn(java.util.Collection<Comprobante.EstadoSunat> estados);
 
     /** Último número emitido en una serie (los números tienen 8 dígitos, así que MAX de texto sirve). */
     @Query("SELECT MAX(c.numero) FROM Comprobante c WHERE c.serie = :serie")

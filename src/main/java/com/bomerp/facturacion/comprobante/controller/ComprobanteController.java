@@ -32,6 +32,12 @@ public class ComprobanteController {
     }
 
     /** Vuelve a enviar a SUNAT un comprobante rechazado (ya corregido) o pendiente. 409 si ya fue aceptado. */
+    /** Facturas y boletas que SUNAT aún no registró y vencen su plazo de envío hoy o mañana, o ya lo pasaron. */
+    @GetMapping("/plazo-envio")
+    public FacturacionService.PlazoEnvioDTO plazoEnvio() {
+        return facturacionService.plazoDeEnvio();
+    }
+
     @PostMapping("/{id}/reenviar")
     public ResponseEntity<Void> reenviar(@PathVariable Long id) {
         envioSunat.reenviarComprobante(id);

@@ -193,6 +193,36 @@ class ComprobanteReemplazoIntegracionTest {
                 .satisfies(d -> assertThat(d.getDescripcion()).isEqualTo("Split de prueba (reemplazo)"));
     }
 
+    /**
+     * Plazo de envío (D-6): un pendiente emitido hace 4 días ya no se envía ni se reenvía; se reemplaza por
+     * otro con fecha de hoy. La campana lo cuenta mientras tanto.
+     */
+    @Test
+    void unPendienteFueraDePlazoSeReemplazaYLaCampanaLoAvisa() {
+        String numero = jdbc.queryForObject("SELECT serie || '-' || TO_NUMBER(numero) FROM comprobantes WHERE id = ?", String.class, comprobanteId);
+        jdbc.update("UPDATE comprobantes SET estado_sunat = 'PENDIENTE', sunat_codigo = NULL, fecha_emision = ? WHERE id = ?", java.sql.Date.valueOf(java.time.LocalDate.now().minusDays(2)), comprobanteId);
+        em.clear();
+        assertThat(facturacion.plazoDeEnvio().numerosPorVencer()).contains(numero);
+        assertThat(facturacion.estadosDeVentas(List.of(ventaId)).get(0).comprobante().puedeReemplazar()).isFalse();
+        assertThatThrownBy(() -> facturacion.emitirReemplazo(comprobanteId)).isInstanceOf(ResponseStatusException.class);
+
+        jdbc.update("UPDATE comprobantes SET fecha_emision = ? WHERE id = ?", java.sql.Date.valueOf(java.time.LocalDate.now().minusDays(4)), comprobanteId);
+        em.clear();
+        assertThat(facturacion.plazoDeEnvio().numerosFueraDePlazo()).contains(numero);
+        EstadoSunatVentaDTO.Documento doc = facturacion.estadosDeVentas(List.of(ventaId)).get(0).comprobante();
+        assertThat(doc.fueraDePlazo()).isTrue();
+        assertThat(doc.puedeReemplazar()).isTrue();
+        assertThat(doc.fechaLimiteEnvio()).isEqualTo(java.time.LocalDate.now().minusDays(1));
+        assertThatThrownBy(() -> envioSunat.reenviarComprobante(comprobanteId))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("venció el plazo");
+
+        Comprobante nuevo = facturacion.emitirReemplazo(comprobanteId);
+        em.flush();
+        assertThat(nuevo.getFechaEmision()).isEqualTo(java.time.LocalDate.now());
+        assertThat(nuevo.getReemplazaA().getId()).isEqualTo(comprobanteId);
+        assertThat(facturacion.plazoDeEnvio().numerosFueraDePlazo()).doesNotContain(numero);
+    }
+
     /** Excepción reenviada: sale con el dato corregido del cliente (SUNAT no había registrado el comprobante). */
     @Test
     void unaExcepcionReenviadaTomaElDatoCorregido() {

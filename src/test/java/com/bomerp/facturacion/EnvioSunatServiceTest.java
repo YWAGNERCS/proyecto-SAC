@@ -163,11 +163,12 @@ class EnvioSunatServiceTest {
     @Test
     void elReintentoPideALaBaseSoloLosQueNoAgotaronSusIntentosNiEstanPorConfirmar() {
         // El filtro va en la consulta (F-02 y 1033); que Oracle lo cumpla lo prueba ReintentoSunatIntegracionTest
-        when(comprobantes.pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), any())).thenReturn(List.of());
+        when(comprobantes.pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), any(), any())).thenReturn(List.of());
         when(notas.pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), any())).thenReturn(List.of());
 
         servicio.reintentarPendientes();
-        verify(comprobantes).pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), eq(org.springframework.data.domain.Limit.of(20)));
+        verify(comprobantes).pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033),
+                eq(java.time.LocalDate.now().minusDays(3)), eq(org.springframework.data.domain.Limit.of(20)));
         verify(notas).pendientesParaReintentar(eq(EstadoSunat.PENDIENTE), eq(20), eq(1033), eq(org.springframework.data.domain.Limit.of(20)));
         verify(ose, after(300).never()).emitir(any());
     }
@@ -222,6 +223,62 @@ class EnvioSunatServiceTest {
         c.setReemplazado(true);
         assertThatThrownBy(() -> servicio.reenviarComprobante(17L))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("ya fue reemplazado");
+    }
+
+    // --- Plazo de envío: 3 días calendario desde el día siguiente a la emisión (informe D-6) ---
+
+    @Test
+    void elPlazoVenceTresDiasDespuesDeLaEmision() {
+        Comprobante c = comprobante(40, EstadoSunat.PENDIENTE);
+        c.setFechaEmision(java.time.LocalDate.of(2026, 11, 7));
+        assertThat(c.fechaLimiteEnvio()).isEqualTo(java.time.LocalDate.of(2026, 11, 10));
+        assertThat(c.fueraDePlazo(java.time.LocalDate.of(2026, 11, 10))).isFalse();
+        assertThat(c.fueraDePlazo(java.time.LocalDate.of(2026, 11, 11))).isTrue();
+
+        // Ya tiene validez, ya lo rechazó SUNAT con CDR, está por confirmar (1033) o fue reemplazado: el plazo no aplica
+        c.setEstadoSunat(EstadoSunat.ACEPTADO);
+        assertThat(c.fueraDePlazo(java.time.LocalDate.of(2026, 12, 1))).isFalse();
+        c.setEstadoSunat(EstadoSunat.RECHAZADO);
+        c.getEnvio().registrarIntento(2800, "rechazo", null, new byte[]{2});
+        assertThat(c.fueraDePlazo(java.time.LocalDate.of(2026, 12, 1))).isFalse();
+        c.setEstadoSunat(EstadoSunat.PENDIENTE);
+        c.getEnvio().registrarIntento(1033, "ya registrado", null, null);
+        assertThat(c.fueraDePlazo(java.time.LocalDate.of(2026, 12, 1))).isFalse();
+        // Una excepción (SUNAT no lo registró) sí vence
+        c.setEstadoSunat(EstadoSunat.RECHAZADO);
+        c.getEnvio().registrarIntento(305, "excepción", null, null);
+        assertThat(c.fueraDePlazo(java.time.LocalDate.of(2026, 12, 1))).isTrue();
+        c.setReemplazado(true);
+        assertThat(c.fueraDePlazo(java.time.LocalDate.of(2026, 12, 1))).isFalse();
+    }
+
+    @Test
+    void unPendienteFueraDePlazoNoSeEnviaYDiceQueHacer() {
+        Comprobante c = comprobante(41, EstadoSunat.PENDIENTE);
+        c.setFechaEmision(java.time.LocalDate.now().minusDays(4));
+
+        assertThat(servicio.enviarComprobante(41L)).isEqualTo(EstadoSunat.PENDIENTE);
+        verify(ose, never()).emitir(any());
+        assertThat(c.getEnvio().getMensaje()).contains("venció el plazo").contains("comprobante de reemplazo");
+        verifyNoInteractions(eventos);
+    }
+
+    @Test
+    void unPendienteEmitidoHaceTresDiasTodaviaSeEnvia() {
+        Comprobante c = comprobante(42, EstadoSunat.PENDIENTE);
+        c.setFechaEmision(java.time.LocalDate.now().minusDays(3));
+        when(ose.emitir(c)).thenReturn(respuesta(Resultado.ACEPTADO, 0, "aceptada"));
+        assertThat(servicio.enviarComprobante(42L)).isEqualTo(EstadoSunat.ACEPTADO);
+    }
+
+    @Test
+    void unaExcepcionFueraDePlazoNoSeReenvia() {
+        Comprobante c = comprobante(43, EstadoSunat.RECHAZADO);
+        c.setFechaEmision(java.time.LocalDate.now().minusDays(5));
+        c.getEnvio().registrarIntento(305, "El RUC del receptor no existe", null, null);
+        assertThatThrownBy(() -> servicio.reenviarComprobante(43L))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("venció el plazo");
+        assertThat(c.getEstadoSunat()).isEqualTo(EstadoSunat.RECHAZADO);
     }
 
     @Test

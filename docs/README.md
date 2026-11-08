@@ -304,13 +304,15 @@ Venta registrada ──► comprobante PENDIENTE (serie y correlativo) ──►
 | 4000 o más | OBSERVADO (válido; la observación queda guardada) |
 | 2000-3999 (rechazo con CDR) y 1032 | RECHAZADO definitivo: no es válido y su número ya quedó usado; se emite un **comprobante de reemplazo** |
 | Demás excepciones (p. ej. 0100-1999 con dato mal enviado) | RECHAZADO "no recibido": SUNAT no lo registró; se corrige el dato y se reenvía con el mismo número |
-| 0100-0199, HTTP 401/5xx o sin respuesta | PENDIENTE: se reintenta solo cada 3 minutos (hasta 20 intentos) |
+| 0100-0199, HTTP 401/5xx o sin respuesta | PENDIENTE: se reintenta solo cada 3 minutos (hasta 20 intentos), mientras esté en plazo |
+| Sin registrar en SUNAT pasados 3 días desde la emisión | Fuera de plazo: ya no se envía ni se reenvía; se emite un **comprobante de reemplazo** |
 | 1033 (ya registrado en un envío anterior) | PENDIENTE "por confirmar": sin validez, fuera del reintento automático y con el aviso de verificarlo en SUNAT |
 
 - **Fuera de la transacción de la venta:** la venta no espera a SUNAT (responde en ~1 s) ni se deshace si SUNAT está caída.
 - **Una cola, de uno en uno:** la beta de SUNAT responde HTTP 401 al tercer envío seguido en menos de un segundo.
 - **Respaldo:** por cada comprobante y nota de crédito se guardan el XML firmado, el CDR (constancia de SUNAT), el código, el mensaje y los intentos (`migracion_envio_sunat.sql`).
 - **Nota de crédito:** se crea al anular la venta y sale cuando SUNAT aceptó el original. Si el original fue rechazado, no se anula (no tenía validez).
+- **Plazo de envío de 3 días (informe de rechazos SUNAT D-6, 07/11/2026):** SUNAT recibe facturas y boletas hasta 3 días calendario contados desde el día siguiente a la emisión (RS 003-2023/SUNAT): emitida el 7, hasta el 10 inclusive. Lo que llega después no tiene validez aunque SUNAT lo reciba. Un comprobante que SUNAT todavía no registró (pendiente o excepción) muestra en Ventas "Enviar a SUNAT a más tardar el dd/mm" y, pasado el plazo, "Fuera de plazo: no es válido": el envío automático y el reintento lo dejan (sin llamar a SUNAT), Reenviar responde 409 y se ofrece **Emitir comprobante de reemplazo**, con número nuevo y fecha de hoy. La campana avisa los que vencen hoy o mañana y los que ya vencieron (`GET /facturacion/plazo-envio`). No aplica a lo que SUNAT ya tiene (aceptado, rechazado con CDR o por confirmar) ni a las notas de crédito. Falta: que una factura con detracción sin cuenta configurada no consuma número mientras espera.
 - **Reintentos sin trabas (revisión externa F-02, 07/11/2026):** el límite de 20 intentos se filtra en la consulta a Oracle, antes de tomar los 20 primeros pendientes; antes, 20 agotados al principio de la lista tapaban para siempre a los siguientes.
 - **Correo al cliente solo con validez (revisión externa F-01, 07/11/2026):** "Su Factura ... ha sido emitida" sale solo si SUNAT la aceptó (o la observó). Un comprobante pendiente, rechazado o del modo simulado no se envía: el botón responde 409 con el motivo.
 - **El 1033 no se da por aceptado (informe de rechazos SUNAT D-1, 07/11/2026):** SUNAT responde 1033 cuando ya tiene ese número por un envío anterior, sin CDR y sin decir si fue aceptado o rechazado (p. ej. un rechazado que se reenvió con el mismo número). Antes quedaba ACEPTADO y salía el correo "ha sido emitida"; ahora queda pendiente por confirmar, no se envía al cliente, el reintento automático no lo repite y en Ventas aparece "Por confirmar en SUNAT" sin el botón Reenviar.
@@ -321,7 +323,7 @@ Venta registrada ──► comprobante PENDIENTE (serie y correlativo) ──►
 - **Detracción sin cuenta configurada:** la factura no se envía y queda PENDIENTE con el aviso; al configurar `CUENTA_DETRACCIONES` el reintento la envía.
 - **El correo** con el comprobante sale recién cuando SUNAT lo acepta.
 - **En pantalla (Ventas):** bajo el estado de cada venta, una etiqueta "SUNAT: aceptado / observado / rechazado / pendiente / simulado"; en el detalle, una línea por comprobante y nota de crédito con el código y el mensaje de SUNAT, las descargas del **XML** firmado y del **CDR**, el botón **Reenviar** (no recibidos por SUNAT ya corregidos, o pendientes con aviso), **Emitir comprobante de reemplazo** (rechazados con CDR) y **Envíos** (historial). Los comprobantes reemplazados siguen debajo, tachados, como historial. Los comprobantes emitidos antes del envío real se muestran como **Simulado (sin envío a SUNAT)**: no tienen validez tributaria.
-- **API:** `GET /api/v1/admin/facturacion/estados?ventaIds=1,2`, `POST /facturacion/{id}/reenviar` (409 si ya fue aceptado, si fue rechazado con CDR o si fue reemplazado), `POST /facturacion/{id}/reemplazar` (409 si no es un rechazo definitivo), `GET /facturacion/{id}/xml` y `/cdr`, `GET /facturacion/{id}/envios` (historial), `GET /facturacion/envios/{envioId}/xml` y `/cdr`, y lo mismo bajo `/facturacion/notas-credito/{id}/...`.
+- **API:** `GET /api/v1/admin/facturacion/estados?ventaIds=1,2`, `POST /facturacion/{id}/reenviar` (409 si ya fue aceptado, si fue rechazado con CDR o si fue reemplazado), `POST /facturacion/{id}/reemplazar` (409 si no es un rechazo definitivo ni está fuera de plazo), `GET /facturacion/plazo-envio` (por vencer y fuera de plazo, para la campana), `GET /facturacion/{id}/xml` y `/cdr`, `GET /facturacion/{id}/envios` (historial), `GET /facturacion/envios/{envioId}/xml` y `/cdr`, y lo mismo bajo `/facturacion/notas-credito/{id}/...`.
 - **Ambiente beta (pruebas, sin efecto tributario):** usuario `MODDATOS` y un certificado de prueba propio (`certificados/beta-prueba.p12`, fuera de git). `SunatBetaTest` hace el envío real con `SUNAT_BETA=1`.
 - **Paso a producción (qué hace JD y cómo se configura):** [FACTURACION_SUNAT.md](FACTURACION_SUNAT.md). En resumen:
   cambiar `SUNAT_URL` a `https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService`, `SUNAT_USUARIO`/`SUNAT_CLAVE` por el usuario SOL secundario de JD y `SUNAT_CERT_RUTA`/`SUNAT_CERT_CLAVE` por su Certificado Digital Tributario. Nada de eso va en el código.
@@ -767,7 +769,7 @@ El precio de venta que muestra el catálogo (sin IGV) es `costo_base × (1 + mar
 
 ### Pruebas automáticas (JUnit 5 + Mockito)
 
-`mvn test` corre **132 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
+`mvn test` corre **137 pruebas** (07/11/2026). Las de reglas de negocio son unitarias: usan repositorios simulados
 (Mockito) y no necesitan Oracle, Keycloak ni Docker, así que tardan segundos. Las marcadas *(Oracle)* son de
 integración y necesitan la base encendida; todas deshacen lo que guardan. La trazabilidad de cada requisito con su
 prueba está en [RTM.md](RTM.md).
@@ -791,10 +793,10 @@ prueba está en [RTM.md](RTM.md).
 | `RutinaMantenimientoIntegracionTest` (Oracle) | Venta real: con rutina se programan sus visitas, sin rutina ninguna | 2 |
 | `RutinaMantenimientoTest` | Rutina de mantenimiento: solo con equipos, rangos, primera fecha | 5 |
 | `ClasificacionCodigosSunatTest` | Qué hace SGE-JD con cada código de SUNAT y lectura de `faultcode` | 15 |
-| `EnvioSunatServiceTest` | Envío a SUNAT: aceptado, observado, rechazado, sin respuesta, "ya registrado" (1033) sin validez, nota de crédito, reintentos y reenvío; cada respuesta queda en el historial sin pisar la anterior; un rechazo con CDR o un comprobante reemplazado no se reenvía; el comprobante de una venta anulada no sale sin su nota | 19 |
+| `EnvioSunatServiceTest` | Envío a SUNAT: aceptado, observado, rechazado, sin respuesta, "ya registrado" (1033) sin validez, nota de crédito, reintentos y reenvío; cada respuesta queda en el historial sin pisar la anterior; un rechazo con CDR o un comprobante reemplazado no se reenvía; plazo de 3 días (cuándo vence, a qué estados aplica) y lo que pasó el plazo no se envía ni se reenvía; el comprobante de una venta anulada no sale sin su nota | 23 |
 | `CorreoComprobanteTest` | Al cliente solo se le envía por correo un comprobante aceptado por SUNAT; nunca uno pendiente, rechazado ni del modo simulado | 4 |
-| `ReintentoSunatIntegracionTest` (Oracle) | 25 comprobantes con los intentos agotados al principio de la lista no tapan al siguiente pendiente, y uno por confirmar (1033) no se reintenta | 1 |
-| `ComprobanteReemplazoIntegracionTest` (Oracle) | Reemplazo de un rechazado: número nuevo para la misma venta sin tocar stock, cobro ni mantenimientos; solo rechazos definitivos, no dos veces, no en ventas anuladas; Oracle admite un solo comprobante vigente por venta; receptor y descripción quedan como se emitieron; una excepción reenviada toma el dato corregido | 7 |
+| `ReintentoSunatIntegracionTest` (Oracle) | 25 comprobantes con los intentos agotados al principio de la lista no tapan al siguiente pendiente; uno por confirmar (1033) o fuera de plazo no se reintenta, y uno emitido hace justo 3 días sí | 1 |
+| `ComprobanteReemplazoIntegracionTest` (Oracle) | Reemplazo de un rechazado: número nuevo para la misma venta sin tocar stock, cobro ni mantenimientos; solo rechazos definitivos, no dos veces, no en ventas anuladas; Oracle admite un solo comprobante vigente por venta; receptor y descripción quedan como se emitieron; una excepción reenviada toma el dato corregido; un pendiente fuera de plazo se reemplaza y la campana lo avisa | 8 |
 | `VentaAnuladaSinNotaIntegracionTest` (Oracle) | El caso de la venta #285: venta anulada sin nota → la nota se crea antes de enviar la factura; una anulación normal no la duplica | 2 |
 | `OrdenTest` | Orden por columna: texto en español, números, vacíos al final, dólares en soles | 4 |
 | `SunatBetaTest` (beta real de SUNAT) | Factura, boleta y nota aceptadas y un rechazo real; solo corre con `SUNAT_BETA=1` | 0 por defecto |
