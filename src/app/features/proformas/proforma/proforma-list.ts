@@ -12,6 +12,8 @@ import { IconoComponent } from '../../../core/layout/icono';
 import { RutinaMantenimiento, RutinaMantenimientoComponent, resumenRutina } from '../../postventa/mantenimiento/rutina-mantenimiento';
 import { PaginadorComponent } from '../../../core/layout/paginador';
 import { Orden, OrdenComponent, ordenParaServidor } from '../../../core/layout/orden';
+import { AuthService } from '../../../core/auth/auth.service';
+import { errorFechaVenta, fechaLarga, fechaMinimaVenta, fechaParaEnviar, hoyIso } from '../../ventas/venta/fecha-venta';
 
 @Component({
   selector: 'app-proforma-list',
@@ -25,6 +27,13 @@ export class ProformaListComponent implements OnInit {
   private clienteService = inject(ClienteService);
   private ventaService = inject(VentaService);
   private router = inject(Router);
+  private auth = inject(AuthService);
+
+  /** Fecha real de la venta al convertir (auditoría M3): administrador o permiso "Ventas con fecha pasada". */
+  readonly puedeFechaPasada = () => this.auth.puede('VENTA_FECHA_PASADA');
+  readonly hoy = hoyIso();
+  readonly fechaMinima = fechaMinimaVenta();
+  fechaVenta = hoyIso();
 
   proformas = signal<ProformaResponse[]>([]);
   /** Columna por la que se ordena (clic en el encabezado; la ordena el servidor sobre todas las páginas). */
@@ -157,6 +166,7 @@ export class ProformaListComponent implements OnInit {
   abrirConversion(proforma: ProformaResponse) {
     this.tipoPago = 'CONTADO';
     this.diasCredito = 30;
+    this.fechaVenta = hoyIso();
     this.errorConversion.set('');
     this.rutina.set(null);
     this.aConvertir.set(proforma);
@@ -171,8 +181,10 @@ export class ProformaListComponent implements OnInit {
     if (!this.convirtiendo()) this.aConvertir.set(null);
   }
 
+  /** El crédito corre desde la fecha de la venta (con fecha pasada, desde ese día). */
   fechaLimitePago(): string {
-    const d = new Date();
+    const base = fechaParaEnviar(this.fechaVenta);
+    const d = base ? new Date(base + 'T00:00') : new Date();
     d.setDate(d.getDate() + (this.diasCredito || 0));
     return d.toLocaleDateString('es-PE');
   }
@@ -184,18 +196,25 @@ export class ProformaListComponent implements OnInit {
       this.errorConversion.set('Los días de crédito deben estar entre 1 y 365.');
       return;
     }
+    const errorFecha = this.puedeFechaPasada() ? errorFechaVenta(this.fechaVenta) : null;
+    if (errorFecha) {
+      this.errorConversion.set(errorFecha);
+      return;
+    }
+    const fecha = this.puedeFechaPasada() ? fechaParaEnviar(this.fechaVenta) : null;
     const dias = this.tipoPago === 'CREDITO' ? this.diasCredito : undefined;
     this.convirtiendo.set(true);
     this.errorConversion.set('');
     const rutina = this.conEquipos(proforma) ? this.rutina() : null;
-    this.ventaService.convertirDesdeProforma(proforma.id, this.tipoPago, dias, rutina).subscribe({
+    this.ventaService.convertirDesdeProforma(proforma.id, this.tipoPago, dias, rutina, fecha).subscribe({
       next: (venta) => {
         this.convirtiendo.set(false);
         this.aConvertir.set(null);
         const pago = dias ? `a crédito (${dias} días)` : 'al contado';
         const mant = rutina ? ` Mantenimiento: ${resumenRutina(rutina)}.` : '';
+        const conFecha = fecha ? ` Fecha de la venta: ${fechaLarga(fecha)} (la factura sale con fecha de hoy).` : '';
         this.router.navigate(['/ventas'], {
-          state: { mensaje: `Proforma #${proforma.id} convertida en la venta #${venta.id}, ${pago}.${mant}` }
+          state: { mensaje: `Proforma #${proforma.id} convertida en la venta #${venta.id}, ${pago}.${mant}${conFecha}` }
         });
       },
       error: (err: HttpErrorResponse) => {

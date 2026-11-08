@@ -60,7 +60,16 @@
           <input id="tcInput" type="number" step="0.001" min="1" class="form-control" formControlName="tipoCambio"
                  [class.is-invalid]="faltaTipoCambio() || (form.controls.tipoCambio.invalid && form.controls.tipoCambio.touched)">
         </div>
-        <div class="col-md-6 mb-3" style="display: flex; align-items: flex-end;">
+        @if (puedeFechaPasada()) {
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="fechaVentaInput">Fecha de la venta</label>
+            <input id="fechaVentaInput" type="date" class="form-control" formControlName="fechaVenta"
+                   [min]="fechaMinima" [max]="hoy" [class.is-invalid]="errorFecha()"
+                   title="Fecha real de la venta, hasta 30 días atrás. La factura sale con fecha de hoy.">
+            @if (errorFecha()) { <small class="text-danger">{{ errorFecha() }}</small> }
+          </div>
+        }
+        <div class="mb-3" [class.col-md-3]="puedeFechaPasada()" [class.col-md-6]="!puedeFechaPasada()" style="display: flex; align-items: flex-end;">
           <small class="muted">
             {{ avisoTipoCambio() }}
             @if (requiereTipoCambio()) { · los precios en otra moneda se convierten con este valor }

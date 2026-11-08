@@ -46,12 +46,14 @@ export class VentaService {
   }
 
   /** @param rutina "Implementar rutinas de mantenimiento" (null = la venta no programa visitas) */
-  convertirDesdeProforma(proformaId: number, tipoPago: string, diasCredito?: number, rutina: RutinaMantenimiento | null = null) {
+  /** fechaVenta: fecha real de la venta (AAAA-MM-DD) o null para hoy (auditoría M3). */
+  convertirDesdeProforma(proformaId: number, tipoPago: string, diasCredito?: number, rutina: RutinaMantenimiento | null = null,
+                         fechaVenta: string | null = null) {
     let url = `${this.api.buildUrl(this.endpoint)}/desde-proforma/${proformaId}?tipoPago=${tipoPago}`;
     if (diasCredito) {
       url += `&diasCredito=${diasCredito}`;
     }
-    return this.http.post<VentaResponse>(url, { rutinaMantenimiento: rutina });
+    return this.http.post<VentaResponse>(url, { rutinaMantenimiento: rutina, fechaVenta });
   }
 
   registrarVentaDirecta(request: VentaDirectaRequest) {
@@ -63,7 +65,8 @@ export class VentaService {
   }
 
   /** REGISTRADA -> ANULADA. Body vacío: el backend ya sabe qué stock devolver. */
-  anular(id: number) {
-    return this.http.patch<VentaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/anular`), {});
+  /** Motivo obligatorio (5 a 300 caracteres); la venta guarda quién la anuló (auditoría M4). */
+  anular(id: number, motivo: string) {
+    return this.http.patch<VentaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/anular`), { motivo });
   }
 }

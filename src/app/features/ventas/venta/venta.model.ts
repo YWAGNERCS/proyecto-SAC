@@ -35,6 +35,10 @@ export interface VentaResponse {
   /** null si la venta aún no tiene factura/boleta emitida. */
   comprobanteId: number | null;
   detalles: DetalleVentaResponse[];
+  /** Anulación (auditoría M4): cuándo, quién (null en las anuladas antes del historial) y por qué. */
+  fechaAnulacion: string | null;
+  anuladoPor: string | null;
+  motivoAnulacion: string | null;
 }
 
 /** Filtros opcionales del reporte (GET /ventas). Fechas en formato yyyy-MM-dd. */
@@ -63,4 +67,6 @@ export interface VentaDirectaRequest {
   tipoCambio?: number | null;
   /** Botón "Implementar rutinas de mantenimiento" (null = la venta no programa visitas). */
   rutinaMantenimiento?: RutinaMantenimiento | null;
+  /** Fecha real de la venta (AAAA-MM-DD), hasta 30 días atrás y con permiso; null = hoy (auditoría M3). */
+  fechaVenta?: string | null;
 }

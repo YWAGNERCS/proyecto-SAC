@@ -129,6 +129,16 @@
         }
       </div>
 
+      @if (puedeFechaPasada()) {
+        <div class="d-flex align-items-center gap-2" style="margin-bottom: 12px;">
+          <label for="fechaVentaConv" class="form-label" style="margin: 0;">Fecha de la venta</label>
+          <input id="fechaVentaConv" name="fechaVenta" type="date" class="form-control" style="width: 170px;"
+                 [min]="fechaMinima" [max]="hoy" [(ngModel)]="fechaVenta" [disabled]="convirtiendo()"
+                 title="Fecha real de la venta, hasta 30 días atrás. La factura sale con fecha de hoy.">
+          <small style="color: var(--text-muted);">hasta 30 días atrás; la factura sale con fecha de hoy</small>
+        </div>
+      }
+
       <fieldset class="tipo-pago" [disabled]="convirtiendo()">
         <legend class="form-label">Forma de pago</legend>
         <label><input type="radio" name="tipoPago" value="CONTADO" [(ngModel)]="tipoPago"> Contado <small>(queda como pagada)</small></label>

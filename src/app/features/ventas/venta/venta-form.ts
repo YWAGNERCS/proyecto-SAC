@@ -15,6 +15,8 @@ import { DescuentoService } from '../../../core/services/descuento-service';
 import { IconoComponent } from '../../../core/layout/icono';
 import { ClienteFormComponent } from '../../clientes/cliente/cliente-form';
 import { RutinaMantenimiento, RutinaMantenimientoComponent, resumenRutina } from '../../postventa/mantenimiento/rutina-mantenimiento';
+import { AuthService } from '../../../core/auth/auth.service';
+import { errorFechaVenta, fechaLarga, fechaMinimaVenta, fechaParaEnviar, hoyIso } from './fecha-venta';
 
 const IGV = 0.18;
 const MAX_SUGERENCIAS = 8;
@@ -42,6 +44,12 @@ export class VentaFormComponent implements OnInit {
   private clienteService = inject(ClienteService);
   private productoService = inject(ProductoService);
   private router = inject(Router);
+  private auth = inject(AuthService);
+
+  /** Fecha real de la venta (auditoría M3): solo el administrador o con el permiso "Ventas con fecha pasada". */
+  readonly puedeFechaPasada = computed(() => this.auth.puede('VENTA_FECHA_PASADA'));
+  readonly hoy = hoyIso();
+  readonly fechaMinima = fechaMinimaVenta();
 
   clientes = signal<Cliente[]>([]);
   productos = signal<Producto[]>([]);
@@ -59,6 +67,7 @@ export class VentaFormComponent implements OnInit {
     tipoPago: ['CONTADO' as 'CONTADO' | 'CREDITO'],
     diasCredito: [30, [Validators.min(1)]],
     moneda: ['SOLES' as Moneda],
+    fechaVenta: [hoyIso()],
     tipoCambio: [null as number | null, [Validators.min(1), Validators.max(10)]],
     detalles: this.fb.array([this.crearLinea()], [Validators.minLength(1), sinProductosRepetidos]),
   });
@@ -131,8 +140,17 @@ export class VentaFormComponent implements OnInit {
       next: (data) => this.productos.set(data),
       error: () => this.errorMessage.set('No se pudieron cargar los productos.'),
     });
-    // Tipo de cambio SUNAT del día: se propone, pero el vendedor puede cambiarlo si lo negoció
-    this.tipoCambioService.hoy().subscribe({
+    // Con fecha pasada, se propone el tipo de cambio SUNAT de ese día
+    this.form.controls.fechaVenta.valueChanges.subscribe((f) => {
+      if (f && !errorFechaVenta(f)) this.cargarTipoCambio(f);
+    });
+    this.cargarTipoCambio(null);
+  }
+
+  /** Tipo de cambio SUNAT del día de la venta (null = hoy): se propone, pero el vendedor puede cambiarlo si lo negoció. */
+  private cargarTipoCambio(fecha: string | null) {
+    const pedido = fecha && fecha !== this.hoy ? this.tipoCambioService.delDia(fecha) : this.tipoCambioService.hoy();
+    pedido.subscribe({
       next: (tc) => {
         this.tipoCambioSunat.set(tc.venta);
         this.form.controls.tipoCambio.setValue(tc.venta);
@@ -140,6 +158,11 @@ export class VentaFormComponent implements OnInit {
       },
       error: () => this.avisoTipoCambio.set('No se pudo obtener el tipo de cambio de SUNAT: escríbalo a mano.'),
     });
+  }
+
+  /** Error de la fecha de la venta, o '' si está bien. */
+  errorFecha(): string {
+    return errorFechaVenta(this.form.controls.fechaVenta.value) ?? '';
   }
 
   /**
@@ -239,6 +262,10 @@ export class VentaFormComponent implements OnInit {
       this.errorMessage.set(`El descuento por línea no puede superar ${this.topeDescuento()} %.`);
       return;
     }
+    if (this.errorFecha()) {
+      this.errorMessage.set(this.errorFecha());
+      return;
+    }
     if (this.form.invalid || this.faltaTipoCambio()) {
       this.form.markAllAsTouched();
       if (this.faltaTipoCambio()) {
@@ -260,6 +287,9 @@ export class VentaFormComponent implements OnInit {
       ` en ${valor.moneda === 'DOLARES' ? 'dólares' : 'soles'}\n` +
       this.lineaTipoCambio(valor.tipoCambio) +
       this.lineaMantenimiento() +
+      (fechaParaEnviar(valor.fechaVenta)
+        ? `Fecha de la venta: ${fechaLarga(valor.fechaVenta)} (la factura sale con fecha de hoy)\n`
+        : '') +
       `\n` +
       `Se descontará el stock de los materiales. ¿Confirmar?`;
     if (!confirm(resumen)) return;
@@ -296,6 +326,7 @@ export class VentaFormComponent implements OnInit {
       moneda: valor.moneda,
       tipoCambio: valor.tipoCambio ? Number(valor.tipoCambio) : null,
       rutinaMantenimiento: this.rutinaAEnviar(),
+      fechaVenta: this.puedeFechaPasada() ? fechaParaEnviar(valor.fechaVenta) : null,
     };
 
     this.loading.set(true);

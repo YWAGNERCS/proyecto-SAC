@@ -162,3 +162,5 @@
 .sunat-envio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 /* Plazo de 3 días para que SUNAT reciba el comprobante */
 .sunat-plazo { font-weight: 600; color: var(--warning); }
+/* Quién anuló la venta y por qué (auditoría M4) */
+.motivo-anulacion { margin-top: 4px; font-size: 0.8rem; color: var(--texto-peligro); }

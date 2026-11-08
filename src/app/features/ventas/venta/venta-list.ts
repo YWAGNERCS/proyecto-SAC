@@ -211,47 +211,53 @@ export class VentaListComponent implements OnInit {
     });
   }
 
+  // ── Anulación de una venta: motivo obligatorio y queda quién la anuló (auditoría M4) ──
+  anulacionAbierta = signal<{ v: VentaResponse; pagado: number } | null>(null);
+  motivoAnulacion = '';
+  anulando = signal(false);
+  errorAnulacion = signal('');
+
+  /** Abre el diálogo de anulación (antes era un confirm sin motivo). */
   private confirmarAnulacion(v: VentaResponse, pagado: number) {
-    const monto = (n: number) => `${this.simbolo(v.moneda)} ${n.toFixed(2)}`;
-    const aviso = pagado > 0
-      ? `\n\nAtención: el cliente ya pagó ${monto(pagado)} de esta venta. Ese monto quedará como devolución pendiente ` +
-        `en Cobranza › Devoluciones, donde se registra cuándo y cómo se le devolvió.`
-      : '';
-    const ok = confirm(
-      `¿Anular la venta #${v.id} de ${v.clienteNombre} por ${monto(Number(v.total))}?\n\n` +
-        `Se restaurará el stock de sus materiales, se cancelarán sus mantenimientos pendientes
-` +
-        `y se emitirá una nota de crédito por su comprobante. Esta acción no se puede deshacer.` + aviso,
-    );
-    if (!ok) return;
-    this.ejecutar(
-      this.ventaService.anular(v.id),
-      `Venta #${v.id} anulada: stock restaurado, mantenimientos cancelados y nota de crédito emitida.` +
-        (pagado > 0 ? ` Queda por devolver ${monto(pagado)} a ${v.clienteNombre}.` : ''),
-      pagado > 0,
-    );
+    this.motivoAnulacion = '';
+    this.errorAnulacion.set('');
+    this.anulacionAbierta.set({ v, pagado });
   }
 
-  private ejecutar(peticion: ReturnType<VentaService['anular']>, exito: string, conDevolucion = false) {
-    this.error.set('');
-    this.mensaje.set('');
-    this.devolucionPendiente.set(false);
-    peticion.subscribe({
+  cerrarAnulacion() {
+    if (!this.anulando()) this.anulacionAbierta.set(null);
+  }
+
+  montoEn(v: VentaResponse, n: number): string {
+    return `${this.simbolo(v.moneda)} ${n.toFixed(2)}`;
+  }
+
+  anularConMotivo() {
+    const a = this.anulacionAbierta();
+    if (!a) return;
+    const motivo = this.motivoAnulacion.trim();
+    if (motivo.length < 5) {
+      this.errorAnulacion.set('Indique el motivo de la anulación (al menos 5 caracteres).');
+      return;
+    }
+    const { v, pagado } = a;
+    this.anulando.set(true);
+    this.errorAnulacion.set('');
+    this.ventaService.anular(v.id, motivo).subscribe({
       next: () => {
-        this.mensaje.set(exito);
-        this.devolucionPendiente.set(conDevolucion);
+        this.anulando.set(false);
+        this.anulacionAbierta.set(null);
+        this.mensaje.set(`Venta #${v.id} anulada: stock restaurado, mantenimientos cancelados y nota de crédito emitida.` +
+          (pagado > 0 ? ` Queda por devolver ${this.montoEn(v, pagado)} a ${v.clienteNombre}.` : ''));
+        this.devolucionPendiente.set(pagado > 0);
         this.recargar();
       },
       error: (err: HttpErrorResponse) => {
-        // 409: la transición ya no es válida (p. ej. otra persona la anuló antes)
-        this.error.set(
-          err.status === 409
-            ? `No se puede realizar la operación: ${err.error?.message}`
-            : err.status === 404
-              ? 'La venta ya no existe.'
-              : 'Error inesperado. Inténtalo de nuevo.',
-        );
-        this.recargar();
+        this.anulando.set(false);
+        this.errorAnulacion.set(
+          err.error?.errores?.motivo ?? err.error?.message
+            ?? (err.status === 404 ? 'La venta ya no existe.' : 'No se pudo anular la venta. Inténtalo de nuevo.'));
+        if (err.status === 409) this.recargar();
       },
     });
   }

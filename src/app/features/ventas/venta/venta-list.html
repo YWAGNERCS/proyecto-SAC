@@ -87,7 +87,11 @@
         @for (v of ventasVisibles(); track v.id) {
           <tr class="venta-row" [class.anulada]="v.estado === 'ANULADA'">
             <td><span class="badge">#{{ v.id }}</span></td>
-            <td><strong>{{ v.clienteNombre }}</strong></td>
+            <td><strong>{{ v.clienteNombre }}</strong>
+              @if (v.estado === 'ANULADA' && (v.anuladoPor || v.motivoAnulacion)) {
+                <div class="motivo-anulacion">Anulada{{ v.fechaAnulacion ? ' el ' + v.fechaAnulacion : '' }}{{ v.anuladoPor ? ' por ' + v.anuladoPor : '' }}{{ v.motivoAnulacion ? ': ' + v.motivoAnulacion : '' }}</div>
+              }
+            </td>
             <td class="text-center muted">{{ v.fechaVenta }}</td>
             <td class="text-center">
               @if (v.proformaOrigenId) {
@@ -239,6 +243,38 @@
       </tbody>
     </table>
   </div>
+  <!-- ── Diálogo: anular una venta (motivo obligatorio, auditoría M4) ── -->
+  @if (anulacionAbierta(); as a) {
+    <div class="dialogo-fondo" (click)="cerrarAnulacion()">
+      <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tituloAnulacionVenta"
+            (ngSubmit)="anularConMotivo()" (click)="$event.stopPropagation()" novalidate>
+        <h3 id="tituloAnulacionVenta" style="margin: 0 0 4px 0; font-weight: 600;">Anular la venta #{{ a.v.id }}</h3>
+        <p class="muted" style="margin: 0 0 12px 0;">
+          {{ a.v.clienteNombre }} · {{ montoEn(a.v, +a.v.total) }} del {{ a.v.fechaVenta }}.
+          Se restaurará el stock de sus materiales, se cancelarán sus mantenimientos pendientes y se emitirá una nota
+          de crédito por su comprobante. Esta acción no se puede deshacer.
+        </p>
+        @if (a.pagado > 0) {
+          <div class="alert alert-warning" role="alert" style="margin: 0 0 12px 0;">
+            El cliente ya pagó {{ montoEn(a.v, a.pagado) }} de esta venta. Ese monto quedará como devolución pendiente
+            en Cobranza › Devoluciones.
+          </div>
+        }
+        <label class="form-label" for="motivoAnulacionVenta">Motivo</label>
+        <input id="motivoAnulacionVenta" name="motivo" type="text" class="form-control" maxlength="300"
+               [(ngModel)]="motivoAnulacion" [disabled]="anulando()"
+               placeholder="Ej.: el cliente desistió, error en el precio, venta registrada dos veces">
+        @if (errorAnulacion()) {
+          <div class="alert alert-danger" role="alert" style="margin-top: 12px;">{{ errorAnulacion() }}</div>
+        }
+        <div class="d-flex justify-content-end gap-2" style="margin-top: 16px;">
+          <button type="button" class="btn btn-secondary" (click)="cerrarAnulacion()" [disabled]="anulando()">Cancelar</button>
+          <button type="submit" class="btn btn-danger" [disabled]="anulando()">{{ anulando() ? 'Anulando…' : 'Anular venta' }}</button>
+        </div>
+      </form>
+    </div>
+  }
+
   @if (vista() === 'REPORTE') {
     <app-paginador [pagina]="pagina()" [tamano]="tamano()" [total]="total()" [totalPaginas]="totalPaginas()"
                    (paginaCambia)="irAPagina($event)" (tamanoCambia)="cambiarTamano($event)" />

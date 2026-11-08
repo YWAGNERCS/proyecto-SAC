@@ -22,6 +22,11 @@ export class TipoCambioService {
   hoy(): Observable<TipoCambio> {
     return this.http.get<TipoCambio>(this.api.buildUrl('/v1/admin/tipo-cambio'));
   }
+
+  /** Tipo de cambio SUNAT de una fecha (AAAA-MM-DD): el de una venta con fecha pasada. */
+  delDia(fecha: string): Observable<TipoCambio> {
+    return this.http.get<TipoCambio>(this.api.buildUrl('/v1/admin/tipo-cambio'), { params: { fecha } });
+  }
 }
 
 /**
