@@ -168,7 +168,10 @@ public class Venta {
         return calcularSubtotal().add(calcularIgv()).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
-    /** Agrega la línea y le guarda el costo del producto de hoy, llevado a la moneda de la venta. */
+    /**
+     * Agrega la línea y le guarda el costo del producto de hoy (el de su última compra sin IGV, o el costo base si
+     * nunca se compró; auditoría M1), llevado a la moneda de la venta.
+     */
     public void agregarDetalle(DetalleVenta detalle) {
         detalles.add(detalle);
         detalle.setVenta(this);
@@ -177,7 +180,7 @@ public class Venta {
             String monedaProducto = detalle.getProducto().getMoneda().name();
             if (monedaProducto.equals(moneda.name()) || tipoCambio != null) {
                 detalle.setCostoUnitario(com.bomerp.config.tipocambio.TipoCambioService.convertir(
-                        detalle.getProducto().getCostoBase(), monedaProducto, moneda.name(), tipoCambio)
+                        detalle.getProducto().costoVigente(), monedaProducto, moneda.name(), tipoCambio)
                         .setScale(2, java.math.RoundingMode.HALF_UP));
             }
         }

@@ -111,6 +111,8 @@ public class SecurityConfig {
 
                 // Solo el dueño: quién puede qué (permisos) y el historial de cambios. No se delega.
                 .requestMatchers("/api/v1/admin/permisos/**", "/api/v1/admin/auditoria/**").hasRole("ADMIN")
+                // Los topes de descuento también: solo Lisandro los cambia (consultarlos, cualquier usuario)
+                .requestMatchers(HttpMethod.PUT, "/api/v1/admin/descuentos/topes").hasRole("ADMIN")
 
                 // Operaciones del dueño (auditoría C2). Cada una acepta además su permiso delegable
                 // (Permiso.rol(), p. ej. PERM_ANULAR_VENTAS): Lisandro puede dárselo a un asistente sin hacerlo ADMIN.

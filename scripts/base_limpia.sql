@@ -173,6 +173,15 @@ begin
     contar('detalle_compra', sql%rowcount);
     delete from compras where id in (select column_value from table(v_com));
     contar('compras', sql%rowcount);
+    -- Último costo de compra (auditoría M1): se recalcula con las compras que quedan (sin compras, vacío)
+    update productos p
+       set (ultimo_costo_compra, fecha_ultima_compra) = (
+           select max(round(d.precio_unitario_compra / 1.18, 2)) keep (dense_rank last order by c.fecha_compra, c.id, d.id),
+                  max(c.fecha_compra)
+             from detalle_compra d join compras c on c.id = d.compra_id
+            where d.producto_id = p.id and c.moneda = p.moneda)
+     where p.ultimo_costo_compra is not null or p.fecha_ultima_compra is not null;
+    contar('productos con último costo recalculado', sql%rowcount);
     -- Las sedes son datos del cliente: solo se borran las de un cliente [Prueba]
     delete from sedes_cliente where cliente_id in (select column_value from table(v_cli));
     contar('sedes_cliente', sql%rowcount);

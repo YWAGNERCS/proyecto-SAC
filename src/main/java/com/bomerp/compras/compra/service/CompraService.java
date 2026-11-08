@@ -194,7 +194,27 @@ public class CompraService {
 
         // La compra sube el stock solo de los materiales (los equipos no se almacenan), con bloqueo
         productoService.sumarStock(entradas);
-        compra.setTotal(total.setScale(2, RoundingMode.HALF_UP));
+        // Después del bloqueo (refresca los productos desde la base): el último costo de cada uno
+        for (DetalleCompra detalle : compra.getDetalles()) {
+            registrarUltimoCosto(detalle.getProducto(), detalle.getPrecioUnitarioCompra(), dto.moneda(), dto.fechaCompra());
+        }
+        compra.fijarTotalConIgv(total);
         return compraRepository.save(compra);
+    }
+
+    /**
+     * Auditoría M1: el producto guarda el costo de esta compra sin IGV, en su propia moneda (si la compra es en
+     * otra, con el tipo de cambio SUNAT de la fecha de compra; sin tipo de cambio no se actualiza). El precio de
+     * venta no cambia solo: en Ventas sale un aviso y se puede editar el precio de la línea.
+     */
+    private void registrarUltimoCosto(Producto producto, BigDecimal precioConIgv, Producto.Moneda monedaCompra,
+                                      LocalDate fechaCompra) {
+        BigDecimal costo = Compra.sinIgv(precioConIgv);
+        if (producto.getMoneda() != monedaCompra) {
+            BigDecimal tc = tipoCambioService.resolverSiSePuede(null, fechaCompra);
+            if (tc == null) return;
+            costo = TipoCambioService.convertir(costo, monedaCompra.name(), producto.getMoneda().name(), tc);
+        }
+        producto.registrarCostoDeCompra(costo, fechaCompra);
     }
 }

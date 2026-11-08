@@ -63,8 +63,14 @@ public class ProductoService {
     public Producto actualizar(Long id, ProductoRequestDTO dto) {
         Producto producto = obtenerPorId(id);
         Integer stock = producto.getStockActual();
+        java.math.BigDecimal precioAntes = producto.getCostoBase() != null && producto.getMargenPorcentaje() != null
+                ? producto.calcularPrecioVenta() : null;
+        java.math.BigDecimal costoAntes = producto.getCostoBase();
+        java.math.BigDecimal margenAntes = producto.getMargenPorcentaje();
+        Producto.Moneda monedaAntes = producto.getMoneda();
         aplicar(dto, producto);
         producto.setStockActual(stock);
+        anotarCambioDePrecio(producto, precioAntes, costoAntes, margenAntes, monedaAntes);
         return productoRepository.save(producto);
     }
 
@@ -79,6 +85,22 @@ public class ProductoService {
             throw new ReglaNegocioException("No se puede eliminar '" + producto.getNombre()
                     + "': ya figura en ventas, proformas o compras. Puede ocultarlo del catálogo.");
         }
+    }
+
+    /** Historial de cambios: si cambió el precio de venta del catálogo, de cuánto a cuánto (auditoría M1). */
+    private static void anotarCambioDePrecio(Producto p, java.math.BigDecimal precioAntes, java.math.BigDecimal costoAntes,
+                                             java.math.BigDecimal margenAntes, Producto.Moneda monedaAntes) {
+        if (precioAntes == null) return;
+        java.math.BigDecimal precio = p.calcularPrecioVenta();
+        if (precio.compareTo(precioAntes) == 0 && p.getMoneda() == monedaAntes) return;
+        java.util.function.Function<Producto.Moneda, String> s = m -> m == Producto.Moneda.DOLARES ? "US$ " : "S/ ";
+        java.util.function.Function<java.math.BigDecimal, String> d =
+                v -> v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+        com.bomerp.seguridad.acceso.DetalleHistorial.anotar("Precio de venta de " + p.getNombre() + ": "
+                + s.apply(monedaAntes) + d.apply(precioAntes) + " → " + s.apply(p.getMoneda()) + d.apply(precio)
+                + " (costo " + d.apply(costoAntes) + " → " + d.apply(p.getCostoBase())
+                + ", margen " + margenAntes.stripTrailingZeros().toPlainString() + " % → "
+                + p.getMargenPorcentaje().stripTrailingZeros().toPlainString() + " %)");
     }
 
     private void aplicar(ProductoRequestDTO dto, Producto producto) {

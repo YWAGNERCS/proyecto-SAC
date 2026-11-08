@@ -20,7 +20,8 @@ public enum Permiso {
     DESCUENTO_AMPLIADO("Descuento ampliado", "Usa el tope de descuento del administrador en proformas y ventas"),
     AJUSTAR_INVENTARIO("Ajustar inventario", "Registra conteos físicos, mermas, material dañado o perdido y stock inicial"),
     VER_RENTABILIDAD("Ver rentabilidad", "Ve costos, márgenes y ganancia por venta, cliente, producto y técnico"),
-    VENTA_FECHA_PASADA("Ventas con fecha pasada", "Registra una venta con su fecha real, hasta 30 días atrás (la factura sale con fecha de hoy)");
+    VENTA_FECHA_PASADA("Ventas con fecha pasada", "Registra una venta con su fecha real, hasta 30 días atrás (la factura sale con fecha de hoy)"),
+    EDITAR_PRECIO("Editar precio en la venta", "Sube el precio de una línea en proformas y ventas con un motivo (el catálogo no cambia; queda en el historial)");
 
     public static final String PREFIJO = "PERM_";
 

@@ -46,6 +46,7 @@ PERMISOS = {
     "PERM_AJUSTAR_INVENTARIO": "Puede registrar ajustes de inventario (conteo físico, mermas, dañados)",
     "PERM_VER_RENTABILIDAD": "Puede ver costos, márgenes y el reporte de rentabilidad",
     "PERM_VENTA_FECHA_PASADA": "Puede registrar ventas con su fecha real, hasta 30 días atrás",
+    "PERM_EDITAR_PRECIO": "Puede subir el precio de una línea en proformas y ventas, con motivo",
 }
 # Lo mínimo que necesita la cuenta de servicio del backend (cliente realm-management)
 ROLES_BACKEND = ["view-users", "manage-users", "view-realm", "view-events"]

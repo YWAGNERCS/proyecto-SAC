@@ -21,7 +21,10 @@ public record CompraResponseDTO(
         /** Suma de los pagos vigentes (al contado = total). */
         BigDecimal pagado,
         BigDecimal saldo,
-        String registradoPor
+        String registradoPor,
+        /** Total sin IGV y el IGV de la compra (auditoría M2; el total ya lo incluye). */
+        BigDecimal subtotal,
+        BigDecimal igv
 ) {
     public record ProveedorDTO(
             Long id,
@@ -78,7 +81,9 @@ public record CompraResponseDTO(
                 c.getEstadoPago() != null ? c.getEstadoPago().name() : Compra.EstadoPago.PAGADA.name(),
                 pagado,
                 pagado == null ? null : c.getTotal().subtract(pagado).max(BigDecimal.ZERO),
-                c.getRegistradoPor()
+                c.getRegistradoPor(),
+                c.getSubtotal(),
+                c.getIgv()
         );
     }
 }

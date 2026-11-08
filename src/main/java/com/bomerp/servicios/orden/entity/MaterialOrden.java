@@ -44,7 +44,7 @@ public class MaterialOrden {
     public MaterialOrden(Producto producto, Integer cantidad) {
         this.producto = producto;
         this.cantidad = cantidad;
-        this.costoUnitario = producto.getCostoBase();
+        this.costoUnitario = producto.costoVigente();
         this.moneda = producto.getMoneda().name();
     }
 }

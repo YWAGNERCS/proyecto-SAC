@@ -49,6 +49,35 @@ public class ItemProforma {
     @Column(name = "descuento_porcentaje", precision = 5, scale = 2)
     private BigDecimal descuentoPorcentaje;
 
+    /**
+     * Precio de catálogo de la línea (en la moneda del documento) cuando el precio se editó al registrarla
+     * (auditoría M1); null = se cobró el de catálogo. Con precio_unitario quedan las dos cifras.
+     */
+    @Column(name = "precio_catalogo", precision = 12, scale = 2)
+    private BigDecimal precioCatalogo;
+
+    /** Quién editó el precio (null = precio de catálogo). */
+    @Column(name = "precio_editado_por", length = 100)
+    private String precioEditadoPor;
+
+    /** Por qué se editó el precio. */
+    @Column(name = "motivo_precio", length = 200)
+    private String motivoPrecio;
+
+    /** Guarda la edición del precio (si la hubo); el precio cobrado se fija aparte. */
+    public void aplicarPrecio(com.bomerp.config.PrecioDeLinea precio) {
+        this.precioUnitario = precio.precioUnitario();
+        if (precio.editado()) {
+            this.precioCatalogo = precio.precioCatalogo();
+            this.precioEditadoPor = precio.editadoPor();
+            this.motivoPrecio = precio.motivo();
+        }
+    }
+
+    public boolean precioEditado() {
+        return precioEditadoPor != null;
+    }
+
     public ItemProforma(Producto producto, Integer cantidad) {
         this.producto = producto;
         this.cantidad = cantidad;

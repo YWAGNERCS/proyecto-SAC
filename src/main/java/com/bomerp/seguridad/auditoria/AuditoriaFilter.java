@@ -80,6 +80,11 @@ public class AuditoriaFilter extends OncePerRequestFilter {
         } else if (cuerpo != null && cuerpo.has("id")) {
             idCreado = cuerpo.path("id").asString();
         }
+        Object anotado = peticion.getAttribute(com.bomerp.seguridad.acceso.DetalleHistorial.ATRIBUTO);
+        if (anotado != null && estado < 400) {
+            // Lo que el servicio anotó: precios editados, topes de descuento cambiados...
+            detalle = anotado.toString();
+        }
         if (peticion.getRequestURI().startsWith("/api/v1/admin/permisos/") && estado < 400) {
             // Qué permisos quedaron: es lo que interesa revisar después
             JsonNode pedido = leer(peticion.getContentAsByteArray());

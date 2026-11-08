@@ -39,6 +39,7 @@ class CompraServiceTest {
     @Mock CompraRepository compraRepository;
     @Mock ProveedorService proveedorService;
     @Mock ProductoService productoService;
+    @Mock com.bomerp.config.tipocambio.TipoCambioService tipoCambioService;
     @InjectMocks CompraService service;
 
     private Producto material;
@@ -54,6 +55,7 @@ class CompraServiceTest {
         material.setId(18L);
         material.setSector(Producto.Sector.MATERIAL_SERVICIO);
         material.setStockActual(5);
+        material.setMoneda(Producto.Moneda.SOLES);
         equipo = new Producto();
         equipo.setId(1L);
         equipo.setSector(Producto.Sector.CLIMATIZACION);
@@ -86,6 +88,11 @@ class CompraServiceTest {
         // Sube el stock por la operación central (con bloqueo); ella ignora lo que no controla stock
         verify(productoService).sumarStock(java.util.Map.of(18L, 3, 1L, 1));
         assertThat(c.getRegistradoPor()).isEqualTo("lucy");
+        // Auditoría M2 y M1: el total incluye el IGV; el material guarda su costo sin IGV (10.01 / 1.18)
+        assertThat(c.getSubtotal()).isEqualByComparingTo("872.91");
+        assertThat(c.getIgv()).isEqualByComparingTo("157.12");
+        assertThat(material.getUltimoCostoCompra()).isEqualByComparingTo("8.48");
+        assertThat(material.getFechaUltimaCompra()).isEqualTo(LocalDate.of(2026, 10, 1));
     }
 
     @Test

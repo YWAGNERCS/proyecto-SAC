@@ -21,7 +21,10 @@ public record ProductoResponseDTO(
         String moneda,
         Integer stockActual,
         Integer stockMinimo,
-        boolean visibleEnCatalogo
+        boolean visibleEnCatalogo,
+        /** Costo de la última compra, sin IGV y en la moneda del producto (null = nunca se compró). */
+        BigDecimal ultimoCostoCompra,
+        java.time.LocalDate fechaUltimaCompra
 ) {
     public static ProductoResponseDTO desdeEntidad(Producto p) {
         return new ProductoResponseDTO(
@@ -37,7 +40,9 @@ public record ProductoResponseDTO(
                 p.getMoneda().name(),
                 p.getStockActual(),
                 p.getStockMinimo(),
-                p.isVisibleEnCatalogo()
+                p.isVisibleEnCatalogo(),
+                p.getUltimoCostoCompra(),
+                p.getFechaUltimaCompra()
         );
     }
 }

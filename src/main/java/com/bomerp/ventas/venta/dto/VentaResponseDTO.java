@@ -36,7 +36,11 @@ public record VentaResponseDTO(
             Integer cantidad,
             BigDecimal precioUnitario,
             BigDecimal descuentoPorcentaje,
-            BigDecimal subtotalDetalle
+            BigDecimal subtotalDetalle,
+            /** Precio editado al registrar (auditoría M1): el de catálogo, quién y por qué; null = de catálogo. */
+            BigDecimal precioCatalogo,
+            String precioEditadoPor,
+            String motivoPrecio
     ) {}
 
     public static VentaResponseDTO desdeEntidad(Venta v) {
@@ -46,7 +50,10 @@ public record VentaResponseDTO(
                         d.getCantidad(),
                         d.getPrecioUnitario(),
                         d.getDescuentoPorcentaje(),
-                        d.calcularSubtotalDetalle()))
+                        d.calcularSubtotalDetalle(),
+                        d.getPrecioCatalogo(),
+                        d.getPrecioEditadoPor(),
+                        d.getMotivoPrecio()))
                 .toList();
 
         return new VentaResponseDTO(

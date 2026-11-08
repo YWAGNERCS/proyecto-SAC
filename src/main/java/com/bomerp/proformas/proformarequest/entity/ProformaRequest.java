@@ -21,6 +21,13 @@ public class ProformaRequest {
     public record ItemDTO(
             @NotNull Long productoId,
             @NotNull @Min(value = 1, message = "La cantidad debe ser al menos 1") Integer cantidad,
-            java.math.BigDecimal descuentoPorcentaje   // opcional: % negociado (0 a tope del rol)
-    ) {}
+            java.math.BigDecimal descuentoPorcentaje,   // opcional: % negociado (0 a tope del rol)
+            // opcional: precio editado en la moneda de la proforma (null = catálogo); solo sube, con motivo y permiso
+            @jakarta.validation.constraints.Positive(message = "El precio debe ser mayor que cero.") java.math.BigDecimal precioUnitario,
+            String motivoPrecio
+    ) {
+        public ItemDTO(Long productoId, Integer cantidad, java.math.BigDecimal descuentoPorcentaje) {
+            this(productoId, cantidad, descuentoPorcentaje, null, null);
+        }
+    }
 }

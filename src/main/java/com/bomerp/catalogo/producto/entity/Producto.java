@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Producto/servicio que ofrece JD Refrigeración.
@@ -72,6 +73,17 @@ public class Producto {
     @JoinColumn(name = "categoria_id")
     private Categoria categoria;
 
+    /**
+     * Costo de la última compra, sin IGV y en la moneda del producto (auditoría M1). Lo pone Compras al registrar
+     * una compra; null si nunca se compró (o se compró en otra moneda sin tipo de cambio). No cambia el precio de
+     * venta: sirve para el aviso "el precio de catálogo quedó por debajo" y para la rentabilidad.
+     */
+    @Column(name = "ultimo_costo_compra", precision = 12, scale = 2)
+    private BigDecimal ultimoCostoCompra;
+
+    @Column(name = "fecha_ultima_compra")
+    private LocalDate fechaUltimaCompra;
+
     public enum Sector {
         CLIMATIZACION, REFRIGERACION, VENTILACION_FORZADA, MATERIAL_SERVICIO,
         /** Mano de obra (instalación, mantenimiento, reparación): sin stock y sujeta a detracción. */
@@ -91,6 +103,23 @@ public class Producto {
         BigDecimal margenDecimal = margenPorcentaje.divide(BigDecimal.valueOf(100));
         BigDecimal incremento = costoBase.multiply(margenDecimal);
         return costoBase.add(incremento);
+    }
+
+    /** El costo real de hoy: el de la última compra (sin IGV) si la hay; si no, el costo base del catálogo. */
+    public BigDecimal costoVigente() {
+        return ultimoCostoCompra != null ? ultimoCostoCompra : costoBase;
+    }
+
+    /**
+     * Guarda el costo de una compra (sin IGV, en la moneda del producto) si es la más reciente: una compra con
+     * fecha anterior a la última registrada no lo cambia.
+     */
+    public void registrarCostoDeCompra(BigDecimal costoSinIgv, LocalDate fechaCompra) {
+        if (costoSinIgv == null || fechaCompra == null) return;
+        if (fechaUltimaCompra == null || !fechaCompra.isBefore(fechaUltimaCompra)) {
+            ultimoCostoCompra = costoSinIgv.setScale(2, java.math.RoundingMode.HALF_UP);
+            fechaUltimaCompra = fechaCompra;
+        }
     }
 
     /**

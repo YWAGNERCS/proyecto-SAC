@@ -28,7 +28,11 @@ public record ProformaResponseDTO(
             BigDecimal descuentoPorcentaje,
             BigDecimal subtotalItem,
             /** Equipo de climatización o refrigeración: al convertir se ofrece programar su mantenimiento. */
-            boolean requiereMantenimiento
+            boolean requiereMantenimiento,
+            /** Precio editado al cotizar (auditoría M1): el de catálogo, quién y por qué; null = de catálogo. */
+            BigDecimal precioCatalogo,
+            String precioEditadoPor,
+            String motivoPrecio
     ) {}
 
     public static ProformaResponseDTO desdeEntidad(Proforma c) {
@@ -39,7 +43,10 @@ public record ProformaResponseDTO(
                         i.getPrecioUnitario(),
                         i.getDescuentoPorcentaje(),
                         i.calcularSubtotalItem(),
-                        i.getProducto().requiereMantenimiento()))
+                        i.getProducto().requiereMantenimiento(),
+                        i.getPrecioCatalogo(),
+                        i.getPrecioEditadoPor(),
+                        i.getMotivoPrecio()))
                 .toList();
 
         return new ProformaResponseDTO(

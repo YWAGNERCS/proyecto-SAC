@@ -39,8 +39,31 @@ public class Compra {
     @Column(nullable = false, length = 10)
     private Producto.Moneda moneda;
 
+    /** Lo que se pagó al proveedor, IGV incluido (los precios de compra se escriben tal como se pagaron). */
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
+
+    /** Total sin IGV: total ÷ 1.18 (auditoría M2). */
+    @Column(precision = 12, scale = 2)
+    private BigDecimal subtotal;
+
+    /** IGV de la compra (crédito fiscal): total − subtotal. */
+    @Column(precision = 12, scale = 2)
+    private BigDecimal igv;
+
+    public static final BigDecimal FACTOR_IGV = new BigDecimal("1.18");
+
+    /** Precio con IGV incluido → sin IGV (2 decimales). */
+    public static BigDecimal sinIgv(BigDecimal conIgv) {
+        return conIgv.divide(FACTOR_IGV, 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /** Fija el total (con IGV) y lo separa en subtotal e IGV. */
+    public void fijarTotalConIgv(BigDecimal totalConIgv) {
+        this.total = totalConIgv.setScale(2, java.math.RoundingMode.HALF_UP);
+        this.subtotal = sinIgv(this.total);
+        this.igv = this.total.subtract(this.subtotal);
+    }
 
     @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleCompra> detalles = new ArrayList<>();

@@ -1,6 +1,8 @@
 package com.bomerp.ventas.venta.service;
 
 import com.bomerp.seguridad.acceso.AccesoUsuario;
+import com.bomerp.seguridad.acceso.DetalleHistorial;
+import com.bomerp.config.PrecioDeLinea;
 import com.bomerp.seguridad.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.ventas.tributos.DeduccionTributariaService;
@@ -162,9 +164,18 @@ public class VentaService {
 
         for (ItemProforma item : proforma.getItems()) {
             Producto producto = item.getProducto();
-            // Se respeta también el descuento negociado en la proforma
-            venta.agregarDetalle(new DetalleVenta(
-                    producto, item.getCantidad(), item.getPrecioUnitario(), item.getDescuentoPorcentaje()));
+            // Se respeta también el descuento negociado en la proforma, y el precio si se editó al cotizar
+            DetalleVenta detalle = new DetalleVenta(
+                    producto, item.getCantidad(), item.getPrecioUnitario(), item.getDescuentoPorcentaje());
+            if (item.precioEditado()) {
+                detalle.setPrecioCatalogo(item.getPrecioCatalogo());
+                detalle.setPrecioEditadoPor(item.getPrecioEditadoPor());
+                detalle.setMotivoPrecio(item.getMotivoPrecio());
+                DetalleHistorial.anotar("Precio editado en la proforma por " + item.getPrecioEditadoPor() + ": "
+                        + new PrecioDeLinea(item.getPrecioUnitario(), item.getPrecioCatalogo(), item.getPrecioEditadoPor(),
+                        item.getMotivoPrecio()).paraHistorial(producto.getNombre(), simbolo(venta.getMoneda().name())));
+            }
+            venta.agregarDetalle(detalle);
         }
 
         deduccionTributariaService.aplicar(venta);
@@ -273,13 +284,23 @@ public class VentaService {
 
         aplicarFormaPago(venta, tipoPago, diasCredito);
 
+        String editor = vendedorNombre != null ? vendedorNombre : acceso.usuarioActual();
         for (int i = 0; i < items.size(); i++) {
             ItemVentaDTO itemDTO = items.get(i);
             Producto producto = productos.get(i);
 
-            BigDecimal precio = TipoCambioService.convertir(producto.calcularPrecioVenta(),
+            BigDecimal catalogo = TipoCambioService.convertir(producto.calcularPrecioVenta(),
                     producto.getMoneda().name(), moneda.name(), tc);
-            venta.agregarDetalle(new DetalleVenta(producto, itemDTO.cantidad(), precio, descuentos.get(i)));
+            // Precio editado al registrar (auditoría M1): solo sube, con motivo y permiso; el catálogo no cambia
+            PrecioDeLinea precio = PrecioDeLinea.resolver(catalogo, itemDTO.precioUnitario(), itemDTO.motivoPrecio(),
+                    producto.getNombre(), simbolo(moneda.name()), itemDTO.precioUnitario() != null && acceso.puedeEditarPrecios(),
+                    editor);
+            DetalleVenta detalle = new DetalleVenta(producto, itemDTO.cantidad(), precio.precioUnitario(), descuentos.get(i));
+            detalle.aplicarPrecio(precio);
+            if (precio.editado()) {
+                DetalleHistorial.anotar("Editó el precio de " + precio.paraHistorial(producto.getNombre(), simbolo(moneda.name())));
+            }
+            venta.agregarDetalle(detalle);
         }
 
         deduccionTributariaService.aplicar(venta);
@@ -566,12 +587,29 @@ public class VentaService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Venta no encontrada: " + ventaId));
     }
 
-    /** descuentoPorcentaje: opcional, % negociado de la línea (0 a tope del rol). */
+    /** S/ o US$, para los mensajes y el historial. */
+    static String simbolo(String moneda) {
+        return "DOLARES".equals(moneda) ? "US$" : "S/";
+    }
+
+    /**
+     * descuentoPorcentaje: opcional, % negociado de la línea (0 a tope del rol).
+     * precioUnitario: opcional, precio editado en la moneda de la venta (null = el de catálogo); solo puede subir,
+     * con motivoPrecio (5 a 200 caracteres) y el permiso "Editar precio en la venta" (auditoría M1).
+     */
     public record ItemVentaDTO(
             @jakarta.validation.constraints.NotNull(message = "Cada línea necesita un producto.") Long productoId,
             @jakarta.validation.constraints.NotNull(message = "Cada línea necesita una cantidad.")
             @jakarta.validation.constraints.Positive(message = "La cantidad debe ser mayor que cero.") Integer cantidad,
-            BigDecimal descuentoPorcentaje) {}
+            BigDecimal descuentoPorcentaje,
+            @jakarta.validation.constraints.Positive(message = "El precio debe ser mayor que cero.") BigDecimal precioUnitario,
+            String motivoPrecio) {
+
+        /** Línea con el precio de catálogo. */
+        public ItemVentaDTO(Long productoId, Integer cantidad, BigDecimal descuentoPorcentaje) {
+            this(productoId, cantidad, descuentoPorcentaje, null, null);
+        }
+    }
 
     /**
      * Contado: la venta queda PAGADA. Crédito: queda pendiente con fecha límite

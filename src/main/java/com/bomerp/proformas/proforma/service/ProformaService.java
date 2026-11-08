@@ -42,6 +42,7 @@ public class ProformaService {
     private final GeneradorPdfService generadorPdfService;
     private final TipoCambioService tipoCambioService;
     private final TopeDescuentoService topeDescuentoService;
+    private final com.bomerp.seguridad.acceso.AccesoUsuario acceso;
 
     public ProformaService(ProformaRepository proformaRepository,
                               ClienteService clienteService,
@@ -50,7 +51,8 @@ public class ProformaService {
                               NotificadorCorreo notificadorCorreo,
                               GeneradorPdfService generadorPdfService,
                               TipoCambioService tipoCambioService,
-                              TopeDescuentoService topeDescuentoService) {
+                              TopeDescuentoService topeDescuentoService,
+                              com.bomerp.seguridad.acceso.AccesoUsuario acceso) {
         this.proformaRepository = proformaRepository;
         this.clienteService = clienteService;
         this.productoService = productoService;
@@ -59,6 +61,7 @@ public class ProformaService {
         this.generadorPdfService = generadorPdfService;
         this.tipoCambioService = tipoCambioService;
         this.topeDescuentoService = topeDescuentoService;
+        this.acceso = acceso;
     }
 
     /** Lista para el controller: el DTO lee los ítems (LAZY), así que se arma dentro de la transacción. */
@@ -138,11 +141,23 @@ public class ProformaService {
                 : tipoCambioService.resolverSiSePuede(request.tipoCambio());
         proforma.setTipoCambio(tc);
 
+        String simbolo = "DOLARES".equals(moneda) ? "US$" : "S/";
         for (int i = 0; i < productos.size(); i++) {
             Producto producto = productos.get(i);
-            java.math.BigDecimal precio = TipoCambioService.convertir(producto.calcularPrecioVenta(),
+            ProformaRequest.ItemDTO pedido = request.items().get(i);
+            java.math.BigDecimal catalogo = TipoCambioService.convertir(producto.calcularPrecioVenta(),
                     producto.getMoneda().name(), moneda, tc);
-            proforma.agregarItem(new ItemProforma(producto, request.items().get(i).cantidad(), precio, descuentos.get(i)));
+            // Precio editado al cotizar (auditoría M1): solo sube, con motivo y permiso; el catálogo no cambia
+            com.bomerp.config.PrecioDeLinea precio = com.bomerp.config.PrecioDeLinea.resolver(catalogo,
+                    pedido.precioUnitario(), pedido.motivoPrecio(), producto.getNombre(), simbolo,
+                    pedido.precioUnitario() != null && acceso.puedeEditarPrecios(), acceso.usuarioActual());
+            ItemProforma item = new ItemProforma(producto, pedido.cantidad(), precio.precioUnitario(), descuentos.get(i));
+            item.aplicarPrecio(precio);
+            if (precio.editado()) {
+                com.bomerp.seguridad.acceso.DetalleHistorial.anotar("Editó el precio de "
+                        + precio.paraHistorial(producto.getNombre(), simbolo));
+            }
+            proforma.agregarItem(item);
         }
 
         return ProformaResponseDTO.desdeEntidad(proformaRepository.save(proforma));

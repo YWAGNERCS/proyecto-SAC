@@ -42,17 +42,19 @@ public class CompraReporteService {
         ExcelBuilder.Hoja hojaCompras = excel.hoja("Compras", "Reporte de compras a proveedores", filtros,
                 ExcelBuilder.entero("N° compra"), ExcelBuilder.fecha("Fecha"), ExcelBuilder.texto("Proveedor"),
                 ExcelBuilder.texto("RUC / DNI"), ExcelBuilder.texto("Factura del proveedor"), ExcelBuilder.entero("Líneas"),
-                ExcelBuilder.entero("Unidades"), ExcelBuilder.texto("Moneda"), ExcelBuilder.moneda("Total"));
+                ExcelBuilder.entero("Unidades"), ExcelBuilder.texto("Moneda"), ExcelBuilder.moneda("Subtotal (sin IGV)"),
+                ExcelBuilder.moneda("IGV"), ExcelBuilder.moneda("Total"));
         ExcelBuilder.Hoja hojaDetalle = excel.hoja("Detalle", "Detalle de productos comprados", filtros,
                 ExcelBuilder.entero("N° compra"), ExcelBuilder.fecha("Fecha"), ExcelBuilder.texto("Proveedor"),
                 ExcelBuilder.texto("Factura del proveedor"), ExcelBuilder.texto("Producto"), ExcelBuilder.texto("Categoría"),
-                ExcelBuilder.texto("Sector"), ExcelBuilder.entero("Cantidad"), ExcelBuilder.moneda("Precio unitario"),
+                ExcelBuilder.texto("Sector"), ExcelBuilder.entero("Cantidad"), ExcelBuilder.moneda("Precio unitario (con IGV)"),
                 ExcelBuilder.moneda("Subtotal"), ExcelBuilder.texto("Moneda"));
 
         for (Compra c : compras) {
             hojaCompras.fila(c.getId(), c.getFechaCompra(), c.getProveedor().getNombreORazonSocial(),
                     documento(c.getProveedor()), c.getNumeroFactura(), c.getDetalles().size(),
-                    c.getDetalles().stream().mapToInt(DetalleCompra::getCantidad).sum(), c.getMoneda(), c.getTotal());
+                    c.getDetalles().stream().mapToInt(DetalleCompra::getCantidad).sum(), c.getMoneda(), c.getSubtotal(),
+                    c.getIgv(), c.getTotal());
             for (DetalleCompra d : c.getDetalles()) {
                 hojaDetalle.fila(c.getId(), c.getFechaCompra(), c.getProveedor().getNombreORazonSocial(),
                         c.getNumeroFactura(), d.getProducto().getNombre(),
@@ -65,7 +67,8 @@ public class CompraReporteService {
             List<Compra> deMoneda = compras.stream().filter(c -> c.getMoneda() == moneda).toList();
             if (!deMoneda.isEmpty()) {
                 hojaCompras.filaTotal("Total (" + deMoneda.size() + " compras)", null, null, null, null, null, null,
-                        moneda, sumar(deMoneda));
+                        moneda, sumar(deMoneda, Compra::getSubtotal), sumar(deMoneda, Compra::getIgv),
+                        sumar(deMoneda, Compra::getTotal));
             }
         }
         return excel.generar();
@@ -101,7 +104,11 @@ public class CompraReporteService {
     }
 
     private static BigDecimal sumar(List<Compra> compras) {
-        return compras.stream().map(c -> c.getTotal() != null ? c.getTotal() : BigDecimal.ZERO)
+        return sumar(compras, Compra::getTotal);
+    }
+
+    private static BigDecimal sumar(List<Compra> compras, java.util.function.Function<Compra, BigDecimal> campo) {
+        return compras.stream().map(c -> campo.apply(c) != null ? campo.apply(c) : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
