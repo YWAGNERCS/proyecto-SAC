@@ -91,6 +91,11 @@ original fue rechazado, no se crea nota: no había nada válido que anular.
 - **El certificado vence.** Antes de esa fecha hay que pedir uno nuevo, registrarlo en SOL y reemplazar
   el archivo. Con un certificado vencido, SUNAT rechaza los comprobantes.
 - **Si alguien deja la empresa**, cambiar la clave del usuario SOL secundario y actualizar `SUNAT_CLAVE`.
+- **Si SUNAT rechaza el usuario o la clave SOL**, SGE-JD detiene todos los envíos para no bloquear la cuenta y la
+  campana muestra "Envíos a SUNAT detenidos". Corregir `SUNAT_USUARIO` y `SUNAT_CLAVE` en `.env.prod` y reiniciar el
+  backend: los comprobantes pendientes salen solos.
+- **Si un cliente cambia de empresa a persona natural** (o al revés) después de una venta cuyo comprobante SUNAT no
+  recibió, ese comprobante no se reenvía: se pulsa **Emitir comprobante de reemplazo** y sale del tipo correcto.
 
 ## 6. Lo que SGE-JD todavía no hace
 

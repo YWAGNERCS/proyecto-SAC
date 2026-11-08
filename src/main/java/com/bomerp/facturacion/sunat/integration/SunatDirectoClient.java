@@ -80,6 +80,12 @@ public class SunatDirectoClient implements OseClient {
                 case REINTENTAR -> log.warn("SUNAT no pudo procesar {} ahora (se reintentará): {} - {}", nombre, cdr.codigo(), detalle);
                 case POR_CONFIRMAR -> log.warn("SUNAT ya tenía registrado {} por un envío anterior (no se sabe si fue aceptado): {} - {}",
                         nombre, cdr.codigo(), detalle);
+                case CREDENCIALES -> log.error("SUNAT rechazó el usuario o la clave SOL al enviar {}: {} - {}", nombre, cdr.codigo(), detalle);
+            }
+            if (resultado == Resultado.CREDENCIALES) {
+                detalle = "SUNAT rechazó el usuario o la clave SOL (código " + cdr.codigo() + "). Se detuvieron los envíos "
+                        + "para no bloquear la cuenta: corrija SUNAT_USUARIO y SUNAT_CLAVE y reinicie el backend. "
+                        + "Respuesta de SUNAT: " + detalle;
             }
             if (cdr.codigo() == YA_REGISTRADO) {
                 detalle = "SUNAT ya tiene registrado este número por un envío anterior y no indica si fue aceptado o "
@@ -102,16 +108,24 @@ public class SunatDirectoClient implements OseClient {
 
     /**
      * Códigos de SUNAT: 0 aceptado; 4000+ aceptado con observaciones; 2000-3999 rechazo;
-     * 0100-0199 fallas del sistema de SUNAT (temporales); 1033 ya registrado (por confirmar); resto de
-     * 0200-1999, excepciones por datos o configuración que hay que corregir.
+     * 0101-0106 usuario o clave SOL rechazados (encabezado de seguridad, usuario o clave incorrectos, usuario
+     * inexistente, inactivo o no válido); el resto de 0100-0199, fallas del sistema de SUNAT (temporales);
+     * 1033 ya registrado (por confirmar); resto de 0200-1999, excepciones por datos o configuración que hay que corregir.
      */
     static Resultado clasificar(int codigo) {
         if (codigo == YA_REGISTRADO) return Resultado.POR_CONFIRMAR;
+        if (codigo >= 101 && codigo <= 106) return Resultado.CREDENCIALES;
         if (codigo == 0) return Resultado.ACEPTADO;
         if (codigo >= 4000) return Resultado.OBSERVADO;
         if (codigo >= 100 && codigo <= 199) return Resultado.REINTENTAR;
         if (codigo < 0) return Resultado.REINTENTAR;
         return Resultado.RECHAZADO;
+    }
+
+    /** Solo la SUNAT de producción da validez tributaria; la beta es de pruebas. */
+    @Override
+    public boolean conValidezTributaria() {
+        return props.url() != null && !props.url().toLowerCase().contains("beta");
     }
 
     /** Se carga al primer envío: el backend arranca aunque falte el certificado y lo dice al emitir. */

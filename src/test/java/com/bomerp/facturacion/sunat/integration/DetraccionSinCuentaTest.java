@@ -27,6 +27,16 @@ class DetraccionSinCuentaTest {
         assertThat(cliente("  ").motivoParaNoEmitir(venta(Venta.TipoDeduccion.DETRACCION))).isNotNull();
     }
 
+    /** D-12: lo que acepta la beta de SUNAT no tiene validez tributaria; lo de producción sí. */
+    @Test
+    void soloLaSunatDeProduccionDaValidez() {
+        assertThat(cliente(null).conValidezTributaria()).isFalse();
+        SunatDirectoClient produccion = new SunatDirectoClient(
+                new SunatProperties("https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService", "USUARIO1", "x", null, null),
+                new EmpresaProperties("JD Refrigeración S.A.C.", "20000000001", "Lima", null));
+        assertThat(produccion.conValidezTributaria()).isTrue();
+    }
+
     @Test
     void conCuentaOSinDetraccionSeEmite() {
         assertThat(cliente("00-000-000000").motivoParaNoEmitir(venta(Venta.TipoDeduccion.DETRACCION))).isNull();

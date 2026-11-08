@@ -21,6 +21,11 @@ class ClasificacionCodigosSunatTest {
             "-1, REINTENTAR",       // sin código legible
             "111, REINTENTAR",
             "305, RECHAZADO",       // excepción por datos o configuración
+            "101, CREDENCIALES",    // encabezado de seguridad incorrecto
+            "102, CREDENCIALES",    // usuario o contraseña incorrectos
+            "104, CREDENCIALES",    // clave incorrecta
+            "106, CREDENCIALES",    // usuario no válido
+            "100, REINTENTAR",      // sistema de SUNAT sin responder
     })
     void clasifica(int codigo, Resultado esperado) {
         assertThat(SunatDirectoClient.clasificar(codigo)).isEqualTo(esperado);

@@ -223,6 +223,31 @@ class ComprobanteReemplazoIntegracionTest {
         assertThat(facturacion.plazoDeEnvio().numerosFueraDePlazo()).doesNotContain(numero);
     }
 
+    /**
+     * D-11: SUNAT no recibió el comprobante y después el cliente cambió de tipo. Con su número saldría el tipo
+     * equivocado (p. ej. una factura con DNI), así que no se reenvía: se reemplaza por uno del tipo que corresponde.
+     */
+    @Test
+    void siElClienteCambioDeTipoSeReemplazaPorElTipoCorrecto() {
+        String tipoOriginal = jdbc.queryForObject("SELECT tipo FROM comprobantes WHERE id = ?", String.class, comprobanteId);
+        respuestaDeSunat("RECHAZADO", 305);
+        if ("FACTURA".equals(tipoOriginal)) {
+            jdbc.update("UPDATE clientes SET tipo = 'PERSONA_NATURAL', ruc = NULL, dni = '45678912' WHERE id = ?", clienteId);
+        } else {
+            jdbc.update("UPDATE clientes SET tipo = 'EMPRESA', ruc = '20999999991', dni = NULL WHERE id = ?", clienteId);
+        }
+        em.clear();
+
+        assertThat(facturacion.estadosDeVentas(List.of(ventaId)).get(0).comprobante().puedeReemplazar()).isTrue();
+        assertThatThrownBy(() -> envioSunat.reenviarComprobante(comprobanteId))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("emita un comprobante de reemplazo");
+
+        Comprobante nuevo = facturacion.emitirReemplazo(comprobanteId);
+        em.flush();
+        assertThat(nuevo.getTipo().name()).isNotEqualTo(tipoOriginal);
+        assertThat(nuevo.getReceptorTipoDoc()).isEqualTo("FACTURA".equals(tipoOriginal) ? "1" : "6");
+    }
+
     /** Excepción reenviada: sale con el dato corregido del cliente (SUNAT no había registrado el comprobante). */
     @Test
     void unaExcepcionReenviadaTomaElDatoCorregido() {

@@ -57,6 +57,12 @@ public class EnvioSunatService {
     private final ApplicationEventPublisher eventos;
     private final TransactionTemplate tx;
     private final long pausaMs;
+    /**
+     * SUNAT rechazó el usuario o la clave SOL (D-9): mientras no sea null, no se envía nada más, para no bloquear la
+     * cuenta SOL con intentos fallidos. Las credenciales salen de la configuración, así que se corrigen y se reinicia.
+     */
+    private volatile String envioDetenido;
+
     private final ExecutorService cola = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "envio-sunat");
         t.setDaemon(true);
@@ -74,6 +80,18 @@ public class EnvioSunatService {
         this.eventos = eventos;
         this.tx = new TransactionTemplate(txManager);
         this.pausaMs = pausaMs;
+    }
+
+    /** Motivo por el que los envíos a SUNAT están detenidos (usuario o clave SOL rechazados), o null. */
+    public String motivoEnvioDetenido() {
+        return envioDetenido;
+    }
+
+    private void detenerSiFallanLasCredenciales(RespuestaOse r) {
+        if (r.resultado() == OseClient.Resultado.CREDENCIALES && envioDetenido == null) {
+            envioDetenido = r.mensaje();
+            log.error("Envíos a SUNAT detenidos hasta reiniciar: {}", r.mensaje());
+        }
     }
 
     /** Comprobante aceptado por SUNAT: Facturación lo envía por correo al cliente (si tiene). */
@@ -119,6 +137,9 @@ public class EnvioSunatService {
             if (c == null || c.getEstadoSunat() != EstadoSunat.PENDIENTE) {
                 return c == null ? null : c.getEstadoSunat();
             }
+            if (envioDetenido != null) {
+                return EstadoSunat.PENDIENTE;   // sin contar el intento: sale cuando se corrijan las credenciales
+            }
             if (!tieneNotaSiSuVentaFueAnulada(c)) {
                 c.getEnvio().registrarIntento(null, "No se envía: la venta #" + c.getVenta().getId()
                         + " está anulada y no se pudo crear su nota de crédito. Revise el registro del backend.", null, null);
@@ -131,6 +152,7 @@ public class EnvioSunatService {
                 return EstadoSunat.PENDIENTE;
             }
             RespuestaOse r = ose.emitir(c);
+            detenerSiFallanLasCredenciales(r);
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
             registros.save(EnvioSunatRegistro.deComprobante(c.getId(), r.resultado().name(), c.getEnvio(), r.xmlFirmado(), r.cdr()));
             if (r.enlacePdf() != null) c.setEnlacePdf(r.enlacePdf());
@@ -184,6 +206,9 @@ public class EnvioSunatService {
             if (n == null || n.getEstadoSunat() != EstadoSunat.PENDIENTE) {
                 return n == null ? null : n.getEstadoSunat();
             }
+            if (envioDetenido != null) {
+                return EstadoSunat.PENDIENTE;
+            }
             EstadoSunat original = n.getComprobanteReferencia().getEstadoSunat();
             if (original == EstadoSunat.PENDIENTE) {
                 return EstadoSunat.PENDIENTE;   // espera al comprobante; el reintento la vuelve a tomar
@@ -195,6 +220,7 @@ public class EnvioSunatService {
                 return n.getEstadoSunat();
             }
             RespuestaOse r = ose.emitirNotaCredito(n);
+            detenerSiFallanLasCredenciales(r);
             n.setEstadoSunat(aplicar(n.getEnvio(), r));
             registros.save(EnvioSunatRegistro.deNota(n.getId(), r.resultado().name(), n.getEnvio(), r.xmlFirmado(), r.cdr()));
             if (r.enlacePdf() != null) n.setEnlacePdf(r.enlacePdf());
@@ -214,6 +240,7 @@ public class EnvioSunatService {
      * de reemplazo (FacturacionService.emitirReemplazo).
      */
     public void reenviarComprobante(Long id) {
+        exigirEnvioActivo();
         tx.executeWithoutResult(s -> {
             Comprobante c = comprobantes.findById(id).orElseThrow(() -> noEncontrado("Comprobante", id));
             String numero = c.getSerie() + "-" + Integer.parseInt(c.getNumero());
@@ -227,17 +254,25 @@ public class EnvioSunatService {
             if (c.fueraDePlazo(java.time.LocalDate.now())) {
                 throw conflicto(mensajeFueraDePlazo(c).replace("No se envía: venció", numero + ": venció"));
             }
+            if (c.necesitaOtroTipo()) {
+                // D-11: el cliente pasó a persona natural (sin RUC) o a empresa; con su número saldría el tipo equivocado
+                throw conflicto(numero + " es una " + c.getTipo().name().toLowerCase() + ", pero el cliente ya no "
+                        + (c.getTipo() == Comprobante.TipoComprobante.FACTURA ? "tiene RUC" : "es persona natural")
+                        + ". Si el cambio en Clientes fue un error, corríjalo y reenvíe; si no, emita un comprobante de reemplazo.");
+            }
             reabrir(c.getEstadoSunat(), c.getEnvio(), numero);
             if (c.getEstadoSunat() == EstadoSunat.RECHAZADO && c.getVenta() != null) {
                 c.fijarReceptor(c.getVenta().getCliente());   // excepción: SUNAT no lo registró, sale con el dato corregido
             }
             c.setEstadoSunat(EstadoSunat.PENDIENTE);
         });
-        encolar(() -> enviarComprobante(id));
+        // D-13: si esto corre dentro de otra transacción, espera a que se confirme antes de enviar
+        programar(() -> enviarComprobante(id));
     }
 
     /** Igual que reenviarComprobante. Una nota rechazada con CDR tampoco puede reenviarse con su número. */
     public void reenviarNota(Long id) {
+        exigirEnvioActivo();
         tx.executeWithoutResult(s -> {
             NotaCredito n = notas.findById(id).orElseThrow(() -> noEncontrado("Nota de crédito", id));
             Integer codigo = n.getEnvio().getCodigo();
@@ -249,7 +284,14 @@ public class EnvioSunatService {
             reabrir(n.getEstadoSunat(), n.getEnvio(), n.getSerie() + "-" + Integer.parseInt(n.getNumero()));
             n.setEstadoSunat(EstadoSunat.PENDIENTE);
         });
-        encolar(() -> enviarNota(id));
+        programar(() -> enviarNota(id));
+    }
+
+    /** Con el usuario o la clave SOL rechazados no se reenvía nada: SUNAT respondería lo mismo y podría bloquear la cuenta. */
+    private void exigirEnvioActivo() {
+        if (envioDetenido != null) {
+            throw conflicto("Los envíos a SUNAT están detenidos: " + envioDetenido);
+        }
     }
 
     private static void reabrir(EstadoSunat estado, EnvioSunat envio, String numero) {
@@ -280,6 +322,8 @@ public class EnvioSunatService {
             // Sin validez (no se envía por correo ni cuenta como emitido) y fuera del reintento automático:
             // queda a la vista con el aviso para verificarlo en SUNAT.
             case POR_CONFIRMAR -> EstadoSunat.PENDIENTE;
+            // Sin validez y sin reintento: los envíos quedan detenidos hasta corregir las credenciales y reiniciar
+            case CREDENCIALES -> EstadoSunat.PENDIENTE;
         };
     }
 
@@ -290,6 +334,10 @@ public class EnvioSunatService {
     @Scheduled(initialDelayString = "${app.facturacion.reintento-inicial-ms:60000}",
             fixedDelayString = "${app.facturacion.reintento-ms:180000}")
     public void reintentarPendientes() {
+        if (envioDetenido != null) {
+            log.warn("Reintento de envíos a SUNAT omitido: {}", envioDetenido);
+            return;
+        }
         // El límite de intentos va en la consulta, antes del Top 20 (revisión externa F-02): si se filtrara
         // después, 20 comprobantes agotados al principio de la lista taparían para siempre a los siguientes.
         // Los que SUNAT respondió con 1033 (ya registrado, por confirmar) también quedan fuera: reenviarlos solo

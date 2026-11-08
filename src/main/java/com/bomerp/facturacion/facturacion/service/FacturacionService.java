@@ -147,7 +147,7 @@ public class FacturacionService implements ComprobantesDeVenta {
             throw new ResponseStatusException(HttpStatus.CONFLICT, numero + " ya fue reemplazado por otro comprobante.");
         }
         boolean fueraDePlazo = rechazado.fueraDePlazo(java.time.LocalDate.now());
-        if (!rechazado.rechazoDefinitivo() && !fueraDePlazo) {
+        if (!rechazado.rechazoDefinitivo() && !fueraDePlazo && !rechazado.necesitaOtroTipo()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, rechazado.getEstadoSunat().valido()
                     ? numero + " tiene validez ante SUNAT: no se reemplaza. Para anularlo, anule la venta (se emite una nota de crédito)."
                     : numero + " no fue rechazado con constancia de SUNAT: no se reemplaza. Si SUNAT no lo recibió, corrija el dato y reenvíelo con el mismo número.");
@@ -309,7 +309,7 @@ public class FacturacionService implements ComprobantesDeVenta {
      * emitir un comprobante de reemplazo.
      */
     public record PlazoEnvioDTO(int porVencer, int fueraDePlazo, List<String> numerosPorVencer, List<String> numerosFueraDePlazo,
-                                int porEmitir, List<Long> ventasPorEmitir) {}
+                                int porEmitir, List<Long> ventasPorEmitir, String envioDetenido) {}
 
     @Transactional(readOnly = true)
     public PlazoEnvioDTO plazoDeEnvio() {
@@ -329,7 +329,9 @@ public class FacturacionService implements ComprobantesDeVenta {
         // Ventas sin comprobante porque falta un dato de JD: no corre plazo, pero el cliente espera su comprobante
         List<Long> porEmitir = comprobanteRepository.ventasPorEmitir().stream()
                 .filter(v -> ose.motivoParaNoEmitir(v) != null).map(Venta::getId).toList();
-        return new PlazoEnvioDTO(porVencer.size(), fuera.size(), porVencer, fuera, porEmitir.size(), porEmitir);
+        // Usuario o clave SOL rechazados (D-9): no sale nada a SUNAT hasta corregirlos y reiniciar
+        return new PlazoEnvioDTO(porVencer.size(), fuera.size(), porVencer, fuera, porEmitir.size(), porEmitir,
+                envioSunat.motivoEnvioDetenido());
     }
 
     /** Archivo guardado del envío a SUNAT: XML firmado o CDR (constancia de recepción, ZIP). */
@@ -420,7 +422,7 @@ public class FacturacionService implements ComprobantesDeVenta {
             log.info("Comprobante {} aceptado; no se envía por correo: el cliente no tiene correo", comprobanteId);
             return;
         }
-        String motivo = motivoParaNoEnviarAlCliente(comprobante);
+        String motivo = motivoParaNoEnviarAlCliente(comprobante, ose.conValidezTributaria());
         if (motivo != null) {
             log.info("Comprobante {}: no se envía por correo. {}", comprobanteId, motivo);
             return;
@@ -435,7 +437,7 @@ public class FacturacionService implements ComprobantesDeVenta {
      *
      * @return el motivo para no enviarlo, o null si se puede enviar
      */
-    static String motivoParaNoEnviarAlCliente(Comprobante c) {
+    static String motivoParaNoEnviarAlCliente(Comprobante c, boolean conValidezTributaria) {
         String numero = c.getSerie() + "-" + c.getNumero();
         if (c.getEstadoSunat() == null || !c.getEstadoSunat().valido()) {
             return numero + " todavía no tiene validez ante SUNAT (estado " + c.getEstadoSunat()
@@ -443,6 +445,10 @@ public class FacturacionService implements ComprobantesDeVenta {
         }
         if (c.getEnvio().getXmlFirmado() == null) {
             return numero + " se emitió en modo simulado (no se envió a SUNAT): no se envía al cliente como comprobante.";
+        }
+        if (!conValidezTributaria) {
+            // D-12: la beta de SUNAT devuelve XML y CDR como la real, pero lo que acepta no tiene validez
+            return numero + " fue aceptado por la beta de SUNAT (pruebas): no tiene validez tributaria y no se envía al cliente.";
         }
         return null;
     }
@@ -456,7 +462,7 @@ public class FacturacionService implements ComprobantesDeVenta {
     public void enviarFacturaCorreo(Long comprobanteId) {
         Comprobante comprobante = comprobanteRepository.findById(comprobanteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comprobante no encontrado: " + comprobanteId));
-        String motivo = motivoParaNoEnviarAlCliente(comprobante);
+        String motivo = motivoParaNoEnviarAlCliente(comprobante, ose.conValidezTributaria());
         if (motivo != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, motivo);
         }

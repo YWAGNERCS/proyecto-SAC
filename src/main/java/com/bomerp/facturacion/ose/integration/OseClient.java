@@ -31,11 +31,21 @@ public interface OseClient {
     }
 
     /**
+     * Lo que este cliente acepta tiene validez tributaria: solo el envío a SUNAT de producción. El simulado y la
+     * beta de SUNAT no, así que lo que "aceptan" no se envía por correo al cliente (informe D-12).
+     */
+    default boolean conValidezTributaria() {
+        return false;
+    }
+
+    /**
      * Cómo terminó un envío. REINTENTAR: SUNAT caída, lenta o limitando envíos (no es culpa del comprobante).
      * POR_CONFIRMAR: SUNAT ya tiene registrado ese número por un envío anterior (código 1033), pero no dice si
      * ese envío fue aceptado o rechazado: no tiene validez hasta verificarlo, y reenviarlo solo repetiría el 1033.
+     * CREDENCIALES: SUNAT rechazó el usuario o la clave SOL (0101-0106). No es culpa del comprobante ni se arregla
+     * reintentando: se detienen todos los envíos para no bloquear la cuenta SOL (informe de rechazos SUNAT, D-9).
      */
-    enum Resultado { ACEPTADO, OBSERVADO, RECHAZADO, REINTENTAR, POR_CONFIRMAR }
+    enum Resultado { ACEPTADO, OBSERVADO, RECHAZADO, REINTENTAR, POR_CONFIRMAR, CREDENCIALES }
 
     /**
      * Respuesta de SUNAT (o del OSE) a un envío.

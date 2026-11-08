@@ -28,8 +28,8 @@ public record EstadoSunatVentaDTO(Long ventaId, Documento comprobante, Documento
      * @param tieneCdr          hay constancia de recepción de SUNAT guardada
      * @param simulado          "aceptado" por el envío simulado: nunca llegó a SUNAT y no tiene validez tributaria
      * @param rechazoDefinitivo SUNAT lo rechazó con CDR: su número quedó usado y no puede reenviarse
-     * @param puedeReemplazar   rechazo definitivo o fuera de plazo de un comprobante (no nota) vigente de una
-     *                          venta no anulada: se puede emitir el comprobante de reemplazo
+     * @param puedeReemplazar   rechazo definitivo, fuera de plazo o tipo que ya no corresponde al cliente (D-11) de un
+     *                          comprobante (no nota) vigente de una venta no anulada: se puede emitir el reemplazo
      * @param fechaLimiteEnvio  último día para que SUNAT lo reciba, si todavía no lo registró (null si ya no aplica)
      * @param fueraDePlazo      pasó esa fecha sin que SUNAT lo registrara: ya no se envía (informe D-6)
      */
@@ -53,7 +53,7 @@ public record EstadoSunatVentaDTO(Long ventaId, Documento comprobante, Documento
             boolean ventaActiva = c.getVenta() == null || c.getVenta().getEstado() != Venta.EstadoVenta.ANULADA;
             boolean fueraDePlazo = c.fueraDePlazo(java.time.LocalDate.now());
             return de(c.getId(), c.getSerie(), c.getNumero(), c.getEstadoSunat(), c.getEnvio(), c.rechazoDefinitivo(),
-                    (c.rechazoDefinitivo() || fueraDePlazo) && !c.isReemplazado() && ventaActiva,
+                    (c.rechazoDefinitivo() || fueraDePlazo || c.necesitaOtroTipo()) && !c.isReemplazado() && ventaActiva,
                     c.faltaQueSunatLoRegistre() ? c.fechaLimiteEnvio() : null, fueraDePlazo);
         }
 

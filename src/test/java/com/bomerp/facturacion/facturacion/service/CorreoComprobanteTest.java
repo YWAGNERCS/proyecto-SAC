@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Revisión externa F-01: al cliente solo se le envía por correo ("Su Factura ... ha sido emitida") un
- * comprobante con validez ante SUNAT, y nunca uno del modo simulado.
+ * comprobante con validez ante SUNAT, y nunca uno del modo simulado ni uno aceptado por la beta de SUNAT (D-12).
  */
 class CorreoComprobanteTest {
 
@@ -23,25 +23,31 @@ class CorreoComprobanteTest {
 
     @Test
     void pendienteNoSeEnvia() {
-        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.PENDIENTE, true)))
+        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.PENDIENTE, true), true))
                 .contains("F001-00000129").contains("todavía no tiene validez");
     }
 
     @Test
     void rechazadoNoSeEnvia() {
-        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.RECHAZADO, true)))
+        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.RECHAZADO, true), true))
                 .contains("todavía no tiene validez");
     }
 
     @Test
     void aceptadoEnModoSimuladoNoSeEnvia() {
-        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.ACEPTADO, false)))
+        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.ACEPTADO, false), true))
                 .contains("modo simulado");
     }
 
     @Test
     void aceptadoYObservadoDeSunatSiSeEnvian() {
-        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.ACEPTADO, true))).isNull();
-        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.OBSERVADO, true))).isNull();
+        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.ACEPTADO, true), true)).isNull();
+        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.OBSERVADO, true), true)).isNull();
+    }
+
+    @Test
+    void aceptadoPorLaBetaDeSunatNoSeEnvia() {
+        assertThat(FacturacionService.motivoParaNoEnviarAlCliente(comprobante(EstadoSunat.ACEPTADO, true), false))
+                .contains("beta de SUNAT").contains("no tiene validez");
     }
 }

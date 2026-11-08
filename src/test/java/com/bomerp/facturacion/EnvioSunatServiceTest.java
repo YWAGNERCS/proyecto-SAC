@@ -225,6 +225,57 @@ class EnvioSunatServiceTest {
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("ya fue reemplazado");
     }
 
+    // --- Usuario o clave SOL rechazados (informe D-9): se detienen todos los envíos ---
+
+    @Test
+    void conLasCredencialesRechazadasSeDetieneTodo() {
+        Comprobante primero = comprobante(50, EstadoSunat.PENDIENTE);
+        when(ose.emitir(primero)).thenReturn(new RespuestaOse(Resultado.CREDENCIALES, 102,
+                "SUNAT rechazó el usuario o la clave SOL (código 102)", null, null, new byte[]{1}, null));
+
+        assertThat(servicio.enviarComprobante(50L)).isEqualTo(EstadoSunat.PENDIENTE);
+        assertThat(servicio.motivoEnvioDetenido()).contains("usuario o la clave SOL");
+        verifyNoInteractions(eventos);
+
+        // El siguiente ya no sale ni gasta un intento: SUNAT respondería lo mismo y podría bloquear la cuenta SOL
+        Comprobante segundo = comprobante(51, EstadoSunat.PENDIENTE);
+        assertThat(servicio.enviarComprobante(51L)).isEqualTo(EstadoSunat.PENDIENTE);
+        verify(ose, never()).emitir(segundo);
+        assertThat(segundo.getEnvio().getIntentos()).isZero();
+
+        // Ni el reintento automático ni el botón Reenviar
+        servicio.reintentarPendientes();
+        verify(comprobantes, never()).pendientesParaReintentar(any(), anyInt(), anyInt(), any(), any());
+        assertThatThrownBy(() -> servicio.reenviarComprobante(51L))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("detenidos");
+    }
+
+    // --- Tipo de comprobante y cliente (informe D-11) ---
+
+    @Test
+    void unaFacturaNoSeReenviaSiElClienteYaNoTieneRuc() {
+        Comprobante c = comprobante(52, EstadoSunat.RECHAZADO);
+        c.setTipo(Comprobante.TipoComprobante.FACTURA);
+        c.getEnvio().registrarIntento(305, "El RUC del receptor no existe", null, null);
+        com.bomerp.clientes.general.integration.Cliente cliente = new com.bomerp.clientes.general.integration.Cliente();
+        cliente.setTipo(com.bomerp.clientes.general.integration.Cliente.TipoCliente.PERSONA_NATURAL);
+        cliente.setDni("12345678");
+        Venta v = new Venta();
+        v.setId(52L);
+        v.setCliente(cliente);
+        c.setVenta(v);
+
+        assertThat(c.necesitaOtroTipo()).isTrue();
+        assertThatThrownBy(() -> servicio.reenviarComprobante(52L))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("ya no tiene RUC");
+        assertThat(c.getEstadoSunat()).isEqualTo(EstadoSunat.RECHAZADO);
+
+        // Si el cliente vuelve a ser empresa con RUC, la misma factura sí se reenvía
+        cliente.setTipo(com.bomerp.clientes.general.integration.Cliente.TipoCliente.EMPRESA);
+        cliente.setRuc("20100000001");
+        assertThat(c.necesitaOtroTipo()).isFalse();
+    }
+
     // --- Plazo de envío: 3 días calendario desde el día siguiente a la emisión (informe D-6) ---
 
     @Test

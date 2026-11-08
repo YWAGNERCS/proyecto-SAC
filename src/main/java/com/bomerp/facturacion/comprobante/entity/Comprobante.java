@@ -115,6 +115,26 @@ public class Comprobante {
                 && ((codigo >= 2000 && codigo <= 3999) || codigo == CODIGO_YA_RECHAZADO);
     }
 
+    /**
+     * El tipo emitido ya no corresponde a los datos actuales del cliente (informe D-11): una factura necesita el
+     * RUC del receptor, y un cliente que pasó a persona natural ya no tiene RUC (ClienteService lo borra); al revés,
+     * a una empresa se le emite factura, no boleta.
+     */
+    public boolean tipoNoCorrespondeA(com.bomerp.clientes.general.integration.Cliente cliente) {
+        boolean conRuc = cliente.getRuc() != null && !cliente.getRuc().isBlank();
+        boolean empresa = cliente.getTipo() == com.bomerp.clientes.general.integration.Cliente.TipoCliente.EMPRESA;
+        return (tipo == TipoComprobante.FACTURA && !conRuc) || (tipo == TipoComprobante.BOLETA && empresa);
+    }
+
+    /**
+     * SUNAT no lo registró (excepción) y el tipo ya no corresponde al cliente corregido: no puede reenviarse con su
+     * número (saldría una factura con DNI, que SUNAT rechaza); la venta necesita un comprobante de reemplazo del tipo correcto.
+     */
+    public boolean necesitaOtroTipo() {
+        return !reemplazado && estadoSunat == EstadoSunat.RECHAZADO && !rechazoDefinitivo()
+                && venta != null && venta.getCliente() != null && tipoNoCorrespondeA(venta.getCliente());
+    }
+
     /** SUNAT: el comprobante ya está informado y figura anulado o rechazado. */
     public static final int CODIGO_YA_RECHAZADO = 1032;
 
