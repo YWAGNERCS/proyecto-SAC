@@ -160,3 +160,5 @@
 /* Historial de envíos a SUNAT de un documento */
 .sunat-envios { display: grid; gap: 4px; margin: -2px 0 2px 16px; padding-left: 10px; border-left: 2px solid var(--suave); font-size: 0.8rem; }
 .sunat-envio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* Plazo de 3 días para que SUNAT reciba el comprobante */
+.sunat-plazo { font-weight: 600; color: var(--warning); }

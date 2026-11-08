@@ -19,8 +19,20 @@ export interface DocumentoSunat {
   simulado: boolean;
   /** SUNAT lo rechazó con constancia (CDR): su número quedó usado y no puede reenviarse. */
   rechazoDefinitivo: boolean;
-  /** Rechazo definitivo de un comprobante vigente de una venta no anulada: se puede emitir el reemplazo. */
+  /** Rechazo definitivo o fuera de plazo de un comprobante vigente de una venta no anulada: se puede emitir el reemplazo. */
   puedeReemplazar: boolean;
+  /** Último día (AAAA-MM-DD) para que SUNAT lo reciba, si todavía no lo registró; null si ya no aplica. */
+  fechaLimiteEnvio: string | null;
+  /** Pasó esa fecha sin que SUNAT lo registrara: ya no se envía, se emite un reemplazo. */
+  fueraDePlazo: boolean;
+}
+
+/** Facturas y boletas que SUNAT aún no registró: vencen su plazo de envío hoy o mañana, o ya lo pasaron. */
+export interface PlazoEnvio {
+  porVencer: number;
+  fueraDePlazo: number;
+  numerosPorVencer: string[];
+  numerosFueraDePlazo: string[];
 }
 
 export interface EstadoSunatVenta {
@@ -66,6 +78,11 @@ export class FacturacionService {
   /** Emite el comprobante de reemplazo de uno que SUNAT rechazó con CDR (número nuevo, misma venta). */
   reemplazar(id: number) {
     return this.http.post<{ serie: string; numero: string }>(this.api.buildUrl(`${this.endpoint}/${id}/reemplazar`), {});
+  }
+
+  /** Resumen del plazo de envío de 3 días (para la campana). */
+  plazoEnvio() {
+    return this.http.get<PlazoEnvio>(this.api.buildUrl(`${this.endpoint}/plazo-envio`));
   }
 
   /** Historial de envíos a SUNAT de un comprobante o nota de crédito, el más reciente primero. */

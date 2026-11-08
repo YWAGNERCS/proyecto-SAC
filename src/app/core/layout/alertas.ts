@@ -15,6 +15,7 @@ import { ProformaService } from '../../features/proformas/proforma/proforma-serv
 import { ProformaResponse } from '../../features/proformas/proforma/proforma.model';
 import { OrdenService } from '../../features/servicios/orden/orden-service';
 import { OrdenTrabajo } from '../../features/servicios/orden/orden.model';
+import { FacturacionService, PlazoEnvio } from '../services/facturacion-service';
 
 interface Alerta {
   nivel: 'alta' | 'media' | 'info';
@@ -45,6 +46,7 @@ export class AlertasComponent implements OnInit {
   private readonly cobranzaService = inject(CobranzaService);
   private readonly proformaService = inject(ProformaService);
   private readonly ordenService = inject(OrdenService);
+  private readonly facturacion = inject(FacturacionService);
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -83,9 +85,21 @@ export class AlertasComponent implements OnInit {
       devoluciones: this.cobranzaService.devoluciones().pipe(catchError(() => of([] as Devolucion[]))),
       proformas: this.proformaService.listar().pipe(catchError(() => of([] as ProformaResponse[]))),
       ordenes: this.ordenService.listar({ estado: 'PROGRAMADA', hasta: hoyIso }).pipe(catchError(() => of([] as OrdenTrabajo[]))),
+      plazo: this.facturacion.plazoEnvio().pipe(catchError(() => of(null as PlazoEnvio | null))),
     }).subscribe((r) => {
       const lista: Alerta[] = [];
       const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+      const primeros = (numeros: string[]) => numeros.slice(0, 3).join(', ') + (numeros.length > 3 ? '…' : '');
+
+      // Plazo de 3 días para que SUNAT reciba facturas y boletas: lo enviado tarde no tiene validez
+      if (r.plazo && r.plazo.fueraDePlazo > 0) {
+        lista.push({ nivel: 'alta', titulo: plural(r.plazo.fueraDePlazo, 'comprobante fuera de plazo', 'comprobantes fuera de plazo'),
+          detalle: `No llegaron a SUNAT a tiempo: emita un comprobante de reemplazo (${primeros(r.plazo.numerosFueraDePlazo)})`, ruta: '/ventas' });
+      }
+      if (r.plazo && r.plazo.porVencer > 0) {
+        lista.push({ nivel: 'alta', titulo: plural(r.plazo.porVencer, 'comprobante sin enviar a SUNAT', 'comprobantes sin enviar a SUNAT'),
+          detalle: `El plazo vence hoy o mañana (${primeros(r.plazo.numerosPorVencer)})`, ruta: '/ventas' });
+      }
 
       const vencidas = r.cuentas.filter((c) => c.diasAtraso > 0);
       if (vencidas.length) {

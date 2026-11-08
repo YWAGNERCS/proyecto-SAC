@@ -164,11 +164,12 @@
                 <div class="sunat">
                   @for (x of documentosSunat(s); track (x.esNota ? 'n' : 'c') + x.d.id) {
                     <div class="sunat-linea" [class.sunat-reemplazado]="x.reemplazado"
-                         [class.sunat-problema]="!x.reemplazado && (x.d.estado === 'RECHAZADO' || (x.d.estado === 'PENDIENTE' && x.d.intentos > 0))">
+                         [class.sunat-problema]="!x.reemplazado && (x.d.fueraDePlazo || x.d.estado === 'RECHAZADO' || (x.d.estado === 'PENDIENTE' && x.d.intentos > 0))">
                       <span class="sunat-doc">{{ x.titulo }} {{ x.d.numero }}</span>
-                      <span class="badge" [class]="claseSunat(x.d)">{{ etiquetaSunat(x.d) }}</span>
+                      <span class="badge" [class]="claseSunat(x.d)">{{ etiquetaSunat(x.d, x.reemplazado) }}</span>
                       @if (x.d.codigo !== null) { <span class="muted">código {{ x.d.codigo }}</span> }
                       @if (x.d.estado === 'PENDIENTE' && x.d.intentos > 0) { <span class="muted">· {{ x.d.intentos }} intento(s)</span> }
+                      @if (!x.reemplazado && avisoPlazo(x.d); as plazo) { <span class="sunat-plazo">{{ plazo }}</span> }
                       @if (x.d.mensaje) { <span class="sunat-mensaje">{{ x.d.mensaje }}</span> }
                       <span class="sunat-acciones">
                         @if (x.d.tieneXml) {
@@ -188,7 +189,7 @@
                         }
                         @if (!x.esNota && x.d.puedeReemplazar) {
                           <button class="btn btn-sm btn-primary" (click)="reemplazarSunat(x.d, v)"
-                                  title="SUNAT lo rechazó: emitir un comprobante nuevo, con otro número, para esta venta">Emitir comprobante de reemplazo</button>
+                                  [title]="x.d.fueraDePlazo ? 'Pasó el plazo de envío: emitir un comprobante nuevo, con otro número y fecha de hoy, para esta venta' : 'SUNAT lo rechazó: emitir un comprobante nuevo, con otro número, para esta venta'">Emitir comprobante de reemplazo</button>
                         }
                       </span>
                     </div>
