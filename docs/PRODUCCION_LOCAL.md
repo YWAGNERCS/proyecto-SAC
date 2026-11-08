@@ -65,7 +65,7 @@ docker cp scripts/prod/esquema_jdrefrigeracion.sql sge-jd-oracle-prod:/tmp/esque
 "alter session set current_schema=JDREFRIGERACION;`n@/tmp/esquema.sql" | docker exec -i -e ORACLE_PDB_SID=FREEPDB1 sge-jd-oracle-prod sqlplus -s / as sysdba
 ```
 
-Debe decir 26 veces `Table created.`, 10 `Index created.` y 44 `Table altered.` (comprobado el 07/11/2026 en un esquema vacío: mismas columnas, índices y restricciones que la base de desarrollo, salvo la tabla `USUARIOS`, que no se usa desde S10b).
+Debe decir 26 veces `Table created.`, 10 `Index created.` y 44 `Table altered.` (comprobado el 07/11/2026 en un esquema vacío: mismas columnas, índices y restricciones que la base de desarrollo, que desde la auditoría B7 tampoco tiene la tabla `USUARIOS`).
 
 **Base de producción ya creada antes del 07/11/2026:** en lugar del paso 3, aplicar una vez `migracion_comprobante_reemplazo.sql` (se puede ejecutar varias veces) antes de encender el backend nuevo; si no, `ddl-auto=validate` no lo deja arrancar:
 

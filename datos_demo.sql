@@ -4,7 +4,7 @@
 -- BORRA todos los datos de negocio (ventas, cobros, proformas, compras, comprobantes,
 -- notas de crédito, mantenimientos, productos, categorías, clientes, proveedores),
 -- reinicia los ID en 1 y carga un catálogo de demostración.
--- NO toca USUARIOS (los accesos admin / asistente se conservan).
+-- Los usuarios viven en Keycloak (la tabla USUARIOS se borró: migracion_quitar_usuarios.sql).
 --
 -- Proveedores y clientes: empresas reales verificadas en el padrón de SUNAT
 -- (ACTIVO / HABIDO) el 13/10/2026; razón social y dirección fiscal según SUNAT.
