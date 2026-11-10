@@ -1,0 +1,23 @@
+# Base Oracle de PRÁCTICA para los trabajos de BD2 (S1 a S14).
+# Es una copia de los datos de desarrollo: aquí se prueban privilegios, tablespaces, particiones,
+# ARCHIVELOG/RMAN y bloqueos sin tocar el 4200 (contenedor SGE-JD) ni el 4300 (sge-jd-oracle-prod).
+# Lo que funcione se integra después al proyecto (scripts del backend) junto con LP2.
+#
+# La PC aguanta un solo Oracle a la vez: apagar el de desarrollo o el de producción antes de encender este.
+#   docker compose -f bd2/compose-bd2.yml --env-file bd2/.env.bd2 up -d
+#   docker compose -f bd2/compose-bd2.yml --env-file bd2/.env.bd2 stop
+name: sge-jd-bd2
+services:
+  oracle-bd2:
+    image: gvenzl/oracle-free:23-slim
+    container_name: sge-jd-bd2
+    ports:
+      - "1523:1521"
+    environment:
+      ORACLE_PASSWORD: ${BD2_ORACLE_PASSWORD:?Falta BD2_ORACLE_PASSWORD en bd2/.env.bd2}
+      APP_USER: "jdrefrigeracion"
+      APP_USER_PASSWORD: ${BD2_OWNER_PASSWORD:?Falta BD2_OWNER_PASSWORD en bd2/.env.bd2}
+    volumes:
+      - oracle-bd2-datos:/opt/oracle/oradata
+volumes:
+  oracle-bd2-datos:

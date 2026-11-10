@@ -43,3 +43,7 @@ application-local.properties
 certificados/
 *.p12
 *.pfx
+
+### BD2: claves de la base de practica ###
+bd2/.env.bd2
+bd2/salidas/
