@@ -248,6 +248,30 @@ class EnvioSunatServiceTest {
         verify(ose, after(300).never()).emitir(any());
     }
 
+    /**
+     * 1033 "por confirmar": Angular oculta "Reenviar", y el backend también lo rechaza para una llamada directa a la
+     * API (revisión 11/11/2026). No se toca nada (ni intentos ni estado) y no se llama a SUNAT.
+     */
+    @Test
+    void unComprobanteOUnaNotaPorConfirmarNoSeReenvian() {
+        Comprobante c = comprobante(30, EstadoSunat.PENDIENTE);
+        c.getEnvio().registrarIntento(1033, "El comprobante ya fue registrado", null, null);
+        assertThatThrownBy(() -> servicio.reenviarComprobante(30L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("409").hasMessageContaining("por confirmar en SUNAT");
+        assertThat(c.getEstadoSunat()).isEqualTo(EstadoSunat.PENDIENTE);
+        assertThat(c.getEnvio().getIntentos()).isEqualTo(1);
+
+        NotaCredito n = nota(31, comprobante(32, EstadoSunat.ACEPTADO));
+        n.getEnvio().registrarIntento(1033, "El comprobante ya fue registrado", null, null);
+        assertThatThrownBy(() -> servicio.reenviarNota(31L))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("por confirmar en SUNAT");
+        assertThat(n.getEnvio().getIntentos()).isEqualTo(1);
+
+        verify(ose, after(300).never()).emitir(any());
+        verify(ose, never()).emitirNotaCredito(any());
+    }
+
     @Test
     void unComprobanteReemplazadoNoSeReenvia() {
         Comprobante c = comprobante(17, EstadoSunat.RECHAZADO);

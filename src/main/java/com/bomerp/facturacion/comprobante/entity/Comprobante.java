@@ -164,6 +164,19 @@ public class Comprobante {
     }
 
     /**
+     * "Por confirmar en SUNAT": SUNAT respondió 1033 (ya tiene ese número por un envío anterior, sin decir si lo
+     * aceptó). Reenviarlo solo repetiría el 1033: hay que verificarlo en SUNAT. Es la misma regla que porConfirmar()
+     * de Angular (sunat-documento.ts), que aquí se exige además en el backend.
+     */
+    public static boolean porConfirmar(EstadoSunat estado, EnvioSunat envio) {
+        return estado == EstadoSunat.PENDIENTE && envio.getCodigo() != null && envio.getCodigo() == CODIGO_YA_REGISTRADO;
+    }
+
+    public boolean porConfirmar() {
+        return porConfirmar(estadoSunat, getEnvio());
+    }
+
+    /**
      * SUNAT todavía no registró el comprobante, así que aún hay que hacerlo llegar: pendiente de envío (salvo
      * el 1033, que SUNAT ya tiene) o una excepción que se corrige y se reenvía con el mismo número.
      */

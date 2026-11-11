@@ -323,6 +323,10 @@ public class EnvioSunatService {
             if (c.isReemplazado()) {
                 throw conflicto(numero + " ya fue reemplazado por otro comprobante: no se vuelve a enviar.");
             }
+            if (c.porConfirmar()) {
+                // Angular ya oculta el botón; la regla va también aquí para una llamada directa a la API (revisión 11/11/2026)
+                throw conflicto(porConfirmarNoSeReenvia(numero));
+            }
             if (c.rechazoDefinitivo()) {
                 throw conflicto("SUNAT rechazó " + numero + " (código " + c.getEnvio().getCodigo() + "): ese número ya "
                         + "no puede volver a enviarse. Corrija el dato que indica SUNAT y emita un comprobante de reemplazo.");
@@ -357,6 +361,10 @@ public class EnvioSunatService {
                 throw conflicto("SUNAT rechazó la nota " + n.getSerie() + "-" + Integer.parseInt(n.getNumero()) + " (código "
                         + codigo + "): ese número ya no puede volver a enviarse.");
             }
+            String numeroNota = "La nota " + n.getSerie() + "-" + Integer.parseInt(n.getNumero());
+            if (Comprobante.porConfirmar(n.getEstadoSunat(), n.getEnvio())) {
+                throw conflicto(porConfirmarNoSeReenvia(numeroNota));
+            }
             reabrir(n.getEstadoSunat(), n.getEnvio(), n.getSerie() + "-" + Integer.parseInt(n.getNumero()));
             n.setEstadoSunat(EstadoSunat.PENDIENTE);
         });
@@ -376,6 +384,13 @@ public class EnvioSunatService {
                     numero + " ya fue aceptado por SUNAT: no se vuelve a enviar.");
         }
         envio.setIntentos(0);
+    }
+
+    /** 1033: SUNAT ya tiene ese número; reenviarlo repetiría la misma respuesta y no aclara si fue aceptado. */
+    static String porConfirmarNoSeReenvia(String numero) {
+        return numero + " está por confirmar en SUNAT (código 1033: SUNAT ya lo tiene registrado por un envío anterior, "
+                + "sin decir si lo aceptó). Reenviarlo solo repetiría esa respuesta: verifíquelo en SUNAT "
+                + "(Consulta de validez del comprobante) antes de entregarlo al cliente.";
     }
 
     private static org.springframework.web.server.ResponseStatusException conflicto(String mensaje) {
