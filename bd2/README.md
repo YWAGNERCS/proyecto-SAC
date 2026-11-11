@@ -48,8 +48,8 @@ Después se vuelven a correr los scripts de las sesiones, en orden.
 | S3 | Excepciones y robustez | [S03](S03/README.md): `LOG_ERRORES` con transacción autónoma, `NO_DATA_FOUND`, `PRAGMA EXCEPTION_INIT` (-54, -12899) y `RAISE_APPLICATION_ERROR`; prueba con dos sesiones; hallazgos: el registro de la guía se pierde con el rollback, y Oracle 23 da ORA-00054 y no ORA-30006 | ✅ 10/11/2026 |
 | S4 | Optimización de consultas | [S04](S04/README.md): consulta de Rentabilidad (5 tablas) con 30 000 ventas cargadas; A/B/C con `EXPLAIN PLAN` y plan real del cursor; hallazgos: estimación 380 veces menor con estadísticas viejas, y `EXPLAIN PLAN` no ve las variables | ✅ 10/11/2026 |
 | S5 | Índices | [S05](S05/README.md): selectividad de 7 columnas y 8 predicados; B-Tree en `DETALLE_VENTA(VENTA_ID)` y `VENTAS(FECHA_VENTA)`, Function-Based para el voucher de cobros, Bitmap probado y reemplazado; hallazgo: el Bitmap bloqueó 11,4 s una venta simultánea | ✅ 10/11/2026 |
-| S6 | Evaluación de la Unidad I | Sustentación con lo acumulado de S1 a S5 | ⏳ |
-| S7 | Arquitectura Oracle e instancia | | ⏳ |
+| S6 | Evaluación de la Unidad I | Sustentación con lo acumulado de S1 a S5 (sin trabajo autónomo) | — |
+| S7 | Arquitectura Oracle e instancia | [S07](S07/README.md): SGA 1,5 GB (ASMM), PGA 512 MB, 80 procesos de fondo, `FREE`/`FREEPDB1`, ORA-00942 como usuario de la aplicación; hallazgos: redo de 2 × 10 MB provocó "Checkpoint not complete" en la carga de S4, la imagen "23" es en realidad 26ai (23.26.2), y `JDREFRIGERACION` tiene 29 privilegios | ✅ 10/11/2026 |
 | S8 | Usuarios, roles y privilegios | | ⏳ |
 | S9 | Almacenamiento, seguridad y auditoría | | ⏳ |
 | S10 | Optimización del rendimiento | | ⏳ |
@@ -72,3 +72,5 @@ Lo que se lleva a la base real cuando esté probado:
 | S4 | Reescribir `VentaRepository.lineasVendidas` y `buscar` sin `(:x IS NULL OR …)` y con `estado = 'REGISTRADA'` | Probado en práctica (mismo resultado, estimación 1 % frente a casi el triple); falta el cambio en Java |
 | S4 | Ventas insertadas por PL/SQL quedan "por emitir" y el backend les emite comprobante en hasta 3 minutos | Comportamiento a decidir al integrar `SP_REGISTRAR_VENTA` |
 | S5 | `IX_DETALLE_VENTA_VENTA`, `IX_VENTAS_FECHA_VENTA`, `IX_COBROS_REFERENCIA_NORM`, `IX_VENTA_AUDITORIA_ACCION` | Probados en práctica; falta verificar que Hibernate escriba `UPPER(TRIM(referencia))` igual que el índice |
+| S7 | Fijar la imagen de Oracle por digest (hoy `gvenzl/oracle-free:23-slim` = `fbbd3023d5ab`, 23.26.2) en `docker-compose.yml` y `compose-prod.yml` | Propuesto |
+| S7 | Redo logs: de 2 × 10 MB a 3 × 200 MB | Se aplica en S9 |

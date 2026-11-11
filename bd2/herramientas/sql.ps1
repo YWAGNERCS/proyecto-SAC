@@ -6,6 +6,7 @@
 param(
     [Parameter(Mandatory)][string]$Archivo,
     [switch]$Dba,
+    [switch]$Sysdba,   # sqlplus / as sysdba dentro del contenedor (autenticación del sistema operativo, sin clave)
     [switch]$ClaveApp,
     [string]$Usuario = 'jdrefrigeracion',
     [string]$Contenedor = 'sge-jd-bd2'
@@ -16,7 +17,8 @@ $envFile = Join-Path $PSScriptRoot '..\.env.bd2'
 $claves = @{}
 Get-Content $envFile | Where-Object { $_ -match '^\s*([A-Z_0-9]+)=(.*)$' } | ForEach-Object { $claves[$Matches[1]] = $Matches[2].Trim() }
 
-if ($Dba) { $u = 'system'; $pw = $claves['BD2_ORACLE_PASSWORD'] }
+if ($Sysdba) { $u = $null; $pw = '' }
+elseif ($Dba) { $u = 'system'; $pw = $claves['BD2_ORACLE_PASSWORD'] }
 elseif ($Usuario -ieq 'jdrefrigeracion') { $u = 'jdrefrigeracion'; $pw = $claves['BD2_OWNER_PASSWORD'] }
 elseif ($Usuario -ieq 'jd_app') { $u = 'jd_app'; $pw = $claves['BD2_APP_PASSWORD'] }
 else { throw "Usuario sin clave en .env.bd2: $Usuario" }
@@ -30,5 +32,9 @@ docker cp $tmp "${Contenedor}:/tmp/$nombre" | Out-Null
 Remove-Item $tmp
 # -ClaveApp pasa la clave de JD_APP como &1 (para crear el usuario sin escribirla en el script)
 $arg = if ($ClaveApp) { $claves['BD2_APP_PASSWORD'] } else { '' }
-docker exec -e NLS_LANG=AMERICAN_AMERICA.AL32UTF8 -e PW=$pw -e APW=$arg $Contenedor bash -c "sqlplus -s -l $u/`"`$PW`"@localhost:1521/FREEPDB1 @/tmp/$nombre `"`$APW`" < /dev/null"
+if ($Sysdba) {
+    docker exec -e NLS_LANG=AMERICAN_AMERICA.AL32UTF8 $Contenedor bash -c "sqlplus -s -l / as sysdba @/tmp/$nombre < /dev/null"
+} else {
+    docker exec -e NLS_LANG=AMERICAN_AMERICA.AL32UTF8 -e PW=$pw -e APW=$arg $Contenedor bash -c "sqlplus -s -l $u/`"`$PW`"@localhost:1521/FREEPDB1 @/tmp/$nombre `"`$APW`" < /dev/null"
+}
 docker exec -u root $Contenedor rm -f "/tmp/$nombre" | Out-Null
