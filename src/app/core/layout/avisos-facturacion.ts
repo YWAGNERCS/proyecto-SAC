@@ -37,6 +37,10 @@ export function avisosDeFacturacion(plazo: PlazoEnvio | null): Alerta[] {
     lista.push({ nivel: 'alta', titulo: 'Envíos a SUNAT detenidos',
       detalle: 'SUNAT rechazó el usuario o la clave SOL: corríjalos y reinicie el sistema', ruta: '/ventas' });
   }
+  // SUNAT caída (Circuit Breaker abierto): no hay nada que corregir, solo saber que los envíos esperan
+  if (plazo.sunatSinRespuesta) {
+    lista.push({ nivel: 'media', titulo: 'SUNAT no responde', detalle: plazo.sunatSinRespuesta, ruta: '/ventas' });
+  }
   // Ventas con detracción esperando la cuenta de detracciones: no tienen comprobante todavía
   if (plazo.porEmitir > 0) {
     lista.push({ nivel: 'alta', titulo: plural(plazo.porEmitir, 'venta sin comprobante', 'ventas sin comprobante'),

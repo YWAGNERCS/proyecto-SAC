@@ -38,6 +38,11 @@ export interface PlazoEnvio {
   ventasPorEmitir: number[];
   /** SUNAT rechazó el usuario o la clave SOL: no se envía nada hasta corregirlos y reiniciar. null si todo va bien. */
   envioDetenido: string | null;
+  /**
+   * SUNAT no responde y el Circuit Breaker está abierto (ADS S11): los envíos esperan sin gastar intentos y salen
+   * solos cuando SUNAT vuelve. null si SUNAT responde.
+   */
+  sunatSinRespuesta: string | null;
 }
 
 export interface EstadoSunatVenta {

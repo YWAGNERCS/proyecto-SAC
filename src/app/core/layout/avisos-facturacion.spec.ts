@@ -5,7 +5,7 @@ import { avisosDeFacturacion, plural, primeros } from './avisos-facturacion';
 function plazo(cambios: Partial<PlazoEnvio> = {}): PlazoEnvio {
   return {
     porVencer: 0, fueraDePlazo: 0, numerosPorVencer: [], numerosFueraDePlazo: [],
-    porEmitir: 0, ventasPorEmitir: [], envioDetenido: null,
+    porEmitir: 0, ventasPorEmitir: [], envioDetenido: null, sunatSinRespuesta: null,
     ...cambios,
   };
 }
@@ -31,6 +31,14 @@ describe('Avisos de facturación en la campana', () => {
     const [aviso] = avisosDeFacturacion(plazo({ envioDetenido: 'SUNAT rechazó el usuario o la clave SOL (código 102)' }));
     expect(aviso.titulo).toBe('Envíos a SUNAT detenidos');
     expect(aviso.detalle).toContain('corríjalos y reinicie');
+  });
+
+  it('SUNAT no responde (Circuit Breaker abierto, ADS S11): aviso medio con el texto del backend', () => {
+    const texto = 'SUNAT no responde desde las 10:15. Los comprobantes quedan pendientes sin gastar intentos y se enviarán solos cuando SUNAT vuelva.';
+    const [aviso] = avisosDeFacturacion(plazo({ sunatSinRespuesta: texto }));
+    expect(aviso.titulo).toBe('SUNAT no responde');
+    expect(aviso.nivel).toBe('media');
+    expect(aviso.detalle).toBe(texto);
   });
 
   it('ventas por emitir por falta de la cuenta de detracciones, con "…" si son más de tres', () => {
