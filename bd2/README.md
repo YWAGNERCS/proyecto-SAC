@@ -61,30 +61,29 @@ Después se vuelven a correr los scripts de las sesiones, en orden. Más simple:
 | S14 | Monitoreo y diagnóstico | [S14](S14/README.md): sesiones con `V$SESSION` (un SYS que es proceso de fondo); bloqueo real cobranza contra anulación diagnosticado con `DBA_BLOCKERS`/`DBA_WAITERS`, `V$SQL` y `V$LOCK`, resuelto sin `KILL` (sobrevivió la anulación); con la espera del backend, ORA-00054 a los 10 s; 0 inválidos del proyecto y un sinónimo de Oracle sin destino (recompilar: ORA-00942); hit ratio 96,79 % (39 % frío, 100 % caliente) mientras la espera dominante era `enq: TX` (52,1 s); hallazgos: EM Express desoportado desde 23ai, y el Performance Hub en HTML depende del CDN de Oracle | ✅ 10/11/2026 |
 | S15–S16 | Evaluación de la Unidad III | | ⏳ |
 
-## Integración con LP2 (al final)
+## Integración con LP2
 
-Lo que se lleva a la base real cuando esté probado:
+**Aplicada en desarrollo el 10/11/2026** con [migracion_bd2/](../migracion_bd2/README.md). Antes se ensayó sobre una
+copia exacta de desarrollo, con 220 pruebas del backend en verde (como el dueño y como `JD_APP`). Producción (4300)
+tiene el procedimiento listo y espera confirmación.
 
 | Origen | Qué | Estado |
 |---|---|---|
-| S1 | CHECK de `DETALLE_VENTA` y `PRODUCTOS`; `FN_SUBTOTAL_LINEA`, `FN_TOTAL_VENTA`, `SP_REGISTRAR_VENTA`; usuario `JD_APP` | Probado en práctica; falta la migración para desarrollo y producción |
-| S2 | `VENTA_AUDITORIA`, `TRG_VENTA_ESTADO_BU`, `TRG_VENTA_AUDITORIA` | Probado en práctica; falta verificar `VentaService.anular()` con el backend conectado a esta base |
-| S2 | `TZ: America/Lima` en `docker-compose.yml` (contenedor `SGE-JD` de desarrollo); producción ya lo tiene | Pendiente: requiere recrear el contenedor de desarrollo |
-| S3 | `LOG_ERRORES`, `SP_REGISTRAR_ERROR`; `SP_REGISTRAR_VENTA` y `FN_TOTAL_VENTA` versión 2 | Probado en práctica (regresión de S1 y S2 en verde) |
-| S4 | Reescribir `VentaRepository.lineasVendidas` y `buscar` sin `(:x IS NULL OR …)` y con `estado = 'REGISTRADA'` | Probado en práctica (mismo resultado, estimación 1 % frente a casi el triple); falta el cambio en Java |
-| S4 | Ventas insertadas por PL/SQL quedan "por emitir" y el backend les emite comprobante en hasta 3 minutos | Comportamiento a decidir al integrar `SP_REGISTRAR_VENTA` |
-| S5 | `IX_DETALLE_VENTA_VENTA`, `IX_VENTAS_FECHA_VENTA`, `IX_COBROS_REFERENCIA_NORM`, `IX_VENTA_AUDITORIA_ACCION` | Probados en práctica; falta verificar que Hibernate escriba `UPPER(TRIM(referencia))` igual que el índice |
-| S7 | Fijar la imagen de Oracle por digest (hoy `gvenzl/oracle-free:23-slim` = `fbbd3023d5ab`, 23.26.2) en `docker-compose.yml` y `compose-prod.yml` | Propuesto |
-| S7 | Redo logs: de 2 × 10 MB a 3 × 200 MB | Probado en práctica (S9); falta en desarrollo y producción |
-| S8 | Aplicar `S08_02` en desarrollo y producción; backend con `DB_USERNAME=jd_app`, `hibernate.default_schema` y `hikari.connection-init-sql` en `application-prod.properties`; `ddl-auto=update` solo en desarrollo, como dueño | Probado en práctica (217 pruebas) |
-| S8 | Corregir `ComprobanteReemplazoIntegracionTest` y `VentaAnuladaSinNotaIntegracionTest`: su `UPDATE` de anulación debe llevar `motivo_anulacion` y `anulado_por` (trigger de S2) | Pendiente |
-| S9 | `TS_SGEJD_VENTAS` (con `MOVE ONLINE` en producción), `POL_SGEJD_VENTAS`, `POL_SGEJD_SESIONES`, `ORA_LOGON_FAILURES` | Probado en práctica |
-| S9 | Antes de ARCHIVELOG (S13): `db_recovery_file_dest` dentro de `/opt/oracle/oradata` | Probado en práctica (S13: `/opt/oracle/oradata/FRA`, 10 GB) |
-| ADS S9 | Índice único `UX_COBRO_VOUCHER_VIGENTE` para cerrar la carrera del voucher duplicado | Propuesto |
-| S10 | `IX_VENTAS_CLIENTE_FECHA (cliente_id, fecha_venta)`: cubre la FK `VENTAS.CLIENTE_ID`, que no tenía índice | Probado en práctica |
-| ADS S10 | `CobranzaService`: inyectar `ComprobantesDeVenta` en lugar de `FacturacionService`; `Cobro.abonar()` y `Cobro.anular()` en la entidad | Diseñado |
-| S11 | `VENTA_AUDITORIA` particionada por mes (INTERVAL) y purga con `DROP PARTITION … UPDATE GLOBAL INDEXES` | Probado en práctica sobre una copia |
-| ADS S11 | Circuit Breaker en `SunatDirectoClient`; `VentaAnuladaEvent` con cliente, moneda, fecha y documento | Diseñado |
-| S13 | Imagen completa `gvenzl/oracle-free:23` en `compose-prod.yml` para tener RMAN (fijada por digest, S7), resolviendo antes el archivo de zonas horarias v45 | Propuesto |
-| S14 | `MODULE`/`ACTION` por operación en las conexiones del backend; consulta diaria de objetos inválidos y esperas por bloqueo | Propuesto |
-| S13 | ARCHIVELOG en producción, RMAN nivel 0 semanal y nivel 1 diario, prueba de restauración mensual en la base de práctica | Probado en práctica; falta programarlo |
+| S1, S3 | CHECK de `DETALLE_VENTA` y `PRODUCTOS`; `LOG_ERRORES`, `SP_REGISTRAR_ERROR`; `FN_SUBTOTAL_LINEA`, `FN_TOTAL_VENTA`, `SP_REGISTRAR_VENTA` v2 | ✅ Desarrollo (`02`) |
+| S2, S11 | `VENTA_AUDITORIA` particionada por mes, `TRG_VENTA_ESTADO_BU`, `TRG_VENTA_AUDITORIA` | ✅ Desarrollo (`03`) |
+| S2 | `TZ: America/Lima` en `docker-compose.yml` | ✅ Contenedor recreado con la misma imagen; `SYSDATE` en `-05:00` |
+| S4 | `VentaRepository.buscar` (`Specification`) y `lineasVendidas` (rango fijo, `estado = REGISTRADA`) | ✅ Código |
+| S4 | Ventas insertadas por `SP_REGISTRAR_VENTA` quedan por emitir y el backend les emite comprobante | Decidido: se deja así (comentario en `02`) |
+| S5, S10 | `IX_DETALLE_VENTA_VENTA`, `IX_VENTAS_FECHA_VENTA`, `IX_COBROS_REFERENCIA_NORM`, `IX_VENTA_AUDITORIA_ACCION`, `IX_VENTAS_CLIENTE_FECHA` | ✅ Desarrollo (`03`, `04`) |
+| ADS S9 | `UX_COBRO_VOUCHER_VIGENTE` + mensaje 409 en `GlobalExceptionHandler` | ✅ Desarrollo y código; probado con un duplicado a propósito |
+| S7, S9 | Redo de 2 × 10 MB a 3 × 200 MB | ✅ Desarrollo (`07`) |
+| S8 | Roles, `JD_APP`, `JD_REPORTES`, dueño sin `DB_DEVELOPER_ROLE` | ✅ Desarrollo (`05`); el backend de desarrollo sigue entrando como dueño (`ddl-auto=update`) |
+| S8 | `application-prod.properties` con `default_schema` y `connection-init-sql` | ✅ Código; falta cambiar `DB_USERNAME` en `compose-prod.yml` |
+| S8 | Las 2 pruebas que anulaban sin motivo ni usuario | ✅ Código |
+| S9 | `TS_SGEJD_VENTAS` (`MOVE ONLINE`), `POL_SGEJD_VENTAS`, `POL_SGEJD_SESIONES`, `ORA_LOGON_FAILURES` | ✅ Desarrollo (`01`, `06`) |
+| ADS S10 | `CobranzaService` con el puerto `ComprobantesDeVenta` | ✅ Código (`ModularityTests` en verde) |
+| S14 | `MODULE`/`ACTION` por operación en las conexiones del backend | ✅ Código (`config/monitoreo`, 5 pruebas); verificado en `V$SESSION` de desarrollo |
+| — | **Producción (4300):** las 7 migraciones, la imagen nueva del backend y `JD_APP` | ⏳ Procedimiento en `migracion_bd2/README.md`; espera confirmación |
+| S7, S13 | Imagen fijada por digest; imagen completa con RMAN (antes, zonas horarias v45: ORA-39405 con Data Pump); ARCHIVELOG y RMAN programados | ⏳ Espera la decisión PC u hosting |
+| ADS S10, S11, S14 | `Cobro.abonar()` (ADR-007), `VentaAnuladaEvent` con 6 campos (ADR-008), Circuit Breaker en `SunatDirectoClient` | ⏳ Diseñado; fuera de esta tanda |
+| S14 | Consulta diaria de objetos inválidos y esperas por bloqueo | ⏳ Junto con el respaldo automático (carpeta pendiente de Lisandro) |

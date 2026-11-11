@@ -106,6 +106,12 @@ public class GlobalExceptionHandler {
         if (causa.toUpperCase().contains("UX_VENTAS_PROFORMA")) {
             return respuesta(HttpStatus.CONFLICT, "Esa proforma ya se convirtió en venta.");
         }
+        // migracion_bd2/04 (ADS S9): dos cobros con el mismo voucher que llegan a la vez; la consulta previa de
+        // CobranzaService no los ve porque ninguno se ha guardado todavía
+        if (causa.toUpperCase().contains("UX_COBRO_VOUCHER_VIGENTE")) {
+            return respuesta(HttpStatus.CONFLICT,
+                    "Ese N° de operación ya está registrado en otro cobro vigente con el mismo método de pago.");
+        }
         return respuesta(HttpStatus.CONFLICT, "La operación viola una restricción de integridad de datos");
     }
 

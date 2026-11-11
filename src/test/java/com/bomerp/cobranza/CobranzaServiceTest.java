@@ -9,7 +9,7 @@ import com.bomerp.cobranza.cobro.entity.DetalleCobro;
 import com.bomerp.cobranza.cobro.repository.CobroRepository;
 import com.bomerp.cobranza.cobro.service.CobranzaService;
 import com.bomerp.config.ReglaNegocioException;
-import com.bomerp.facturacion.facturacion.service.FacturacionService;
+import com.bomerp.ventas.venta.service.ComprobantesDeVenta;
 import com.bomerp.ventas.detalleventa.entity.DetalleVenta;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.service.VentaService;
@@ -44,7 +44,7 @@ class CobranzaServiceTest {
     @Mock CobroRepository cobroRepository;
     @Mock VentaService ventaService;
     @Mock ClienteService clienteService;
-    @Mock FacturacionService facturacionService;
+    @Mock ComprobantesDeVenta comprobantesDeVenta;
     @InjectMocks CobranzaService service;
 
     private Cliente cliente;

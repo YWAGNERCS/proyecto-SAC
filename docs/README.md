@@ -462,7 +462,7 @@ src/main/java/com/bomerp/
 └── ventas/          venta/ (event/: VentaRegistradaEvent y VentaAnuladaEvent), detalleventa/, tributos/ (detracción y retención), reporte/
 ```
 
-Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el sitio MkDocs), `scripts/` (arranque, respaldo, restauración y base limpia), `keycloak/` (realm y `configurar_realm.py`), `pruebas-seguridad/` (matriz de permisos), los `migracion_*.sql` y `.github/workflows/` (`docs.yml` publica esta documentación y `backend.yml` es la integración continua).
+Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el sitio MkDocs), `scripts/` (arranque, respaldo, restauración y base limpia), `keycloak/` (realm y `configurar_realm.py`), `pruebas-seguridad/` (matriz de permisos), los `migracion_*.sql`, `migracion_bd2/` (lo que el curso de BD2 llevó a la base: tablespace, CHECK, PL/SQL, auditoría, índices, roles y `JD_APP`, redo; ver su README) y `.github/workflows/` (`docs.yml` publica esta documentación y `backend.yml` es la integración continua).
 
 ### Modelo de datos (tablas reales, esquema `JDREFRIGERACION`)
 
@@ -484,6 +484,8 @@ Fuera de `src/`: `docs/` (esta documentación y `LIMITACIONES.md`), `sitio/` (el
 | `COMPROBANTES` | comprobante electrónico (factura o boleta); (serie, número) único; estado_sunat, código, mensaje, XML y CDR del último envío; datos del receptor al emitir (receptor_tipo_doc, receptor_num_doc, receptor_nombre, receptor_direccion); **reemplazado** y **reemplaza_a_id**: una venta tiene un solo comprobante vigente y, si SUNAT rechazó alguno, los reemplazados (`migracion_comprobante_reemplazo.sql`) |
 | `ENVIOS_SUNAT` | historial de envíos: comprobante_id o nota_credito_id (exactamente uno), intento, fecha, resultado, codigo, mensaje, xml, cdr |
 | `NOTAS_CREDITO` | id, serie (FC01/BC01), numero (correlativo por serie), motivo, total, estado_sunat, comprobante_id (FK único → `COMPROBANTES`) |
+| `VENTA_AUDITORIA` | una fila por cada INSERT, UPDATE o DELETE de una venta (trigger `TRG_VENTA_AUDITORIA`): estados antes y después, quién anuló y por qué, usuario Oracle y **programa** (el MODULE de la conexión: "SGE-JD ventas"). Particionada por mes; sin FK, para que sobreviva a un DELETE. `TRG_VENTA_ESTADO_BU`: una venta ANULADA no vuelve atrás y anular exige motivo y quién (`migracion_bd2/03`) |
+| `LOG_ERRORES` | errores del motor PL/SQL (`SP_REGISTRAR_VENTA`, `FN_TOTAL_VENTA`), escritos en su propia transacción (`migracion_bd2/02`) |
 | `SERIES_COMPROBANTE` | serie (PK: F001, B001, FC01, BC01), ultimo_numero — contador del correlativo SUNAT |
 | `MANTENIMIENTOS` | id, **cliente_id**, venta_id, **equipo_id**, **contrato_id** (cada visita viene de uno de los tres: CHECK), fecha_programada, estado, alerta_enviada, fecha_realizada, **tecnico**, **orden_trabajo_id**, notas |
 | `EQUIPOS_INSTALADOS` | id, cliente_id, sede_id, producto_id, numero_serie, ubicacion, fecha_instalacion, meses_garantia, frecuencia_meses, estado (ACTIVO/RETIRADO), venta_id, orden_trabajo_id, notas |

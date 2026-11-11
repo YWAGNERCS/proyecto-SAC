@@ -10,7 +10,10 @@ name: sge-jd-bd2
 services:
   oracle-bd2:
     # S13: la variante completa trae RMAN; 23-slim no (S1 a S12 usaron 23-slim).
-    image: gvenzl/oracle-free:23
+    # Integración con LP2: para ensayar sobre una copia de desarrollo hace falta la MISMA imagen que desarrollo
+    # (BD2_IMAGEN=gvenzl/oracle-free:23-slim): la completa crea la base con zonas horarias v43 y Data Pump
+    # rechaza el respaldo de desarrollo (v45) con ORA-39405.
+    image: ${BD2_IMAGEN:-gvenzl/oracle-free:23}
     container_name: sge-jd-bd2
     ports:
       - "1523:1521"

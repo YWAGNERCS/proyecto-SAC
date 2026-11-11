@@ -11,8 +11,9 @@ import com.bomerp.cobranza.cobro.entity.DetalleCobro;
 import com.bomerp.cobranza.cobro.repository.CobroRepository;
 import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
-import com.bomerp.facturacion.facturacion.service.FacturacionService;
+
 import com.bomerp.ventas.venta.entity.Venta;
+import com.bomerp.ventas.venta.service.ComprobantesDeVenta;
 import com.bomerp.ventas.venta.service.VentaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,14 +43,15 @@ public class CobranzaService {
     private final CobroRepository cobroRepository;
     private final VentaService ventaService;
     private final ClienteService clienteService;
-    private final FacturacionService facturacionService;
+    // ADS S10 (Protected Variations): el puerto que define ventas, no la clase concreta de facturacion
+    private final ComprobantesDeVenta comprobantesDeVenta;
 
     public CobranzaService(CobroRepository cobroRepository, VentaService ventaService,
-                           ClienteService clienteService, FacturacionService facturacionService) {
+                           ClienteService clienteService, ComprobantesDeVenta comprobantesDeVenta) {
         this.cobroRepository = cobroRepository;
         this.ventaService = ventaService;
         this.clienteService = clienteService;
-        this.facturacionService = facturacionService;
+        this.comprobantesDeVenta = comprobantesDeVenta;
     }
 
     /** Ventas con saldo pendiente (de un cliente o de todos), primero las que vencen antes. */
@@ -71,7 +73,7 @@ public class CobranzaService {
                     BigDecimal deduccionPendiente = deduccionPendiente(v, deducido.getOrDefault(v.getId(), BigDecimal.ZERO));
                     return new CuentaPorCobrarDTO(
                             v.getId(),
-                            facturacionService.numeroComprobanteDeVenta(v.getId()).orElse(null),
+                            comprobantesDeVenta.numeroComprobanteDeVenta(v.getId()).orElse(null),
                             v.getCliente().getId(),
                             v.getCliente().getNombreORazonSocial(),
                             v.getFechaVenta(),

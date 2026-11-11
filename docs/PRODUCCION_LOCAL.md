@@ -67,6 +67,16 @@ docker cp scripts/prod/esquema_jdrefrigeracion.sql sge-jd-oracle-prod:/tmp/esque
 
 Debe decir 26 veces `Table created.`, 10 `Index created.` y 44 `Table altered.` (comprobado el 07/11/2026 en un esquema vacío: mismas columnas, índices y restricciones que la base de desarrollo, que desde la auditoría B7 tampoco tiene la tabla `USUARIOS`).
 
+**3b. Migración BD2** (tablespace de ventas, reglas y PL/SQL, auditoría de ventas, índices, usuarios `JD_APP` y `JD_REPORTES` con roles, auditoría unificada y redo de 200 MB). Va después del esquema, en una base nueva o en la que ya existe, con el backend detenido y un respaldo previo. Está probada en una copia de desarrollo (220 pruebas en verde) y aplicada en desarrollo el 10/11/2026. Detalle en [migracion_bd2/README.md](../migracion_bd2/README.md).
+
+```powershell
+.\scripts\respaldar_sgejd.ps1 -Contenedor sge-jd-oracle-prod -Nombre sgejd_prod_antes_migracion_bd2
+```
+
+```powershell
+.\migracion_bd2\migrar.ps1 -Contenedor sge-jd-oracle-prod -Secretos .env.prod
+```
+
 **Base de producción ya creada antes del 07/11/2026:** en lugar del paso 3, aplicar una vez `migracion_comprobante_reemplazo.sql`, `migracion_venta_anulacion.sql`, `migracion_costos_precios.sql`, `migracion_envio_correo.sql` y `migracion_ambiente_emision.sql`, en ese orden (se pueden ejecutar varias veces) antes de encender el backend nuevo; si no, `ddl-auto=validate` no lo deja arrancar. Se aplican igual que esta, cambiando el nombre del archivo:
 
 ```powershell

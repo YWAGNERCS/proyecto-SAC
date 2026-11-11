@@ -13,6 +13,9 @@ services:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Falta ORACLE_PASSWORD en .env (ver .env.example)}
       APP_USER: "jdrefrigeracion"
       APP_USER_PASSWORD: ${APP_USER_PASSWORD:?Falta APP_USER_PASSWORD en .env}
+      # Hora de Lima, como en compose-prod.yml (BD2 S2: sin esto SYSDATE va en UTC, 5 h adelante, y una venta
+      # registrada de noche queda con la fecha de mañana en la auditoría y en LOG_ERRORES)
+      TZ: America/Lima
     volumes:
       - sge-jd-oracle-data:/opt/oracle/oradata
 

@@ -3,12 +3,13 @@
 #   .\bd2\herramientas\restaurar_practica.ps1                 # S1-S3
 #   .\bd2\herramientas\restaurar_practica.ps1 -Hasta 2        # solo S1-S2
 # BORRA el volumen de la base de práctica (no toca desarrollo ni producción).
-param([ValidateRange(0, 3)][int]$Hasta = 3, [switch]$SoloObjetos)
+param([ValidateRange(0, 3)][int]$Hasta = 3, [switch]$SoloObjetos,
+      [string]$Dump = 'C:\SGE-JD\respaldos\sgejd_base_bd2_20261110.dmp')   # otro respaldo de desarrollo: -Dump <ruta>
 $ErrorActionPreference = 'Continue'   # docker escribe su avance en stderr: con 'Stop', PowerShell 5.1 lo toma como error
 $raiz = (Resolve-Path "$PSScriptRoot\..\..").Path
 $compose = @('-f', (Join-Path $raiz 'bd2\compose-bd2.yml'), '--env-file', (Join-Path $raiz 'bd2\.env.bd2'))
 $sql = Join-Path $PSScriptRoot 'sql.ps1'
-$dump = 'C:\SGE-JD\respaldos\sgejd_base_bd2_20261110.dmp'
+$dump = $Dump
 
 if (-not $SoloObjetos) {
 Write-Host '1) Borrando la base de práctica y creándola de nuevo...' -ForegroundColor Cyan

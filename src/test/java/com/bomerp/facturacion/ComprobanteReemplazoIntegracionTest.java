@@ -163,7 +163,8 @@ class ComprobanteReemplazoIntegracionTest {
     @Test
     void unaVentaAnuladaNoNecesitaReemplazo() {
         respuestaDeSunat("RECHAZADO", 2800);
-        jdbc.update("UPDATE ventas SET estado = 'ANULADA', fecha_anulacion = SYSDATE WHERE id = ?", ventaId);
+        // Con motivo y quién, como exige TRG_VENTA_ESTADO_BU (migracion_bd2/03): sin ellos, ORA-20022/20023
+        jdbc.update("UPDATE ventas SET estado = 'ANULADA', fecha_anulacion = SYSDATE, motivo_anulacion = 'Prueba de integracion', anulado_por = 'prueba' WHERE id = ?", ventaId);
         em.clear();
         assertThatThrownBy(() -> facturacion.emitirReemplazo(comprobanteId))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("anulada");
