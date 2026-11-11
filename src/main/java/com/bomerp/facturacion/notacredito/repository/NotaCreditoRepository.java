@@ -13,6 +13,15 @@ public interface NotaCreditoRepository extends JpaRepository<NotaCredito, Long> 
 
     Optional<NotaCredito> findByComprobanteReferencia_Id(Long comprobanteId);
 
+    /**
+     * Bloquea la nota hasta el fin de la transacción (SELECT ... FOR UPDATE): el reenvío manual y el guardado de la
+     * respuesta de SUNAT no pueden cruzarse ni escribir uno encima del otro con datos viejos (ver EnvioSunatService).
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
+    @Query("SELECT n FROM NotaCredito n WHERE n.id = :id")
+    Optional<NotaCredito> bloquear(@Param("id") Long id);
+
     List<NotaCredito> findByComprobanteReferencia_IdIn(List<Long> comprobanteIds);
 
     /** Igual que en ComprobanteRepository: sin los que agotaron sus intentos ni los "ya registrado" (1033). */

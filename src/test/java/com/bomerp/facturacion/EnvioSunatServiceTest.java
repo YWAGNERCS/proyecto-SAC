@@ -66,6 +66,7 @@ class EnvioSunatServiceTest {
         c.setNumero("00000001");
         c.setEstadoSunat(estado);
         when(comprobantes.findById(id)).thenReturn(Optional.of(c));
+        when(comprobantes.bloquear(id)).thenReturn(Optional.of(c));   // reenvío y guardado de la respuesta (con bloqueo)
         return c;
     }
 
@@ -377,6 +378,7 @@ class EnvioSunatServiceTest {
         n.setNumero("00000001");
         n.setComprobanteReferencia(original);
         when(notas.findById(id)).thenReturn(Optional.of(n));
+        when(notas.bloquear(id)).thenReturn(Optional.of(n));
         return n;
     }
 

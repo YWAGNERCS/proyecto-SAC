@@ -17,7 +17,10 @@ public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> 
     /** Todos los comprobantes de esas ventas, vigentes y reemplazados, en orden de emisión. */
     List<Comprobante> findByVenta_IdInOrderByIdAsc(List<Long> ventaIds);
 
-    /** Bloquea el comprobante hasta el fin de la transacción: dos reemplazos simultáneos no pueden cruzarse. */
+    /**
+     * Bloquea el comprobante hasta el fin de la transacción: dos reemplazos simultáneos no pueden cruzarse, ni el
+     * reenvío manual con el guardado de la respuesta de SUNAT (uno escribiría encima del otro con datos viejos).
+     */
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
     @Query("SELECT c FROM Comprobante c WHERE c.id = :id")

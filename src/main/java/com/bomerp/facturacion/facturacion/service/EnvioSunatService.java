@@ -159,7 +159,7 @@ public class EnvioSunatService {
         detenerSiFallanLasCredenciales(r);
         Comprobante.AmbienteEmision ambiente = ose.ambiente();
         EstadoSunat estado = guardarRespuesta("comprobante " + id, r, () -> tx.execute(s -> {
-            Comprobante c = comprobantes.findById(id).orElseThrow();
+            Comprobante c = comprobantes.bloquear(id).orElseThrow();
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
             if (c.getEstadoSunat().valido()) {
                 // El ambiente en que SUNAT lo aceptó queda fijo: la validez para el cliente depende de él
@@ -294,7 +294,7 @@ public class EnvioSunatService {
         detenerSiFallanLasCredenciales(r);
         Comprobante.AmbienteEmision ambiente = ose.ambiente();
         return guardarRespuesta("nota de crédito " + id, r, () -> tx.execute(s -> {
-            NotaCredito n = notas.findById(id).orElseThrow();
+            NotaCredito n = notas.bloquear(id).orElseThrow();
             n.setEstadoSunat(aplicar(n.getEnvio(), r));
             registros.save(EnvioSunatRegistro.deNota(n.getId(), r.resultado().name(), n.getEnvio(), r.xmlFirmado(), r.cdr())
                     .conAmbiente(ambiente == null ? null : ambiente.name()));
@@ -317,7 +317,8 @@ public class EnvioSunatService {
     public void reenviarComprobante(Long id) {
         exigirEnvioActivo();
         tx.executeWithoutResult(s -> {
-            Comprobante c = comprobantes.findById(id).orElseThrow(() -> noEncontrado("Comprobante", id));
+            // Con bloqueo: si el reintento está guardando la respuesta de SUNAT, espera y lee lo ya guardado (11/11/2026)
+            Comprobante c = comprobantes.bloquear(id).orElseThrow(() -> noEncontrado("Comprobante", id));
             String numero = c.getSerie() + "-" + Integer.parseInt(c.getNumero());
             if (c.isReemplazado()) {
                 throw conflicto(numero + " ya fue reemplazado por otro comprobante: no se vuelve a enviar.");
@@ -349,7 +350,7 @@ public class EnvioSunatService {
     public void reenviarNota(Long id) {
         exigirEnvioActivo();
         tx.executeWithoutResult(s -> {
-            NotaCredito n = notas.findById(id).orElseThrow(() -> noEncontrado("Nota de crédito", id));
+            NotaCredito n = notas.bloquear(id).orElseThrow(() -> noEncontrado("Nota de crédito", id));
             Integer codigo = n.getEnvio().getCodigo();
             if (n.getEstadoSunat() == EstadoSunat.RECHAZADO && codigo != null
                     && ((codigo >= 2000 && codigo <= 3999) || codigo == Comprobante.CODIGO_YA_RECHAZADO)) {

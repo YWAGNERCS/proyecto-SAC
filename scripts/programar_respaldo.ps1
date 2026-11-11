@@ -6,10 +6,15 @@
 #   programar_respaldo.bat -Destino "D:\RespaldosSGEJD"      → además copia ahí (USB, OneDrive, red...)
 #   programar_respaldo.bat -Hora 13:00 -Conservar 30
 #   programar_respaldo.bat -Quitar                           → elimina la tarea
+#
+# Respalda SOLO la base de PRODUCCIÓN (sge-jd-oracle-prod): desarrollo tiene datos de prueba y no debe ocupar
+# los respaldos ni la carpeta de copia. Si ese día producción está apagada, lo anota como aviso y no respalda otra.
+# Para probar la tarea en desarrollo: -Contenedor SGE-JD (o auto: la que esté encendida).
 param(
     [string]$Hora = '18:30',
     [string]$Destino = '',
     [int]$Conservar = 14,
+    [ValidateSet('sge-jd-oracle-prod', 'SGE-JD', 'auto')][string]$Contenedor = 'sge-jd-oracle-prod',
     [switch]$Quitar
 )
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -25,7 +30,7 @@ if ($Destino) {
 }
 
 $script = Join-Path $PSScriptRoot 'respaldo_automatico.ps1'
-$argumentos = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`" -Conservar $Conservar"
+$argumentos = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`" -Conservar $Conservar -Contenedor $Contenedor"
 if ($Destino) { $argumentos += " -Destino `"$Destino`"" }
 
 $accion = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argumentos
