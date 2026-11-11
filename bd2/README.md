@@ -63,9 +63,9 @@ Después se vuelven a correr los scripts de las sesiones, en orden. Más simple:
 
 ## Integración con LP2
 
-**Aplicada en desarrollo el 10/11/2026** con [migracion_bd2/](../migracion_bd2/README.md). Antes se ensayó sobre una
-copia exacta de desarrollo, con 220 pruebas del backend en verde (como el dueño y como `JD_APP`). Producción (4300)
-tiene el procedimiento listo y espera confirmación.
+**Aplicada en desarrollo y en producción el 10/11/2026** con [migracion_bd2/](../migracion_bd2/README.md). Antes se
+ensayó sobre una copia exacta de desarrollo, con 220 pruebas del backend en verde (como el dueño y como `JD_APP`).
+El backend de producción ya entra como `JD_APP`.
 
 | Origen | Qué | Estado |
 |---|---|---|
@@ -78,12 +78,12 @@ tiene el procedimiento listo y espera confirmación.
 | ADS S9 | `UX_COBRO_VOUCHER_VIGENTE` + mensaje 409 en `GlobalExceptionHandler` | ✅ Desarrollo y código; probado con un duplicado a propósito |
 | S7, S9 | Redo de 2 × 10 MB a 3 × 200 MB | ✅ Desarrollo (`07`) |
 | S8 | Roles, `JD_APP`, `JD_REPORTES`, dueño sin `DB_DEVELOPER_ROLE` | ✅ Desarrollo (`05`); el backend de desarrollo sigue entrando como dueño (`ddl-auto=update`) |
-| S8 | `application-prod.properties` con `default_schema` y `connection-init-sql` | ✅ Código; falta cambiar `DB_USERNAME` en `compose-prod.yml` |
+| S8 | `application-prod.properties` con `default_schema` y `connection-init-sql`; `compose-prod.yml` con `DB_USERNAME: jd_app` | ✅ Producción |
 | S8 | Las 2 pruebas que anulaban sin motivo ni usuario | ✅ Código |
 | S9 | `TS_SGEJD_VENTAS` (`MOVE ONLINE`), `POL_SGEJD_VENTAS`, `POL_SGEJD_SESIONES`, `ORA_LOGON_FAILURES` | ✅ Desarrollo (`01`, `06`) |
 | ADS S10 | `CobranzaService` con el puerto `ComprobantesDeVenta` | ✅ Código (`ModularityTests` en verde) |
 | S14 | `MODULE`/`ACTION` por operación en las conexiones del backend | ✅ Código (`config/monitoreo`, 5 pruebas); verificado en `V$SESSION` de desarrollo |
-| — | **Producción (4300):** las 7 migraciones, la imagen nueva del backend y `JD_APP` | ⏳ Procedimiento en `migracion_bd2/README.md`; espera confirmación |
+| — | **Producción (4300):** las 7 migraciones, la imagen nueva del backend y `JD_APP` | ✅ 10/11/2026, con respaldo previo; backend como `JD_APP`, health 200 |
 | S7, S13 | Imagen fijada por digest; imagen completa con RMAN (antes, zonas horarias v45: ORA-39405 con Data Pump); ARCHIVELOG y RMAN programados | ⏳ Espera la decisión PC u hosting |
 | ADS S10, S11, S14 | `Cobro.abonar()` (ADR-007), `VentaAnuladaEvent` con 6 campos (ADR-008), Circuit Breaker en `SunatDirectoClient` | ⏳ Diseñado; fuera de esta tanda |
 | S14 | Consulta diaria de objetos inválidos y esperas por bloqueo | ⏳ Junto con el respaldo automático (carpeta pendiente de Lisandro) |

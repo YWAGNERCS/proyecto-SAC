@@ -98,8 +98,11 @@ services:
       DB_HOST: oracle
       DB_PORT: "1521"
       DB_NAME: FREEPDB1
-      DB_USERNAME: jdrefrigeracion
-      DB_PASSWORD: ${APP_USER_PASSWORD:?Falta APP_USER_PASSWORD en .env.prod}
+      # BD2 S8 (migracion_bd2/05): el backend entra como JD_APP, sin tablas propias y solo con los roles
+      # ROL_SGEJD_MAESTROS y ROL_SGEJD_OPERACION sobre las tablas del dueño JDREFRIGERACION (application-prod.properties
+      # fija default_schema y CURRENT_SCHEMA). El dueño ya no lo usa la aplicación.
+      DB_USERNAME: jd_app
+      DB_PASSWORD: ${JD_APP_PASSWORD:?Falta JD_APP_PASSWORD en .env.prod (lo genera migracion_bd2/migrar.ps1)}
       # Emisor público (el que va en el token del navegador) y URL interna para claves y API de admin
       KEYCLOAK_ISSUER_URI: http://localhost:48080/realms/bomerp
       KEYCLOAK_URL_INTERNA: http://keycloak:8080/realms/bomerp

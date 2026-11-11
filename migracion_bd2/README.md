@@ -71,28 +71,27 @@ Lleva a la base real lo que el curso de BD2 probó en la base de práctica (`bd2
    - Un comentario `--` en la misma línea que un `SET` da `SP2-0158: unknown SET option "--"`.
 4. **Las variables de sustitución se reemplazan también dentro de los comentarios**: el comentario de `05` ya no escribe el ampersand.
 
-## Producción (4300): pendiente, con su procedimiento
+## Producción (4300): aplicada el 10/11/2026
 
-No se tocó producción. Cuando se decida, en este orden y con el backend de prod detenido:
+1. **Respaldo:** `C:\SGE-JD\respaldos\sgejd_prod_antes_migracion_bd2_20261110.dmp` (2036 KB), con
+   `respaldar_sgejd.ps1 -Contenedor sge-jd-oracle-prod`.
+2. **Revisión previa:** las 29 tablas que usan los roles existen; ningún dato rompe un CHECK ni el índice del voucher.
+   Producción estaba vacía (0 ventas, 0 productos: se limpió el 07/11 para la entrega). Imagen `fbbd3023d5ab`, la
+   misma del ensayo; ya estaba en hora de Lima.
+3. **Migración:** `migrar.ps1 -Contenedor sge-jd-oracle-prod -Secretos .env.prod` pasó completa, los 7 scripts.
+   Las claves de `JD_APP` y `JD_REPORTES` se generaron en `.env.prod`.
+4. **Backend:** `compose-prod.yml` pasó a `DB_USERNAME: jd_app` y `DB_PASSWORD: ${JD_APP_PASSWORD}`. Se reconstruyó la
+   imagen con este código. Arrancó en 36 s con `ddl-auto=validate` y `/actuator/health` respondió 200.
+5. **Verificación en Oracle:**
+   - Las 10 conexiones del backend son de `JD_APP` y el dueño no tiene ninguna.
+   - La auditoría unificada registró los 10 LOGON de `JD_APP` (`POL_SGEJD_SESIONES`).
+   - La petición pública se ve como `SGE-JD publico / GET /publico/catalogo`.
+   - 0 objetos inválidos, 0 índices UNUSABLE, redo de 3 × 200 MB.
+   - El 4300 responde 200.
 
-```powershell
-.\scripts\respaldar_sgejd.ps1 -Contenedor sge-jd-oracle-prod -Nombre sgejd_prod_antes_migracion_bd2
-```
-
-```powershell
-.\migracion_bd2\migrar.ps1 -Contenedor sge-jd-oracle-prod -Secretos .env.prod
-```
-
-Después, reconstruir la imagen del backend con este código (`docker compose -f compose-prod.yml --env-file .env.prod build backend`) y encenderlo.
-
-**Para que el backend de prod entre como `JD_APP`** (BD2 S8), en `compose-prod.yml` hay que cambiar:
-
-```yaml
-DB_USERNAME: jd_app
-DB_PASSWORD: ${JD_APP_PASSWORD:?Falta JD_APP_PASSWORD en .env.prod}
-```
-
-El perfil `prod` ya trae `default_schema` y `connection-init-sql`.
+**Volver atrás** (si hiciera falta):
+1. En `compose-prod.yml`, `DB_USERNAME: jdrefrigeracion` y `DB_PASSWORD: ${APP_USER_PASSWORD}`.
+2. Restaurar el respaldo con `scripts\restaurar_sgejd.ps1`.
 
 Quedan para después de decidir PC u hosting:
 - imagen fijada por digest;
