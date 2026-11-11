@@ -28,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -78,6 +79,7 @@ class EntregaComprobanteIntegracionTest {
     private Long productoId;
     private final List<Long> ventas = new ArrayList<>();
     private Map<String, Long> seriesAntes;
+    private final java.util.concurrent.atomic.AtomicBoolean sunatConTransaccion = new java.util.concurrent.atomic.AtomicBoolean();
 
     @BeforeEach
     void preparar() {
@@ -101,6 +103,8 @@ class EntregaComprobanteIntegracionTest {
 
         // SUNAT (simulada, de PRODUCCION) acepta y devuelve el XML firmado de ESE comprobante y su CDR
         when(ose.emitir(any())).thenAnswer(i -> {
+            // SUNAT se llama fuera de toda transacción (la conexión a Oracle no queda tomada mientras responde)
+            if (TransactionSynchronizationManager.isActualTransactionActive()) sunatConTransaccion.set(true);
             Comprobante c = i.getArgument(0);
             byte[] xml = xmlDe(c.getSerie(), c.getNumero(), c.getTipo().name(), c.getFechaEmision().toString(), c.getTotal());
             return new RespuestaOse(OseClient.Resultado.ACEPTADO, 0, "Aceptado (prueba)", null, null, xml, new byte[]{80, 75});
@@ -220,6 +224,7 @@ class EntregaComprobanteIntegracionTest {
         esperar(() -> "ENVIADO".equals(estadoCorreo(id)), "correo ENVIADO");
 
         EnvioCorreo e = enviosDe(id).get(0);
+        assertThat(sunatConTransaccion.get()).as("la llamada a SUNAT no debe correr dentro de una transacción").isFalse();
         assertThat(e.getTipo()).isEqualTo(EnvioCorreo.Tipo.AUTOMATICO);
         assertThat(e.getIntentos()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT ambiente_emision FROM comprobantes WHERE id = ?", String.class, id)).isEqualTo("PRODUCCION");

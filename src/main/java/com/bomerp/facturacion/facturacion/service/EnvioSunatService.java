@@ -130,35 +130,37 @@ public class EnvioSunatService {
         });
     }
 
-    /** Envía un comprobante PENDIENTE y guarda la respuesta de SUNAT. Devuelve el estado final. */
+    /**
+     * Resultado del paso 1 de un envío: o lo que hay que enviar (la entidad con lo que lee el XML ya cargado,
+     * para usarla fuera de la transacción) o el estado con el que termina sin llamar a SUNAT.
+     */
+    private record Preparado<T>(T paraEnviar, EstadoSunat sinEnviar) {
+        static <T> Preparado<T> enviar(T entidad) { return new Preparado<>(entidad, null); }
+        static <T> Preparado<T> terminar(EstadoSunat estado) { return new Preparado<>(null, estado); }
+    }
+
+    /**
+     * Envía un comprobante PENDIENTE y guarda la respuesta de SUNAT. Devuelve el estado final.
+     * <p>
+     * En tres pasos, para no tener una conexión a Oracle tomada mientras SUNAT responde (hasta ~40 s con los
+     * tiempos de espera de SunatSoapClient): (1) transacción corta que valida y carga lo que lee el XML;
+     * (2) la llamada a SUNAT, fuera de toda transacción; (3) transacción corta que guarda la respuesta.
+     * Si el backend se cae entre (2) y (3), el comprobante sigue PENDIENTE y el reintento recibe de SUNAT el
+     * 1033 "ya registrado" (queda por confirmar, igual que antes cuando la transacción se deshacía).
+     */
     public EstadoSunat enviarComprobante(Long id) {
-        EstadoSunat estado = tx.execute(s -> {
-            Comprobante c = comprobantes.findById(id).orElse(null);
-            if (c == null || c.getEstadoSunat() != EstadoSunat.PENDIENTE) {
-                return c == null ? null : c.getEstadoSunat();
-            }
-            if (envioDetenido != null) {
-                return EstadoSunat.PENDIENTE;   // sin contar el intento: sale cuando se corrijan las credenciales
-            }
-            if (!tieneNotaSiSuVentaFueAnulada(c)) {
-                c.getEnvio().registrarIntento(null, "No se envía: la venta #" + c.getVenta().getId()
-                        + " está anulada y no se pudo crear su nota de crédito. Revise el registro del backend.", null, null);
-                return EstadoSunat.PENDIENTE;
-            }
-            if (c.fueraDePlazo(java.time.LocalDate.now())) {
-                // Lo que llega a SUNAT pasado el plazo no tiene validez aunque lo reciba (informe D-6)
-                c.getEnvio().registrarIntento(null, mensajeFueraDePlazo(c), null, null);
-                log.warn("{}-{} no se envía: venció su plazo de envío a SUNAT ({})", c.getSerie(), c.getNumero(), c.fechaLimiteEnvio());
-                return EstadoSunat.PENDIENTE;
-            }
-            if (!ose.disponible()) {
-                // Circuit Breaker abierto (ADS S11): SUNAT no responde. Sin llamar y sin gastar intento
-                return EstadoSunat.PENDIENTE;
-            }
-            RespuestaOse r = ose.emitir(c);
-            detenerSiFallanLasCredenciales(r);
+        Preparado<Comprobante> p = tx.execute(s -> prepararComprobante(id));
+        if (p.paraEnviar() == null) return p.sinEnviar();
+        if (!ose.disponible()) {
+            // Circuit Breaker abierto (ADS S11): SUNAT no responde. Sin llamar y sin gastar intento
+            return EstadoSunat.PENDIENTE;
+        }
+        RespuestaOse r = ose.emitir(p.paraEnviar());
+        detenerSiFallanLasCredenciales(r);
+        Comprobante.AmbienteEmision ambiente = ose.ambiente();
+        EstadoSunat estado = guardarRespuesta("comprobante " + id, r, () -> tx.execute(s -> {
+            Comprobante c = comprobantes.findById(id).orElseThrow();
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
-            Comprobante.AmbienteEmision ambiente = ose.ambiente();
             if (c.getEstadoSunat().valido()) {
                 // El ambiente en que SUNAT lo aceptó queda fijo: la validez para el cliente depende de él
                 c.registrarAmbiente(ambiente);
@@ -168,11 +170,62 @@ public class EnvioSunatService {
             if (r.enlacePdf() != null) c.setEnlacePdf(r.enlacePdf());
             if (r.enlaceXml() != null) c.setEnlaceXml(r.enlaceXml());
             return c.getEstadoSunat();
-        });
+        }));
         if (estado != null && estado.valido()) {
             eventos.publishEvent(new ComprobanteAceptadoEvent(id));
         }
         return estado;
+    }
+
+    /** Paso 1 de enviarComprobante (dentro de la transacción): las reglas para no enviarlo y la precarga. */
+    private Preparado<Comprobante> prepararComprobante(Long id) {
+        Comprobante c = comprobantes.findById(id).orElse(null);
+        if (c == null || c.getEstadoSunat() != EstadoSunat.PENDIENTE) {
+            return Preparado.terminar(c == null ? null : c.getEstadoSunat());
+        }
+        if (envioDetenido != null) {
+            return Preparado.terminar(EstadoSunat.PENDIENTE);   // sin contar el intento: sale cuando se corrijan las credenciales
+        }
+        if (!tieneNotaSiSuVentaFueAnulada(c)) {
+            c.getEnvio().registrarIntento(null, "No se envía: la venta #" + c.getVenta().getId()
+                    + " está anulada y no se pudo crear su nota de crédito. Revise el registro del backend.", null, null);
+            return Preparado.terminar(EstadoSunat.PENDIENTE);
+        }
+        if (c.fueraDePlazo(java.time.LocalDate.now())) {
+            // Lo que llega a SUNAT pasado el plazo no tiene validez aunque lo reciba (informe D-6)
+            c.getEnvio().registrarIntento(null, mensajeFueraDePlazo(c), null, null);
+            log.warn("{}-{} no se envía: venció su plazo de envío a SUNAT ({})", c.getSerie(), c.getNumero(), c.fechaLimiteEnvio());
+            return Preparado.terminar(EstadoSunat.PENDIENTE);
+        }
+        precargar(c);
+        return Preparado.enviar(c);
+    }
+
+    /**
+     * Carga lo que el XML lee de las relaciones LAZY (venta, cliente, líneas y sus productos), para armarlo fuera
+     * de la transacción sin LazyInitializationException. Lo demás que lee son columnas del propio comprobante.
+     */
+    public static void precargar(Comprobante c) {
+        Venta v = c.getVenta();
+        if (v == null) return;
+        org.hibernate.Hibernate.initialize(v);
+        org.hibernate.Hibernate.initialize(v.getCliente());
+        org.hibernate.Hibernate.initialize(v.getDetalles());
+        v.getDetalles().forEach(d -> org.hibernate.Hibernate.initialize(d.getProducto()));
+    }
+
+    /**
+     * Paso 3: guarda la respuesta de SUNAT. Si eso falla (p. ej. Oracle cayó justo ahí), SUNAT ya pudo haberlo
+     * registrado: se deja constancia clara en el registro antes de propagar el error.
+     */
+    private EstadoSunat guardarRespuesta(String que, RespuestaOse r, java.util.function.Supplier<EstadoSunat> guardar) {
+        try {
+            return guardar.get();
+        } catch (RuntimeException e) {
+            log.error("SUNAT respondió {} ({}) para el {}, pero no se pudo guardar la respuesta: queda PENDIENTE y el "
+                    + "reintento recibirá 1033 (por confirmar en SUNAT). Motivo: {}", r.resultado(), r.codigo(), que, e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -211,36 +264,44 @@ public class EnvioSunatService {
 
     /** Envía una nota de crédito PENDIENTE, solo si su comprobante original ya tiene validez. */
     public EstadoSunat enviarNota(Long id) {
-        return tx.execute(s -> {
+        // Los mismos tres pasos que enviarComprobante: SUNAT se llama fuera de la transacción
+        Preparado<NotaCredito> p = tx.execute(s -> {
             NotaCredito n = notas.findById(id).orElse(null);
             if (n == null || n.getEstadoSunat() != EstadoSunat.PENDIENTE) {
-                return n == null ? null : n.getEstadoSunat();
+                return Preparado.terminar(n == null ? null : n.getEstadoSunat());
             }
             if (envioDetenido != null) {
-                return EstadoSunat.PENDIENTE;
+                return Preparado.terminar(EstadoSunat.PENDIENTE);
             }
             EstadoSunat original = n.getComprobanteReferencia().getEstadoSunat();
             if (original == EstadoSunat.PENDIENTE) {
-                return EstadoSunat.PENDIENTE;   // espera al comprobante; el reintento la vuelve a tomar
+                return Preparado.terminar(EstadoSunat.PENDIENTE);   // espera al comprobante; el reintento la vuelve a tomar
             }
             if (original == EstadoSunat.RECHAZADO) {
                 // Un comprobante sin validez no necesita anularse ante SUNAT
                 n.getEnvio().registrarIntento(null, "No se envía: el comprobante original fue rechazado por SUNAT.", null, null);
                 n.setEstadoSunat(EstadoSunat.RECHAZADO);
-                return n.getEstadoSunat();
+                return Preparado.terminar(n.getEstadoSunat());
             }
-            if (!ose.disponible()) {
-                return EstadoSunat.PENDIENTE;   // Circuit Breaker abierto: sin llamar y sin gastar intento
-            }
-            RespuestaOse r = ose.emitirNotaCredito(n);
-            detenerSiFallanLasCredenciales(r);
+            precargar(n.getComprobanteReferencia());
+            return Preparado.enviar(n);
+        });
+        if (p.paraEnviar() == null) return p.sinEnviar();
+        if (!ose.disponible()) {
+            return EstadoSunat.PENDIENTE;   // Circuit Breaker abierto: sin llamar y sin gastar intento
+        }
+        RespuestaOse r = ose.emitirNotaCredito(p.paraEnviar());
+        detenerSiFallanLasCredenciales(r);
+        Comprobante.AmbienteEmision ambiente = ose.ambiente();
+        return guardarRespuesta("nota de crédito " + id, r, () -> tx.execute(s -> {
+            NotaCredito n = notas.findById(id).orElseThrow();
             n.setEstadoSunat(aplicar(n.getEnvio(), r));
             registros.save(EnvioSunatRegistro.deNota(n.getId(), r.resultado().name(), n.getEnvio(), r.xmlFirmado(), r.cdr())
-                    .conAmbiente(ose.ambiente() == null ? null : ose.ambiente().name()));
+                    .conAmbiente(ambiente == null ? null : ambiente.name()));
             if (r.enlacePdf() != null) n.setEnlacePdf(r.enlacePdf());
             if (r.enlaceXml() != null) n.setEnlaceXml(r.enlaceXml());
             return n.getEstadoSunat();
-        });
+        }));
     }
 
     /**
