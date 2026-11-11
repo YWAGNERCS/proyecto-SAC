@@ -151,6 +151,10 @@ public class EnvioSunatService {
                 log.warn("{}-{} no se envía: venció su plazo de envío a SUNAT ({})", c.getSerie(), c.getNumero(), c.fechaLimiteEnvio());
                 return EstadoSunat.PENDIENTE;
             }
+            if (!ose.disponible()) {
+                // Circuit Breaker abierto (ADS S11): SUNAT no responde. Sin llamar y sin gastar intento
+                return EstadoSunat.PENDIENTE;
+            }
             RespuestaOse r = ose.emitir(c);
             detenerSiFallanLasCredenciales(r);
             c.setEstadoSunat(aplicar(c.getEnvio(), r));
@@ -224,6 +228,9 @@ public class EnvioSunatService {
                 n.getEnvio().registrarIntento(null, "No se envía: el comprobante original fue rechazado por SUNAT.", null, null);
                 n.setEstadoSunat(EstadoSunat.RECHAZADO);
                 return n.getEstadoSunat();
+            }
+            if (!ose.disponible()) {
+                return EstadoSunat.PENDIENTE;   // Circuit Breaker abierto: sin llamar y sin gastar intento
             }
             RespuestaOse r = ose.emitirNotaCredito(n);
             detenerSiFallanLasCredenciales(r);

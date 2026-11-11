@@ -9,7 +9,8 @@ import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.event.VentaAnuladaEvent;
-import com.bomerp.ventas.venta.service.VentaService;
+import com.bomerp.clientes.general.integration.Cliente;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -30,13 +31,14 @@ public class DevolucionService {
 
     private final DevolucionRepository devolucionRepository;
     private final CobranzaService cobranzaService;
-    private final VentaService ventaService;
+    /** Referencias a la venta y al cliente por su id, sin consultarlos (ADR-008). */
+    private final EntityManager em;
 
     public DevolucionService(DevolucionRepository devolucionRepository, CobranzaService cobranzaService,
-                             VentaService ventaService) {
+                             EntityManager em) {
         this.devolucionRepository = devolucionRepository;
         this.cobranzaService = cobranzaService;
-        this.ventaService = ventaService;
+        this.em = em;
     }
 
     /**
@@ -45,19 +47,21 @@ public class DevolucionService {
      */
     @EventListener
     public void alAnularVenta(VentaAnuladaEvent evento) {
-        Venta venta = ventaService.obtenerPorIdPublico(evento.ventaId());
-        BigDecimal pagado = cobranzaService.pagadoDe(venta);
-        if (pagado.signum() <= 0 || devolucionRepository.existsByVentaId(venta.getId())) {
+        // ADR-008: todo sale del evento. Ya no se le pregunta a Ventas por la venta anulada; lo pagado es dato de
+        // Cobranza (sus abonos) o, si se pagó al contado, el total que trae el evento.
+        BigDecimal pagado = cobranzaService.pagadoDe(evento.ventaId(), evento.total(), evento.pagada());
+        if (pagado.signum() <= 0 || devolucionRepository.existsByVentaId(evento.ventaId())) {
             return;
         }
         Devolucion devolucion = new Devolucion();
-        devolucion.setVenta(venta);
-        devolucion.setCliente(venta.getCliente());
-        devolucion.setMoneda(venta.getMoneda());
+        devolucion.setVenta(em.getReference(Venta.class, evento.ventaId()));
+        devolucion.setCliente(em.getReference(Cliente.class, evento.clienteId()));
+        devolucion.setMoneda(evento.moneda());
         devolucion.setMonto(pagado);
-        devolucion.setFechaAnulacion(venta.getFechaAnulacion() != null ? venta.getFechaAnulacion() : LocalDate.now());
+        devolucion.setFechaAnulacion(evento.fechaAnulacion() != null ? evento.fechaAnulacion() : LocalDate.now());
         devolucionRepository.save(devolucion);
-        log.info("Venta {} anulada con {} {} ya pagados: devolución pendiente", venta.getId(), pagado, venta.getMoneda());
+        log.info("Venta {} ({}) anulada con {} {} ya pagados: devolución pendiente", evento.ventaId(),
+                evento.documento() != null ? evento.documento() : "sin comprobante", pagado, evento.moneda());
     }
 
     @Transactional(readOnly = true)

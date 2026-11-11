@@ -7,7 +7,7 @@ import com.bomerp.cobranza.cobro.dto.CobroResponseDTO;
 import com.bomerp.cobranza.cobro.dto.CuentaPorCobrarDTO;
 import com.bomerp.cobranza.cobro.dto.PagadoDeVentaDTO;
 import com.bomerp.cobranza.cobro.entity.Cobro;
-import com.bomerp.cobranza.cobro.entity.DetalleCobro;
+import com.bomerp.cobranza.cobro.entity.Abono;
 import com.bomerp.cobranza.cobro.repository.CobroRepository;
 import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
@@ -141,7 +141,6 @@ public class CobranzaService {
 
         Set<Long> vistas = new HashSet<>();
         Map<Long, BigDecimal> saldosFinales = new HashMap<>();
-        BigDecimal total = BigDecimal.ZERO;
         // Las ventas se bloquean en orden de id: dos cobros simultáneos a la misma venta no pueden
         // superar juntos el saldo (el segundo espera y ve el abono del primero)
         dto.abonos().stream().map(CobroRequestDTO.AbonoDTO::ventaId).distinct().sorted()
@@ -166,11 +165,9 @@ public class CobranzaService {
                 throw new ReglaNegocioException("El abono de " + monto + " supera el saldo de la venta #"
                         + venta.getId() + " (" + saldo + " " + venta.getMoneda() + ").");
             }
-            cobro.agregarDetalle(new DetalleCobro(venta, monto));
+            cobro.abonar(venta, monto);   // ADR-007: el cobro crea el abono y suma su total
             saldosFinales.put(venta.getId(), saldo.subtract(monto));
-            total = total.add(monto);
         }
-        cobro.setMontoTotal(total);
         Cobro guardado = cobroRepository.save(cobro);
 
         // Las ventas que quedaron en 0 pasan a PAGADO
@@ -179,7 +176,7 @@ public class CobranzaService {
                 ventaService.marcarComoPagada(ventaId);
             }
         });
-        log.info("Cobro {} registrado: {} {} de {} en {} venta(s)", guardado.getId(), total, dto.moneda(),
+        log.info("Cobro {} registrado: {} {} de {} en {} venta(s)", guardado.getId(), guardado.getMontoTotal(), dto.moneda(),
                 cliente.getNombreORazonSocial(), saldosFinales.size());
         return CobroResponseDTO.desdeEntidad(guardado);
     }
@@ -203,7 +200,7 @@ public class CobranzaService {
         if (motivoLimpio == null || motivoLimpio.length() < 5) {
             throw new IllegalArgumentException("Indique el motivo de la anulación (al menos 5 caracteres).");
         }
-        for (DetalleCobro detalle : cobro.getDetalles()) {
+        for (Abono detalle : cobro.getAbonos()) {
             if (detalle.getVenta().getEstado() == Venta.EstadoVenta.ANULADA) {
                 throw new ReglaNegocioException("El cobro #" + cobroId + " abonó a la venta #" + detalle.getVenta().getId()
                         + ", que ya está ANULADA: ese dinero se resuelve en Cobranza › Devoluciones.");
@@ -217,7 +214,7 @@ public class CobranzaService {
         Cobro guardado = cobroRepository.save(cobro);
 
         // Sin este abono, ninguna de sus ventas queda cubierta: las que estaban PAGADAS vuelven a PENDIENTE
-        for (DetalleCobro detalle : guardado.getDetalles()) {
+        for (Abono detalle : guardado.getAbonos()) {
             if (detalle.getVenta().getEstadoPago() == Venta.EstadoPago.PAGADO) {
                 ventaService.volverAPendiente(detalle.getVenta().getId());
             }
@@ -232,11 +229,17 @@ public class CobranzaService {
      */
     @Transactional(readOnly = true)
     public BigDecimal pagadoDe(Venta venta) {
-        BigDecimal cobrado = cobroRepository.totalCobradoDeVenta(venta.getId());
+        return pagadoDe(venta.getId(), venta.calcularTotal(), venta.getEstadoPago() == Venta.EstadoPago.PAGADO);
+    }
+
+    /** Lo mismo, con los datos que trae VentaAnuladaEvent (ADR-008): sin volver a leer la venta. */
+    @Transactional(readOnly = true)
+    public BigDecimal pagadoDe(Long ventaId, BigDecimal total, boolean pagada) {
+        BigDecimal cobrado = cobroRepository.totalCobradoDeVenta(ventaId);
         if (cobrado.signum() > 0) {
             return cobrado;
         }
-        return venta.getEstadoPago() == Venta.EstadoPago.PAGADO ? venta.calcularTotal() : BigDecimal.ZERO;
+        return pagada ? total : BigDecimal.ZERO;
     }
 
     @Transactional(readOnly = true)

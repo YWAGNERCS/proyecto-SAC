@@ -5,7 +5,6 @@ import com.bomerp.clientes.cliente.service.ClienteService;
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.cobranza.cobro.dto.CobroRequestDTO;
 import com.bomerp.cobranza.cobro.entity.Cobro;
-import com.bomerp.cobranza.cobro.entity.DetalleCobro;
 import com.bomerp.cobranza.cobro.repository.CobroRepository;
 import com.bomerp.cobranza.cobro.service.CobranzaService;
 import com.bomerp.config.ReglaNegocioException;
@@ -136,8 +135,7 @@ class CobranzaServiceTest {
         c.setFecha(LocalDate.now());
         c.setMoneda(Venta.Moneda.SOLES);
         c.setMetodoPago(Cobro.MetodoPago.TRANSFERENCIA);
-        c.setMontoTotal(new BigDecimal("118"));
-        c.agregarDetalle(new DetalleCobro(venta, new BigDecimal("118")));
+        c.abonar(venta, new BigDecimal("118"));
         when(cobroRepository.findById(3L)).thenReturn(Optional.of(c));
         return c;
     }

@@ -37,7 +37,8 @@ class FechaVentaYAnulacionTest {
         ventas = mock(VentaRepository.class);
         servicio = new VentaService(ventas, mock(ProformaService.class), mock(ClienteService.class),
                 mock(ProductoService.class), mock(TipoCambioService.class), mock(TopeDescuentoService.class),
-                mock(DeduccionTributariaService.class), mock(ApplicationEventPublisher.class), acceso);
+                mock(DeduccionTributariaService.class), mock(ApplicationEventPublisher.class), acceso,
+                mock(org.springframework.beans.factory.ObjectProvider.class));
     }
 
     @Test

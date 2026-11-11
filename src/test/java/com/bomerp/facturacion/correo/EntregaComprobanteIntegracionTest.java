@@ -81,6 +81,7 @@ class EntregaComprobanteIntegracionTest {
 
     @BeforeEach
     void preparar() {
+        when(ose.disponible()).thenReturn(true);   // Circuit Breaker cerrado (un mock devolvería false)
         conCorreo = jdbc.queryForObject("SELECT MIN(id) FROM clientes WHERE agente_retencion = 0 AND correo IS NOT NULL", Long.class);
         sinCorreo = jdbc.queryForObject("SELECT MIN(id) FROM clientes WHERE agente_retencion = 0 AND correo IS NULL", Long.class);
         seriesAntes = new HashMap<>();

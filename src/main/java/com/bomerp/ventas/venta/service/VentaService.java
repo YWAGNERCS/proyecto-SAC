@@ -26,6 +26,7 @@ import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.config.ReglaNegocioException;
 import com.bomerp.config.StockInsuficienteException;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +56,11 @@ public class VentaService {
 
     /** Quién puede registrar una venta con fecha pasada (ADMIN o el permiso VENTA_FECHA_PASADA). */
     private final AccesoUsuario acceso;
+    /**
+     * ADR-008: el número de comprobante que viaja en VentaAnuladaEvent. Lo implementa Facturación, que a su vez
+     * depende de Ventas: con ObjectProvider se resuelve al anular y no al construir (sin ciclo entre beans).
+     */
+    private final ObjectProvider<ComprobantesDeVenta> comprobantes;
 
     /** Una venta puede registrarse con su fecha real hasta tantos días atrás (auditoría M3). */
     public static final int DIAS_FECHA_PASADA = 30;
@@ -67,8 +73,10 @@ public class VentaService {
                         TopeDescuentoService topeDescuentoService,
                         DeduccionTributariaService deduccionTributariaService,
                         ApplicationEventPublisher eventos,
-                        AccesoUsuario acceso) {
+                        AccesoUsuario acceso,
+                        ObjectProvider<ComprobantesDeVenta> comprobantes) {
         this.acceso = acceso;
+        this.comprobantes = comprobantes;
         this.ventaRepository = ventaRepository;
         this.proformaService = proformaService;
         this.clienteService = clienteService;
@@ -522,7 +530,11 @@ public class VentaService {
         venta.setMotivoAnulacion(motivoLimpio);
 
         Venta anulada = ventaRepository.save(venta);
-        eventos.publishEvent(new VentaAnuladaEvent(ventaId));
+        ComprobantesDeVenta facturacion = comprobantes.getIfAvailable();
+        String documento = facturacion == null ? null : facturacion.numeroComprobanteDeVenta(ventaId).orElse(null);
+        eventos.publishEvent(new VentaAnuladaEvent(ventaId, venta.getCliente().getId(), venta.getMoneda(),
+                venta.getFechaAnulacion(), documento, motivoLimpio, venta.calcularTotal(),
+                venta.getEstadoPago() == Venta.EstadoPago.PAGADO));
 
         log.info("Venta {} anulada por {}: stock restaurado. Motivo: {}", ventaId, usuario, motivoLimpio);
         return VentaResponseDTO.desdeEntidad(anulada);

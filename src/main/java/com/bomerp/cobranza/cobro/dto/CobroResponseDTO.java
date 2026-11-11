@@ -36,7 +36,7 @@ public record CobroResponseDTO(
                 c.getReferencia(),
                 c.getNotas(),
                 c.getMontoTotal(),
-                c.getDetalles().stream()
+                c.getAbonos().stream()
                         .map(d -> new AbonoResponseDTO(d.getVenta().getId(), d.getMonto()))
                         .toList(),
                 c.getEstado().name(),

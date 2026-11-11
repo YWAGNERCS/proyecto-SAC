@@ -58,6 +58,7 @@ class VentaPorEmitirIntegracionTest {
 
     @BeforeEach
     void preparar() {
+        when(ose.disponible()).thenReturn(true);   // Circuit Breaker cerrado (un mock devolvería false)
         // Como SunatDirectoClient: sin cuenta, una venta con detracción no puede emitirse todavía
         cuentaConfigurada = false;
         when(ose.motivoParaNoEmitir(any())).thenAnswer(inv -> {

@@ -63,6 +63,7 @@ class ComprobanteReemplazoIntegracionTest {
 
     @BeforeEach
     void venderUnEquipo() {
+        when(ose.disponible()).thenReturn(true);   // Circuit Breaker cerrado (un mock devolvería false)
         clienteId = jdbc.queryForObject("SELECT MIN(id) FROM clientes WHERE agente_retencion = 0", Long.class);
         Producto equipo = new Producto();
         equipo.setNombre("Split de prueba (reemplazo)");

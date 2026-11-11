@@ -332,7 +332,8 @@ public class FacturacionService implements ComprobantesDeVenta {
      * emitir un comprobante de reemplazo.
      */
     public record PlazoEnvioDTO(int porVencer, int fueraDePlazo, List<String> numerosPorVencer, List<String> numerosFueraDePlazo,
-                                int porEmitir, List<Long> ventasPorEmitir, String envioDetenido) {}
+                                int porEmitir, List<Long> ventasPorEmitir, String envioDetenido,
+                                String sunatSinRespuesta) {}
 
     @Transactional(readOnly = true)
     public PlazoEnvioDTO plazoDeEnvio() {
@@ -354,7 +355,9 @@ public class FacturacionService implements ComprobantesDeVenta {
                 .filter(v -> ose.motivoParaNoEmitir(v) != null).map(Venta::getId).toList();
         // Usuario o clave SOL rechazados (D-9): no sale nada a SUNAT hasta corregirlos y reiniciar
         return new PlazoEnvioDTO(porVencer.size(), fuera.size(), porVencer, fuera, porEmitir.size(), porEmitir,
-                envioSunat.motivoEnvioDetenido());
+                envioSunat.motivoEnvioDetenido(),
+                // Circuit Breaker abierto (ADS S11): SUNAT no responde, los envíos esperan sin gastar intentos
+                ose.avisoNoDisponible());
     }
 
     /** Archivo guardado del envío a SUNAT: XML firmado o CDR (constancia de recepción, ZIP). */

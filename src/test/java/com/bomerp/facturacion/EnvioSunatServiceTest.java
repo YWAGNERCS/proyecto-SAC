@@ -44,6 +44,7 @@ class EnvioSunatServiceTest {
         notas = mock(NotaCreditoRepository.class);
         registros = mock(EnvioSunatRegistroRepository.class);
         ose = mock(OseClient.class);
+        when(ose.disponible()).thenReturn(true);   // un mock devuelve false: el circuito estaría abierto
         eventos = mock(ApplicationEventPublisher.class);
         servicio = new EnvioSunatService(comprobantes, notas, registros, ose, eventos, mock(PlatformTransactionManager.class), 0);
     }
@@ -70,6 +71,18 @@ class EnvioSunatServiceTest {
 
     private static RespuestaOse respuesta(Resultado r, Integer codigo, String mensaje) {
         return new RespuestaOse(r, codigo, mensaje, null, null, new byte[]{1}, r == Resultado.REINTENTAR ? null : new byte[]{2});
+    }
+
+    /** ADS S11: con el Circuit Breaker abierto no se llama a SUNAT ni se gasta un intento. */
+    @Test
+    void conElCircuitoAbiertoQuedaPendienteSinGastarIntento() {
+        Comprobante c = comprobante(1, EstadoSunat.PENDIENTE);
+        when(ose.disponible()).thenReturn(false);
+
+        assertThat(servicio.enviarComprobante(1L)).isEqualTo(EstadoSunat.PENDIENTE);
+        assertThat(c.getEnvio().getIntentos()).isZero();
+        verify(ose, never()).emitir(any());
+        verify(registros, never()).save(any());
     }
 
     @Test

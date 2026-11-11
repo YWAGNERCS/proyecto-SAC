@@ -118,5 +118,5 @@ externo) · ⏳ pendiente.
   temas (RNF-06, RNF-07). Hoy se verifican a mano.
 - **Dependen de JD:** el usuario SOL y el certificado (RF-10), el correo de la empresa (RF-07, RF-13, RF-15) y la
   carpeta de respaldo fuera de la PC (RNF-08).
-- **Decididos en ADS S14, sin implementar:** ADR-007 (el abono lo crea `Cobro.abonar()`) y ADR-008 (`VentaAnuladaEvent`
-  con los datos que sus oyentes necesitan). Se implementan en la integración con LP2.
+- **ADS S14, implementados el 11/11/2026:** ADR-007 (`Cobro.abonar()`) y ADR-008 (`VentaAnuladaEvent` con 8 campos;
+  `DevolucionService` ya no consulta la venta). Queda pendiente `VentaParaCobro` con la brecha B1 de ADS S8.

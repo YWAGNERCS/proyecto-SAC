@@ -85,5 +85,5 @@ El backend de producción ya entra como `JD_APP`.
 | S14 | `MODULE`/`ACTION` por operación en las conexiones del backend | ✅ Código (`config/monitoreo`, 5 pruebas); verificado en `V$SESSION` de desarrollo |
 | — | **Producción (4300):** las 7 migraciones, la imagen nueva del backend y `JD_APP` | ✅ 10/11/2026, con respaldo previo; backend como `JD_APP`, health 200 |
 | S7, S13 | Imagen fijada por digest; imagen completa con RMAN (antes, zonas horarias v45: ORA-39405 con Data Pump); ARCHIVELOG y RMAN programados | ⏳ Espera la decisión PC u hosting |
-| ADS S10, S11, S14 | `Cobro.abonar()` (ADR-007), `VentaAnuladaEvent` con 6 campos (ADR-008), Circuit Breaker en `SunatDirectoClient` | ⏳ Diseñado; fuera de esta tanda |
+| ADS S10, S11, S14 | `Cobro.abonar()` (ADR-007), `VentaAnuladaEvent` con 8 campos (ADR-008), Circuit Breaker en `SunatDirectoClient` | ✅ Código, 11/11/2026 (228 pruebas en verde, como dueño y como `JD_APP`); en producción, falta reconstruir el backend |
 | S14 | Consulta diaria de objetos inválidos y esperas por bloqueo | ⏳ Junto con el respaldo automático (carpeta pendiente de Lisandro) |

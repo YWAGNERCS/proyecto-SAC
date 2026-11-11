@@ -31,6 +31,20 @@ public interface OseClient {
     }
 
     /**
+     * ¿Se puede llamar a SUNAT ahora? Con el Circuit Breaker abierto (SUNAT no responde), no: el envío queda
+     * PENDIENTE sin gastar un intento y sale solo cuando SUNAT vuelve (ADS S11). Llamarlo reserva el turno de la
+     * llamada de prueba cuando el circuito está semiabierto: hay que llamar a emitir justo después.
+     */
+    default boolean disponible() {
+        return true;
+    }
+
+    /** Aviso para la campana mientras SUNAT no responde, o null. */
+    default String avisoNoDisponible() {
+        return null;
+    }
+
+    /**
      * Lo que este cliente acepta tiene validez tributaria: solo el envío a SUNAT de producción. El simulado y la
      * beta de SUNAT no, así que lo que "aceptan" no se envía por correo al cliente (informe D-12).
      */

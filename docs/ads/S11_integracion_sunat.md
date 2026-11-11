@@ -52,6 +52,12 @@ intentos.
 La venta **nunca** espera a SUNAT: el envío ya va en segundo plano, después del `COMMIT` (ADS S4). El Circuit Breaker
 no protege la pantalla de Lucy, que ya está protegida, sino los **intentos** y la **cola**.
 
+**Implementado el 11/11/2026** (`facturacion/sunat/integration/CircuitoSunat`), con los valores de esta tabla:
+- **Dónde:** el circuito vive dentro de `SunatDirectoClient`. El puerto `OseClient` solo ganó `disponible()` y `avisoNoDisponible()`, con valores por defecto, así que el envío simulado no cambia.
+- **Fallback:** con el circuito abierto, `EnvioSunatService` deja el comprobante o la nota en PENDIENTE **sin llamar a SUNAT y sin gastar el intento**. La campana muestra "SUNAT no responde desde las HH:MM…" (campo `sunatSinRespuesta`, aviso de nivel medio).
+- **Detalle que la tabla no fijaba:** con menos de 5 llamadas en la ventana no se decide nada, para que un solo fallo al arrancar no abra el circuito.
+- **Pruebas:** `CircuitoSunatTest`, 7, con un reloj controlado (se abre con 5 de 5 y no con 4; espera 5 minutos; una sola prueba en semiabierto; vuelve a abrirse si la prueba falla; libera el turno si no se llamó); `EnvioSunatServiceTest`, con el circuito abierto no hay intento ni llamada; y la prueba del aviso en el frontend.
+
 ## 3. Evento de dominio: `VentaAnuladaEvent`
 
 | | Hoy (implementado) | Diseño |

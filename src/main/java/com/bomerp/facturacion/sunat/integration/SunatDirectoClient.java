@@ -28,8 +28,16 @@ public class SunatDirectoClient implements OseClient {
     /** Ambiente declarado y comprobado al arrancar: es el que queda registrado en cada comprobante aceptado. */
     private final com.bomerp.facturacion.comprobante.entity.Comprobante.AmbienteEmision ambiente;
     private CertificadoSunat certificado;
+    /** Circuit Breaker (ADS S11): deja de llamar a SUNAT mientras no responde, sin gastar intentos. */
+    private final CircuitoSunat circuito;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public SunatDirectoClient(SunatProperties props, EmpresaProperties empresa) {
+        this(props, empresa, new CircuitoSunat(java.time.Clock.systemDefaultZone()));
+    }
+
+    SunatDirectoClient(SunatProperties props, EmpresaProperties empresa, CircuitoSunat circuito) {
+        this.circuito = circuito;
         this.props = props;
         this.empresa = empresa;
         // Antes de nada: ambiente declarado + dirección oficial de ese ambiente (si no, no arranca)
@@ -59,6 +67,7 @@ public class SunatDirectoClient implements OseClient {
         // Comprobantes que ya tenían número cuando faltaba la cuenta (antes del 07/11/2026): no se envían y
         // quedan PENDIENTES; al configurarla, el reintento automático los envía (si siguen en plazo).
         if (motivoParaNoEmitir(comprobante.getVenta()) != null) {
+            circuito.registrarSinLlamada();   // no se llamó a SUNAT: no cuenta, y libera el turno de prueba
             return RespuestaOse.reintentar("No se envió: falta configurar la cuenta de detracciones de JD en el "
                     + "Banco de la Nación (CUENTA_DETRACCIONES). Se enviará sola cuando esté configurada.", null);
         }
@@ -74,9 +83,14 @@ public class SunatDirectoClient implements OseClient {
 
     private RespuestaOse enviar(String nombre, java.util.function.Supplier<byte[]> armarXml) {
         byte[] xmlFirmado = null;
+        boolean registrado = false;
         try {
             xmlFirmado = armarXml.get();
             SunatSoapClient.Cdr cdr = sunat.sendBill(nombre, xmlFirmado);
+            // SUNAT respondió. Solo cuenta como fallo si dijo "no puedo procesar ahora" (0100-0199): un rechazo
+            // con CDR, una observación o un 1033 son respuestas sobre el comprobante, no una caída
+            circuito.registrar(clasificar(cdr.codigo()) == Resultado.REINTENTAR);
+            registrado = true;
             String detalle = cdr.descripcion() + (cdr.observaciones() != null ? " (" + cdr.observaciones() + ")" : "");
             Resultado resultado = clasificar(cdr.codigo());
             switch (resultado) {
@@ -99,9 +113,26 @@ public class SunatDirectoClient implements OseClient {
             }
             return new RespuestaOse(resultado, cdr.codigo(), detalle, null, null, xmlFirmado, cdr.zipCdr());
         } catch (SunatSoapClient.SunatNoDisponibleException e) {
+            circuito.registrar(true);   // sin respuesta: red, tiempo agotado o HTTP 5xx
+            registrado = true;
             log.warn("No se pudo enviar {} a SUNAT (se reintentará): {}", nombre, e.getMessage());
             return RespuestaOse.reintentar(e.getMessage(), xmlFirmado);
+        } finally {
+            if (!registrado) {
+                circuito.registrarSinLlamada();   // falló antes de llamar (p. ej. el certificado): no es culpa de SUNAT
+            }
         }
+    }
+
+    /** Circuit Breaker abierto: no se llama a SUNAT (en semiabierto, reserva la única llamada de prueba). */
+    @Override
+    public boolean disponible() {
+        return circuito.permiteLlamar();
+    }
+
+    @Override
+    public String avisoNoDisponible() {
+        return circuito.aviso();
     }
 
     /**

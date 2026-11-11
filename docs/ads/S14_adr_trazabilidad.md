@@ -19,12 +19,12 @@ Registro de decisiones del proyecto:
 | ADR-001 a ADR-005 | Arquitectura del backend, Spring Modulith, versión de Spring Boot, JWT y Keycloak | Del curso LP2 |
 | ADR-S1-01, ADR-S4-01 | Envío directo a SUNAT; una sola instancia | ADS S1 y S4 |
 | ADR-006 | Solo los materiales controlan stock, con una regla en el dominio | Aceptada e implementada (07/11) |
-| **ADR-007** | **El abono lo crea `Cobro.abonar()`** | **Aceptada; se implementa en la integración con LP2** |
-| **ADR-008** | **`VentaAnuladaEvent` lleva los datos que sus oyentes necesitan** | **Aceptada; se implementa en la integración con LP2** |
+| **ADR-007** | **El abono lo crea `Cobro.abonar()`** | **Implementada el 11/11/2026** (sección 1, al final) |
+| **ADR-008** | **`VentaAnuladaEvent` lleva los datos que sus oyentes necesitan** | **Implementada el 11/11/2026, con 8 campos** (sección 2, al final) |
 
 ## 1. ADR-007 · El abono lo crea `Cobro`, con `abonar(venta, monto)`
 
-**Estado:** aceptada el 10/11/2026. Origen: hallazgo H3 de S13.
+**Estado:** aceptada el 10/11/2026 e implementada el 11/11/2026. Origen: hallazgo H3 de S13.
 
 ### Contexto
 
@@ -75,7 +75,7 @@ Debe aparecer solo dentro de `Cobro.java`. **Hoy aparece en `CobranzaService.jav
 
 ## 2. ADR-008 · `VentaAnuladaEvent` lleva los datos que sus oyentes necesitan
 
-**Estado:** aceptada el 10/11/2026. Origen: hallazgos H1 y H5 de S13 y el rediseño de S11.
+**Estado:** aceptada el 10/11/2026 e implementada el 11/11/2026, con una corrección (abajo). Origen: hallazgos H1 y H5 de S13 y el rediseño de S11.
 
 ### Contexto
 
@@ -119,6 +119,30 @@ grep -n "obtenerPorIdPublico" src/main/java/com/bomerp/cobranza/devolucion/servi
 ```
 
 Hoy la encuentra en la línea 48; después no debe encontrar nada. `VentaAnuladaEvent.java` debe tener los seis campos. `FlujoCompletoEndToEndTest` debe seguir en verde (stock, visitas, devolución, 409).
+
+## 2b. Implementación de los dos ADR (11/11/2026)
+
+**ADR-007, cómo quedó:**
+- **Verificación del ADR:** `grep "new Abono|new DetalleCobro|setMontoTotal"` solo encuentra `new Abono` dentro de `Cobro.java`.
+- **La clase:** `DetalleCobro` se llama ahora `Abono`. La tabla sigue siendo `DETALLE_COBRO`, así que no hubo migración.
+- **El cobro:** `Cobro.abonar(venta, monto)` valida que el monto sea positivo y que la moneda coincida, crea el abono y suma `montoTotal`, que ya no tiene *setter*.
+- **El abono:** no tiene constructor público, para que solo lo cree su cobro.
+- **Diferencia con el diseño:** `abonar` recibe la entidad `Venta`, no el `VentaParaCobro` de S8. Ese record y quitar la entidad del abono (brecha B1) siguen pendientes, y van juntos.
+- **Sigue en el servicio:** `Cobro.anular()` (brecha B4).
+
+**ADR-008, la corrección que apareció al implementarlo.** Los 6 campos del diseño no alcanzaban:
+- La devolución de una venta **al contado** no tiene abonos en cobranza; lo pagado es el total de la venta, si estaba pagada.
+- Con solo 6 campos, `DevolucionService` habría tenido que seguir consultando la venta.
+- Por eso el evento quedó con **8 campos**: `(ventaId, clienteId, moneda, fechaAnulacion, documento, motivo, total, pagada)`. Los dos nuevos salen de datos reales de la venta (`calcularTotal()` y `estadoPago`), como exige la regla de S13.
+
+Cómo quedó:
+- **Sin llamada de vuelta:** `DevolucionService` ya no depende de `VentaService`. Arma la venta y el cliente como referencias JPA, sin consultarlos, con el id que trae el evento.
+- **Número de comprobante:** lo pone `VentaService` con el puerto `ComprobantesDeVenta`, resuelto al anular para no crear un ciclo entre beans.
+- **Stock:** sigue devolviéndose por fachada antes del evento, como fija el punto 3.
+
+**Pruebas:**
+- Todas las del backend contra la copia de desarrollo: **228/0** como el dueño y **228/0** como `JD_APP`.
+- `FlujoCompletoEndToEndTest` cubre la anulación con stock, visitas, devolución y el 409 de una segunda anulación.
 
 ## 3. Atributos de calidad: decisión inicial frente a evidencia real
 
