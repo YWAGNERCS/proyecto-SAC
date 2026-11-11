@@ -37,7 +37,7 @@ docker exec -u root sge-jd-bd2 bash -c "chown oracle:oinstall /tmp/base.dmp /tmp
 docker exec sge-jd-bd2 bash /tmp/importar_base.sh
 ```
 
-Después se vuelven a correr los scripts de las sesiones, en orden.
+Después se vuelven a correr los scripts de las sesiones, en orden. Más simple: `.\bd2\herramientas\restaurar_practica.ps1` hace todo eso y recrea los objetos de S1 a S3 (`-SoloObjetos` para no restaurar).
 
 ## Sesiones
 
@@ -50,7 +50,7 @@ Después se vuelven a correr los scripts de las sesiones, en orden.
 | S5 | Índices | [S05](S05/README.md): selectividad de 7 columnas y 8 predicados; B-Tree en `DETALLE_VENTA(VENTA_ID)` y `VENTAS(FECHA_VENTA)`, Function-Based para el voucher de cobros, Bitmap probado y reemplazado; hallazgo: el Bitmap bloqueó 11,4 s una venta simultánea | ✅ 10/11/2026 |
 | S6 | Evaluación de la Unidad I | Sustentación con lo acumulado de S1 a S5 (sin trabajo autónomo) | — |
 | S7 | Arquitectura Oracle e instancia | [S07](S07/README.md): SGA 1,5 GB (ASMM), PGA 512 MB, 80 procesos de fondo, `FREE`/`FREEPDB1`, ORA-00942 como usuario de la aplicación; hallazgos: redo de 2 × 10 MB provocó "Checkpoint not complete" en la carga de S4, la imagen "23" es en realidad 26ai (23.26.2), y `JDREFRIGERACION` tiene 29 privilegios | ✅ 10/11/2026 |
-| S8 | Usuarios, roles y privilegios | | ⏳ |
+| S8 | Usuarios, roles y privilegios | [S08](S08/README.md): roles `ROL_SGEJD_MAESTROS`, `_OPERACION` y `_CONSULTA` derivados del código; `JD_APP` sin privilegios directos; `JD_REPORTES` de solo lectura; el dueño sin `DB_DEVELOPER_ROLE`; 217 pruebas del backend como `JD_APP` con el mismo resultado que como dueño; hallazgos: ORA-41900 en lugar de ORA-01031, y el DELETE de más solo lo piden las pruebas | ✅ 10/11/2026 |
 | S9 | Almacenamiento, seguridad y auditoría | | ⏳ |
 | S10 | Optimización del rendimiento | | ⏳ |
 | S11 | Particionamiento | | ⏳ |
@@ -74,3 +74,5 @@ Lo que se lleva a la base real cuando esté probado:
 | S5 | `IX_DETALLE_VENTA_VENTA`, `IX_VENTAS_FECHA_VENTA`, `IX_COBROS_REFERENCIA_NORM`, `IX_VENTA_AUDITORIA_ACCION` | Probados en práctica; falta verificar que Hibernate escriba `UPPER(TRIM(referencia))` igual que el índice |
 | S7 | Fijar la imagen de Oracle por digest (hoy `gvenzl/oracle-free:23-slim` = `fbbd3023d5ab`, 23.26.2) en `docker-compose.yml` y `compose-prod.yml` | Propuesto |
 | S7 | Redo logs: de 2 × 10 MB a 3 × 200 MB | Se aplica en S9 |
+| S8 | Aplicar `S08_02` en desarrollo y producción; backend con `DB_USERNAME=jd_app`, `hibernate.default_schema` y `hikari.connection-init-sql` en `application-prod.properties`; `ddl-auto=update` solo en desarrollo, como dueño | Probado en práctica (217 pruebas) |
+| S8 | Corregir `ComprobanteReemplazoIntegracionTest` y `VentaAnuladaSinNotaIntegracionTest`: su `UPDATE` de anulación debe llevar `motivo_anulacion` y `anulado_por` (trigger de S2) | Pendiente |
