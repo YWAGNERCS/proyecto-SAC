@@ -52,7 +52,7 @@ Después se vuelven a correr los scripts de las sesiones, en orden. Más simple:
 | S7 | Arquitectura Oracle e instancia | [S07](S07/README.md): SGA 1,5 GB (ASMM), PGA 512 MB, 80 procesos de fondo, `FREE`/`FREEPDB1`, ORA-00942 como usuario de la aplicación; hallazgos: redo de 2 × 10 MB provocó "Checkpoint not complete" en la carga de S4, la imagen "23" es en realidad 26ai (23.26.2), y `JDREFRIGERACION` tiene 29 privilegios | ✅ 10/11/2026 |
 | S8 | Usuarios, roles y privilegios | [S08](S08/README.md): roles `ROL_SGEJD_MAESTROS`, `_OPERACION` y `_CONSULTA` derivados del código; `JD_APP` sin privilegios directos; `JD_REPORTES` de solo lectura; el dueño sin `DB_DEVELOPER_ROLE`; 217 pruebas del backend como `JD_APP` con el mismo resultado que como dueño; hallazgos: ORA-41900 en lugar de ORA-01031, y el DELETE de más solo lo piden las pruebas | ✅ 10/11/2026 |
 | S9 | Almacenamiento, seguridad y auditoría | [S09](S09/README.md): `TS_SGEJD_VENTAS` (ORA-01950, índices UNUSABLE y ORA-01502 hasta el REBUILD), redo 3 × 200 MB, ARCHIVELOG documentado, auditoría unificada con evidencia real (denegado 2004, intento de NOAUDIT por `ORA$MANDATORY`, clave incorrecta 1017); hallazgos: la sintaxis de la guía auditaba toda la base, el archivado de fábrica está fuera del volumen, y EM Express no existe en 26ai slim | ✅ 10/11/2026 |
-| S10 | Optimización del rendimiento | | ⏳ |
+| S10 | Optimización del rendimiento | [S10](S10/README.md): carga en orden de fecha; estadísticas viejas (258 frente a 27 200) corregidas con `cascade`; el índice de fecha ahora sí se usa (factor de agrupamiento de 28 974 a 730, costo 175 frente a 251); AWR funciona pero se licencia aparte; diagnóstico con `V$SQL` y `DISPLAY_CURSOR`; índice compuesto `(cliente_id, fecha_venta)` medido y creado (28 → 12, y cubre la FK) | ✅ 10/11/2026 |
 | S11 | Particionamiento | | ⏳ |
 | S12 | Evaluación de la Unidad II | | ⏳ |
 | S13 | Backup y recovery con RMAN | | ⏳ |
@@ -79,3 +79,5 @@ Lo que se lleva a la base real cuando esté probado:
 | S9 | `TS_SGEJD_VENTAS` (con `MOVE ONLINE` en producción), `POL_SGEJD_VENTAS`, `POL_SGEJD_SESIONES`, `ORA_LOGON_FAILURES` | Probado en práctica |
 | S9 | Antes de ARCHIVELOG (S13): `db_recovery_file_dest` dentro de `/opt/oracle/oradata` | Pendiente |
 | ADS S9 | Índice único `UX_COBRO_VOUCHER_VIGENTE` para cerrar la carrera del voucher duplicado | Propuesto |
+| S10 | `IX_VENTAS_CLIENTE_FECHA (cliente_id, fecha_venta)`: cubre la FK `VENTAS.CLIENTE_ID`, que no tenía índice | Probado en práctica |
+| ADS S10 | `CobranzaService`: inyectar `ComprobantesDeVenta` en lugar de `FacturacionService`; `Cobro.abonar()` y `Cobro.anular()` en la entidad | Diseñado |
