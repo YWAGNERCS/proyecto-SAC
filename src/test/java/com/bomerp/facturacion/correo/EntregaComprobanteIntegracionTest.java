@@ -82,7 +82,10 @@ class EntregaComprobanteIntegracionTest {
     @BeforeEach
     void preparar() {
         when(ose.disponible()).thenReturn(true);   // Circuit Breaker cerrado (un mock devolvería false)
-        conCorreo = jdbc.queryForObject("SELECT MIN(id) FROM clientes WHERE agente_retencion = 0 AND correo IS NOT NULL", Long.class);
+        // Cliente propio con un dominio reservado (example.com): los datos de demostración no traen correos
+        jdbc.update("INSERT INTO clientes (tipo, nombreorazon_social, ruc, direccion, correo) "
+                + "VALUES ('EMPRESA', 'CLIENTE DE PRUEBA ENTREGA COMPROBANTE', '20999999925', 'LIMA', 'facturas@example.com')");
+        conCorreo = jdbc.queryForObject("SELECT id FROM clientes WHERE ruc = '20999999925'", Long.class);
         sinCorreo = jdbc.queryForObject("SELECT MIN(id) FROM clientes WHERE agente_retencion = 0 AND correo IS NULL", Long.class);
         seriesAntes = new HashMap<>();
         jdbc.query("SELECT serie, ultimo_numero FROM series_comprobante", rs -> {
@@ -119,6 +122,7 @@ class EntregaComprobanteIntegracionTest {
             jdbc.update("DELETE FROM ventas WHERE id = ?", v);
         }
         jdbc.update("DELETE FROM productos WHERE id = ?", productoId);
+        jdbc.update("DELETE FROM clientes WHERE id = ?", conCorreo);
         seriesAntes.forEach((serie, n) -> jdbc.update("UPDATE series_comprobante SET ultimo_numero = ? WHERE serie = ?", n, serie));
     }
 

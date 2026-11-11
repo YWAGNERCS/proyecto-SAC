@@ -51,6 +51,17 @@ public class ProformaController {
         return proformaService.enviar(id, whatsapp, correo);
     }
 
+    /** Vista previa: el mismo PDF que se adjunta al correo, para abrirlo en el navegador antes de enviarlo. */
+    @GetMapping("/{id}/pdf")
+    public org.springframework.http.ResponseEntity<byte[]> pdf(@PathVariable Long id) {
+        ProformaService.PdfProforma pdf = proformaService.pdf(id);
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.inline().filename(pdf.nombreArchivo()).build().toString())
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdf.contenido());
+    }
+
     @PostMapping("/{id}/aceptar")
     public ProformaResponseDTO aceptar(@PathVariable Long id) {
         return proformaService.aceptar(id);

@@ -43,6 +43,9 @@ public class ProformaService {
     private final TipoCambioService tipoCambioService;
     private final TopeDescuentoService topeDescuentoService;
     private final com.bomerp.seguridad.acceso.AccesoUsuario acceso;
+    /** Transacciones cortas de enviar(): el correo sale entre ambas, sin conexión a la base tomada. */
+    private final org.springframework.transaction.support.TransactionTemplate soloLectura;
+    private final org.springframework.transaction.support.TransactionTemplate escritura;
 
     public ProformaService(ProformaRepository proformaRepository,
                               ClienteService clienteService,
@@ -52,7 +55,11 @@ public class ProformaService {
                               GeneradorPdfService generadorPdfService,
                               TipoCambioService tipoCambioService,
                               TopeDescuentoService topeDescuentoService,
-                              com.bomerp.seguridad.acceso.AccesoUsuario acceso) {
+                              com.bomerp.seguridad.acceso.AccesoUsuario acceso,
+                              org.springframework.transaction.PlatformTransactionManager txManager) {
+        this.soloLectura = new org.springframework.transaction.support.TransactionTemplate(txManager);
+        this.soloLectura.setReadOnly(true);
+        this.escritura = new org.springframework.transaction.support.TransactionTemplate(txManager);
         this.proformaRepository = proformaRepository;
         this.clienteService = clienteService;
         this.productoService = productoService;
@@ -169,8 +176,73 @@ public class ProformaService {
      */
     public record ResultadoEnvio(String whatsapp, String correo, String mensaje) {}
 
-    /** RF confirmado: Lisandro envía proformas solo por WhatsApp y correo */
+    private static final String ASUNTO_CORREO = "Proforma JD Refrigeración S.A.C.";
+
+    /** Lo que se arma en la transacción corta de lectura para enviar luego sin tener la base ocupada. */
+    private record EnvioPreparado(String resumen, String telefono, String correo, String html, byte[] pdf) {}
+
+    /**
+     * RF confirmado: Lisandro envía proformas solo por WhatsApp y correo.
+     * <p>
+     * Va en tres pasos para no tener una conexión a la base abierta mientras se habla con el servidor de
+     * correo (que puede tardar segundos): (1) transacción corta que valida y arma el HTML y el PDF en memoria;
+     * (2) el envío, fuera de toda transacción; (3) transacción corta que marca lo que sí salió.
+     * Un fallo del PDF y un fallo del correo se tratan por separado: si falla el PDF se manda el correo sin
+     * adjunto (ENVIADO_SIN_PDF); si falla el correo NO se reintenta por otra vía, para no duplicar envíos.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public ResultadoEnvio enviar(Long proformaId, boolean porWhatsApp, boolean porCorreo) {
+        EnvioPreparado envio = soloLectura.execute(estado -> preparar(proformaId, porCorreo));
+
+        String estadoWhatsApp = "NO_SOLICITADO";
+        if (porWhatsApp) {
+            if (envio.telefono() == null || envio.telefono().isBlank()) {
+                estadoWhatsApp = "SIN_TELEFONO";
+            } else {
+                // Aún simulado: solo queda en el registro (ver auditoría B1)
+                notificadorWhatsApp.enviarWhatsApp(envio.telefono(), envio.resumen());
+                estadoWhatsApp = "SIMULADO";
+            }
+        }
+
+        String estadoCorreo = "NO_SOLICITADO";
+        if (porCorreo) {
+            if (envio.correo() == null || envio.correo().isBlank()) {
+                estadoCorreo = "SIN_CORREO";
+            } else if (envio.pdf() != null) {
+                try {
+                    notificadorCorreo.enviarConAdjuntos(new NotificadorCorreo.MensajeCorreo(envio.correo(),
+                            ASUNTO_CORREO, envio.html(), List.of(new NotificadorCorreo.Adjunto(
+                                    "Proforma_" + proformaId + ".pdf", envio.pdf(), "application/pdf")), null));
+                    estadoCorreo = "ENVIADO";
+                } catch (NotificadorCorreo.CorreoNoEnviadoException e) {
+                    log.warn("Proforma #{}: el correo a {} no salió: {}", proformaId,
+                            NotificadorCorreo.ocultar(envio.correo()), e.getMessage());
+                    estadoCorreo = "FALLO";
+                }
+            } else {
+                // Solo cuando falló el PDF (ya quedó en el log): el cliente recibe al menos el detalle en el correo
+                estadoCorreo = notificadorCorreo.enviarCorreo(envio.correo(), ASUNTO_CORREO, envio.html())
+                        ? "ENVIADO_SIN_PDF" : "FALLO";
+            }
+        }
+
+        boolean marcarWhatsApp = "SIMULADO".equals(estadoWhatsApp);
+        boolean marcarCorreo = estadoCorreo.startsWith("ENVIADO");
+        if (marcarWhatsApp || marcarCorreo) {
+            escritura.executeWithoutResult(estado -> {
+                Proforma proforma = obtenerOFallar(proformaId);
+                if (marcarWhatsApp) proforma.setEnviadoWhatsApp(true);
+                if (marcarCorreo) proforma.setEnviadoCorreo(true);
+                proformaRepository.save(proforma);
+            });
+        }
+        return new ResultadoEnvio(estadoWhatsApp, estadoCorreo,
+                mensajeEnvio(proformaId, estadoWhatsApp, estadoCorreo, envio.telefono(), envio.correo()));
+    }
+
+    /** Paso 1 de enviar(): valida el estado y arma todo lo que lee entidades LAZY (cliente, ítems). */
+    private EnvioPreparado preparar(Long proformaId, boolean porCorreo) {
         Proforma proforma = obtenerOFallar(proformaId);
         if (proforma.getEstado() != Proforma.EstadoProforma.PENDIENTE
                 && proforma.getEstado() != Proforma.EstadoProforma.ACEPTADA) {
@@ -179,51 +251,28 @@ public class ProformaService {
         }
         String resumen = "Proforma #" + proforma.getId() + " por un total de "
                 + proforma.calcularTotal() + " " + proforma.getMoneda();
-        String telefono = proforma.getCliente().getTelefono();
         String correo = proforma.getCliente().getCorreo();
-
-        String estadoWhatsApp = "NO_SOLICITADO";
-        if (porWhatsApp) {
-            if (telefono == null || telefono.isBlank()) {
-                estadoWhatsApp = "SIN_TELEFONO";
-            } else {
-                // Aún simulado: solo queda en el registro (ver auditoría B1)
-                notificadorWhatsApp.enviarWhatsApp(telefono, resumen);
-                proforma.setEnviadoWhatsApp(true);
-                estadoWhatsApp = "SIMULADO";
+        String html = null;
+        byte[] pdf = null;
+        if (porCorreo && correo != null && !correo.isBlank()) {
+            html = generarHtmlProforma(proforma);
+            try {
+                pdf = generadorPdfService.generarProformaPdf(proforma);
+            } catch (RuntimeException e) {
+                log.error("Proforma #{}: no se pudo generar el PDF, se enviará sin adjunto: {}",
+                        proformaId, e.getMessage(), e);
             }
         }
+        return new EnvioPreparado(resumen, proforma.getCliente().getTelefono(), correo, html, pdf);
+    }
 
-        String estadoCorreo = "NO_SOLICITADO";
-        if (porCorreo) {
-            if (correo == null || correo.isBlank()) {
-                estadoCorreo = "SIN_CORREO";
-            } else {
-                String cuerpoHtml = generarHtmlProforma(proforma);
-                java.io.File pdfAdjunto = null;
-                boolean enviado;
-                try {
-                    pdfAdjunto = generadorPdfService.generarProformaPdf(proforma);
-                    enviado = notificadorCorreo.enviarCorreoConAdjunto(correo,
-                            "Proforma JD Refrigeración S.A.C.", cuerpoHtml, pdfAdjunto);
-                } catch (Exception e) {
-                    log.error("Error generando PDF de la proforma: {}", e.getMessage(), e);
-                    // Fallback sin PDF
-                    enviado = notificadorCorreo.enviarCorreo(correo, "Proforma JD Refrigeración S.A.C.", cuerpoHtml);
-                } finally {
-                    if (pdfAdjunto != null && pdfAdjunto.exists()) {
-                        pdfAdjunto.delete(); // Limpiar archivo temporal
-                    }
-                }
-                if (enviado) {
-                    proforma.setEnviadoCorreo(true);
-                }
-                estadoCorreo = enviado ? "ENVIADO" : "FALLO";
-            }
-        }
-        proformaRepository.save(proforma);
-        return new ResultadoEnvio(estadoWhatsApp, estadoCorreo,
-                mensajeEnvio(proforma.getId(), estadoWhatsApp, estadoCorreo, telefono, correo));
+    /** PDF de la proforma para verlo antes de enviarlo (el mismo que se adjunta al correo). */
+    public record PdfProforma(String nombreArchivo, byte[] contenido) {}
+
+    @Transactional(readOnly = true)
+    public PdfProforma pdf(Long proformaId) {
+        Proforma proforma = obtenerOFallar(proformaId);
+        return new PdfProforma("Proforma_" + proformaId + ".pdf", generadorPdfService.generarProformaPdf(proforma));
     }
 
     private static String mensajeEnvio(Long id, String whatsapp, String correo, String telefono, String email) {
@@ -234,6 +283,7 @@ public class ProformaService {
         };
         String c = switch (correo) {
             case "ENVIADO" -> "correo enviado a " + email;
+            case "ENVIADO_SIN_PDF" -> "correo enviado a " + email + " SIN el PDF adjunto (no se pudo generar; revise el registro)";
             case "FALLO" -> "el correo a " + email + " NO se pudo enviar (revise la configuración de correo)";
             case "SIN_CORREO" -> "correo no enviado: el cliente no tiene correo";
             default -> null;

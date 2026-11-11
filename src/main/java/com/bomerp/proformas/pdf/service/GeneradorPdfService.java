@@ -10,8 +10,7 @@ import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
 
 @Service
 public class GeneradorPdfService {
@@ -22,12 +21,16 @@ public class GeneradorPdfService {
         this.empresa = empresa;
     }
 
-    public File generarProformaPdf(Proforma proforma) throws Exception {
-        // Archivo temporal
-        File pdfFile = File.createTempFile("Proforma_" + proforma.getId() + "_", ".pdf");
-        
+    /**
+     * PDF de la proforma en memoria (no deja archivos temporales). Lo usan el correo y la vista previa.
+     * Lee el cliente y los ítems, así que se llama dentro de una transacción.
+     *
+     * @throws IllegalStateException si no se pudo armar el PDF
+     */
+    public byte[] generarProformaPdf(Proforma proforma) {
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
         try (Document document = new Document(PageSize.A4)) {
-            PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
+            PdfWriter.getInstance(document, salida);
             document.open();
 
             // Tipografías
@@ -99,7 +102,8 @@ public class GeneradorPdfService {
             
             // Items
             for (ItemProforma item : proforma.getItems()) {
-                agregarCeldaItem(table, item.getProducto().getNombre() + "\n" + item.getProducto().getDescripcion(), normalFont, Element.ALIGN_LEFT);
+                agregarCeldaItem(table, item.getProducto().getNombre()
+                        + (item.getProducto().getDescripcion() == null ? "" : "\n" + item.getProducto().getDescripcion()), normalFont, Element.ALIGN_LEFT);
                 agregarCeldaItem(table, String.valueOf(item.getCantidad()), normalFont, Element.ALIGN_CENTER);
                 agregarCeldaItem(table, proforma.getMoneda() + " " + item.getPrecioUnitario().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
                 agregarCeldaItem(table, item.getDescuentoPorcentaje().signum() > 0
@@ -134,10 +138,9 @@ public class GeneradorPdfService {
             document.add(notas);
             
         } catch (Exception e) {
-            throw new RuntimeException("Error al generar el PDF de la proforma", e);
+            throw new IllegalStateException("Error al generar el PDF de la proforma #" + proforma.getId(), e);
         }
-        
-        return pdfFile;
+        return salida.toByteArray();
     }
     
     private void agregarCeldaCabecera(PdfPTable table, String texto, Font font) {
