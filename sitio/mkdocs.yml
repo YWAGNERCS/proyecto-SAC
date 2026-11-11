@@ -53,7 +53,48 @@ nav:
       - 3. Manual de usuario: manual.md
       - 4. Estado y trazabilidad: estado.md
       - 5. Por verificar: por-verificar.md
+      - Matriz de trazabilidad (RTM): rtm.md
+      - Facturación directa a SUNAT: facturacion-sunat.md
+  - ADS:
+      - Índice y avance: ads/index.md
+      - "Unidad I · Arquitectura y diseño estructural":
+          - S1 · Visión arquitectónica: ads/S01_vision_arquitectonica.md
+          - S2 · Modelo C4: ads/S02_modelo_c4.md
+          - S3 · SOLID del módulo ventas: ads/S03_solid_modulo_ventas.md
+          - S4 · Arquitecturas modernas: ads/S04_arquitecturas_modernas.md
+      - "Unidad II · Diseño dinámico, UML y patrones":
+          - S6 · Modelo de dominio: ads/S06_modelo_dominio.md
+          - S7 · Diagrama de clases: ads/S07_diagrama_clases.md
+          - S8 · Diseño de cobranza: ads/S08_diseno_cobranza.md
+          - S9 · Diagramas dinámicos: ads/S09_diagramas_dinamicos.md
+          - S10 · Patrones GoF y GRASP: ads/S10_patrones_cobranza.md
+          - S11 · Integración con SUNAT: ads/S11_integracion_sunat.md
+      - "Unidad III · Diseño técnico profesional":
+          - S13 · Auditoría de consistencia: ads/S13_auditoria_consistencia.md
+          - S14 · Decisiones y trazabilidad (07/11): ads/S14_ADS_decisiones_trazabilidad.md
+          - S14 · ADR-007, ADR-008 y trazabilidad: ads/S14_adr_trazabilidad.md
+  - BD2:
+      - Índice, base de práctica e integración: bd2/index.md
+      - "Unidad I · Programación y optimización":
+          - S1 · PL/SQL aplicado al negocio: bd2/S01.md
+          - S2 · Triggers y auditoría: bd2/S02.md
+          - S3 · Excepciones y robustez: bd2/S03.md
+          - S4 · Optimización de consultas: bd2/S04.md
+          - S5 · Índices: bd2/S05.md
+      - "Unidad II · Administración, almacenamiento y seguridad":
+          - S7 · Arquitectura Oracle e instancia: bd2/S07.md
+          - S8 · Usuarios, roles y privilegios: bd2/S08.md
+          - S9 · Almacenamiento, seguridad y auditoría: bd2/S09.md
+          - S10 · Optimización del rendimiento: bd2/S10.md
+          - S11 · Particionamiento: bd2/S11.md
+      - "Unidad III · Continuidad y operación":
+          - S13 · Backup y recovery con RMAN: bd2/S13.md
+          - S14 · Monitoreo y diagnóstico: bd2/S14.md
   - LP2:
       - Producto de la Unidad II: lp2-demo.md
+      - S13 · Optimización y producción: lp2/S13_optimizacion_produccion.md
+      - S14 · Integración y estabilización: lp2/S14_integracion_estabilizacion.md
+      - Producción local (4300): lp2/produccion-local.md
+      - Integración con BD2 y ADS: lp2/integracion-bd2.md
   - Para el cliente:
       - Qué hace hoy y qué todavía no: limitaciones.md

@@ -1100,6 +1100,9 @@ Seguridad: Keycloak, integrado en S10b (backend como Resource Server y login de 
 | S10 | Seguridad backend con roles | ✅ Ruta **Keycloak** (S10b, 18/10/2026): Resource Server, reglas por rol, `GET /api/v1/auth/perfil`, matriz de 14 casos (`pruebas-seguridad/`) |
 | S11 | Seguridad frontend (guards, interceptores, 401/403) | ✅ 19/10/2026: login Authorization Code + PKCE, `/auth/callback`, `authGuard` (lleva a Keycloak) y `rolGuard('ADMIN')` (lleva a `/sin-permiso`), interceptor que refresca una vez ante 401 y no ante 403, menú por rol. Token en memoria con copia en `sessionStorage` |
 | S12 | Evaluación de la Unidad II | ✅ 25/10/2026: `lp2-demo.md` publicado, presentación del PI (alcance, arquitectura y asignación), guion y demo preparados |
+| S13 | Optimización y preparación para producción | ✅ 05/11/2026: lazy loading y presupuestos, caché del navegador, Redis descartado con medición, logs y Actuator por perfil, producción local en el 4300 ([S13](S13_optimizacion_produccion.md), [producción local](PRODUCCION_LOCAL.md)) |
+| S14 | Integración y estabilización | ✅ 07/11/2026: totales del servidor, checklist de integración, auditoría, prueba end-to-end real y bitácora ([S14](S14_integracion_estabilizacion.md)) |
+| — | Integración con BD2 y ADS | ✅ 10–11/11/2026: `migracion_bd2/` aplicada en desarrollo y producción (backend de producción como `JD_APP`), consultas de BD2 S4, `MODULE`/`ACTION` por operación, ADR-007 (`Cobro.abonar()`), ADR-008 (evento de anulación completo) y Circuit Breaker hacia SUNAT; 228 pruebas en verde |
 | — | Diseño responsivo | ✅ 19/10/2026: celular, tablet y escritorio |
 
 ---

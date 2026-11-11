@@ -15,7 +15,10 @@ Universidad Peruana Unión, construido sobre la base académica BomERP.
 | [3. Manual de usuario](manual.md) | Cómo se opera cada pantalla y preguntas frecuentes |
 | [4. Estado y trazabilidad](estado.md) | Fases del proyecto, **pendientes**, equipo y avance por sesión de LP2 |
 | [5. Por verificar](por-verificar.md) | Lo que falta o no coincide, ordenado por importancia |
-| [Producto de la Unidad II (LP2)](lp2-demo.md) | La SPA segura: evidencias, casos de prueba, integración y rúbrica |
+| [Matriz de trazabilidad (RTM)](rtm.md) | Cada requisito de punta a punta: arquitectura, base de datos, API, pantalla y prueba |
+| [ADS](ads/index.md) | Diseño técnico, sesiones S1 a S14: visión, C4, SOLID, dominio, UML, patrones, integración con SUNAT, auditoría de consistencia y ADR |
+| [BD2](bd2/index.md) | Base Oracle, sesiones S1 a S14: PL/SQL, triggers, índices, roles, auditoría, particiones, RMAN y monitoreo, con salidas reales |
+| [LP2](lp2-demo.md) | Producto de la Unidad II, optimización y producción (S13), integración y estabilización (S14) y la [integración con BD2 y ADS](lp2/integracion-bd2.md) |
 | [Qué hace hoy y qué todavía no](limitaciones.md) | Para Lisandro y Lucy: lo que funciona de verdad, lo simulado y las decisiones pendientes |
 
 ## Equipo CherryTree
