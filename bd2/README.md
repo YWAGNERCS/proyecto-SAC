@@ -37,6 +37,8 @@ docker exec -u root sge-jd-bd2 bash -c "chown oracle:oinstall /tmp/base.dmp /tmp
 docker exec sge-jd-bd2 bash /tmp/importar_base.sh
 ```
 
+Desde S13 el contenedor usa la imagen completa (con RMAN). El volumen actual se creó con la slim. Por eso, cada vez que se recrea el contenedor sobre ese volumen, hay que correr `.\bd2\herramientas\copiar_zona_horaria.ps1` y luego `docker restart sge-jd-bd2` (ver [S13](S13/README.md), hallazgo 2). Si el volumen se crea de cero, revisar con `S13_01_zona_horaria.sql`. El script no hace nada si el archivo ya está.
+
 Después se vuelven a correr los scripts de las sesiones, en orden. Más simple: `.\bd2\herramientas\restaurar_practica.ps1` hace todo eso y recrea los objetos de S1 a S3 (`-SoloObjetos` para no restaurar).
 
 ## Sesiones
@@ -54,8 +56,8 @@ Después se vuelven a correr los scripts de las sesiones, en orden. Más simple:
 | S9 | Almacenamiento, seguridad y auditoría | [S09](S09/README.md): `TS_SGEJD_VENTAS` (ORA-01950, índices UNUSABLE y ORA-01502 hasta el REBUILD), redo 3 × 200 MB, ARCHIVELOG documentado, auditoría unificada con evidencia real (denegado 2004, intento de NOAUDIT por `ORA$MANDATORY`, clave incorrecta 1017); hallazgos: la sintaxis de la guía auditaba toda la base, el archivado de fábrica está fuera del volumen, y EM Express no existe en 26ai slim | ✅ 10/11/2026 |
 | S10 | Optimización del rendimiento | [S10](S10/README.md): carga en orden de fecha; estadísticas viejas (258 frente a 27 200) corregidas con `cascade`; el índice de fecha ahora sí se usa (factor de agrupamiento de 28 974 a 730, costo 175 frente a 251); AWR funciona pero se licencia aparte; diagnóstico con `V$SQL` y `DISPLAY_CURSOR`; índice compuesto `(cliente_id, fecha_venta)` medido y creado (28 → 12, y cubre la FK) | ✅ 10/11/2026 |
 | S11 | Particionamiento | [S11](S11/README.md): RANGE mensual con INTERVAL para ventas (sin DROP: retención legal) y auditoría (con DROP); pruning 1 de 36 particiones (costo 10) frente a `TRUNC`/`TO_CHAR` (235, todas); Hash/List/Composite medidos; `DROP PARTITION` 290 ms frente a `DELETE` 1 170 ms; hallazgo: el DROP simple deja la PK global UNUSABLE (ORA-01502), se resuelve con `UPDATE GLOBAL INDEXES` (240 ms) | ✅ 10/11/2026 |
-| S12 | Evaluación de la Unidad II | | ⏳ |
-| S13 | Backup y recovery con RMAN | | ⏳ |
+| S12 | Evaluación de la Unidad II | Sustentación con lo acumulado de S7 a S11 (sin trabajo autónomo) | — |
+| S13 | Backup y recovery con RMAN | [S13](S13/README.md): imagen completa (la slim no trae RMAN); ARCHIVELOG con la FRA dentro del volumen; nivel 0 de ~2,4 GB en 28 s y nivel 1 de ~720 KB en 12 s; incidente real (`UPDATE` sin `WHERE` en `PRODUCTOS`) y PITR al segundo anterior: el cambio legítimo sobrevivió, RTO 33 s; Data Pump de 27 MB; estrategia y reflexión sobre GitLab 2017; hallazgos: la imagen completa trae zonas horarias v43 y la base espera v45 (riesgo de ORA-01804), y el TAG de `PLUS ARCHIVELOG` no llega a los datafiles | ✅ 10/11/2026 |
 | S14 | Monitoreo y diagnóstico | | ⏳ |
 | S15–S16 | Evaluación de la Unidad III | | ⏳ |
 
@@ -77,9 +79,11 @@ Lo que se lleva a la base real cuando esté probado:
 | S8 | Aplicar `S08_02` en desarrollo y producción; backend con `DB_USERNAME=jd_app`, `hibernate.default_schema` y `hikari.connection-init-sql` en `application-prod.properties`; `ddl-auto=update` solo en desarrollo, como dueño | Probado en práctica (217 pruebas) |
 | S8 | Corregir `ComprobanteReemplazoIntegracionTest` y `VentaAnuladaSinNotaIntegracionTest`: su `UPDATE` de anulación debe llevar `motivo_anulacion` y `anulado_por` (trigger de S2) | Pendiente |
 | S9 | `TS_SGEJD_VENTAS` (con `MOVE ONLINE` en producción), `POL_SGEJD_VENTAS`, `POL_SGEJD_SESIONES`, `ORA_LOGON_FAILURES` | Probado en práctica |
-| S9 | Antes de ARCHIVELOG (S13): `db_recovery_file_dest` dentro de `/opt/oracle/oradata` | Pendiente |
+| S9 | Antes de ARCHIVELOG (S13): `db_recovery_file_dest` dentro de `/opt/oracle/oradata` | Probado en práctica (S13: `/opt/oracle/oradata/FRA`, 10 GB) |
 | ADS S9 | Índice único `UX_COBRO_VOUCHER_VIGENTE` para cerrar la carrera del voucher duplicado | Propuesto |
 | S10 | `IX_VENTAS_CLIENTE_FECHA (cliente_id, fecha_venta)`: cubre la FK `VENTAS.CLIENTE_ID`, que no tenía índice | Probado en práctica |
 | ADS S10 | `CobranzaService`: inyectar `ComprobantesDeVenta` en lugar de `FacturacionService`; `Cobro.abonar()` y `Cobro.anular()` en la entidad | Diseñado |
 | S11 | `VENTA_AUDITORIA` particionada por mes (INTERVAL) y purga con `DROP PARTITION … UPDATE GLOBAL INDEXES` | Probado en práctica sobre una copia |
 | ADS S11 | Circuit Breaker en `SunatDirectoClient`; `VentaAnuladaEvent` con cliente, moneda, fecha y documento | Diseñado |
+| S13 | Imagen completa `gvenzl/oracle-free:23` en `compose-prod.yml` para tener RMAN (fijada por digest, S7), resolviendo antes el archivo de zonas horarias v45 | Propuesto |
+| S13 | ARCHIVELOG en producción, RMAN nivel 0 semanal y nivel 1 diario, prueba de restauración mensual en la base de práctica | Probado en práctica; falta programarlo |

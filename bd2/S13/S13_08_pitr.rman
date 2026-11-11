@@ -1,0 +1,12 @@
+# BD2 · S13 · Paso 8: recuperación a un punto en el tiempo (PITR) de toda la base, justo antes del incidente.
+# La hora se interpreta con el reloj del servidor (TZ=America/Lima en compose-bd2.yml).
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+RUN {
+  SET UNTIL TIME "TO_DATE('2026-11-10 21:08:00', 'YYYY-MM-DD HH24:MI:SS')";
+  RESTORE DATABASE;
+  RECOVER DATABASE;
+}
+ALTER DATABASE OPEN RESETLOGS;
+SQL 'ALTER PLUGGABLE DATABASE ALL OPEN';
+LIST INCARNATION;

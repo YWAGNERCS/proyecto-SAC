@@ -1,0 +1,5 @@
+# BD2 · S13 · Paso 10: después de OPEN RESETLOGS empieza una encarnación nueva: se toma un nivel 0 fresco
+# para no depender de backups de la encarnación anterior en la próxima recuperación.
+BACKUP INCREMENTAL LEVEL 0 DATABASE PLUS ARCHIVELOG;
+DELETE NOPROMPT OBSOLETE;
+LIST BACKUP SUMMARY;
