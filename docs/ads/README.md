@@ -7,8 +7,8 @@ sesión sobre el sistema real. Guías del curso: <https://262ciclo4.github.io/bo
 |---|---|---|---|
 | S1 | Fundamentos de arquitectura | [Visión arquitectónica inicial](S01_vision_arquitectonica.md): dominio, 7 stakeholders, 5 atributos con evidencia, estilo, diagrama, 5 decisiones, hallazgo medido (16 de 39 productos controlan stock) | ✅ 10/11/2026 |
 | S2 | Modelo C4 y vistas | [Modelo C4](S02_modelo_c4.md): C1 (3 personas, 3 sistemas externos), C2 (5 contenedores reales), C3 del módulo `ventas` con fachadas y eventos, C4 de `VentaService`; hallazgo: Keycloak en el nivel equivocado | ✅ 10/11/2026 |
-| S3 | Diseño estructural y SOLID | | ⏳ |
-| S4 | Arquitecturas modernas | | ⏳ |
+| S3 | Diseño estructural y SOLID | [SOLID del módulo `ventas`](S03_solid_modulo_ventas.md): S por clase, O/L/I con `ComprobantesDeVenta` frente a `VentaService`, D verificado (9 dependencias por constructor, 2 interfaces), cohesión `venta`–`tributos`/`reporte`, fuga de la entidad; hallazgo: `VentaService` con 631 líneas, 25 métodos, usados por 6 módulos que necesitan de 1 a 5 | ✅ 10/11/2026 |
+| S4 | Arquitecturas modernas | [Estilo con evidencia](S04_arquitecturas_modernas.md): 7 estilos con ACID/ADP/CAP, `ModularityTests` 2/2, dos instancias reales (8081/8082), stateless con código citado, DDD por módulo; hallazgo: solo la capa web escala, las tareas programadas duplicaron el 50 % del trabajo (ADR-S4-01: una instancia) | ✅ 10/11/2026 |
 | S5 | Evaluación de la Unidad I | Sustentación con lo acumulado de S1 a S4 | ⏳ |
 | S6 | Descubrimiento y modelado del dominio | | ⏳ |
 | S7 | Diseño de clases del dominio | | ⏳ |
