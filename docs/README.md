@@ -882,9 +882,13 @@ las pruebas.
    - **Bases creadas antes del 28/10/2026:** ejecutar una vez `migracion_cobros_anulacion.sql` (columnas de anulación y `registrado_por` en `COBROS`; los cobros existentes quedan VIGENTES; se puede ejecutar varias veces).
    - **Bases creadas antes del 25/10/2026:** ejecutar una vez `migracion_devoluciones.sql` (crea la tabla `DEVOLUCIONES`; se puede ejecutar varias veces).
    - **Bases creadas antes del 15/10/2026:** después de arrancar el backend nuevo una vez, ejecutar `migracion_auditoria_altos.sql` (permite el estado CONVERTIDA de las proformas; sin él, convertir una proforma falla con ORA-02290). Se puede ejecutar varias veces.
-   - **Datos de demostración (opcional):** `datos_demo.sql` borra los datos de negocio, reinicia los ID y carga 8 categorías, 30 productos, 7 proveedores y 8 clientes (empresas reales verificadas en SUNAT; relación comercial ficticia). No toca los usuarios. Con el backend ya iniciado al menos una vez (para que existan las tablas):
+   - **Datos de demostración (opcional, 11/11/2026):** `scripts\datos_demo.bat` deja la base de **desarrollo** como nueva. Pide escribir BORRAR, saca un respaldo y ejecuta:
+     - `datos_demo.sql`: borra todos los datos de negocio de todos los módulos, reinicia los ID y carga 8 categorías, 30 productos, 7 proveedores y 8 clientes (empresas reales verificadas en SUNAT; relación comercial ficticia);
+     - `datos_demo_ventas.sql`: **20 ventas por año (2024, 2025 y 2026)**, cada una con su factura F001 aceptada (simulado). Dos de cada tres son al contado; las de crédito tienen sus cobros, salvo una atrasada y una con abono parcial en 2026. Una de cada cuatro viene de una proforma, hay una anulada por año con su nota de crédito, y los equipos tienen sus visitas de mantenimiento. El stock lo dan las compras de enero de cada año.
+
+     No toca los usuarios (Keycloak). Necesita el backend iniciado al menos una vez, para que existan las tablas.
      ```powershell
-     Get-Content -Encoding UTF8 datos_demo.sql | docker exec -i -e NLS_LANG=AMERICAN_AMERICA.AL32UTF8 SGE-JD sqlplus -s jdrefrigeracion/<password>@FREEPDB1
+     .\scripts\datos_demo.bat
      ```
 5. Frontend: en `bomerp-frontend`, `npm install` y `npm start` (puerto 4200).
 
@@ -901,6 +905,7 @@ Ya instalado (pasos 1 a 5 hechos una vez), todo se maneja con doble clic en `bom
 | `base_limpia.bat` | Borra los datos marcados `[Prueba]` y todo lo que cuelga de ellos (proformas, ventas, comprobantes, cobros, compras, mantenimientos) y devuelve al stock lo que movieron. Primero hace un **ensayo con ROLLBACK** que muestra cuántas filas borraría, pide escribir `BORRAR` y saca un respaldo; si algo falla, Oracle deshace todo |
 | `base_limpia.bat -Entrega` | Deja la base para el cliente: borra **todos** los movimientos y lo marcado `[Prueba]`, reinicia las series de comprobantes y los contadores de id de los movimientos. Conserva catálogo, clientes y proveedores reales; el stock se ajusta después con el inventario físico |
 | `base_limpia.bat -SoloEnsayo` | Solo el ensayo, sin cambiar nada (también con `-Entrega`) |
+| `datos_demo.bat` | Solo **desarrollo**: deja la base como nueva con datos de demostración (catálogo, clientes, proveedores y 20 ventas por año de 2024 a 2026). Pide escribir BORRAR y respalda antes |
 | `restaurar_sgejd.bat <archivo.dmp>` | Vuelve la base al estado de un respaldo: reemplaza las tablas de `JDREFRIGERACION` por las del archivo (pide escribir `RESTAURAR` y antes saca un respaldo de lo actual). Apagar antes el backend |
 
 Probado (25/10/2026): un respaldo restaurado en un esquema aparte (`-Esquema`) trajo las 17 tablas con los mismos conteos.

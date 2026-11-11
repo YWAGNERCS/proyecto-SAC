@@ -1,9 +1,11 @@
 -- ============================================================
--- SGE-JD · Reinicio de datos de demostración (13/10/2026)
+-- SGE-JD · Reinicio de datos de demostración (13/10/2026; borrado completo 11/11/2026)
 --
--- BORRA todos los datos de negocio (ventas, cobros, proformas, compras, comprobantes,
--- notas de crédito, mantenimientos, productos, categorías, clientes, proveedores),
--- reinicia los ID en 1 y carga un catálogo de demostración.
+-- BORRA todos los datos de negocio (movimientos de todos los módulos, historial de cambios, auditoría
+-- de ventas y registro de errores de BD2, productos, categorías, clientes con sus sedes y proveedores),
+-- reinicia los ID en 1 y carga un catálogo de demostración. Los movimientos de demostración (60 ventas de
+-- 2024 a 2026) los carga después datos_demo_ventas.sql. Lo más simple es scripts/datos_demo.bat, que
+-- respalda primero y ejecuta los dos.
 -- Los usuarios viven en Keycloak (la tabla USUARIOS se borró: migracion_quitar_usuarios.sql).
 --
 -- Proveedores y clientes: empresas reales verificadas en el padrón de SUNAT
@@ -12,64 +14,58 @@
 -- La relación comercial con JD Refrigeración es FICTICIA (datos de prueba).
 -- Precios: referenciales de mercado, sin IGV.
 --
--- Ejecutar desde la carpeta bomerp-backend (PowerShell):
---   Get-Content -Encoding UTF8 datos_demo.sql | docker exec -i -e NLS_LANG=AMERICAN_AMERICA.AL32UTF8 SGE-JD sqlplus -s jdrefrigeracion/<password>@FREEPDB1
--- (NLS_LANG evita que se pierdan las tildes y la ñ.)
+-- Ejecutar como el dueño del esquema, o como SYSDBA con ALTER SESSION SET CURRENT_SCHEMA = JDREFRIGERACION.
 -- ============================================================
 SET DEFINE OFF
 SET FEEDBACK OFF
+SET SERVEROUTPUT ON
 WHENEVER SQLERROR EXIT FAILURE ROLLBACK
 
--- ── 1. Borrado (hijos antes que padres) ──────────────────────
--- Cobranza (abonos): la crea el backend; si aún no existe, se ignora.
+-- ── 1. Borrado (hijos antes que padres) y reinicio de los ID ──
+-- 11/11/2026: antes borraba 13 tablas y fallaba por llaves foráneas con las agregadas después (envíos a SUNAT,
+-- correos, devoluciones, servicios técnicos, pagos a proveedores, ajustes). Una tabla que no existe se salta.
+DECLARE
+    v_esquema VARCHAR2(128) := SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA');
+    PROCEDURE ejecutar(p_sql VARCHAR2) IS
+    BEGIN
+        EXECUTE IMMEDIATE p_sql;
+    EXCEPTION WHEN OTHERS THEN
+        IF SQLCODE <> -942 THEN RAISE; END IF;   -- la tabla no existe en esta base
+    END;
 BEGIN
-    EXECUTE IMMEDIATE 'DELETE FROM DETALLE_COBRO';
-    EXECUTE IMMEDIATE 'DELETE FROM COBROS';
-    EXECUTE IMMEDIATE 'ALTER TABLE DETALLE_COBRO MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1)';
-    EXECUTE IMMEDIATE 'ALTER TABLE COBROS MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1)';
-EXCEPTION
-    WHEN OTHERS THEN NULL;
+    -- Referencias circulares de servicios técnicos (orden ↔ equipo ↔ mantenimiento)
+    -- (equipo y contrato no: CK_MANTENIMIENTO_ORIGEN exige un origen, y los mantenimientos se borran antes que ellos)
+    ejecutar('UPDATE MANTENIMIENTOS SET ORDEN_TRABAJO_ID = NULL');
+    ejecutar('UPDATE EQUIPOS_INSTALADOS SET ORDEN_TRABAJO_ID = NULL, VENTA_ID = NULL');
+    ejecutar('UPDATE ORDENES_TRABAJO SET EQUIPO_ID = NULL, MANTENIMIENTO_ID = NULL, VENTA_ID = NULL, VENTA_FACTURADA_ID = NULL');
+    FOR t IN (SELECT COLUMN_VALUE AS tabla FROM TABLE(SYS.ODCIVARCHAR2LIST(
+                'DEVOLUCIONES', 'ENVIOS_SUNAT', 'INTENTOS_CORREO', 'ENVIOS_CORREO', 'NOTAS_CREDITO', 'COMPROBANTES',
+                'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS', 'MATERIALES_ORDEN', 'ORDENES_TRABAJO',
+                'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO', 'DETALLE_VENTA', 'VENTAS', 'ITEMS_PROFORMA',
+                'PROFORMAS', 'PAGOS_PROVEEDOR', 'DETALLE_COMPRA', 'COMPRAS', 'AJUSTES_INVENTARIO', 'SEDES_CLIENTE',
+                'PRODUCTOS', 'CATEGORIAS', 'CLIENTES', 'PROVEEDORES', 'HISTORIAL_CAMBIOS',
+                'VENTA_AUDITORIA', 'LOG_ERRORES'))) LOOP
+        ejecutar('DELETE FROM ' || t.tabla);
+    END LOOP;
+    -- Contadores de comprobantes (F001, B001, FC01...): la próxima factura vuelve a ser la 00000001
+    ejecutar('DELETE FROM SERIES_COMPROBANTE');
+    COMMIT;
+    -- ID desde 1, respetando el tipo de cada identidad (ALWAYS o BY DEFAULT [ON NULL])
+    FOR t IN (SELECT i.table_name, i.generation_type, c.default_on_null
+                FROM all_tab_identity_cols i
+                JOIN all_tab_columns c ON c.owner = i.owner AND c.table_name = i.table_name AND c.column_name = i.column_name
+               WHERE i.owner = v_esquema AND i.column_name IN ('ID', 'ID_AUDITORIA', 'ID_LOG')) LOOP
+        EXECUTE IMMEDIATE 'ALTER TABLE ' || t.table_name || ' MODIFY ' ||
+            CASE t.table_name WHEN 'VENTA_AUDITORIA' THEN 'ID_AUDITORIA' WHEN 'LOG_ERRORES' THEN 'ID_LOG' ELSE 'ID' END ||
+            ' GENERATED ' || CASE WHEN t.generation_type = 'ALWAYS' THEN 'ALWAYS'
+                                  WHEN t.default_on_null = 'YES' THEN 'BY DEFAULT ON NULL' ELSE 'BY DEFAULT' END ||
+            ' AS IDENTITY (START WITH 1)';
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('Datos de negocio borrados y contadores de ID en 1.');
 END;
 /
-DELETE FROM NOTAS_CREDITO;
-DELETE FROM COMPROBANTES;
-DELETE FROM MANTENIMIENTOS;
-DELETE FROM DETALLE_VENTA;
-DELETE FROM VENTAS;
-DELETE FROM ITEMS_PROFORMA;
-DELETE FROM PROFORMAS;
-DELETE FROM DETALLE_COMPRA;
-DELETE FROM COMPRAS;
-DELETE FROM PRODUCTOS;
-DELETE FROM CATEGORIAS;
-DELETE FROM CLIENTES;
-DELETE FROM PROVEEDORES;
--- Contadores de comprobantes (F001, B001, FC01...): la próxima factura vuelve a ser la 00000001.
--- La tabla la crea el backend; si aún no existe, se ignora.
-BEGIN
-    EXECUTE IMMEDIATE 'DELETE FROM SERIES_COMPROBANTE';
-EXCEPTION
-    WHEN OTHERS THEN NULL;
-END;
-/
-COMMIT;
 
--- ── 2. Reinicio de los ID (columnas IDENTITY) ───────────────
-ALTER TABLE NOTAS_CREDITO  MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE COMPROBANTES   MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE MANTENIMIENTOS MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE DETALLE_VENTA  MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE VENTAS         MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE ITEMS_PROFORMA MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE PROFORMAS      MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE DETALLE_COMPRA MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE COMPRAS        MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE PRODUCTOS      MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE CATEGORIAS     MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE CLIENTES       MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-ALTER TABLE PROVEEDORES    MODIFY ID GENERATED ALWAYS AS IDENTITY (START WITH 1);
-
--- ── 3. Categorías ────────────────────────────────────────────
+-- ── 2. Categorías ────────────────────────────────────────────
 INSERT INTO CATEGORIAS (nombre, descripcion) VALUES ('Aire acondicionado split', 'Equipos split pared inverter para hogares y oficinas');
 INSERT INTO CATEGORIAS (nombre, descripcion) VALUES ('Cassette y piso-techo', 'Equipos comerciales de mayor capacidad para locales, clínicas y oficinas');
 INSERT INTO CATEGORIAS (nombre, descripcion) VALUES ('Refrigeración comercial', 'Unidades condensadoras, evaporadores, cámaras y vitrinas refrigeradas');
@@ -79,7 +75,7 @@ INSERT INTO CATEGORIAS (nombre, descripcion) VALUES ('Tuberías y aislamiento', 
 INSERT INTO CATEGORIAS (nombre, descripcion) VALUES ('Herramientas e instrumentos', 'Equipos de diagnóstico, vacío y carga');
 INSERT INTO CATEGORIAS (nombre, descripcion) VALUES ('Repuestos y componentes', 'Compresores, capacitores, motores y tarjetas electrónicas');
 
--- ── 4. Productos ─────────────────────────────────────────────
+-- ── 3. Productos ─────────────────────────────────────────────
 -- Equipos (sector distinto de MATERIAL_SERVICIO): no controlan stock → stock NULL.
 INSERT INTO PRODUCTOS (nombre, descripcion, sector, costo_base, margen_porcentaje, moneda, stock_actual, stock_minimo, visible_en_catalogo, categoria_id)
   VALUES ('Aire acondicionado split inverter 9 000 BTU LG', 'Split pared inverter, refrigerante R32, solo frío', 'CLIMATIZACION', 1250, 30, 'SOLES', NULL, NULL, 1, (SELECT id FROM CATEGORIAS WHERE nombre = 'Aire acondicionado split'));
@@ -144,7 +140,7 @@ INSERT INTO PRODUCTOS (nombre, descripcion, sector, costo_base, margen_porcentaj
 INSERT INTO PRODUCTOS (nombre, descripcion, sector, costo_base, margen_porcentaje, moneda, stock_actual, stock_minimo, visible_en_catalogo, categoria_id)
   VALUES ('Motor ventilador para condensadora 1/6 HP', 'Motor de 220 V con capacitor incluido', 'MATERIAL_SERVICIO', 180, 35, 'SOLES', 8, 3, 1, (SELECT id FROM CATEGORIAS WHERE nombre = 'Repuestos y componentes'));
 
--- ── 5. Proveedores (reales, verificados en SUNAT: ACTIVO / HABIDO) ──
+-- ── 4. Proveedores (reales, verificados en SUNAT: ACTIVO / HABIDO) ──
 INSERT INTO PROVEEDORES (tipo, nombre_o_razon_social, ruc, direccion) VALUES ('EMPRESA', 'DAIKIN SAEG PERU S.A.C.', '20556601152', 'AV. EL DERBY NRO 250 INT. 1501, SANTIAGO DE SURCO, LIMA');
 INSERT INTO PROVEEDORES (tipo, nombre_o_razon_social, ruc, direccion) VALUES ('EMPRESA', 'LG ELECTRONICS PERU S.A.', '20375755344', 'AV. REPUBLICA DE COLOMBIA NRO 791 URB. CHACARILLA DE SANTA CRUZ, SAN ISIDRO, LIMA');
 INSERT INTO PROVEEDORES (tipo, nombre_o_razon_social, ruc, direccion) VALUES ('EMPRESA', 'SOLER & PALAU PERU S.A.', '20566343631', 'AV. EL SANTUARIO NRO 1061 URB. ZARATE, SAN JUAN DE LURIGANCHO, LIMA');
@@ -153,7 +149,7 @@ INSERT INTO PROVEEDORES (tipo, nombre_o_razon_social, ruc, direccion) VALUES ('E
 INSERT INTO PROVEEDORES (tipo, nombre_o_razon_social, ruc, direccion) VALUES ('EMPRESA', 'HOMECENTERS PERUANOS S.A.', '20536557858', 'AV. AVIACION NRO 2405, SAN BORJA, LIMA');
 INSERT INTO PROVEEDORES (tipo, nombre_o_razon_social, ruc, direccion) VALUES ('EMPRESA', 'REFRIGERACIONES M & M EMPRESA INDIVIDUAL DE RESPONSABILIDAD LIMITADA', '20607902063', 'APV. SAN FRANCISCO DE CAY MZA. G1 LOTE 17, SAN MARTIN DE PORRES, LIMA');
 
--- ── 6. Clientes (empresas reales verificadas en SUNAT; relación comercial ficticia) ──
+-- ── 5. Clientes (empresas reales verificadas en SUNAT; relación comercial ficticia) ──
 INSERT INTO CLIENTES (tipo, nombreorazon_social, ruc, direccion) VALUES ('EMPRESA', 'SUPERMERCADOS PERUANOS SOCIEDAD ANONIMA ''O '' S.P.S.A.', '20100070970', 'CAL. MORELLI NRO 181 INT. P-2, SAN BORJA, LIMA');
 INSERT INTO CLIENTES (tipo, nombreorazon_social, ruc, direccion) VALUES ('EMPRESA', 'CENCOSUD RETAIL PERU S.A.', '20109072177', 'CAL. AUGUSTO ANGULO NRO 130 URB. SAN ANTONIO, MIRAFLORES, LIMA');
 INSERT INTO CLIENTES (tipo, nombreorazon_social, ruc, direccion) VALUES ('EMPRESA', 'HIPERMERCADOS TOTTUS S.A', '20508565934', 'AV. ANGAMOS ESTE NRO 1805 INT. P10, SURQUILLO, LIMA');

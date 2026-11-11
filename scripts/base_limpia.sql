@@ -19,7 +19,7 @@
 --
 -- Orden de borrado según las llaves foráneas (de hijos a padres):
 --   (se sueltan antes las referencias circulares orden ↔ equipo ↔ mantenimiento)
---   devoluciones → notas_credito → intentos_correo → envios_correo → comprobantes → detalle_cobro → cobros → mantenimientos
+--   devoluciones → envios_sunat → notas_credito → intentos_correo → envios_correo → comprobantes → detalle_cobro → cobros → mantenimientos
 --   → materiales_orden → ordenes_trabajo → equipos_instalados → contratos_mantenimiento
 --   → detalle_venta → ventas → items_proforma → proformas → pagos_proveedor → detalle_compra → compras
 --   → ajustes_inventario
@@ -123,6 +123,13 @@ begin
     delete from devoluciones where venta_id in (select column_value from table(v_ven))
                                 or cliente_id in (select column_value from table(v_cli));
     contar('devoluciones', sql%rowcount);
+    -- Historial de envíos a SUNAT (07/11/2026): referencia comprobantes y notas sin borrado en cascada.
+    -- Sin esto, borrar un comprobante ya enviado fallaba con ORA-02292.
+    delete from envios_sunat
+     where comprobante_id in (select id from comprobantes where venta_id in (select column_value from table(v_ven)))
+        or nota_credito_id in (select n.id from notas_credito n join comprobantes c on c.id = n.comprobante_id
+                                where c.venta_id in (select column_value from table(v_ven)));
+    contar('envios_sunat', sql%rowcount);
     delete from notas_credito where comprobante_id in
         (select id from comprobantes where venta_id in (select column_value from table(v_ven)));
     contar('notas_credito', sql%rowcount);
@@ -225,13 +232,22 @@ begin
         if modo = 'ENTREGA' then
             -- Las tablas de movimientos quedaron vacías: su próximo id vuelve a 1.
             -- (DDL: va después del COMMIT porque Oracle confirma solo al ejecutarlo.)
-            for t in (select column_value nombre from table(sys.odcivarchar2list(
-                        'DEVOLUCIONES', 'NOTAS_CREDITO', 'INTENTOS_CORREO', 'ENVIOS_CORREO', 'COMPROBANTES', 'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS',
+            -- Se respeta el tipo de cada identidad (ALWAYS o BY DEFAULT [ON NULL]): antes se forzaba ALWAYS.
+            for t in (select i.table_name nombre, i.generation_type tipo, c.default_on_null en_nulo
+                        from all_tab_identity_cols i
+                        join all_tab_columns c on c.owner = i.owner and c.table_name = i.table_name
+                                              and c.column_name = i.column_name
+                       where i.owner = sys_context('USERENV', 'CURRENT_SCHEMA')   -- se ejecuta como SYSDBA
+                         and i.column_name = 'ID' and i.table_name in (select column_value from table(sys.odcivarchar2list(
+                        'DEVOLUCIONES', 'ENVIOS_SUNAT', 'NOTAS_CREDITO', 'INTENTOS_CORREO', 'ENVIOS_CORREO', 'COMPROBANTES',
+                        'DETALLE_COBRO', 'COBROS', 'MANTENIMIENTOS',
                         'DETALLE_VENTA', 'VENTAS', 'ITEMS_PROFORMA', 'PROFORMAS',
                         'DETALLE_COMPRA', 'COMPRAS', 'PAGOS_PROVEEDOR', 'AJUSTES_INVENTARIO', 'MATERIALES_ORDEN', 'ORDENES_TRABAJO',
-                        'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO', 'HISTORIAL_CAMBIOS'))) loop
-                execute immediate 'alter table ' || t.nombre
-                    || ' modify id generated always as identity (start with 1)';
+                        'EQUIPOS_INSTALADOS', 'CONTRATOS_MANTENIMIENTO', 'HISTORIAL_CAMBIOS')))) loop
+                execute immediate 'alter table ' || t.nombre || ' modify id generated '
+                    || case when t.tipo = 'ALWAYS' then 'always'
+                            when t.en_nulo = 'YES' then 'by default on null' else 'by default' end
+                    || ' as identity (start with 1)';
             end loop;
             dbms_output.put_line('Contadores de id de movimientos reiniciados en 1.');
         end if;
