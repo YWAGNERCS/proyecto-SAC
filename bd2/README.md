@@ -44,7 +44,7 @@ Después se vuelven a correr los scripts de las sesiones, en orden.
 | Sesión | Tema | Trabajo | Estado |
 |---|---|---|---|
 | S1 | PL/SQL aplicado al negocio | [S01](S01/README.md): `SP_REGISTRAR_VENTA`, `FN_TOTAL_VENTA` (237/237 iguales a Java), CHECK de stock, cantidad y descuento, usuario `JD_APP` | ✅ 10/11/2026 |
-| S2 | Triggers DML y auditoría | | ⏳ |
+| S2 | Triggers DML y auditoría | [S02](S02/README.md): `VENTA_AUDITORIA` sin FK, `TRG_VENTA_ESTADO_BU` (una anulada es definitiva; motivo y quién obligatorios) y `TRG_VENTA_AUDITORIA`; hallazgo: Oracle en UTC | ✅ 10/11/2026 |
 | S3 | Excepciones y robustez | | ⏳ |
 | S4 | Optimización de consultas | | ⏳ |
 | S5 | Índices | | ⏳ |
@@ -66,3 +66,5 @@ Lo que se lleva a la base real cuando esté probado:
 | Origen | Qué | Estado |
 |---|---|---|
 | S1 | CHECK de `DETALLE_VENTA` y `PRODUCTOS`; `FN_SUBTOTAL_LINEA`, `FN_TOTAL_VENTA`, `SP_REGISTRAR_VENTA`; usuario `JD_APP` | Probado en práctica; falta la migración para desarrollo y producción |
+| S2 | `VENTA_AUDITORIA`, `TRG_VENTA_ESTADO_BU`, `TRG_VENTA_AUDITORIA` | Probado en práctica; falta verificar `VentaService.anular()` con el backend conectado a esta base |
+| S2 | `TZ: America/Lima` en `docker-compose.yml` (contenedor `SGE-JD` de desarrollo); producción ya lo tiene | Pendiente: requiere recrear el contenedor de desarrollo |

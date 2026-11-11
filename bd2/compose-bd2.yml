@@ -17,6 +17,8 @@ services:
       ORACLE_PASSWORD: ${BD2_ORACLE_PASSWORD:?Falta BD2_ORACLE_PASSWORD en bd2/.env.bd2}
       APP_USER: "jdrefrigeracion"
       APP_USER_PASSWORD: ${BD2_OWNER_PASSWORD:?Falta BD2_OWNER_PASSWORD en bd2/.env.bd2}
+      # Hora de Lima, como en compose-prod.yml (hallazgo de BD2 S2: sin esto SYSDATE va en UTC, 5 h adelante)
+      TZ: America/Lima
     volumes:
       - oracle-bd2-datos:/opt/oracle/oradata
 volumes:

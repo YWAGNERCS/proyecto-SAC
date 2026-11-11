@@ -25,7 +25,7 @@ Contenido:
 | Proceso principal | **Venta con comprobante electrónico:** proforma → venta (contado o crédito) → factura o boleta aceptada por SUNAT → cobro → mantenimiento preventivo del equipo instalado |
 | Entidad transaccional principal | `Venta`–`DetalleVenta` (tablas `VENTAS` y `DETALLE_VENTA`); de ella dependen `Comprobante`, `Cobro`–`DetalleCobro` y `Mantenimiento` |
 | Usuarios principales | Lisandro, gerente y dueño (rol ADMIN), y Lucy, asistente administrativa (rol ASISTENTE, con permisos que Lisandro le delega) |
-| Sistemas externos reales | SUNAT (envío del comprobante y CDR; tipo de cambio), apis.net.pe (RUC y DNI), servidor SMTP (comprobantes y proformas por correo) y Keycloak (identidad) |
+| Sistemas externos reales | SUNAT (envío del comprobante y CDR), apis.net.pe (RUC, DNI y el tipo de cambio que publica SUNAT), servidor SMTP (comprobantes y proformas por correo) y Keycloak (identidad) |
 
 Diferencia con BomERP: en BomERP el proceso es "venta con control de stock". En JD el stock es solo una
 parte, porque la mayoría de lo que se vende no tiene stock (ver el hallazgo, sección 8). Lo que no puede
@@ -80,8 +80,8 @@ flowchart TB
     KC[Keycloak · identidad y roles]
     API[Backend Spring Boot · monolito modular de 13 módulos]
     DB[(Oracle · esquema JDREFRIGERACION)]
-    SUNAT[SUNAT · comprobantes y tipo de cambio]
-    RUC[apis.net.pe · RUC y DNI]
+    SUNAT[SUNAT · comprobantes electrónicos]
+    RUC[apis.net.pe · RUC, DNI y tipo de cambio]
     SMTP[Servidor SMTP · correo]
 
     L --> SPA
