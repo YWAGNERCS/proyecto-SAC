@@ -18,7 +18,8 @@ su frontera con `ventas`, que es mi módulo, es la que hay que resolver.
 | Cobro | `Cobro` (entidad, **raíz del agregado**) | `id: Long` (IDENTITY). `clienteId: Long`, **por identificador** (otro módulo), más una copia de `clienteNombre` para el recibo. `importe: Dinero`, embebido (`monto_total` + `moneda`). `metodoPago: MetodoPago` y `estado: Estado` como enumeraciones. `referencia` hasta 100 caracteres, normalizada con `UPPER(TRIM)` para la búsqueda (índice de BD2 S5). Lista `abonos` con cascada y eliminación de huérfanos (composición). Navegable solo de Cobro a DetalleCobro |
 | DetalleCobro | `Abono` (entidad interna, sin repositorio) | `ventaId: Long`, **por identificador** (otro módulo), no `Venta`. Copia `documentoVenta` (por ejemplo F001-00000123) y `fechaVenta`, para mostrar el recibo sin consultar a `ventas`. `monto: BigDecimal`: la moneda es la del cobro, no se repite |
 | Devolucion | `Devolucion` (entidad, raíz de **otro** agregado) | `ventaId` y `clienteId` por identificador; `importe: Dinero`; `estado` PENDIENTE o DEVUELTA. Nace por evento (`VentaAnuladaEvent`), no por el usuario |
-| — (nuevo) | `VentasParaCobranza` (interfaz pública de `ventas`) | Lo único que cobranza sabe de ventas: `saldo`, `bloquearParaCobro`, `marcarPagada` y `volverAPendiente`. Es la interfaz por cliente que propuso [S3](S03_solid_modulo_ventas.md) |
+| — (nuevo) | `VentasParaCobranza` (interfaz pública de `ventas`) | Lo único que cobranza sabe de ventas: `bloquearParaCobro`, `marcarPagada` y `volverAPendiente`. Es la interfaz por cliente que propuso [S3](S03_solid_modulo_ventas.md). El **saldo no** es una operación de ventas: lo calcula cobranza con `VentaParaCobro.total` menos `CobroRepository.totalCobradoDeVenta` *(corregido en S9)* |
+| — (nuevo) | `VentaParaCobro` (record de `ventas`) | Lo que ventas entrega de una venta bloqueada: `id`, `clienteId`, `moneda`, `fechaVenta`, `total`, `estado`, `documento`, `montoDeduccion`. Nunca la entidad *(agregado en S9: la secuencia lo necesitaba y el diagrama no lo tenía)* |
 
 ## 2. Estructura de carpetas del sistema
 
@@ -116,6 +117,17 @@ classDiagram
         +marcarPagada(ventaId)
         +volverAPendiente(ventaId)
     }
+    class VentaParaCobro {
+        <<record · módulo ventas>>
+        +Long id
+        +Long clienteId
+        +Moneda moneda
+        +LocalDate fechaVenta
+        +BigDecimal total
+        +EstadoVenta estado
+        +String documento
+        +BigDecimal montoDeduccion
+    }
     class ClienteService {
         <<interface · módulo clientes>>
         +obtenerResumen(clienteId) ClienteResumen
@@ -145,6 +157,7 @@ classDiagram
     CobroRepository --> Cobro
     Cobro "1" *-- "1..*" Abono
     CobroMapper ..> CobroResponse
+    VentasParaCobranza ..> VentaParaCobro : devuelve
 ```
 
 La regla de dependencia se lee de arriba hacia abajo:
