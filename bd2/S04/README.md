@@ -150,9 +150,15 @@ se compara entonces es justo lo que difiere entre las versiones: el filtro sobre
 
 **Conclusión honesta: hoy la reescritura no acelera nada.** Sin índice, las dos versiones leen `VENTAS` y
 `DETALLE_VENTA` completas (872 bloques) y tardan lo mismo. Lo que sí cambió es que **el optimizador ahora
-sabe cuántas filas vienen**, con un error del 1 % en lugar de casi el triple. Además, la condición quedó
-libre para usar un índice por `FECHA_VENTA`. Con `(:desde IS NULL OR …)` ese índice no podría usarse para un
-rango, porque el mismo plan tiene que servir para "sin fecha". Eso se mide en S5.
+sabe cuántas filas vienen**, con un error del 1 % en lugar de casi el triple.
+
+> **Corrección del 10/11/2026 (medido en [S5](../S05/README.md)).** Aquí decía que, con
+> `(:desde IS NULL OR …)`, un índice por `FECHA_VENTA` "no podría usarse para un rango". **Era falso para
+> Oracle 23.** Con el índice creado, el optimizador reescribe esa consulta en dos ramas (*OR-expansion*, vista
+> `VW_ORE_…`): una para "sin fecha", con la tabla completa, y otra para "con fecha", con
+> `INDEX RANGE SCAN` sobre `IX_VENTAS_FECHA_VENTA`. Lo que sí sigue siendo cierto es el problema de
+> estimación: la rama con fecha estimó 8 979 filas para todo el UNION, y la reescrita 2 688 (real 2 664).
+> La reescritura se justifica por la estimación, no porque el índice sea imposible.
 
 ## 5. Relación con ADS y LP2
 

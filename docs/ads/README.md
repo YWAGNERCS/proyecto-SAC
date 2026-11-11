@@ -9,8 +9,8 @@ sesión sobre el sistema real. Guías del curso: <https://262ciclo4.github.io/bo
 | S2 | Modelo C4 y vistas | [Modelo C4](S02_modelo_c4.md): C1 (3 personas, 3 sistemas externos), C2 (5 contenedores reales), C3 del módulo `ventas` con fachadas y eventos, C4 de `VentaService`; hallazgo: Keycloak en el nivel equivocado | ✅ 10/11/2026 |
 | S3 | Diseño estructural y SOLID | [SOLID del módulo `ventas`](S03_solid_modulo_ventas.md): S por clase, O/L/I con `ComprobantesDeVenta` frente a `VentaService`, D verificado (9 dependencias por constructor, 2 interfaces), cohesión `venta`–`tributos`/`reporte`, fuga de la entidad; hallazgo: `VentaService` con 631 líneas, 25 métodos, usados por 6 módulos que necesitan de 1 a 5 | ✅ 10/11/2026 |
 | S4 | Arquitecturas modernas | [Estilo con evidencia](S04_arquitecturas_modernas.md): 7 estilos con ACID/ADP/CAP, `ModularityTests` 2/2, dos instancias reales (8081/8082), stateless con código citado, DDD por módulo; hallazgo: solo la capa web escala, las tareas programadas duplicaron el 50 % del trabajo (ADR-S4-01: una instancia) | ✅ 10/11/2026 |
-| S5 | Evaluación de la Unidad I | Sustentación con lo acumulado de S1 a S4 | ⏳ |
-| S6 | Descubrimiento y modelado del dominio | | ⏳ |
+| S5 | Evaluación de la Unidad I | Sustentación con lo acumulado de S1 a S4 (sin trabajo autónomo) | — |
+| S6 | Descubrimiento y modelado del dominio | [Modelo de dominio](S06_modelo_dominio.md): panorama de 13 módulos, subdominios (Core: ventas, servicios y postventa), entidades con reglas, 6 casos de uso, objetos de valor, prueba de tres partes con datos, glosario y agregado `Venta`; hallazgos: el módulo de servicios técnicos apareció tarde, y en JD el cobro no se compone en la venta | ✅ 10/11/2026 |
 | S7 | Diseño de clases del dominio | | ⏳ |
 | S8 | Diseño de clases avanzado y transformación objeto-relacional | | ⏳ |
 | S9 | Diagramas dinámicos UML | | ⏳ |
