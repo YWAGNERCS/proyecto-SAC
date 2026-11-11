@@ -38,7 +38,7 @@ export interface ProformaResponse {
 /** Resultado de "Enviar": SIMULADO = WhatsApp aún no se envía de verdad (solo queda registrado). */
 export interface ResultadoEnvio {
   whatsapp: 'SIMULADO' | 'SIN_TELEFONO' | 'NO_SOLICITADO';
-  correo: 'ENVIADO' | 'FALLO' | 'SIN_CORREO' | 'NO_SOLICITADO';
+  correo: 'ENVIADO' | 'ENVIADO_SIN_PDF' | 'FALLO' | 'SIN_CORREO' | 'NO_SOLICITADO';
   mensaje: string;
 }
 

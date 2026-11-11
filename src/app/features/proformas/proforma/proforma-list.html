@@ -66,6 +66,7 @@
             </td>
             <td class="text-center">
               <div class="d-flex justify-content-center gap-1" style="flex-wrap: wrap; gap: 4px;">
+                <button class="btn btn-sm btn-outline-secondary" (click)="verPdf(c.id)" title="Ver el PDF de la proforma (el mismo que se adjunta al correo)">PDF</button>
                 @if (c.estado === 'PENDIENTE') {
                   <button class="btn btn-sm btn-secondary" (click)="enviar(c.id)" [disabled]="accionEnCurso() === c.id" title="Enviar por WhatsApp y correo">
                     <app-icono nombre="enviar" [tamano]="14" /> Enviar

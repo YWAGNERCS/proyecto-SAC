@@ -13,6 +13,7 @@ import { RutinaMantenimiento, RutinaMantenimientoComponent, resumenRutina } from
 import { PaginadorComponent } from '../../../core/layout/paginador';
 import { Orden, OrdenComponent, ordenParaServidor } from '../../../core/layout/orden';
 import { AuthService } from '../../../core/auth/auth.service';
+import { DescargaService } from '../../../core/services/descarga-service';
 import { PrecioDeLinea, textoPrecioEditado } from '../../ventas/venta/precio-editado';
 import { errorFechaVenta, fechaLarga, fechaMinimaVenta, fechaParaEnviar, hoyIso } from '../../ventas/venta/fecha-venta';
 
@@ -29,6 +30,7 @@ export class ProformaListComponent implements OnInit {
   private ventaService = inject(VentaService);
   private router = inject(Router);
   private auth = inject(AuthService);
+  private descarga = inject(DescargaService);
 
   /** Fecha real de la venta al convertir (auditoría M3): administrador o permiso "Ventas con fecha pasada". */
   readonly puedeFechaPasada = () => this.auth.puede('VENTA_FECHA_PASADA');
@@ -119,12 +121,21 @@ export class ProformaListComponent implements OnInit {
       next: (r) => {
         this.accionEnCurso.set(null);
         const salioAlgo = r.correo === 'ENVIADO' || r.whatsapp === 'SIMULADO';
-        const fallo = r.correo === 'FALLO' || r.correo === 'SIN_CORREO' || r.whatsapp === 'SIN_TELEFONO';
+        const fallo = r.correo === 'FALLO' || r.correo === 'SIN_CORREO' || r.correo === 'ENVIADO_SIN_PDF'
+          || r.whatsapp === 'SIN_TELEFONO';
         if (salioAlgo && !fallo) this.mensaje.set(r.mensaje);
         else this.error.set(r.mensaje);
         this.cargarProformas();
       },
       error: (err: HttpErrorResponse) => this.fallo(err, 'No se pudo enviar la proforma.')
+    });
+  }
+
+  /** Abre el PDF de la proforma en otra pestaña para revisarlo antes de enviarlo. */
+  verPdf(id: number) {
+    this.limpiarAvisos();
+    this.descarga.abrir(this.proformaService.rutaPdf(id)).subscribe({
+      error: (err: HttpErrorResponse) => this.fallo(err, 'No se pudo abrir el PDF de la proforma.')
     });
   }
 

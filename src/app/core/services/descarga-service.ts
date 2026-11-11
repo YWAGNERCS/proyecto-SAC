@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, map, throwError } from 'rxjs';
 import { ApiService } from './api-service';
 
 /**
@@ -26,6 +26,26 @@ export class DescargaService {
         enlace.download = nombreArchivo;
         enlace.click();
         URL.revokeObjectURL(url);
+      }),
+    );
+  }
+
+  /**
+   * Abre un PDF del backend en una pestaña nueva (vista previa), con las credenciales del interceptor.
+   * La pestaña se abre antes de pedir el archivo para que el navegador no la bloquee como ventana emergente.
+   */
+  abrir(ruta: string): Observable<void> {
+    const ventana = window.open('', '_blank');
+    return this.http.get(this.api.buildUrl(ruta), { responseType: 'blob' }).pipe(
+      map((archivo) => {
+        const url = URL.createObjectURL(archivo);
+        if (ventana) ventana.location.href = url;
+        else window.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }),
+      catchError((err) => {
+        ventana?.close();
+        return throwError(() => err);
       }),
     );
   }

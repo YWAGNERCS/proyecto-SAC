@@ -35,6 +35,11 @@ export class ProformaService {
     return this.http.post<ProformaResponse>(this.api.buildUrl(`${this.endpoint}/${id}/rechazar`), {});
   }
 
+  /** Ruta del PDF de la proforma (vista previa; es el mismo que se adjunta al correo). */
+  rutaPdf(id: number): string {
+    return `${this.endpoint}/${id}/pdf`;
+  }
+
   /** Devuelve qué canal salió y cuál no, con un mensaje para mostrar. */
   enviar(id: number, whatsapp: boolean = true, correo: boolean = true) {
     return this.http.post<ResultadoEnvio>(
