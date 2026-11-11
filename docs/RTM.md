@@ -1,6 +1,6 @@
 # Matriz de trazabilidad de requisitos (RTM) · SGE-JD
 
-**JD Refrigeración S.A.C. · Equipo CherryTree · actualizada al 07/11/2026**
+**JD Refrigeración S.A.C. · Equipo CherryTree · actualizada al 10/11/2026** (ADS S14: RF-17 y RF-20 trazados; RF-11 y RF-17 corregidos)
 
 Cada requisito se sigue de punta a punta: **requerimiento → arquitectura → base de datos → backend → pantalla → prueba**.
 Cuando un eslabón todavía no existe, se registra como **pendiente** en vez de inventarlo.
@@ -36,7 +36,7 @@ externo) · ⏳ pendiente.
 | RF-14 | Rutina de mantenimiento al vender equipos | `ventas` → `postventa` por evento (`VentaRegistradaEvent` + `RutinaMantenimiento`, ADR-002) | `MANTENIMIENTOS` | `rutinaMantenimiento` en `POST /ventas/directa` y `/ventas/desde-proforma/{id}` | `/ventas/nueva` y `/proformas` (botón "Implementar rutinas de mantenimiento") | `RutinaMantenimientoTest`, `RutinaMantenimientoIntegracionTest` (Oracle), `FlujoCompletoEndToEndTest` | ✅ |
 | RF-15 | Aviso de mantenimientos próximos | `postventa` · `@Scheduled` 8:00 | `MANTENIMIENTOS.ALERTA_ENVIADA` | `MantenimientoScheduledService`, `POST /mantenimientos/simular-alerta` | Campana, `/postventa` | Manual (`simular-alerta`); **prueba automática pendiente** | ⚠️ falta el correo de la empresa |
 | RF-16 | Reportes por moneda | `reportes`, `ventas` | `VENTAS`, `DETALLE_VENTA`, `COBROS` | `GET /ventas/pagina` (resumen), `/reportes/ventas-resumen`, `/reportes/cobranza` | `/ventas`, `/cobranza`, `/` (tablero) | `FlujoCompletoEndToEndTest` (total del servidor = suma de todas las páginas) | ✅ |
-| RF-17 | Anular venta | `ventas` → `catalogo`, `postventa`, `facturacion`, `cobranza` por `VentaAnuladaEvent` | `VENTAS.ESTADO`, `NOTAS_CREDITO`, `DEVOLUCIONES` | `PATCH /ventas/{id}/anular` (409 si ya estaba anulada) | `/ventas` (Anular) | `FlujoCompletoEndToEndTest` (stock, visitas canceladas, devolución, 409) | ✅ |
+| RF-17 | Anular venta | `ventas` → `catalogo` por **fachada** (`ProductoService.sumarStock`, misma transacción); → `facturacion`, `postventa`, `cobranza` por `VentaAnuladaEvent` *(corregido 10/11: el stock nunca viajó por el evento)* | `VENTAS.ESTADO`, `NOTAS_CREDITO`, `DEVOLUCIONES` | `PATCH /ventas/{id}/anular` (409 si ya estaba anulada) | `/ventas` (Anular) | `FlujoCompletoEndToEndTest` (stock, visitas canceladas, devolución, 409) | ✅ |
 | RF-18 | Venta en soles o dólares con tipo de cambio | `config.tipocambio` | `VENTAS.MONEDA`, `VENTAS.TIPO_CAMBIO` | `GET /tipo-cambio/hoy` (Cache-Control 10 min) | `/ventas/nueva`, `/proformas/nueva` | `VentaCostoTest`, `DeduccionTributariaServiceTest` (dólares), `OrdenTest` (total en soles) | ✅ |
 | RF-19 | Descuento por línea con tope por rol | `seguridad.descuento` · `TopeDescuentoService` | `DETALLE_VENTA.DESCUENTO_PORCENTAJE`, `ITEMS_PROFORMA` | `GET /descuentos/tope`; `GET`/`PUT /descuentos/topes` (cambiar: solo ADMIN); validado al registrar | `/ventas/nueva`, `/proformas/nueva`, `/configuracion` | `VentaCostoTest` (subtotal con descuento), `TopeDescuentoServiceTest` (tope por rol y topes del administrador) | ✅ |
 | RF-20 | Cobranza con abonos | `cobranza` | `COBROS`, `DETALLE_COBRO` | `POST /cobranza/cobros`, `GET /cobranza/por-cobrar` | `/cobranza` | `CobranzaServiceTest` (9); `FlujoCompletoEndToEndTest` (abono parcial y total) | ✅ |
@@ -70,7 +70,7 @@ externo) · ⏳ pendiente.
 | RNF-08 | Respaldo automático diario | Data Pump con tarea de Windows | Volcado `.dmp` | `scripts/respaldar_sgejd.ps1`, `programar_respaldo.ps1` | — | Scripts de respaldo y restauración (`respaldar_sgejd.ps1`, `restaurar_sgejd.ps1`); restauración en otra PC: **pendiente de probar** | ⚠️ falta la carpeta fuera de la PC |
 | RNF-09 | Diagnóstico en producción | Perfiles, Actuator y logback (S13) | — | `/actuator/health`, `/actuator/info`; logs con nivel por perfil | — | Evidencias S13 (logs y health en producción local) | ✅ |
 
-## 3. Dos requisitos trazados de punta a punta
+## 3. Requisitos trazados de punta a punta
 
 ### RF-11 · Descuento de stock atómico al vender
 
@@ -79,7 +79,7 @@ externo) · ⏳ pendiente.
 | Requerimiento | Al vender, el stock de los materiales baja en la misma operación. Si no alcanza, no se guarda nada (409). Los equipos no controlan stock. |
 | Arquitectura | `ventas` no toca el repositorio de `catalogo`: usa la fachada `ProductoService.descontarStock` (ADR-002, verificado por `ModularityTests`). |
 | Base de datos | `PRODUCTOS.STOCK_ACTUAL`. Las filas se bloquean en orden de id (`SELECT ... FOR UPDATE`) para que dos ventas simultáneas no usen el mismo stock. |
-| Backend | `VentaService.registrarVentaDirecta` y `convertirProformaEnVenta` (`@Transactional`); al anular, `VentaAnuladaEvent` lo devuelve. |
+| Backend | `VentaService.registrarVentaDirecta` y `convertirProformaEnVenta` (`@Transactional`); al anular, `VentaService.anular` lo devuelve con `ProductoService.sumarStock` en la misma transacción, antes de publicar `VentaAnuladaEvent` *(corregido 10/11: antes decía que lo devolvía el evento)*. |
 | Prueba | `StockProductoTest` (suma de líneas repetidas, todo o nada, equipos sin stock). `FlujoCompletoEndToEndTest` contra Oracle: 10 → 7 al vender y vuelve a 10 al anular. |
 
 ### RF-14 · Rutina de mantenimiento al vender equipos
@@ -92,9 +92,31 @@ externo) · ⏳ pendiente.
 | Backend | `VentaService.validarRutina` (400/409 si no corresponde), `VentasPostventaListener`, `MantenimientoService.programarParaVenta`. |
 | Prueba | `RutinaMantenimientoTest` (5 reglas), `RutinaMantenimientoIntegracionTest` (Oracle: con rutina 6 visitas, sin rutina ninguna), `FlujoCompletoEndToEndTest` (4 visitas trimestrales, canceladas al anular). |
 
+### RF-17 · Anular venta (ADS S14)
+
+| Eslabón | Evidencia |
+|---|---|
+| Requerimiento | Una venta se anula con motivo (5 a 300 caracteres) y queda anulada para siempre: devuelve el stock, emite la nota de crédito si el comprobante fue aceptado, deja pendiente la devolución de lo cobrado y cancela las visitas. Una segunda anulación responde 409. |
+| Arquitectura | Stock: fachada `ProductoService.sumarStock`, **síncrona y en la misma transacción** (todo o nada). Lo demás: `VentaAnuladaEvent` con **tres** oyentes, `VentasFacturacionListener`, `VentasPostventaListener` y `DevolucionService` (ADS S13, H1). Datos del evento: **ADR-008**. |
+| Base de datos | `VENTAS.ESTADO`, `MOTIVO_ANULACION`, `ANULADO_POR`, `FECHA_ANULACION`; `NOTAS_CREDITO`, `DEVOLUCIONES`, `MANTENIMIENTOS`. Fila bloqueada con `FOR UPDATE WAIT 10`. **Pendiente:** `TRG_VENTA_ESTADO_BU` y `VENTA_AUDITORIA` (BD2 S2) solo existen en la base de práctica. |
+| Backend | `VentaService.anular` (líneas 497–528): `bloquear()`, 409 si ya está anulada, `sumarStock`, publica el evento. Bloqueo de más de 10 s: `GlobalExceptionHandler` (líneas 90–96), 409. |
+| Prueba | `FlujoCompletoEndToEndTest` contra Oracle (stock 10 → 7 → 10, visitas canceladas, devolución, 409 en la segunda). BD2 S14: bloqueo real cobranza contra anulación; con `WAIT 10` la anulación se rinde a los 10,03 s con ORA-00054. **Pendiente:** con el trigger de BD2 S2, dos pruebas fallan porque su `UPDATE` no trae motivo ni usuario (BD2 S8). |
+
+### RF-20 · Cobranza con abonos (ADS S14)
+
+| Eslabón | Evidencia |
+|---|---|
+| Requerimiento | Un cobro reparte un pago entre una o varias ventas a crédito del mismo cliente y moneda; ningún abono supera el saldo; la venta que llega a saldo 0 pasa a PAGADO en la misma transacción; el mismo voucher no entra dos veces. |
+| Arquitectura | `cobranza` → `ventas` por fachada (`VentaService`: `obtenerParaCobro`, `obtenerPorIdPublico`, `marcarComoPagada`). Diseño de S8: interfaz `VentasParaCobranza` y record `VentaParaCobro`. Quién crea el abono: **ADR-007**. |
+| Base de datos | `COBROS`, `DETALLE_COBRO`, `CK_COBRO_ANULADO`. Práctica (BD2 S5): `IX_COBROS_REFERENCIA_NORM`. **Pendiente:** índice único `UX_COBRO_VOUCHER_VIGENTE` contra la carrera del voucher (ADS S9). |
+| Backend | `CobranzaService.registrar` (líneas 145–185): bloquea las ventas en orden, valida cada abono contra el saldo (`Venta.calcularTotal()` menos lo cobrado), `cobro.agregarDetalle(new DetalleCobro(venta, monto))`, `setMontoTotal`, `marcarComoPagada`. |
+| Prueba | `CobranzaServiceTest` (9 pruebas); `FlujoCompletoEndToEndTest` (abono parcial y total). **Pendiente:** la prueba de `Cobro.abonar()` cuando se implemente el ADR-007, y la del voucher simultáneo. |
+
 ## 4. Pendientes registrados
 
 - **Pruebas automáticas que faltan:** RF-04, RF-06, RF-13, RF-15, RF-26, RF-27, RF-35 y la parte responsiva y de
   temas (RNF-06, RNF-07). Hoy se verifican a mano.
 - **Dependen de JD:** el usuario SOL y el certificado (RF-10), el correo de la empresa (RF-07, RF-13, RF-15) y la
   carpeta de respaldo fuera de la PC (RNF-08).
+- **Decididos en ADS S14, sin implementar:** ADR-007 (el abono lo crea `Cobro.abonar()`) y ADR-008 (`VentaAnuladaEvent`
+  con los datos que sus oyentes necesitan). Se implementan en la integración con LP2.

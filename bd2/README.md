@@ -58,7 +58,7 @@ Después se vuelven a correr los scripts de las sesiones, en orden. Más simple:
 | S11 | Particionamiento | [S11](S11/README.md): RANGE mensual con INTERVAL para ventas (sin DROP: retención legal) y auditoría (con DROP); pruning 1 de 36 particiones (costo 10) frente a `TRUNC`/`TO_CHAR` (235, todas); Hash/List/Composite medidos; `DROP PARTITION` 290 ms frente a `DELETE` 1 170 ms; hallazgo: el DROP simple deja la PK global UNUSABLE (ORA-01502), se resuelve con `UPDATE GLOBAL INDEXES` (240 ms) | ✅ 10/11/2026 |
 | S12 | Evaluación de la Unidad II | Sustentación con lo acumulado de S7 a S11 (sin trabajo autónomo) | — |
 | S13 | Backup y recovery con RMAN | [S13](S13/README.md): imagen completa (la slim no trae RMAN); ARCHIVELOG con la FRA dentro del volumen; nivel 0 de ~2,4 GB en 28 s y nivel 1 de ~720 KB en 12 s; incidente real (`UPDATE` sin `WHERE` en `PRODUCTOS`) y PITR al segundo anterior: el cambio legítimo sobrevivió, RTO 33 s; Data Pump de 27 MB; estrategia y reflexión sobre GitLab 2017; hallazgos: la imagen completa trae zonas horarias v43 y la base espera v45 (riesgo de ORA-01804), y el TAG de `PLUS ARCHIVELOG` no llega a los datafiles | ✅ 10/11/2026 |
-| S14 | Monitoreo y diagnóstico | | ⏳ |
+| S14 | Monitoreo y diagnóstico | [S14](S14/README.md): sesiones con `V$SESSION` (un SYS que es proceso de fondo); bloqueo real cobranza contra anulación diagnosticado con `DBA_BLOCKERS`/`DBA_WAITERS`, `V$SQL` y `V$LOCK`, resuelto sin `KILL` (sobrevivió la anulación); con la espera del backend, ORA-00054 a los 10 s; 0 inválidos del proyecto y un sinónimo de Oracle sin destino (recompilar: ORA-00942); hit ratio 96,79 % (39 % frío, 100 % caliente) mientras la espera dominante era `enq: TX` (52,1 s); hallazgos: EM Express desoportado desde 23ai, y el Performance Hub en HTML depende del CDN de Oracle | ✅ 10/11/2026 |
 | S15–S16 | Evaluación de la Unidad III | | ⏳ |
 
 ## Integración con LP2 (al final)
@@ -86,4 +86,5 @@ Lo que se lleva a la base real cuando esté probado:
 | S11 | `VENTA_AUDITORIA` particionada por mes (INTERVAL) y purga con `DROP PARTITION … UPDATE GLOBAL INDEXES` | Probado en práctica sobre una copia |
 | ADS S11 | Circuit Breaker en `SunatDirectoClient`; `VentaAnuladaEvent` con cliente, moneda, fecha y documento | Diseñado |
 | S13 | Imagen completa `gvenzl/oracle-free:23` en `compose-prod.yml` para tener RMAN (fijada por digest, S7), resolviendo antes el archivo de zonas horarias v45 | Propuesto |
+| S14 | `MODULE`/`ACTION` por operación en las conexiones del backend; consulta diaria de objetos inválidos y esperas por bloqueo | Propuesto |
 | S13 | ARCHIVELOG en producción, RMAN nivel 0 semanal y nivel 1 diario, prueba de restauración mensual en la base de práctica | Probado en práctica; falta programarlo |
