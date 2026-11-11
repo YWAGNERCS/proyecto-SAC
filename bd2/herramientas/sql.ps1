@@ -21,6 +21,7 @@ if ($Sysdba) { $u = $null; $pw = '' }
 elseif ($Dba) { $u = 'system'; $pw = $claves['BD2_ORACLE_PASSWORD'] }
 elseif ($Usuario -ieq 'jdrefrigeracion') { $u = 'jdrefrigeracion'; $pw = $claves['BD2_OWNER_PASSWORD'] }
 elseif ($Usuario -ieq 'jd_app') { $u = 'jd_app'; $pw = $claves['BD2_APP_PASSWORD'] }
+elseif ($Usuario -ieq 'jd_reportes') { $u = 'jd_reportes'; $pw = $claves['BD2_APP_PASSWORD'] }   # misma clave que JD_APP, solo en práctica
 else { throw "Usuario sin clave en .env.bd2: $Usuario" }
 
 $nombre = [IO.Path]::GetFileName($Archivo)
