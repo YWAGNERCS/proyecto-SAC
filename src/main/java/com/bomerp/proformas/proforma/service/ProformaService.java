@@ -18,6 +18,7 @@ import com.bomerp.clientes.cliente.service.ClienteService;
 import com.bomerp.config.RecursoNoEncontradoException;
 import com.bomerp.notificaciones.notificacion.service.NotificadorCorreo;
 import com.bomerp.notificaciones.notificacion.service.NotificadorWhatsApp;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +50,7 @@ public class ProformaService {
     private final org.springframework.transaction.support.TransactionTemplate soloLectura;
     private final org.springframework.transaction.support.TransactionTemplate escritura;
 
+    @Autowired
     public ProformaService(ProformaRepository proformaRepository,
                               ClienteService clienteService,
                               ProductoService productoService,
@@ -73,20 +75,6 @@ public class ProformaService {
         this.topeDescuentoService = topeDescuentoService;
         this.acceso = acceso;
         this.empresa = empresa;
-    }
-
-    public ProformaService(ProformaRepository proformaRepository,
-                              ClienteService clienteService,
-                              ProductoService productoService,
-                              NotificadorWhatsApp notificadorWhatsApp,
-                              NotificadorCorreo notificadorCorreo,
-                              GeneradorPdfService generadorPdfService,
-                              TipoCambioService tipoCambioService,
-                              TopeDescuentoService topeDescuentoService,
-                              com.bomerp.seguridad.acceso.AccesoUsuario acceso,
-                              org.springframework.transaction.PlatformTransactionManager txManager) {
-        this(proformaRepository, clienteService, productoService, notificadorWhatsApp, notificadorCorreo,
-                generadorPdfService, tipoCambioService, topeDescuentoService, acceso, txManager, null);
     }
 
     /** Lista para el controller: el DTO lee los ítems (LAZY), así que se arma dentro de la transacción. */
