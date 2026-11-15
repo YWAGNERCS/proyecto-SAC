@@ -1,6 +1,5 @@
 package com.bomerp.config.empresa;
 
-import com.bomerp.seguridad.acceso.DetalleHistorial;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,9 +50,6 @@ public class ConfiguracionEmpresaService {
         entidad.setFechaActualizacion(LocalDateTime.now());
 
         repository.save(entidad);
-
-        DetalleHistorial.anotar("Actualizó cuentas bancarias y WhatsApp de la empresa (WhatsApp: "
-                + entidad.getWhatsapp() + " · BCP: " + entidad.getCuentaBcp() + ")");
 
         return new ConfiguracionEmpresaDTO(
                 entidad.getWhatsapp(),
