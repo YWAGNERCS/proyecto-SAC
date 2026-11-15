@@ -127,6 +127,13 @@ export const routes: Routes = [
         title: 'Agenda de técnicos — SGE-JD',
       },
       {
+        path: 'servicios/agenda-mantenimientos',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/servicios/agenda-mantenimientos/agenda-mantenimientos').then((m) => m.AgendaMantenimientosComponent),
+        title: 'Calendario de mantenimientos — SGE-JD',
+      },
+      {
         path: 'servicios/ordenes',
         canActivate: [authGuard],
         loadComponent: () => import('./features/servicios/orden/orden-list').then((m) => m.OrdenListComponent),

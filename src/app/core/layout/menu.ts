@@ -99,6 +99,7 @@ export const GRUPOS: GrupoMenu[] = [
     id: 'servicios', titulo: 'Servicios', icono: ICONOS.servicios,
     opciones: [
       { ruta: '/servicios/agenda', texto: 'Agenda de técnicos', icono: ICONOS.agenda },
+      { ruta: '/servicios/agenda-mantenimientos', texto: 'Calendario mantenimientos', icono: ICONOS.agenda },
       { ruta: '/servicios/ordenes', texto: 'Órdenes de trabajo', icono: ICONOS.ordenes },
       { ruta: '/postventa', texto: 'Postventa', icono: ICONOS.postventa },
       { ruta: '/servicios/equipos', texto: 'Equipos instalados', icono: ICONOS.equipos },

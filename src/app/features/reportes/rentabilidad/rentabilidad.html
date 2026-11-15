@@ -5,12 +5,12 @@
   </div>
   <div class="periodo">
     <div class="interruptor" role="group" aria-label="Periodo">
-      <button type="button" (click)="periodo('MES')">Este mes</button>
-      <button type="button" (click)="periodo('TRIMESTRE')">Trimestre</button>
-      <button type="button" (click)="periodo('ANIO')">Año</button>
+      <button type="button" [class.activo]="periodoActivo() === 'MES'" (click)="periodo('MES')">Este mes</button>
+      <button type="button" [class.activo]="periodoActivo() === 'TRIMESTRE'" (click)="periodo('TRIMESTRE')">Trimestre</button>
+      <button type="button" [class.activo]="periodoActivo() === 'ANIO'" (click)="periodo('ANIO')">Año</button>
     </div>
-    <input type="date" class="form-control" aria-label="Desde" [(ngModel)]="desde" (change)="cargar()" />
-    <input type="date" class="form-control" aria-label="Hasta" [(ngModel)]="hasta" (change)="cargar()" />
+    <input type="date" class="form-control" aria-label="Desde" [(ngModel)]="desde" (change)="periodoActivo.set('PERSONALIZADO'); cargar()" />
+    <input type="date" class="form-control" aria-label="Hasta" [(ngModel)]="hasta" (change)="periodoActivo.set('PERSONALIZADO'); cargar()" />
   </div>
 </div>
 

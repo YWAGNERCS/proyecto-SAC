@@ -1,0 +1,129 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Calendario de Mantenimientos</h1>
+    <p class="page-sub">
+      {{ tituloMes() }} · {{ mantenimientosEnMes().length }} mantenimiento(s) programado(s) en este mes
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap align-items-center">
+    <div class="cliente-filtro">
+      <select class="form-select form-select-sm" [ngModel]="clienteFiltro()" (ngModelChange)="clienteFiltro.set($event); cargar()">
+        <option [ngValue]="null">Todos los clientes</option>
+        @for (c of clientes(); track c.id) {
+          <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Interruptor tipo Switch: Mostrar cancelados -->
+    <button
+      type="button"
+      class="btn btn-sm btn-switch-cancelados"
+      [class.activo]="mostrarCancelados()"
+      (click)="alternarCancelados()"
+      [title]="mostrarCancelados() ? 'Ocultar mantenimientos cancelados' : 'Mostrar mantenimientos cancelados'"
+    >
+      <span class="switch-indicador"></span>
+      <span class="switch-texto">Ver cancelados</span>
+    </button>
+
+    <!-- Navegación de mes con el mes visible en el botón central -->
+    <div class="navegacion-mes-grupo">
+      <button type="button" class="btn btn-outline-secondary btn-nav" (click)="moverMes(-1)" aria-label="Mes anterior">‹</button>
+      <button type="button" class="btn btn-primary btn-mes-actual" (click)="irAHoy()" title="Clic para regresar al mes de hoy">
+        {{ tituloMes() }}
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-nav" (click)="moverMes(1)" aria-label="Mes siguiente">›</button>
+    </div>
+
+    <a routerLink="/postventa" class="btn btn-outline-secondary">Ver lista completa</a>
+  </div>
+</div>
+
+<!-- Resumen KPIs -->
+@if (resumen(); as r) {
+  <div class="kpis-barra">
+    <div class="kpi-item" [class.alerta]="r.vencidos > 0">
+      <span class="etiqueta">Vencidos sin atender</span>
+      <span class="valor">{{ r.vencidos }}</span>
+    </div>
+    <div class="kpi-item">
+      <span class="etiqueta">Próximos 7 días</span>
+      <span class="valor">{{ r.proximos7 }}</span>
+    </div>
+    <div class="kpi-item">
+      <span class="etiqueta">Próximos 30 días</span>
+      <span class="valor">{{ r.proximos30 }}</span>
+    </div>
+  </div>
+}
+
+@if (error()) {
+  <div class="alert alert-danger">{{ error() }}</div>
+}
+
+<section class="tarjeta-calendario">
+  <div class="calendario-mes">
+    <!-- Fila de nombres de días de la semana -->
+    <div class="cabecera-dias-semana">
+      @for (nombre of nombresDiasSemana; track nombre) {
+        <div class="col-nombre-semana">{{ nombre }}</div>
+      }
+    </div>
+
+    <!-- Cuadrícula de 7 columnas por N semanas -->
+    <div class="rejilla-mes">
+      @for (d of diasCuadricula(); track d.fecha) {
+        <div class="celda-dia" [class.otro-mes]="!d.esMesActual" [class.hoy]="d.hoy">
+          <div class="numero-dia-box">
+            <span class="numero-dia">{{ d.numero }}</span>
+          </div>
+
+          <div class="lista-visitas-dia">
+            @for (m of visitasDelDia(d.fecha); track m.id) {
+              <div
+                class="item-mantenimiento"
+                [class.realizado]="m.estado === 'REALIZADO'"
+                [class.cancelado]="m.estado === 'CANCELADO'"
+                [title]="m.clienteNombre + ' - ' + m.equipos"
+              >
+                <div class="item-fila-superior">
+                  <span class="item-cliente">{{ m.clienteNombre }}</span>
+                  <span class="badge" [class]="claseEstado(m.estado)">{{ m.estado }}</span>
+                </div>
+
+                <div class="item-equipo">
+                  {{ m.equipos || 'Mantenimiento' }}
+                </div>
+
+                @if (m.tecnico) {
+                  <div class="item-tecnico">
+                    Técnico: {{ m.tecnico }}
+                  </div>
+                }
+
+                <div class="item-acciones">
+                  @if (m.ordenTrabajoId) {
+                    <a [routerLink]="['/servicios/ordenes', m.ordenTrabajoId]" class="link-orden">
+                      Orden #{{ m.ordenTrabajoId }}
+                    </a>
+                  } @else if (m.estado === 'PENDIENTE') {
+                    <button type="button" class="btn btn-xs btn-primary btn-asignar" (click)="designarTecnico(m)">
+                      + Designar técnico
+                    </button>
+                  } @else if (m.estado === 'CANCELADO') {
+                    <span class="texto-cancelado">Venta/Plan cancelado</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<p class="muted nota">
+  Haz clic en <strong>"+ Designar técnico"</strong> para generar la orden de trabajo con el técnico asignado para esa fecha.
+</p>

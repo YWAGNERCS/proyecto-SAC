@@ -67,6 +67,7 @@ export class RentabilidadComponent {
 
   desde = '';
   hasta = '';
+  readonly periodoActivo = signal<'MES' | 'TRIMESTRE' | 'ANIO' | 'PERSONALIZADO'>('MES');
   readonly vista = signal<Vista>('VENTA');
   readonly datos = signal<Rentabilidad | null>(null);
   readonly cargando = signal(false);
@@ -100,6 +101,7 @@ export class RentabilidadComponent {
 
   /** Atajos de periodo. */
   periodo(tipo: 'MES' | 'TRIMESTRE' | 'ANIO') {
+    this.periodoActivo.set(tipo);
     const hoy = new Date();
     const dos = (n: number) => String(n).padStart(2, '0');
     const inicio = tipo === 'MES' ? new Date(hoy.getFullYear(), hoy.getMonth(), 1)

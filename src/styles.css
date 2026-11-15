@@ -12,7 +12,7 @@
    Los nombres de variables y clases se mantienen: cada pantalla los hereda.
    ══════════════════════════════════════════════════════════════ */
 :root {
-  --primary: #102A43;
+  --primary: #50779b;
   --primary-hover: #081B2C;
   --primary-light: #E0F3F9;
   --primary-soft: #C2EAF4;
