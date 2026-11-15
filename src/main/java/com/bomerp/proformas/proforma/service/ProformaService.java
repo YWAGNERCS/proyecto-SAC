@@ -1,5 +1,6 @@
 package com.bomerp.proformas.proforma.service;
 import com.bomerp.config.ReglaNegocioException;
+import com.bomerp.config.empresa.ConfiguracionEmpresaService;
 import com.bomerp.config.empresa.EmpresaProperties;
 import com.bomerp.seguridad.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
@@ -46,6 +47,7 @@ public class ProformaService {
     private final TopeDescuentoService topeDescuentoService;
     private final com.bomerp.seguridad.acceso.AccesoUsuario acceso;
     private final EmpresaProperties empresa;
+    private final ConfiguracionEmpresaService configuracionEmpresaService;
     /** Transacciones cortas de enviar(): el correo sale entre ambas, sin conexión a la base tomada. */
     private final org.springframework.transaction.support.TransactionTemplate soloLectura;
     private final org.springframework.transaction.support.TransactionTemplate escritura;
@@ -61,7 +63,8 @@ public class ProformaService {
                               TopeDescuentoService topeDescuentoService,
                               com.bomerp.seguridad.acceso.AccesoUsuario acceso,
                               org.springframework.transaction.PlatformTransactionManager txManager,
-                              EmpresaProperties empresa) {
+                              EmpresaProperties empresa,
+                              ConfiguracionEmpresaService configuracionEmpresaService) {
         this.soloLectura = new org.springframework.transaction.support.TransactionTemplate(txManager);
         this.soloLectura.setReadOnly(true);
         this.escritura = new org.springframework.transaction.support.TransactionTemplate(txManager);
@@ -75,6 +78,22 @@ public class ProformaService {
         this.topeDescuentoService = topeDescuentoService;
         this.acceso = acceso;
         this.empresa = empresa;
+        this.configuracionEmpresaService = configuracionEmpresaService;
+    }
+
+    public ProformaService(ProformaRepository proformaRepository,
+                              ClienteService clienteService,
+                              ProductoService productoService,
+                              NotificadorWhatsApp notificadorWhatsApp,
+                              NotificadorCorreo notificadorCorreo,
+                              GeneradorPdfService generadorPdfService,
+                              TipoCambioService tipoCambioService,
+                              TopeDescuentoService topeDescuentoService,
+                              com.bomerp.seguridad.acceso.AccesoUsuario acceso,
+                              org.springframework.transaction.PlatformTransactionManager txManager,
+                              EmpresaProperties empresa) {
+        this(proformaRepository, clienteService, productoService, notificadorWhatsApp, notificadorCorreo,
+                generadorPdfService, tipoCambioService, topeDescuentoService, acceso, txManager, empresa, null);
     }
 
     /** Lista para el controller: el DTO lee los ítems (LAZY), así que se arma dentro de la transacción. */
@@ -345,7 +364,7 @@ public class ProformaService {
         sb.append("<div style='margin-top: 40px; background-color: #2b2b2b; padding: 20px; border-radius: 8px; border: 1px solid #444;'>");
         sb.append("<h4 style='color: #ffffff; margin-top: 0;'>Aprobación</h4>");
         sb.append("<p style='color: #cccccc; font-size: 14px;'>Para aceptar esta proforma, puede responder a este correo o coordinar directamente con nuestro asesor vía WhatsApp:</p>");
-        sb.append("<a href='").append(enlaceWhatsApp).append("' target='_blank' rel='noopener noreferrer' style='display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 6px; font-weight: bold; font-size: 15px; margin-top: 10px;'>Coordinar aprobación por WhatsApp &gt;</a>");
+        sb.append("<a href='").append(enlaceWhatsApp).append("' target='_blank' rel='noopener noreferrer' style='display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 6px; font-weight: bold; font-size: 15px; margin-top: 10px;'><img src='cid:whatsapp' alt='WhatsApp' width='20' height='20' style='vertical-align: middle; margin-right: 8px; border: 0;' />Coordinar aprobación por WhatsApp &gt;</a>");
         sb.append("</div>");
         
         sb.append("</div></body></html>");
@@ -354,8 +373,9 @@ public class ProformaService {
     }
 
     String construirEnlaceWhatsApp(Proforma proforma) {
-        String tel = (empresa != null && empresa.telefono() != null && !empresa.telefono().isBlank())
-                ? empresa.telefono() : "912345678";
+        String tel = (configuracionEmpresaService != null)
+                ? configuracionEmpresaService.obtener().whatsapp()
+                : ((empresa != null && empresa.telefono() != null && !empresa.telefono().isBlank()) ? empresa.telefono() : "912345678");
         String digitos = tel.replaceAll("\\D", "");
         String numero = digitos.length() == 9 ? "51" + digitos : (digitos.isBlank() ? "51912345678" : digitos);
         String clienteNombre = (proforma.getCliente() != null && proforma.getCliente().getNombreORazonSocial() != null)

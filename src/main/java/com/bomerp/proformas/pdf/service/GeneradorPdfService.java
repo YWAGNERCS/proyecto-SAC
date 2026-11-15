@@ -1,5 +1,6 @@
 package com.bomerp.proformas.pdf.service;
 
+import com.bomerp.config.empresa.ConfiguracionEmpresaService;
 import com.bomerp.config.empresa.EmpresaProperties;
 import com.bomerp.proformas.proforma.entity.Proforma;
 import com.bomerp.proformas.itemproforma.entity.ItemProforma;
@@ -7,6 +8,7 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -16,9 +18,16 @@ import java.io.ByteArrayOutputStream;
 public class GeneradorPdfService {
 
     private final EmpresaProperties empresa;
+    private final ConfiguracionEmpresaService configuracionEmpresaService;
+
+    @Autowired
+    public GeneradorPdfService(EmpresaProperties empresa, ConfiguracionEmpresaService configuracionEmpresaService) {
+        this.empresa = empresa;
+        this.configuracionEmpresaService = configuracionEmpresaService;
+    }
 
     public GeneradorPdfService(EmpresaProperties empresa) {
-        this.empresa = empresa;
+        this(empresa, null);
     }
 
     /**
@@ -142,6 +151,13 @@ public class GeneradorPdfService {
             String cciBcp = empresa.cciBcp() != null && !empresa.cciBcp().isBlank() ? empresa.cciBcp() : "002-193-001234567890-12";
             String ctaBn = empresa.cuentaNacion() != null && !empresa.cuentaNacion().isBlank() ? empresa.cuentaNacion()
                     : (empresa.cuentaDetracciones() != null && !empresa.cuentaDetracciones().isBlank() ? empresa.cuentaDetracciones() : "00-012-345678");
+
+            if (configuracionEmpresaService != null) {
+                var conf = configuracionEmpresaService.obtener();
+                if (conf.cuentaBcp() != null && !conf.cuentaBcp().isBlank()) ctaBcp = conf.cuentaBcp();
+                if (conf.cciBcp() != null && !conf.cciBcp().isBlank()) cciBcp = conf.cciBcp();
+                if (conf.cuentaNacion() != null && !conf.cuentaNacion().isBlank()) ctaBn = conf.cuentaNacion();
+            }
 
             Font bancoHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.DARK_GRAY);
             Font bancoFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.BLACK);

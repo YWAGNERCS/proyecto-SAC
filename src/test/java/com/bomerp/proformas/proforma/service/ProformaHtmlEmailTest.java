@@ -44,6 +44,7 @@ class ProformaHtmlEmailTest {
         String html = servicio.generarHtmlProforma(proforma);
 
         assertThat(html).contains("Coordinar aprobación por WhatsApp &gt;");
+        assertThat(html).contains("cid:whatsapp");
         assertThat(html).contains("https://wa.me/51912345678");
         assertThat(html).contains("background-color: #25D366");
         assertThat(html).contains("proforma%20N%C2%B0%20105");

@@ -48,7 +48,7 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
             helper.setSubject(asunto);
             helper.setText(cuerpo, true); // true = el cuerpo es HTML
 
-            incrustarLogo(helper);
+            incrustarRecursosInline(helper);
 
             // Adjuntar archivo si existe
             if (adjunto != null && adjunto.exists()) {
@@ -80,7 +80,7 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
             helper.setTo(m.destinatario());
             helper.setSubject(m.asunto());
             helper.setText(m.html(), true);
-            incrustarLogo(helper);
+            incrustarRecursosInline(helper);
             for (Adjunto a : m.adjuntos()) {
                 helper.getRootMimeMultipart().addBodyPart(parteBase64(a));
             }
@@ -142,11 +142,15 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
         return parte;
     }
 
-    /** Logo de JD incrustado (cid:logo): se ve sin descargar imágenes remotas. */
-    private static void incrustarLogo(MimeMessageHelper helper) throws jakarta.mail.MessagingException {
+    /** Recursos visuales incrustados (cid:logo, cid:whatsapp): se ven sin descargar imágenes remotas. */
+    private static void incrustarRecursosInline(MimeMessageHelper helper) throws jakarta.mail.MessagingException {
         ClassPathResource logoImage = new ClassPathResource("static/images/logo.png");
         if (logoImage.exists()) {
             helper.addInline("logo", logoImage);
+        }
+        ClassPathResource waImage = new ClassPathResource("static/images/whatsapp.png");
+        if (waImage.exists()) {
+            helper.addInline("whatsapp", waImage);
         }
     }
 }

@@ -113,6 +113,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/admin/permisos/**", "/api/v1/admin/auditoria/**").hasRole("ADMIN")
                 // Los topes de descuento también: solo Lisandro los cambia (consultarlos, cualquier usuario)
                 .requestMatchers(HttpMethod.PUT, "/api/v1/admin/descuentos/topes").hasRole("ADMIN")
+                // Cuentas bancarias y WhatsApp de la empresa: solo el administrador puede modificarlos
+                .requestMatchers(HttpMethod.PUT, "/api/v1/admin/empresa/configuracion").hasRole("ADMIN")
 
                 // Operaciones del dueño (auditoría C2). Cada una acepta además su permiso delegable
                 // (Permiso.rol(), p. ej. PERM_ANULAR_VENTAS): Lisandro puede dárselo a un asistente sin hacerlo ADMIN.
