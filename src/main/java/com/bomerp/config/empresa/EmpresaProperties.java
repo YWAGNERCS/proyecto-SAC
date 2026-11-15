@@ -20,14 +20,25 @@ public record EmpresaProperties(
          */
         String telefono,
         String correoContacto,
-        String web
+        String web,
+        /** Cuenta corriente BCP y CCI para proformas y transferencias. */
+        String cuentaBcp,
+        String cciBcp,
+        /** Cuenta Banco de la Nación para proformas. */
+        String cuentaNacion
 ) {
     @ConstructorBinding
     public EmpresaProperties {
     }
 
-    /** Sin datos de contacto (pruebas y usos que no los necesitan). */
+    /** Constructor con datos de contacto (para pruebas que no usan cuentas bancarias). */
+    public EmpresaProperties(String razonSocial, String ruc, String direccion, String cuentaDetracciones,
+                             String telefono, String correoContacto, String web) {
+        this(razonSocial, ruc, direccion, cuentaDetracciones, telefono, correoContacto, web, null, null, null);
+    }
+
+    /** Sin datos de contacto ni cuentas secundarias (pruebas y usos que no los necesitan). */
     public EmpresaProperties(String razonSocial, String ruc, String direccion, String cuentaDetracciones) {
-        this(razonSocial, ruc, direccion, cuentaDetracciones, null, null, null);
+        this(razonSocial, ruc, direccion, cuentaDetracciones, null, null, null, null, null, null);
     }
 }

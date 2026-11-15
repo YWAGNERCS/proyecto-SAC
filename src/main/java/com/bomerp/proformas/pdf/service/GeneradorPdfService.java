@@ -131,11 +131,40 @@ public class GeneradorPdfService {
             
             document.add(totalesTable);
             
-            // Notas finales
-            document.add(new Paragraph(" "));
+            // Notas finales y Cuentas Bancarias
             document.add(new Paragraph(" "));
             Paragraph notas = new Paragraph("Términos y condiciones:\n- Los precios incluyen impuestos según se detalla.\n- Esta proforma es válida por el período indicado.\n- Para confirmar la orden, por favor envíe su orden de compra aprobada.", smallFont);
+            notas.setSpacingAfter(8f);
             document.add(notas);
+
+            // Cuentas bancarias para depósitos
+            String ctaBcp = empresa.cuentaBcp() != null && !empresa.cuentaBcp().isBlank() ? empresa.cuentaBcp() : "193-12345678-0-12";
+            String cciBcp = empresa.cciBcp() != null && !empresa.cciBcp().isBlank() ? empresa.cciBcp() : "002-193-001234567890-12";
+            String ctaBn = empresa.cuentaNacion() != null && !empresa.cuentaNacion().isBlank() ? empresa.cuentaNacion()
+                    : (empresa.cuentaDetracciones() != null && !empresa.cuentaDetracciones().isBlank() ? empresa.cuentaDetracciones() : "00-012-345678");
+
+            Font bancoHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.DARK_GRAY);
+            Font bancoFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.BLACK);
+
+            PdfPTable tablaBancos = new PdfPTable(1);
+            tablaBancos.setWidthPercentage(100);
+            PdfPCell celdaBanco = new PdfPCell();
+            celdaBanco.setBackgroundColor(new Color(248, 250, 252));
+            celdaBanco.setBorderColor(new Color(226, 232, 240));
+            celdaBanco.setPadding(8f);
+
+            Paragraph tituloBancos = new Paragraph("Cuentas bancarias para depósitos y transferencias:", bancoHeaderFont);
+            tituloBancos.setSpacingAfter(4f);
+            celdaBanco.addElement(tituloBancos);
+
+            Paragraph infoBcp = new Paragraph("• Banco de Crédito del Perú (BCP): Cta. Cte. Soles: " + ctaBcp + " | CCI: " + cciBcp, bancoFont);
+            celdaBanco.addElement(infoBcp);
+
+            Paragraph infoBn = new Paragraph("• Banco de la Nación: Cta. Ahorros / Detracciones: " + ctaBn, bancoFont);
+            celdaBanco.addElement(infoBn);
+
+            tablaBancos.addCell(celdaBanco);
+            document.add(tablaBancos);
             
         } catch (Exception e) {
             throw new IllegalStateException("Error al generar el PDF de la proforma #" + proforma.getId(), e);
