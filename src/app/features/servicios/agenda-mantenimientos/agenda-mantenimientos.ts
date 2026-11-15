@@ -6,7 +6,6 @@ import { MantenimientoService } from '../../postventa/mantenimiento/mantenimient
 import { Mantenimiento, ResumenPostventa } from '../../postventa/mantenimiento/mantenimiento.model';
 import { ClienteService } from '../../clientes/cliente/cliente-service';
 import { Cliente } from '../../clientes/cliente/cliente.model';
-import { IconoComponent } from '../../../core/layout/icono';
 
 interface DiaMes {
   fecha: string;
@@ -24,7 +23,7 @@ interface DiaMes {
 @Component({
   selector: 'app-agenda-mantenimientos',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, IconoComponent],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './agenda-mantenimientos.html',
   styleUrl: './agenda-mantenimientos.css',
 })
