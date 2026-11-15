@@ -1,5 +1,6 @@
 package com.bomerp.proformas.proforma.service;
 import com.bomerp.config.ReglaNegocioException;
+import com.bomerp.config.empresa.EmpresaProperties;
 import com.bomerp.seguridad.descuento.TopeDescuentoService;
 import com.bomerp.config.tipocambio.TipoCambioService;
 import com.bomerp.proformas.proformarequest.entity.ProformaRequest;
@@ -43,6 +44,7 @@ public class ProformaService {
     private final TipoCambioService tipoCambioService;
     private final TopeDescuentoService topeDescuentoService;
     private final com.bomerp.seguridad.acceso.AccesoUsuario acceso;
+    private final EmpresaProperties empresa;
     /** Transacciones cortas de enviar(): el correo sale entre ambas, sin conexión a la base tomada. */
     private final org.springframework.transaction.support.TransactionTemplate soloLectura;
     private final org.springframework.transaction.support.TransactionTemplate escritura;
@@ -56,7 +58,8 @@ public class ProformaService {
                               TipoCambioService tipoCambioService,
                               TopeDescuentoService topeDescuentoService,
                               com.bomerp.seguridad.acceso.AccesoUsuario acceso,
-                              org.springframework.transaction.PlatformTransactionManager txManager) {
+                              org.springframework.transaction.PlatformTransactionManager txManager,
+                              EmpresaProperties empresa) {
         this.soloLectura = new org.springframework.transaction.support.TransactionTemplate(txManager);
         this.soloLectura.setReadOnly(true);
         this.escritura = new org.springframework.transaction.support.TransactionTemplate(txManager);
@@ -69,6 +72,21 @@ public class ProformaService {
         this.tipoCambioService = tipoCambioService;
         this.topeDescuentoService = topeDescuentoService;
         this.acceso = acceso;
+        this.empresa = empresa;
+    }
+
+    public ProformaService(ProformaRepository proformaRepository,
+                              ClienteService clienteService,
+                              ProductoService productoService,
+                              NotificadorWhatsApp notificadorWhatsApp,
+                              NotificadorCorreo notificadorCorreo,
+                              GeneradorPdfService generadorPdfService,
+                              TipoCambioService tipoCambioService,
+                              TopeDescuentoService topeDescuentoService,
+                              com.bomerp.seguridad.acceso.AccesoUsuario acceso,
+                              org.springframework.transaction.PlatformTransactionManager txManager) {
+        this(proformaRepository, clienteService, productoService, notificadorWhatsApp, notificadorCorreo,
+                generadorPdfService, tipoCambioService, topeDescuentoService, acceso, txManager, null);
     }
 
     /** Lista para el controller: el DTO lee los ítems (LAZY), así que se arma dentro de la transacción. */
@@ -293,7 +311,7 @@ public class ProformaService {
                 .collect(java.util.stream.Collectors.joining("; ")) + ".";
     }
 
-    private String generarHtmlProforma(Proforma proforma) {
+    String generarHtmlProforma(Proforma proforma) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; background-color: #1b1b1b; color: #ffffff; padding: 20px; margin: 0;'>");
         sb.append("<div style='max-width: 600px; margin: 0 auto; background-color: #242424; border-radius: 8px; padding: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);'>");
@@ -335,15 +353,30 @@ public class ProformaService {
         sb.append("<tr><td style='color: #ffffff; font-weight: bold; font-size: 18px; padding: 10px 0;'>Total de la proforma</td><td style='text-align: right; color: #ffffff; font-weight: bold; font-size: 18px;'>").append(proforma.getMoneda()).append(" ").append(proforma.calcularTotal()).append("</td></tr>");
         sb.append("</table>");
         
-        sb.append("<div style='margin-top: 40px; background-color: #333; padding: 20px; border-radius: 8px;'>");
+        String enlaceWhatsApp = construirEnlaceWhatsApp(proforma);
+        sb.append("<div style='margin-top: 40px; background-color: #2b2b2b; padding: 20px; border-radius: 8px; border: 1px solid #444;'>");
         sb.append("<h4 style='color: #ffffff; margin-top: 0;'>Aprobación</h4>");
-        sb.append("<p style='color: #aaaaaa; font-size: 14px;'>Para aceptar esta proforma, por favor responda a este correo o comuníquese con su asesor de ventas al número de atención al cliente.</p>");
-        sb.append("<a href='#' style='display: inline-block; background-color: #0078d4; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-top: 10px;'>Ver o administrar la proforma &gt;</a>");
+        sb.append("<p style='color: #cccccc; font-size: 14px;'>Para aceptar esta proforma, puede responder a este correo o coordinar directamente con nuestro asesor vía WhatsApp:</p>");
+        sb.append("<a href='").append(enlaceWhatsApp).append("' target='_blank' rel='noopener noreferrer' style='display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 6px; font-weight: bold; font-size: 15px; margin-top: 10px;'>Coordinar aprobación por WhatsApp &gt;</a>");
         sb.append("</div>");
         
         sb.append("</div></body></html>");
         
         return sb.toString();
+    }
+
+    String construirEnlaceWhatsApp(Proforma proforma) {
+        String tel = (empresa != null && empresa.telefono() != null && !empresa.telefono().isBlank())
+                ? empresa.telefono() : "912345678";
+        String digitos = tel.replaceAll("\\D", "");
+        String numero = digitos.length() == 9 ? "51" + digitos : (digitos.isBlank() ? "51912345678" : digitos);
+        String clienteNombre = (proforma.getCliente() != null && proforma.getCliente().getNombreORazonSocial() != null)
+                ? proforma.getCliente().getNombreORazonSocial() : "";
+        String mensaje = "Hola, deseo coordinar la aprobación de la proforma N° " + proforma.getId()
+                + (clienteNombre.isBlank() ? "" : " (" + clienteNombre + ")")
+                + " por un total de " + proforma.getMoneda() + " " + proforma.calcularTotal() + ".";
+        return "https://wa.me/" + numero + "?text="
+                + java.net.URLEncoder.encode(mensaje, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     /**
