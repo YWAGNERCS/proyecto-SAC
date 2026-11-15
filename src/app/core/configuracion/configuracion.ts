@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { AuthService, NOMBRE_PERMISO } from '../auth/auth.service';
 import { DescuentoService, TopesDescuento } from '../services/descuento-service';
+import { EmpresaConfigService, ConfiguracionEmpresa } from '../services/empresa-config-service';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TipoCambio, TipoCambioService } from '../services/tipo-cambio-service';
@@ -66,9 +67,23 @@ export class ConfiguracionComponent {
   readonly mensajeTopes = signal('');
   readonly errorTopes = signal('');
 
+  // -- Contacto y cuentas bancarias: solo el administrador los cambia --
+  private readonly empresaConfigService = inject(EmpresaConfigService);
+  readonly configEmpresa = signal<ConfiguracionEmpresa | null>(null);
+  whatsappEmpresa = '';
+  cuentaBcp = '';
+  cciBcp = '';
+  cuentaNacion = '';
+  readonly guardandoEmpresa = signal(false);
+  readonly mensajeEmpresa = signal('');
+  readonly errorEmpresa = signal('');
+
   constructor() {
     this.descuentoService.tope().subscribe({ next: (t) => this.tope.set(t) });
-    if (this.auth.tieneRol('ADMIN')) this.cargarTopes();
+    if (this.auth.tieneRol('ADMIN')) {
+      this.cargarTopes();
+      this.cargarConfigEmpresa();
+    }
     this.cargarTipoCambio();
   }
 
@@ -114,6 +129,50 @@ export class ConfiguracionComponent {
         this.guardandoTopes.set(false);
         this.errorTopes.set(err.status === 403 ? 'Solo el administrador puede cambiar los topes.'
           : err.error?.message ?? 'No se pudieron guardar los topes. Inténtelo de nuevo.');
+      },
+    });
+  }
+
+  fechaCambioEmpresa(): string {
+    const f = this.configEmpresa()?.fechaActualizacion;
+    return f ? `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)} ${f.slice(11, 16)}` : '';
+  }
+
+  private cargarConfigEmpresa() {
+    this.empresaConfigService.obtener().subscribe({
+      next: (c) => {
+        this.configEmpresa.set(c);
+        this.whatsappEmpresa = c.whatsapp || '';
+        this.cuentaBcp = c.cuentaBcp || '';
+        this.cciBcp = c.cciBcp || '';
+        this.cuentaNacion = c.cuentaNacion || '';
+      },
+    });
+  }
+
+  guardarConfigEmpresa() {
+    this.mensajeEmpresa.set('');
+    this.errorEmpresa.set('');
+    if (!this.whatsappEmpresa.trim()) {
+      this.errorEmpresa.set('El número de WhatsApp no puede estar vacío.');
+      return;
+    }
+    this.guardandoEmpresa.set(true);
+    this.empresaConfigService.guardar({
+      whatsapp: this.whatsappEmpresa.trim(),
+      cuentaBcp: this.cuentaBcp.trim(),
+      cciBcp: this.cciBcp.trim(),
+      cuentaNacion: this.cuentaNacion.trim(),
+    }).subscribe({
+      next: (c) => {
+        this.guardandoEmpresa.set(false);
+        this.configEmpresa.set(c);
+        this.mensajeEmpresa.set('Datos de contacto y cuentas bancarias guardados. Rigen de inmediato en nuevas proformas y correos.');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.guardandoEmpresa.set(false);
+        this.errorEmpresa.set(err.status === 403 ? 'Solo el administrador puede modificar estos datos.'
+          : err.error?.message ?? 'No se pudieron guardar los datos. Inténtelo de nuevo.');
       },
     });
   }

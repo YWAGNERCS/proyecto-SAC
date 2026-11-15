@@ -139,6 +139,49 @@
       @if (mensajeTopes()) { <div class="alert alert-success" role="status">{{ mensajeTopes() }}</div> }
       @if (errorTopes()) { <div class="alert alert-danger" role="alert">{{ errorTopes() }}</div> }
     </section>
+
+    <!-- Contacto y cuentas bancarias: solo el administrador los cambia -->
+    <section class="tarjeta">
+      <div class="titulo-con-icono">
+        <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.cobranza" /></svg></span>
+        <div><h2>Contacto y Cuentas Bancarias</h2><p>Solo el administrador</p></div>
+      </div>
+      <p class="texto">Número de WhatsApp y cuentas bancarias oficiales para proformas (PDF y correo).
+        Cualquier cambio se refleja inmediatamente en los nuevos documentos sin reiniciar el sistema.</p>
+      <form class="topes" (ngSubmit)="guardarConfigEmpresa()" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="whatsappEmpresa">WhatsApp / Celular de Proformas</label>
+          <input id="whatsappEmpresa" name="whatsappEmpresa" type="text" class="form-control"
+                 placeholder="Ej. 912345678" [(ngModel)]="whatsappEmpresa" [disabled]="guardandoEmpresa()">
+          <small class="muted" style="display:block;margin-top:4px;">A este número se abrirá el chat de WhatsApp al hacer clic en el botón del correo.</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cuentaBcp">Cuenta Corriente BCP (Soles)</label>
+          <input id="cuentaBcp" name="cuentaBcp" type="text" class="form-control"
+                 placeholder="Ej. 193-12345678-0-12" [(ngModel)]="cuentaBcp" [disabled]="guardandoEmpresa()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cciBcp">Código de Cuenta Interbancario (CCI) BCP</label>
+          <input id="cciBcp" name="cciBcp" type="text" class="form-control"
+                 placeholder="Ej. 002-193-001234567890-12" [(ngModel)]="cciBcp" [disabled]="guardandoEmpresa()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cuentaNacion">Cuenta Banco de la Nación</label>
+          <input id="cuentaNacion" name="cuentaNacion" type="text" class="form-control"
+                 placeholder="Ej. 00-012-345678" [(ngModel)]="cuentaNacion" [disabled]="guardandoEmpresa()">
+        </div>
+        <button type="submit" class="btn btn-primary" [disabled]="guardandoEmpresa() || !configEmpresa()">
+          {{ guardandoEmpresa() ? 'Guardando…' : 'Guardar datos de contacto y cuentas' }}
+        </button>
+      </form>
+      @if (configEmpresa()?.actualizadoPor; as quien) {
+        <p class="muted">Último cambio: {{ quien }}, {{ fechaCambioEmpresa() }}.</p>
+      } @else if (configEmpresa()) {
+        <p class="muted">Son los valores por defecto del sistema (aún no se han personalizado).</p>
+      }
+      @if (mensajeEmpresa()) { <div class="alert alert-success" role="status" style="margin-top:12px;">{{ mensajeEmpresa() }}</div> }
+      @if (errorEmpresa()) { <div class="alert alert-danger" role="alert" style="margin-top:12px;">{{ errorEmpresa() }}</div> }
+    </section>
   }
 
   <!-- Ayuda -->
