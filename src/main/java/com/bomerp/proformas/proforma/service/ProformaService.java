@@ -257,13 +257,11 @@ public class ProformaService {
             }
         }
 
-        boolean marcarWhatsApp = "SIMULADO".equals(estadoWhatsApp);
         boolean marcarCorreo = estadoCorreo.startsWith("ENVIADO");
-        if (marcarWhatsApp || marcarCorreo) {
+        if (marcarCorreo) {
             escritura.executeWithoutResult(estado -> {
                 Proforma proforma = obtenerOFallar(proformaId);
-                if (marcarWhatsApp) proforma.setEnviadoWhatsApp(true);
-                if (marcarCorreo) proforma.setEnviadoCorreo(true);
+                proforma.setEnviadoCorreo(true);
                 proformaRepository.save(proforma);
             });
         }
@@ -307,7 +305,7 @@ public class ProformaService {
 
     private static String mensajeEnvio(Long id, String whatsapp, String correo, String telefono, String email) {
         String w = switch (whatsapp) {
-            case "SIMULADO" -> "WhatsApp a " + telefono + " registrado (el envío real por WhatsApp aún no está activo)";
+            case "SIMULADO" -> "envío por WhatsApp a " + telefono + " simulado, sin entrega al cliente";
             case "SIN_TELEFONO" -> "WhatsApp no enviado: el cliente no tiene teléfono";
             default -> null;
         };

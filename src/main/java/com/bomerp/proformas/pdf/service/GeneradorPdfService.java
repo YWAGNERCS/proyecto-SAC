@@ -1,14 +1,13 @@
 package com.bomerp.proformas.pdf.service;
 
-import com.bomerp.config.empresa.ConfiguracionEmpresaService;
 import com.bomerp.config.empresa.EmpresaProperties;
 import com.bomerp.proformas.proforma.entity.Proforma;
 import com.bomerp.proformas.itemproforma.entity.ItemProforma;
 import com.lowagie.text.*;
+import com.lowagie.text.pdf.draw.LineSeparator;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -18,16 +17,8 @@ import java.io.ByteArrayOutputStream;
 public class GeneradorPdfService {
 
     private final EmpresaProperties empresa;
-    private final ConfiguracionEmpresaService configuracionEmpresaService;
-
-    @Autowired
-    public GeneradorPdfService(EmpresaProperties empresa, ConfiguracionEmpresaService configuracionEmpresaService) {
-        this.empresa = empresa;
-        this.configuracionEmpresaService = configuracionEmpresaService;
-    }
-
     public GeneradorPdfService(EmpresaProperties empresa) {
-        this(empresa, null);
+        this.empresa = empresa;
     }
 
     /**
@@ -48,6 +39,8 @@ public class GeneradorPdfService {
             Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.BLACK);
             Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 12, Color.BLACK);
             Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.GRAY);
+            Font importeFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
+            String simbolo = proforma.getMoneda() == Proforma.Moneda.DOLARES ? "US$" : "S/";
 
             // Agregar Logo (desde resources si es posible, o usar texto si falla)
             try {
@@ -79,7 +72,7 @@ public class GeneradorPdfService {
             document.add(titulo);
             
             // Línea separadora
-            document.add(new Chunk("______________________________________________________________________________\n", smallFont));
+            document.add(new LineSeparator(0.5f, 100f, Color.LIGHT_GRAY, Element.ALIGN_CENTER, 0));
             
             // Datos generales
             document.add(new Paragraph("Nº de Proforma: " + proforma.getId(), boldFont));
@@ -89,18 +82,23 @@ public class GeneradorPdfService {
             
             // Datos del cliente
             document.add(new Paragraph("Preparado para:", headerFont));
-            document.add(new Paragraph(proforma.getCliente().getNombreORazonSocial(), boldFont));
-            document.add(new Paragraph("RUC: " + proforma.getCliente().getRuc(), normalFont));
-            if (proforma.getCliente().getDireccion() != null) {
-                document.add(new Paragraph(proforma.getCliente().getDireccion(), normalFont));
+            var cliente = proforma.getCliente();
+            document.add(new Paragraph(cliente.getNombreORazonSocial(), boldFont));
+            if (cliente.getRuc() != null && !cliente.getRuc().isBlank()) {
+                document.add(new Paragraph("RUC: " + cliente.getRuc(), normalFont));
+            } else if (cliente.getDni() != null && !cliente.getDni().isBlank()) {
+                document.add(new Paragraph("DNI: " + cliente.getDni(), normalFont));
             }
-            document.add(new Paragraph(" "));
-            document.add(new Paragraph(" "));
+            if (cliente.getDireccion() != null && !cliente.getDireccion().isBlank()) {
+                document.add(new Paragraph(cliente.getDireccion(), normalFont));
+            }
             
             // Tabla de productos
             PdfPTable table = new PdfPTable(5);
             table.setWidthPercentage(100);
             table.setWidths(new float[]{4f, 0.8f, 1.5f, 0.9f, 1.5f});
+            table.setSpacingBefore(18f);
+            table.setHeaderRows(1);
             
             // Cabeceras de tabla
             agregarCeldaCabecera(table, "Descripción", headerFont);
@@ -114,35 +112,37 @@ public class GeneradorPdfService {
                 agregarCeldaItem(table, item.getProducto().getNombre()
                         + (item.getProducto().getDescripcion() == null ? "" : "\n" + item.getProducto().getDescripcion()), normalFont, Element.ALIGN_LEFT);
                 agregarCeldaItem(table, String.valueOf(item.getCantidad()), normalFont, Element.ALIGN_CENTER);
-                agregarCeldaItem(table, proforma.getMoneda() + " " + item.getPrecioUnitario().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
+                agregarCeldaItem(table, simbolo + " " + item.getPrecioUnitario().setScale(2, java.math.RoundingMode.HALF_UP), importeFont, Element.ALIGN_RIGHT);
                 agregarCeldaItem(table, item.getDescuentoPorcentaje().signum() > 0
                         ? item.getDescuentoPorcentaje().stripTrailingZeros().toPlainString() + " %" : "—",
                         normalFont, Element.ALIGN_CENTER);
-                agregarCeldaItem(table, proforma.getMoneda() + " " + item.calcularSubtotalItem(), normalFont, Element.ALIGN_RIGHT);
+                agregarCeldaItem(table, simbolo + " " + item.calcularSubtotalItem(), importeFont, Element.ALIGN_RIGHT);
             }
             document.add(table);
             
             // Tabla de Totales
-            document.add(new Paragraph(" "));
             PdfPTable totalesTable = new PdfPTable(2);
             totalesTable.setWidthPercentage(40);
             totalesTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
             totalesTable.setWidths(new float[]{1f, 1f});
+            totalesTable.setSpacingBefore(12f);
+            totalesTable.setKeepTogether(true);
             
             agregarCeldaTotal(totalesTable, "Subtotal:", normalFont);
-            agregarCeldaTotal(totalesTable, proforma.getMoneda() + " " + proforma.calcularSubtotal(), normalFont);
+            agregarCeldaTotal(totalesTable, simbolo + " " + proforma.calcularSubtotal(), importeFont);
             
             agregarCeldaTotal(totalesTable, "IGV (18%):", normalFont);
-            agregarCeldaTotal(totalesTable, proforma.getMoneda() + " " + proforma.calcularIgv(), normalFont);
+            agregarCeldaTotal(totalesTable, simbolo + " " + proforma.calcularIgv(), importeFont);
             
             agregarCeldaTotal(totalesTable, "TOTAL:", boldFont);
-            agregarCeldaTotal(totalesTable, proforma.getMoneda() + " " + proforma.calcularTotal(), boldFont);
+            agregarCeldaTotal(totalesTable, simbolo + " " + proforma.calcularTotal(), boldFont);
             
             document.add(totalesTable);
             
             // Notas finales y Cuentas Bancarias
-            document.add(new Paragraph(" "));
             Paragraph notas = new Paragraph("Términos y condiciones:\n- Los precios incluyen impuestos según se detalla.\n- Esta proforma es válida por el período indicado.\n- Para confirmar la orden, por favor envíe su orden de compra aprobada.", smallFont);
+            notas.setSpacingBefore(12f);
+            notas.setKeepTogether(true);
             notas.setSpacingAfter(8f);
             document.add(notas);
 
@@ -150,26 +150,17 @@ public class GeneradorPdfService {
                 Paragraph condiciones = new Paragraph("Condiciones de pago", headerFont);
                 condiciones.setKeepTogether(true);
                 condiciones.add(new Chunk("\n" + proforma.getCondicionesPago(), normalFont));
-                condiciones.setSpacingAfter(10f);
                 document.add(condiciones);
             }
 
             // Cuentas bancarias para depósitos
-            String ctaBcp = empresa.cuentaBcp();
-            String cciBcp = empresa.cciBcp();
-            String ctaBn = empresa.cuentaNacion();
-            if (configuracionEmpresaService != null) {
-                var conf = configuracionEmpresaService.obtener();
-                ctaBcp = conf.cuentaBcp();
-                cciBcp = conf.cciBcp();
-                ctaBn = conf.cuentaNacion();
-            }
-
             Font bancoHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.DARK_GRAY);
             Font bancoFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.BLACK);
 
             PdfPTable tablaBancos = new PdfPTable(1);
             tablaBancos.setWidthPercentage(100);
+            tablaBancos.setSpacingBefore(14f);
+            tablaBancos.setKeepTogether(true);
             PdfPCell celdaBanco = new PdfPCell();
             celdaBanco.setBackgroundColor(new Color(248, 250, 252));
             celdaBanco.setBorderColor(new Color(226, 232, 240));
@@ -179,9 +170,9 @@ public class GeneradorPdfService {
             tituloBancos.setSpacingAfter(4f);
             celdaBanco.addElement(tituloBancos);
 
-            agregarCuenta(celdaBanco, "BCP - cuenta en soles", ctaBcp, bancoFont);
-            agregarCuenta(celdaBanco, "BCP - CCI", cciBcp, bancoFont);
-            agregarCuenta(celdaBanco, "Banco de la Nación - cuenta", ctaBn, bancoFont);
+            agregarCuenta(celdaBanco, "BCP - cuenta en soles", empresa.cuentaBcp(), bancoFont);
+            agregarCuenta(celdaBanco, "BCP - CCI", empresa.cciBcp(), bancoFont);
+            agregarCuenta(celdaBanco, "Banco de la Nación - cuenta", empresa.cuentaNacion(), bancoFont);
             agregarCuenta(celdaBanco, "Banco de la Nación - cuenta de detracciones", empresa.cuentaDetracciones(), bancoFont);
 
             if (celdaBanco.getCompositeElements().size() > 1) {

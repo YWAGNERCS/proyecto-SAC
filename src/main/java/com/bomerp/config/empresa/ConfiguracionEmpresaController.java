@@ -1,5 +1,7 @@
 package com.bomerp.config.empresa;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +22,13 @@ public class ConfiguracionEmpresaController {
     }
 
     @PutMapping
-    public ConfiguracionEmpresaDTO cambiar(@RequestBody ConfiguracionEmpresaDTO pedido, @AuthenticationPrincipal Jwt jwt) {
+    public ConfiguracionEmpresaDTO cambiar(@RequestBody CambioWhatsapp pedido, @AuthenticationPrincipal Jwt jwt) {
         String usuario = jwt != null ? jwt.getClaimAsString("preferred_username") : "admin";
         if (usuario == null && jwt != null) usuario = jwt.getSubject();
-        return service.cambiar(pedido, usuario != null ? usuario : "admin");
+        return service.cambiarWhatsapp(pedido.whatsapp(), usuario != null ? usuario : "admin");
     }
+
+    /** Los clientes anteriores pueden seguir enviando sus campos adicionales. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CambioWhatsapp(@JsonProperty(required = true) String whatsapp) {}
 }

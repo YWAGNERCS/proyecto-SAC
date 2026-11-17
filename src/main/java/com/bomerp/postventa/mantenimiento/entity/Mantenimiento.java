@@ -49,7 +49,7 @@ public class Mantenimiento {
     @Column(length = 100)
     private String tecnico;
 
-    /** Orden de trabajo con la que se ejecutó (null si se marcó realizado sin orden). */
+    /** Orden programada o con la que se ejecutó la visita. */
     @Column(name = "orden_trabajo_id")
     private Long ordenTrabajoId;
 

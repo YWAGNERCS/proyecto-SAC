@@ -281,17 +281,7 @@ public class VentaService {
                 ? tipoCambioService.resolver(tipoCambio, fecha)              // obligatorio: 503 si SUNAT no responde y no se escribió
                 : tipoCambioService.resolverSiSePuede(tipoCambio, fecha);    // solo como referencia
 
-        Venta venta = new Venta();
-        venta.setCliente(cliente);
-        venta.setFechaVenta(fecha);
-        venta.setVendedorId(vendedorId);
-        venta.setVendedorNombre(vendedorNombre);
-        venta.setTipoPago(tipoPago);
-        venta.setMoneda(moneda);
-        venta.setTipoCambio(tc);
-
-        aplicarFormaPago(venta, tipoPago, diasCredito);
-
+        Venta venta = prepararVentaDirecta(cliente, fecha, tipoPago, diasCredito, moneda, tc, vendedorId, vendedorNombre);
         String editor = vendedorNombre != null ? vendedorNombre : acceso.usuarioActual();
         for (int i = 0; i < items.size(); i++) {
             ItemVentaDTO itemDTO = items.get(i);
@@ -311,6 +301,46 @@ public class VentaService {
             venta.agregarDetalle(detalle);
         }
 
+        return guardarVentaDirecta(venta, rutina);
+    }
+
+    /** Factura una visita al importe unitario pactado en el contrato de la orden. */
+    public VentaResponseDTO registrarVisitaDeContrato(Long clienteId, Long productoId, BigDecimal montoVisita,
+                                                   Venta.Moneda moneda, Venta.TipoPago tipoPago, Integer diasCredito,
+                                                   BigDecimal tipoCambio, String vendedorId, String vendedorNombre) {
+        Producto servicio = productoService.obtenerPorId(productoId);
+        if (!servicio.esServicio()) {
+            throw new IllegalArgumentException("Seleccione un servicio de mano de obra para facturar la visita.");
+        }
+        if (montoVisita == null || montoVisita.signum() <= 0 || moneda == null) {
+            throw new ReglaNegocioException("El contrato debe tener un monto por visita y una moneda válidos.");
+        }
+        Cliente cliente = clienteService.obtenerPorId(clienteId);
+        LocalDate fecha = LocalDate.now();
+        BigDecimal tc = moneda == Venta.Moneda.DOLARES || servicio.getMoneda() == Producto.Moneda.DOLARES
+                ? tipoCambioService.resolver(tipoCambio, fecha)
+                : tipoCambioService.resolverSiSePuede(tipoCambio, fecha);
+        Venta venta = prepararVentaDirecta(cliente, fecha, tipoPago, diasCredito, moneda, tc, vendedorId, vendedorNombre);
+        venta.agregarDetalle(new DetalleVenta(servicio, 1, montoVisita, BigDecimal.ZERO));
+        return guardarVentaDirecta(venta, null);
+    }
+
+    private Venta prepararVentaDirecta(Cliente cliente, LocalDate fecha, Venta.TipoPago tipoPago,
+                                      Integer diasCredito, Venta.Moneda moneda, BigDecimal tipoCambio,
+                                      String vendedorId, String vendedorNombre) {
+        Venta venta = new Venta();
+        venta.setCliente(cliente);
+        venta.setFechaVenta(fecha);
+        venta.setVendedorId(vendedorId);
+        venta.setVendedorNombre(vendedorNombre);
+        venta.setTipoPago(tipoPago);
+        venta.setMoneda(moneda);
+        venta.setTipoCambio(tipoCambio);
+        aplicarFormaPago(venta, tipoPago, diasCredito);
+        return venta;
+    }
+
+    private VentaResponseDTO guardarVentaDirecta(Venta venta, RutinaMantenimiento rutina) {
         deduccionTributariaService.aplicar(venta);
         RutinaMantenimiento rutinaValida = validarRutina(venta, rutina);
         Venta ventaGuardada = ventaRepository.save(venta);
@@ -318,7 +348,7 @@ public class VentaService {
         eventos.publishEvent(new VentaRegistradaEvent(ventaGuardada.getId(), rutinaValida));
 
         log.info("Transaccion exitosa: Venta registrada con ID {} en {} (tipo de cambio {})",
-                ventaGuardada.getId(), moneda, tc);
+                ventaGuardada.getId(), ventaGuardada.getMoneda(), ventaGuardada.getTipoCambio());
         return VentaResponseDTO.desdeEntidad(ventaGuardada);
     }
 

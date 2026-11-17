@@ -25,9 +25,12 @@ import java.util.List;
 public class MantenimientoService {
 
     private final MantenimientoRepository mantenimientoRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventos;
 
-    public MantenimientoService(MantenimientoRepository mantenimientoRepository) {
+    public MantenimientoService(MantenimientoRepository mantenimientoRepository,
+                                org.springframework.context.ApplicationEventPublisher eventos) {
         this.mantenimientoRepository = mantenimientoRepository;
+        this.eventos = eventos;
     }
 
     /**
@@ -95,6 +98,7 @@ public class MantenimientoService {
         if (dia.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("La fecha de la visita no puede ser futura.");
         }
+        eventos.publishEvent(new VisitaActualizada(id, m.getFechaProgramada(), Mantenimiento.EstadoMantenimiento.REALIZADO, null));
         m.setEstado(Mantenimiento.EstadoMantenimiento.REALIZADO);
         m.setFechaRealizada(dia);
         agregarNota(m, notas);
@@ -106,7 +110,7 @@ public class MantenimientoService {
     /**
      * Fachada para Órdenes de trabajo: el mantenimiento debe estar PENDIENTE y ser del cliente de la orden.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Mantenimiento obtenerPendienteDeCliente(Long id, Long clienteId) {
         Mantenimiento m = obtenerPendiente(id, "asignar a una orden de trabajo");
         if (!m.getCliente().getId().equals(clienteId)) {
@@ -115,13 +119,43 @@ public class MantenimientoService {
         return m;
     }
 
+    /** Devuelve el contrato de la visita, si se programó a partir de uno. */
+    @Transactional(readOnly = true)
+    public ContratoMantenimiento contratoDeVisita(Long id) {
+        return mantenimientoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Mantenimiento no encontrado: " + id))
+                .getContrato();
+    }
+
     /** Fachada para Órdenes de trabajo: técnico asignado al programar la orden. */
     @Transactional
     public void asignarTecnico(Long id, String tecnico) {
-        mantenimientoRepository.findById(id).ifPresent(m -> {
+        mantenimientoRepository.bloquear(id).filter(m -> m.getEstado() == Mantenimiento.EstadoMantenimiento.PENDIENTE).ifPresent(m -> {
             m.setTecnico(tecnico);
+            m.setOrdenTrabajoId(null);
             mantenimientoRepository.save(m);
         });
+    }
+
+    /** Serializa los cambios de una orden con los que se originan en la visita. */
+    @Transactional
+    public void bloquearVisita(Long id) {
+        mantenimientoRepository.bloquear(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Mantenimiento no encontrado: " + id));
+    }
+
+    /** La orden ya validó el horario; ambas agendas conservan la misma fecha y técnico. */
+    @Transactional
+    public void programarPorOrden(Long id, LocalDate fecha, String tecnico, Long ordenId) {
+        Mantenimiento m = obtenerPendiente(id, "programar la orden");
+        if (!fecha.equals(m.getFechaProgramada())) {
+            agregarNota(m, "Reprogramado por la orden del " + m.getFechaProgramada() + " al " + fecha);
+            m.setFechaProgramada(fecha);
+            m.setAlertaEnviada(false);
+        }
+        m.setTecnico(tecnico);
+        m.setOrdenTrabajoId(ordenId);
+        mantenimientoRepository.save(m);
     }
 
     /** Fachada para Órdenes de trabajo: al cerrar la orden, la visita queda REALIZADA con su técnico. */
@@ -150,7 +184,7 @@ public class MantenimientoService {
      */
     @Transactional
     public int replanificarEquipo(EquipoInstalado equipo, String motivo) {
-        cancelar(mantenimientoRepository.findByEquipo_IdAndEstado(equipo.getId(), Mantenimiento.EstadoMantenimiento.PENDIENTE), motivo);
+        cancelar(mantenimientoRepository.idsDeEquipo(equipo.getId(), Mantenimiento.EstadoMantenimiento.PENDIENTE), motivo);
         return programarEquipo(equipo, List.of(Mantenimiento.EstadoMantenimiento.REALIZADO));
     }
 
@@ -160,10 +194,9 @@ public class MantenimientoService {
      */
     @Transactional
     public int reemplazarPlanDeVenta(Long ventaId) {
-        List<Mantenimiento> genericos = mantenimientoRepository.findByVenta_IdAndEquipoIsNullAndEstado(
+        List<Long> genericos = mantenimientoRepository.idsDeVentaSinEquipo(
                 ventaId, Mantenimiento.EstadoMantenimiento.PENDIENTE);
-        cancelar(genericos, "Reemplazado por el plan del equipo instalado");
-        return genericos.size();
+        return cancelar(genericos, "Reemplazado por el plan del equipo instalado");
     }
 
     private void extenderPlanDeEquipo(Mantenimiento hecho) {
@@ -205,7 +238,7 @@ public class MantenimientoService {
     // ── Plan por contrato ───────────────────────────────────────
 
     /**
-     * Programa las visitas del contrato: desde su inicio, cada {@code frecuenciaMeses} meses, hasta su fin
+     * Programa las visitas del contrato: desde su inicio, cada {@code frecuenciaMeses} meses, antes de su fin
      * (solo fechas de hoy en adelante).
      *
      * @return cuántas visitas se programaron
@@ -214,8 +247,9 @@ public class MantenimientoService {
     public int programarContrato(ContratoMantenimiento contrato) {
         LocalDate hoy = LocalDate.now();
         int programadas = 0;
-        for (LocalDate fecha = contrato.getFechaInicio(); !fecha.isAfter(contrato.getFechaFin());
-             fecha = fecha.plusMonths(contrato.getFrecuenciaMeses())) {
+        for (int indice = 0; ; indice++) {
+            LocalDate fecha = contrato.getFechaInicio().plusMonths((long) indice * contrato.getFrecuenciaMeses());
+            if (!fecha.isBefore(contrato.getFechaFin())) break;
             if (!fecha.isBefore(hoy)) {
                 Mantenimiento m = new Mantenimiento();
                 m.setCliente(contrato.getCliente());
@@ -231,10 +265,9 @@ public class MantenimientoService {
     /** Al cancelar un contrato sus visitas pendientes ya no se harán. @return cuántas se cancelaron */
     @Transactional
     public int cancelarPendientesDeContrato(Long contratoId, String motivo) {
-        List<Mantenimiento> pendientes = mantenimientoRepository.findByContrato_IdAndEstado(
+        List<Long> pendientes = mantenimientoRepository.idsDeContrato(
                 contratoId, Mantenimiento.EstadoMantenimiento.PENDIENTE);
-        cancelar(pendientes, motivo);
-        return pendientes.size();
+        return cancelar(pendientes, motivo);
     }
 
     @Transactional(readOnly = true)
@@ -242,12 +275,17 @@ public class MantenimientoService {
         return mantenimientoRepository.countByContrato_IdAndEstado(contratoId, estado);
     }
 
-    private void cancelar(List<Mantenimiento> lista, String motivo) {
-        lista.forEach(m -> {
+    private int cancelar(List<Long> visitas, String motivo) {
+        int canceladas = 0;
+        for (Long id : visitas) {
+            Mantenimiento m = mantenimientoRepository.bloquear(id).orElse(null);
+            if (m == null || m.getEstado() != Mantenimiento.EstadoMantenimiento.PENDIENTE) continue;
             m.setEstado(Mantenimiento.EstadoMantenimiento.CANCELADO);
             agregarNota(m, motivo);
-        });
-        mantenimientoRepository.saveAll(lista);
+            eventos.publishEvent(new VisitaActualizada(m.getId(), m.getFechaProgramada(), m.getEstado(), motivo));
+            canceladas++;
+        }
+        return canceladas;
     }
 
     /** El cliente pidió otra fecha: se mueve y la alerta por correo vuelve a enviarse. */
@@ -261,11 +299,12 @@ public class MantenimientoService {
                 + (notas != null && !notas.isBlank() ? ": " + notas.trim() : ""));
         m.setFechaProgramada(nuevaFecha);
         m.setAlertaEnviada(false);
+        eventos.publishEvent(new VisitaActualizada(id, nuevaFecha, m.getEstado(), notas));
         return MantenimientoResponseDTO.desdeEntidad(mantenimientoRepository.save(m));
     }
 
     private Mantenimiento obtenerPendiente(Long id, String accion) {
-        Mantenimiento m = mantenimientoRepository.findById(id)
+        Mantenimiento m = mantenimientoRepository.bloquear(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Mantenimiento no encontrado: " + id));
         if (m.getEstado() != Mantenimiento.EstadoMantenimiento.PENDIENTE) {
             throw new ReglaNegocioException("No se puede " + accion + " el mantenimiento #" + id
@@ -292,10 +331,8 @@ public class MantenimientoService {
      */
     @Transactional
     public int cancelarPendientesDeVenta(Long ventaId) {
-        List<Mantenimiento> pendientes = mantenimientoRepository.findByVenta_IdAndEstado(
+        List<Long> pendientes = mantenimientoRepository.idsDeVenta(
                 ventaId, Mantenimiento.EstadoMantenimiento.PENDIENTE);
-        pendientes.forEach(m -> m.setEstado(Mantenimiento.EstadoMantenimiento.CANCELADO));
-        mantenimientoRepository.saveAll(pendientes);
-        return pendientes.size();
+        return cancelar(pendientes, "Venta anulada");
     }
 }

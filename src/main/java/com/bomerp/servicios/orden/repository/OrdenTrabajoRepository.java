@@ -20,6 +20,11 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, Long
     /** Una visita de mantenimiento no tiene dos órdenes programadas a la vez. */
     boolean existsByMantenimientoIdAndEstado(Long mantenimientoId, OrdenTrabajo.Estado estado);
 
+    List<OrdenTrabajo> findByMantenimientoIdAndEstado(Long mantenimientoId, OrdenTrabajo.Estado estado);
+
+    @Query("SELECT o.mantenimientoId FROM OrdenTrabajo o WHERE o.id = :id")
+    Long visitaVinculada(@Param("id") Long id);
+
     /** Órdenes; cada filtro es opcional (null = no filtra). El técnico se busca por parte del nombre. */
     @Query("""
             SELECT o FROM OrdenTrabajo o JOIN FETCH o.cliente c LEFT JOIN FETCH o.sede

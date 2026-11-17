@@ -14,6 +14,7 @@ import com.bomerp.postventa.equipo.entity.EquipoInstalado;
 import com.bomerp.postventa.equipo.service.EquipoInstaladoService;
 import com.bomerp.postventa.mantenimiento.entity.Mantenimiento;
 import com.bomerp.postventa.mantenimiento.service.MantenimientoService;
+import com.bomerp.postventa.mantenimiento.service.VisitaActualizada;
 import com.bomerp.servicios.orden.dto.OrdenDTO;
 import com.bomerp.servicios.orden.entity.MaterialOrden;
 import com.bomerp.servicios.orden.entity.OrdenTrabajo;
@@ -28,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Órdenes de trabajo: PROGRAMADA → REALIZADA (al cerrarla) o CANCELADA.
@@ -81,7 +84,8 @@ public class OrdenTrabajoService {
 
     @Transactional(readOnly = true)
     public OrdenDTO.Response obtener(Long id) {
-        return aDto(buscar(id));
+        OrdenTrabajo orden = buscar(id);
+        return aDto(orden, tarifaContrato(orden));
     }
 
     @Transactional(readOnly = true)
@@ -96,7 +100,7 @@ public class OrdenTrabajoService {
         aplicar(o, dto);
         OrdenTrabajo guardada = ordenRepository.save(o);
         if (guardada.getMantenimientoId() != null) {
-            mantenimientoService.asignarTecnico(guardada.getMantenimientoId(), guardada.getTecnico());
+            mantenimientoService.programarPorOrden(guardada.getMantenimientoId(), guardada.getFechaProgramada(), guardada.getTecnico(), guardada.getId());
         }
         log.info("Orden de trabajo {} programada: {} para {} el {} ({})", guardada.getId(), guardada.getTipo(),
                 guardada.getCliente().getNombreORazonSocial(), guardada.getFechaProgramada(), guardada.getTecnico());
@@ -104,18 +108,22 @@ public class OrdenTrabajoService {
     }
 
     public OrdenDTO.Response actualizar(Long id, OrdenDTO.Request dto) {
-        OrdenTrabajo o = programada(id, "editar");
+        OrdenTrabajo o = bloquearParaCambiar(id, "editar", dto.mantenimientoId());
+        Long visitaAnterior = o.getMantenimientoId();
         aplicar(o, dto);
+        if (visitaAnterior != null && !visitaAnterior.equals(o.getMantenimientoId())) {
+            mantenimientoService.asignarTecnico(visitaAnterior, null);
+        }
         OrdenTrabajo guardada = ordenRepository.save(o);
         if (guardada.getMantenimientoId() != null) {
-            mantenimientoService.asignarTecnico(guardada.getMantenimientoId(), guardada.getTecnico());
+            mantenimientoService.programarPorOrden(guardada.getMantenimientoId(), guardada.getFechaProgramada(), guardada.getTecnico(), guardada.getId());
         }
         return aDto(guardada);
     }
 
     /** Cierra la orden: lo hecho, quién lo recibió, materiales usados (descuentan stock) y equipos instalados. */
     public OrdenDTO.Response cerrar(Long id, OrdenDTO.Cierre dto, String usuario) {
-        OrdenTrabajo o = programada(id, "cerrar");
+        OrdenTrabajo o = bloquearParaCambiar(id, "cerrar", null);
         LocalDate fecha = dto.fechaRealizada() != null ? dto.fechaRealizada() : LocalDate.now();
         if (fecha.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("La fecha en que se hizo el trabajo no puede ser futura.");
@@ -169,14 +177,37 @@ public class OrdenTrabajoService {
         }
         log.info("Orden de trabajo {} realizada por {}: {} material(es), {} equipo(s) instalado(s)",
                 id, guardada.getTecnico(), materiales.size(), equipos.size());
-        return aDto(guardada);
+        return aDto(guardada, tarifaContrato(guardada));
     }
 
     public OrdenDTO.Response cancelar(Long id, String motivo) {
-        OrdenTrabajo o = programada(id, "cancelar");
+        OrdenTrabajo o = bloquearParaCambiar(id, "cancelar", null);
         o.setEstado(OrdenTrabajo.Estado.CANCELADA);
         o.setMotivoCancelacion(motivo.trim());
+        if (o.getMantenimientoId() != null) mantenimientoService.asignarTecnico(o.getMantenimientoId(), null);
         return aDto(ordenRepository.save(o));
+    }
+
+    /** Listener síncrono: si hay un cruce de horario, se revierte también la reprogramación de la visita. */
+    @org.springframework.context.event.EventListener
+    public void sincronizarVisita(VisitaActualizada evento) {
+        for (OrdenTrabajo orden : ordenRepository.findByMantenimientoIdAndEstado(evento.id(), OrdenTrabajo.Estado.PROGRAMADA)) {
+            OrdenTrabajo o = programada(orden.getId(), "actualizar desde la visita");
+            switch (evento.estado()) {
+                case REALIZADO -> throw new ReglaNegocioException("Cierre la orden de trabajo #" + o.getId() + " para completar esta visita.");
+                case CANCELADO -> {
+                    o.setEstado(OrdenTrabajo.Estado.CANCELADA);
+                    String motivo = evento.motivo();
+                    o.setMotivoCancelacion(motivo.length() > 300 ? motivo.substring(0, 300) : motivo);
+                }
+                case PENDIENTE -> {
+                    o.setFechaProgramada(evento.fecha());
+                    validarHorario(o);
+                }
+                default -> { }
+            }
+            ordenRepository.save(o);
+        }
     }
 
     /**
@@ -194,6 +225,31 @@ public class OrdenTrabajoService {
         if (o.getVentaFacturadaId() != null) {
             throw new ReglaNegocioException("La orden #" + id + " ya se facturó en la venta #" + o.getVentaFacturadaId() + ".");
         }
+        OrdenDTO.TarifaContrato tarifa = tarifaContrato(o);
+        VentaResponseDTO venta = tarifa == null
+                ? facturarPorCatalogo(o, dto, vendedorId, vendedorNombre)
+                : facturarVisitaDeContrato(o, dto, tarifa, vendedorId, vendedorNombre);
+        o.setVentaFacturadaId(venta.id());
+        log.info("Orden de trabajo {} facturada con la venta {}", id, venta.id());
+        return aDto(ordenRepository.save(o), tarifa);
+    }
+
+    private VentaResponseDTO facturarVisitaDeContrato(OrdenTrabajo orden, OrdenDTO.Facturacion dto,
+                                                    OrdenDTO.TarifaContrato tarifa, String vendedorId, String vendedorNombre) {
+        if (dto.items().size() != 1) {
+            throw new IllegalArgumentException("Seleccione un servicio para facturar esta visita de contrato.");
+        }
+        OrdenDTO.ItemFactura item = dto.items().getFirst();
+        if (!Integer.valueOf(1).equals(item.cantidad())
+                || (item.descuentoPorcentaje() != null && item.descuentoPorcentaje().signum() != 0)) {
+            throw new IllegalArgumentException("La visita de contrato se factura por una unidad al importe pactado.");
+        }
+        return ventaService.registrarVisitaDeContrato(orden.getCliente().getId(), item.productoId(),
+                tarifa.montoSinIgv(), tarifa.moneda(), dto.tipoPago(), dto.diasCredito(), dto.tipoCambio(),
+                vendedorId, vendedorNombre);
+    }
+
+    private VentaResponseDTO facturarPorCatalogo(OrdenTrabajo o, OrdenDTO.Facturacion dto, String vendedorId, String vendedorNombre) {
         for (OrdenDTO.ItemFactura item : dto.items()) {
             Producto p = productoService.obtenerPorId(item.productoId());
             if (!p.esServicio()) {
@@ -201,13 +257,10 @@ public class OrdenTrabajoService {
                         + "(sector SERVICIO); los materiales ya se descontaron del stock al cerrarla.");
             }
         }
-        VentaResponseDTO venta = ventaService.registrarVentaDirecta(
+        return ventaService.registrarVentaDirecta(
                 o.getCliente().getId(),
                 dto.items().stream().map(i -> new VentaService.ItemVentaDTO(i.productoId(), i.cantidad(), i.descuentoPorcentaje())).toList(),
                 dto.tipoPago(), dto.diasCredito(), dto.moneda(), dto.tipoCambio(), vendedorId, vendedorNombre);
-        o.setVentaFacturadaId(venta.id());
-        log.info("Orden de trabajo {} facturada con la venta {}", id, venta.id());
-        return aDto(ordenRepository.save(o));
     }
 
     /** Fachada para Rentabilidad: órdenes REALIZADAS en el periodo, con sus materiales. */
@@ -323,11 +376,24 @@ public class OrdenTrabajoService {
     }
 
     private OrdenTrabajo programada(Long id, String accion) {
-        OrdenTrabajo o = buscar(id);
+        OrdenTrabajo o = ordenRepository.bloquear(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Orden de trabajo no encontrada: " + id));
         if (o.getEstado() != OrdenTrabajo.Estado.PROGRAMADA) {
             throw new ReglaNegocioException("No se puede " + accion + " la orden #" + id + ": está " + o.getEstado() + ".");
         }
         return o;
+    }
+
+    private OrdenTrabajo bloquearParaCambiar(Long id, String accion, Long nuevaVisita) {
+        // Ambas agendas toman primero las visitas y después la orden.
+        Long visitaActual = ordenRepository.visitaVinculada(id);
+        Stream.of(visitaActual, nuevaVisita).filter(Objects::nonNull).distinct().sorted()
+                .forEach(mantenimientoService::bloquearVisita);
+        OrdenTrabajo orden = programada(id, accion);
+        if (!Objects.equals(orden.getMantenimientoId(), visitaActual)) {
+            throw new ReglaNegocioException("Cambió la visita de la orden #" + id + ". Actualice la pantalla e inténtelo de nuevo.");
+        }
+        return orden;
     }
 
     private OrdenTrabajo buscar(Long id) {
@@ -336,8 +402,18 @@ public class OrdenTrabajoService {
     }
 
     private OrdenDTO.Response aDto(OrdenTrabajo o) {
+        return aDto(o, null);
+    }
+
+    private OrdenDTO.Response aDto(OrdenTrabajo o, OrdenDTO.TarifaContrato tarifa) {
         return OrdenDTO.Response.desdeEntidad(o,
-                o.getTipo() == OrdenTrabajo.Tipo.INSTALACION ? equipoService.deOrden(o.getId()) : List.of());
+                o.getTipo() == OrdenTrabajo.Tipo.INSTALACION ? equipoService.deOrden(o.getId()) : List.of(), tarifa);
+    }
+
+    private OrdenDTO.TarifaContrato tarifaContrato(OrdenTrabajo orden) {
+        if (orden.getMantenimientoId() == null) return null;
+        var contrato = mantenimientoService.contratoDeVisita(orden.getMantenimientoId());
+        return contrato == null ? null : new OrdenDTO.TarifaContrato(contrato.getId(), contrato.getMontoVisita(), contrato.getMoneda());
     }
 
     private static String vacioANulo(String texto) {

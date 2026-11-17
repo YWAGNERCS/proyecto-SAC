@@ -12,18 +12,29 @@ import java.util.List;
 @Repository
 public interface MantenimientoRepository extends JpaRepository<Mantenimiento, Long> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "10000"))
+    @Query("SELECT m FROM Mantenimiento m WHERE m.id = :id")
+    java.util.Optional<Mantenimiento> bloquear(@Param("id") Long id);
+
     // Busca los mantenimientos que están pendientes, no se han enviado alertas, y faltan 7 días o menos.
     List<Mantenimiento> findByEstadoAndAlertaEnviadaFalseAndFechaProgramadaBetween(
             Mantenimiento.EstadoMantenimiento estado, LocalDate startDate, LocalDate endDate);
 
     List<Mantenimiento> findByVenta_IdAndEstado(Long ventaId, Mantenimiento.EstadoMantenimiento estado);
 
+    @Query("SELECT m.id FROM Mantenimiento m WHERE m.venta.id = :ventaId AND m.estado = :estado ORDER BY m.id")
+    List<Long> idsDeVenta(Long ventaId, Mantenimiento.EstadoMantenimiento estado);
+
     /** Los de la venta que no son de un equipo en particular (las de la rutina elegida al vender). */
-    List<Mantenimiento> findByVenta_IdAndEquipoIsNullAndEstado(Long ventaId, Mantenimiento.EstadoMantenimiento estado);
+    @Query("SELECT m.id FROM Mantenimiento m WHERE m.venta.id = :ventaId AND m.equipo IS NULL AND m.estado = :estado ORDER BY m.id")
+    List<Long> idsDeVentaSinEquipo(Long ventaId, Mantenimiento.EstadoMantenimiento estado);
 
-    List<Mantenimiento> findByEquipo_IdAndEstado(Long equipoId, Mantenimiento.EstadoMantenimiento estado);
+    @Query("SELECT m.id FROM Mantenimiento m WHERE m.equipo.id = :equipoId AND m.estado = :estado ORDER BY m.id")
+    List<Long> idsDeEquipo(Long equipoId, Mantenimiento.EstadoMantenimiento estado);
 
-    List<Mantenimiento> findByContrato_IdAndEstado(Long contratoId, Mantenimiento.EstadoMantenimiento estado);
+    @Query("SELECT m.id FROM Mantenimiento m WHERE m.contrato.id = :contratoId AND m.estado = :estado ORDER BY m.id")
+    List<Long> idsDeContrato(Long contratoId, Mantenimiento.EstadoMantenimiento estado);
 
     long countByContrato_IdAndEstado(Long contratoId, Mantenimiento.EstadoMantenimiento estado);
 

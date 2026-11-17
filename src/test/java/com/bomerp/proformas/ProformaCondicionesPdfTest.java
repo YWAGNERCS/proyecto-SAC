@@ -1,7 +1,9 @@
 package com.bomerp.proformas;
 
+import com.bomerp.catalogo.producto.entity.Producto;
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.config.empresa.EmpresaProperties;
+import com.bomerp.proformas.itemproforma.entity.ItemProforma;
 import com.bomerp.proformas.pdf.service.GeneradorPdfService;
 import com.bomerp.proformas.proforma.dto.ProformaResponseDTO;
 import com.bomerp.proformas.proforma.entity.Proforma;
@@ -11,6 +13,7 @@ import com.lowagie.text.pdf.parser.PdfTextExtractor;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,12 +45,18 @@ class ProformaCondicionesPdfTest {
     @Test
     void conservaAcuerdoYSeparaCuentaGeneralDeDetracciones() throws Exception {
         Proforma proforma = proforma();
+        proforma.getCliente().setRuc(null);
+        proforma.getCliente().setDni("12345678");
+        Producto servicio = new Producto();
+        servicio.setNombre("Refrigeración");
+        proforma.agregarItem(new ItemProforma(servicio, 1, new BigDecimal("920.00"), BigDecimal.ZERO));
         proforma.setCondicionesPago("60 % de adelanto y 40 % a la entrega.\nSaldo a 60 días desde la factura.");
         EmpresaProperties empresa = new EmpresaProperties("JD", "20521632268", "Lima", "DETRACCIONES-PRUEBA",
                 null, null, null, "BCP-PRUEBA", null, "NACION-PRUEBA");
         byte[] pdf = new GeneradorPdfService(empresa).generarProformaPdf(proforma);
         assertThat(texto(pdf)).contains("60 % de adelanto", "Saldo a 60 días", "BCP-PRUEBA",
-                "cuenta de detracciones: DETRACCIONES-PRUEBA", "cuenta: NACION-PRUEBA").doesNotContain("CCI:");
+                "cuenta de detracciones: DETRACCIONES-PRUEBA", "cuenta: NACION-PRUEBA",
+                "DNI: 12345678", "S/ 920.00", "S/ 1085.60").doesNotContain("CCI:", "RUC: null", "SOLES");
         assertThat(ProformaResponseDTO.desdeEntidad(proforma).condicionesPago()).isEqualTo(proforma.getCondicionesPago());
         // Muestra de la salida real para revisar visualmente el PDF.
         java.nio.file.Files.write(java.nio.file.Path.of("target/proforma-condiciones-prueba.pdf"), pdf);

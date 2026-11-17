@@ -18,46 +18,30 @@ public class ConfiguracionEmpresaService {
 
     @Transactional(readOnly = true)
     public ConfiguracionEmpresaDTO obtener() {
-        return repository.findById(ConfiguracionEmpresa.ID_UNICO)
-                .map(c -> new ConfiguracionEmpresaDTO(
-                        limpiar(c.getWhatsapp()),
-                        limpiar(c.getCuentaBcp()),
-                        limpiar(c.getCciBcp()),
-                        limpiar(c.getCuentaNacion()),
-                        c.getActualizadoPor(),
-                        c.getFechaActualizacion()
-                ))
-                .orElseGet(() -> new ConfiguracionEmpresaDTO(
-                        limpiar(props.telefono()),
-                        limpiar(props.cuentaBcp()),
-                        limpiar(props.cciBcp()),
-                        limpiar(props.cuentaNacion()),
-                        null,
-                        null
-                ));
+        return respuesta(repository.findById(ConfiguracionEmpresa.ID_UNICO).orElse(null));
     }
 
     @Transactional
-    public ConfiguracionEmpresaDTO cambiar(ConfiguracionEmpresaDTO pedido, String usuario) {
+    public ConfiguracionEmpresaDTO cambiarWhatsapp(String whatsapp, String usuario) {
         ConfiguracionEmpresa entidad = repository.findById(ConfiguracionEmpresa.ID_UNICO)
                 .orElseGet(ConfiguracionEmpresa::new);
 
-        entidad.setWhatsapp(limpiar(pedido.whatsapp()));
-        entidad.setCuentaBcp(limpiar(pedido.cuentaBcp()));
-        entidad.setCciBcp(limpiar(pedido.cciBcp()));
-        entidad.setCuentaNacion(limpiar(pedido.cuentaNacion()));
+        entidad.setWhatsapp(limpiar(whatsapp));
         entidad.setActualizadoPor(usuario);
         entidad.setFechaActualizacion(LocalDateTime.now());
 
-        repository.save(entidad);
+        return respuesta(repository.save(entidad));
+    }
 
+    private ConfiguracionEmpresaDTO respuesta(ConfiguracionEmpresa entidad) {
         return new ConfiguracionEmpresaDTO(
-                entidad.getWhatsapp(),
-                entidad.getCuentaBcp(),
-                entidad.getCciBcp(),
-                entidad.getCuentaNacion(),
-                entidad.getActualizadoPor(),
-                entidad.getFechaActualizacion()
+                limpiar(entidad != null ? entidad.getWhatsapp() : props.telefono()),
+                limpiar(props.cuentaBcp()),
+                limpiar(props.cciBcp()),
+                limpiar(props.cuentaNacion()),
+                limpiar(props.cuentaDetracciones()),
+                entidad != null ? entidad.getActualizadoPor() : null,
+                entidad != null ? entidad.getFechaActualizacion() : null
         );
     }
 

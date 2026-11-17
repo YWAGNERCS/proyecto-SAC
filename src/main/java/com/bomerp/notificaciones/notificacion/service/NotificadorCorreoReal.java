@@ -7,9 +7,14 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.regex.Pattern;
+
 @Slf4j
 @Service
 public class NotificadorCorreoReal implements NotificadorCorreo {
+
+    private static final Pattern IMAGEN_INLINE = Pattern.compile(
+            "<img\\s+[^>]*?\\bsrc\\s*=\\s*(['\"])cid:(logo|whatsapp)\\1", Pattern.CASE_INSENSITIVE);
 
     private final JavaMailSender mailSender;
 
@@ -40,18 +45,21 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
         }
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            // true indica que será multipart (soporta HTML e imágenes incrustadas)
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            boolean tieneAdjunto = adjunto != null && adjunto.exists();
+            int modo = tieneAdjunto ? MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED
+                    : IMAGEN_INLINE.matcher(cuerpo).find() ? MimeMessageHelper.MULTIPART_MODE_RELATED
+                    : MimeMessageHelper.MULTIPART_MODE_NO;
+            MimeMessageHelper helper = new MimeMessageHelper(message, modo, "UTF-8");
 
             helper.setFrom(remitente);
             helper.setTo(destinatario);
             helper.setSubject(asunto);
             helper.setText(cuerpo, true); // true = el cuerpo es HTML
 
-            incrustarRecursosInline(helper);
+            incrustarRecursosInline(helper, cuerpo);
 
             // Adjuntar archivo si existe
-            if (adjunto != null && adjunto.exists()) {
+            if (tieneAdjunto) {
                 helper.addAttachment(adjunto.getName(), adjunto);
             }
 
@@ -80,7 +88,7 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
             helper.setTo(m.destinatario());
             helper.setSubject(m.asunto());
             helper.setText(m.html(), true);
-            incrustarRecursosInline(helper);
+            incrustarRecursosInline(helper, m.html());
             for (Adjunto a : m.adjuntos()) {
                 helper.getRootMimeMultipart().addBodyPart(parteBase64(a));
             }
@@ -142,15 +150,18 @@ public class NotificadorCorreoReal implements NotificadorCorreo {
         return parte;
     }
 
-    /** Recursos visuales incrustados (cid:logo, cid:whatsapp): se ven sin descargar imágenes remotas. */
-    private static void incrustarRecursosInline(MimeMessageHelper helper) throws jakarta.mail.MessagingException {
-        ClassPathResource logoImage = new ClassPathResource("static/images/logo.png");
-        if (logoImage.exists()) {
-            helper.addInline("logo", logoImage);
-        }
-        ClassPathResource waImage = new ClassPathResource("static/images/whatsapp.png");
-        if (waImage.exists()) {
-            helper.addInline("whatsapp", waImage);
+    /** Cada mensaje lleva solo las imágenes que referencia su HTML. */
+    private static void incrustarRecursosInline(MimeMessageHelper helper, String html) throws jakarta.mail.MessagingException {
+        var referencias = IMAGEN_INLINE.matcher(html);
+        var incluidas = new java.util.HashSet<String>();
+        while (referencias.find()) {
+            String id = referencias.group(2);
+            if (incluidas.add(id)) {
+                var recurso = new ClassPathResource("static/images/" + id.toLowerCase(java.util.Locale.ROOT) + ".png");
+                if (recurso.exists()) {
+                    helper.addInline(id, recurso);
+                }
+            }
         }
     }
 }

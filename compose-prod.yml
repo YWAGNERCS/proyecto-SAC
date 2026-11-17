@@ -113,6 +113,9 @@ services:
       CORREO_OFICINA: ${CORREO_OFICINA:-}
       DECOLECTA_TOKEN: ${DECOLECTA_TOKEN:-}
       CUENTA_DETRACCIONES: ${CUENTA_DETRACCIONES:-}
+      CUENTA_BCP: ${CUENTA_BCP:-}
+      CCI_BCP: ${CCI_BCP:-}
+      CUENTA_NACION: ${CUENTA_NACION:-}
       # Contacto oficial de JD en el correo del comprobante (vacíos = no se muestran)
       EMPRESA_TELEFONO: ${EMPRESA_TELEFONO:-}
       EMPRESA_CORREO: ${EMPRESA_CORREO:-}

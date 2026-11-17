@@ -88,12 +88,36 @@ class NotificadorCorreoRealTest {
         assertThat(id).isEqualTo("<abc-123.sgejd-1@prueba.test>");
         assertThat(smtp.mensajes()).hasSize(1);
         String crudo = smtp.mensajes().get(0);
-        assertThat(crudo).contains("Message-ID: <abc-123.sgejd-1@prueba.test>");
+        assertThat(crudo).contains("Message-ID: <abc-123.sgejd-1@prueba.test>")
+                .doesNotContain("Content-ID:");
         assertThat(crudo).contains("Content-Transfer-Encoding: base64");
         Map<String, byte[]> adj = adjuntos(crudo);
         assertThat(adj.keySet()).containsExactly("20521632268-03-B001-7.pdf", "20521632268-03-B001-7.xml");
         assertThat(adj.get("20521632268-03-B001-7.xml")).isEqualTo(XML);   // el XML firmado, sin un solo cambio
         assertThat(adj.get("20521632268-03-B001-7.pdf")).isEqualTo(PDF);
+    }
+
+    @Test
+    void unaAlertaConLogoSoloEnviaLaImagenQueUsaElHtml() throws Exception {
+        boolean enviado = notificador.enviarCorreo("oficina@prueba.test", "Alerta de inventario",
+                "<p>Productos en el mínimo</p><img src=\"cid:logo\" alt=\"JD Refrigeración\">");
+
+        assertThat(enviado).isTrue();
+        assertThat(smtp.mensajes()).hasSize(1);
+        String crudo = smtp.mensajes().getFirst();
+        assertThat(crudo).contains("multipart/related", "Content-ID: <logo>")
+                .doesNotContain("multipart/mixed", "Content-ID: <whatsapp>");
+        assertThat(adjuntos(crudo)).isEmpty();
+    }
+
+    @Test
+    void unCorreoConLosDosIconosConservaAmbasImagenes() {
+        boolean enviado = notificador.enviarCorreo("cliente@prueba.test", "Proforma",
+                "<img src='cid:logo'><a href='https://example.test'><img src='cid:whatsapp'></a>");
+
+        assertThat(enviado).isTrue();
+        assertThat(smtp.mensajes()).hasSize(1);
+        assertThat(smtp.mensajes().getFirst()).contains("Content-ID: <logo>", "Content-ID: <whatsapp>");
     }
 
     @Test

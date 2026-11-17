@@ -85,6 +85,12 @@ public final class OrdenDTO {
 
     public record MaterialResponse(Long productoId, String productoNombre, int cantidad, BigDecimal costoUnitario, String moneda) {}
 
+    public record TarifaContrato(Long contratoId, BigDecimal montoSinIgv, Venta.Moneda moneda, BigDecimal totalConIgv) {
+        public TarifaContrato(Long contratoId, BigDecimal montoSinIgv, Venta.Moneda moneda) {
+            this(contratoId, montoSinIgv, moneda, montoSinIgv.add(Venta.calcularIgv(montoSinIgv)));
+        }
+    }
+
     public record Response(
             Long id,
             String tipo,
@@ -113,9 +119,10 @@ public final class OrdenDTO {
             Long ventaFacturadaId,
             String registradoPor,
             String cerradoPor,
-            String motivoCancelacion
+            String motivoCancelacion,
+            TarifaContrato tarifaContrato
     ) {
-        public static Response desdeEntidad(OrdenTrabajo o, List<EquipoDTO.Response> equiposInstalados) {
+        public static Response desdeEntidad(OrdenTrabajo o, List<EquipoDTO.Response> equiposInstalados, TarifaContrato tarifaContrato) {
             return new Response(
                     o.getId(),
                     o.getTipo().name(),
@@ -148,7 +155,8 @@ public final class OrdenDTO {
                     o.getVentaFacturadaId(),
                     o.getRegistradoPor(),
                     o.getCerradoPor(),
-                    o.getMotivoCancelacion());
+                    o.getMotivoCancelacion(),
+                    tarifaContrato);
         }
     }
 }

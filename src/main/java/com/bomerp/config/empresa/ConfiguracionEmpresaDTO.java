@@ -7,6 +7,7 @@ public record ConfiguracionEmpresaDTO(
         String cuentaBcp,
         String cciBcp,
         String cuentaNacion,
+        String cuentaDetracciones,
         String actualizadoPor,
         LocalDateTime fechaActualizacion
 ) {}

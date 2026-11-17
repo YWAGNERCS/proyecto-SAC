@@ -47,7 +47,7 @@ public class AuditoriaService {
             r("POST", "/ventas/directa", "Ventas", "Registró la venta #{nuevo}"),
             r("POST", "/ventas/desde-proforma/{n}", "Ventas", "Convirtió la proforma #{id} en venta #{nuevo}"),
             r("POST", "/proformas", "Proformas", "Creó la proforma #{nuevo}"),
-            r("POST", "/proformas/{n}/enviar", "Proformas", "Envió la proforma #{id}"),
+            r("POST", "/proformas/{n}/enviar", "Proformas", "Solicitó el envío de la proforma #{id}"),
             r("POST", "/proformas/{n}/aceptar", "Proformas", "Marcó como aceptada la proforma #{id}"),
             r("POST", "/proformas/{n}/rechazar", "Proformas", "Marcó como rechazada la proforma #{id}"),
             r("POST", "/proformas/marcar-vencidas", "Proformas", "Marcó las proformas vencidas"),
@@ -110,7 +110,7 @@ public class AuditoriaService {
     private static final Map<String, String> INFINITIVOS = Map.ofEntries(
             Map.entry("Anuló", "anular"), Map.entry("Registró", "registrar"),
             Map.entry("Convirtió", "convertir"), Map.entry("Creó", "crear"),
-            Map.entry("Envió", "enviar"), Map.entry("Marcó", "marcar"),
+            Map.entry("Envió", "enviar"), Map.entry("Marcó", "marcar"), Map.entry("Solicitó", "solicitar"),
             Map.entry("Emitió", "emitir"), Map.entry("Modificó", "modificar"),
             Map.entry("Eliminó", "eliminar"), Map.entry("Agregó", "agregar"),
             Map.entry("Abrió", "abrir"), Map.entry("Cerró", "cerrar"),

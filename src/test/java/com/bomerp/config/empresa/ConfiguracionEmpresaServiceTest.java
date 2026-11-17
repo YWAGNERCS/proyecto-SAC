@@ -7,12 +7,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.query.FluentQuery;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ConfiguracionEmpresaServiceTest {
 
@@ -23,7 +25,7 @@ class ConfiguracionEmpresaServiceTest {
     @BeforeEach
     void setUp() {
         repository = new FakeConfiguracionEmpresaRepository();
-        props = new EmpresaProperties("JD REFRIGERACIÓN S.A.C.", "20521632268", "Lima", null,
+        props = new EmpresaProperties("JD REFRIGERACIÓN S.A.C.", "20521632268", "Lima", "DETRACCIONES-PRUEBA",
                 "912345678", "contacto@jd.pe", "jd.pe",
                 "193-12345678-0-12", "002-193-001234567890-12", "00-012-345678");
         service = new ConfiguracionEmpresaService(repository, props);
@@ -37,35 +39,33 @@ class ConfiguracionEmpresaServiceTest {
         assertThat(conf.cuentaBcp()).isEqualTo("193-12345678-0-12");
         assertThat(conf.cciBcp()).isEqualTo("002-193-001234567890-12");
         assertThat(conf.cuentaNacion()).isEqualTo("00-012-345678");
+        assertThat(conf.cuentaDetracciones()).isEqualTo("DETRACCIONES-PRUEBA");
         assertThat(conf.actualizadoPor()).isNull();
     }
 
     @Test
-    void guardarActualizaDatosYGuardaEnRepositorio() {
-        ConfiguracionEmpresaDTO nuevo = new ConfiguracionEmpresaDTO(
-                "987654321", "191-99999999-0-99", "002-191-009999999999-99", "00-999-999999", null, null
-        );
-
-        ConfiguracionEmpresaDTO resultado = service.cambiar(nuevo, "lisandro");
+    void guardarWhatsappMantieneLasCuentasDelServidor() {
+        ConfiguracionEmpresaDTO resultado = service.cambiarWhatsapp("987654321", "lisandro");
 
         assertThat(resultado.whatsapp()).isEqualTo("987654321");
-        assertThat(resultado.cuentaBcp()).isEqualTo("191-99999999-0-99");
+        assertThat(resultado.cuentaBcp()).isEqualTo(props.cuentaBcp());
         assertThat(resultado.actualizadoPor()).isEqualTo("lisandro");
         assertThat(resultado.fechaActualizacion()).isNotNull();
 
         assertThat(repository.saved).isNotNull();
         assertThat(repository.saved.getWhatsapp()).isEqualTo("987654321");
-        assertThat(repository.saved.getCuentaBcp()).isEqualTo("191-99999999-0-99");
+        assertThat(service.obtener().cuentaBcp()).isEqualTo(props.cuentaBcp());
     }
 
     @Test
-    void borrarDatosLosMantieneVaciosAunqueExistanProperties() {
-        service.cambiar(new ConfiguracionEmpresaDTO(" ", null, null, null, null, null), "admin");
+    void borrarWhatsappNoAfectaLasCuentasDelServidor() {
+        service.cambiarWhatsapp(" ", "admin");
         ConfiguracionEmpresaDTO resultado = service.obtener();
         assertThat(resultado.whatsapp()).isNull();
-        assertThat(resultado.cuentaBcp()).isNull();
-        assertThat(resultado.cciBcp()).isNull();
-        assertThat(resultado.cuentaNacion()).isNull();
+        assertThat(resultado.cuentaBcp()).isEqualTo(props.cuentaBcp());
+        assertThat(resultado.cciBcp()).isEqualTo(props.cciBcp());
+        assertThat(resultado.cuentaNacion()).isEqualTo(props.cuentaNacion());
+        assertThat(resultado.cuentaDetracciones()).isEqualTo(props.cuentaDetracciones());
     }
 
     @Test
@@ -73,7 +73,24 @@ class ConfiguracionEmpresaServiceTest {
         service = new ConfiguracionEmpresaService(repository, new EmpresaProperties("JD", "123", "Lima", null));
         assertThat(service.obtener().cuentaBcp()).isNull();
         assertThat(service.obtener().cuentaNacion()).isNull();
+        assertThat(service.obtener().cuentaDetracciones()).isNull();
         assertThat(service.obtener().whatsapp()).isNull();
+    }
+
+    @Test
+    void unaPeticionAnteriorSoloActualizaWhatsapp() {
+        var json = new ObjectMapper();
+        var pedido = json.readValue("""
+                {"whatsapp":"987654321","cuentaBcp":"otra cuenta","cuentaDetracciones":"otra cuenta"}
+                """, ConfiguracionEmpresaController.CambioWhatsapp.class);
+        var resultado = new ConfiguracionEmpresaController(service).cambiar(pedido, null);
+        assertThat(resultado.whatsapp()).isEqualTo("987654321");
+        assertThat(resultado.cuentaBcp()).isEqualTo(props.cuentaBcp());
+        assertThat(resultado.cuentaDetracciones()).isEqualTo(props.cuentaDetracciones());
+
+        assertThatThrownBy(() -> json.readValue("""
+                {"cuentaBcp":"otra cuenta"}
+                """, ConfiguracionEmpresaController.CambioWhatsapp.class)).hasMessageContaining("whatsapp");
     }
 
     static class FakeConfiguracionEmpresaRepository implements ConfiguracionEmpresaRepository {

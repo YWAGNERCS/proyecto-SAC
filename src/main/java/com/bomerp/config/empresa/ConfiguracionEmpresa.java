@@ -11,9 +11,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Datos dinámicos de contacto y cuentas bancarias de JD Refrigeración S.A.C.
- * que el administrador puede modificar desde la pantalla de Configuración (tabla CONFIGURACION_EMPRESA, fila única ID=1).
- * Si no existe fila en BD, se utilizan los valores de EmpresaProperties. Una fila guardada permite dejar campos vacíos.
+ * WhatsApp de JD Refrigeración, editable por el administrador (fila única ID=1).
+ * Si no existe fila en BD, se usa el teléfono de EmpresaProperties.
  */
 @Entity
 @Table(name = "CONFIGURACION_EMPRESA")
@@ -30,18 +29,6 @@ public class ConfiguracionEmpresa {
     /** Celular / WhatsApp de atención y aprobación de proformas */
     @Column(name = "whatsapp", length = 30)
     private String whatsapp;
-
-    /** Número de cuenta corriente BCP */
-    @Column(name = "cuenta_bcp", length = 50)
-    private String cuentaBcp;
-
-    /** Código de Cuenta Interbancario (CCI) BCP */
-    @Column(name = "cci_bcp", length = 50)
-    private String cciBcp;
-
-    /** Número de cuenta Banco de la Nación */
-    @Column(name = "cuenta_nacion", length = 50)
-    private String cuentaNacion;
 
     @Column(name = "actualizado_por", length = 100)
     private String actualizadoPor;

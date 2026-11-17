@@ -161,7 +161,11 @@ public class Venta {
     private static final BigDecimal IGV = new BigDecimal("0.18");
 
     public BigDecimal calcularIgv() {
-        return calcularSubtotal().multiply(IGV).setScale(2, java.math.RoundingMode.HALF_UP);
+        return calcularIgv(calcularSubtotal());
+    }
+
+    public static BigDecimal calcularIgv(BigDecimal subtotal) {
+        return subtotal.multiply(IGV).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     public BigDecimal calcularTotal() {
