@@ -594,6 +594,15 @@ public class VentaService {
         return obtenerPorId(ventaId);
     }
 
+    public void vincularOrdenDeOrigen(Long ventaId, Long ordenId) {
+        obtenerPorId(ventaId).setOrdenTrabajoOrigenId(ordenId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> ventasAnuladasDeOrden(Long ordenId, Long ultimaVentaId) {
+        return ventaRepository.idsAnuladosDeOrden(ordenId, ultimaVentaId);
+    }
+
     /** Fachada para Facturación: guarda en la venta el comprobante que se le emitió. */
     public void asignarComprobante(Long ventaId, Long comprobanteId) {
         obtenerPorId(ventaId).setComprobanteId(comprobanteId);

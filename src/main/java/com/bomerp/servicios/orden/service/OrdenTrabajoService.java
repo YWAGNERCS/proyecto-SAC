@@ -23,6 +23,8 @@ import com.bomerp.ventas.venta.dto.VentaResponseDTO;
 import com.bomerp.ventas.venta.entity.Venta;
 import com.bomerp.ventas.venta.service.VentaService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +46,7 @@ import java.util.stream.Stream;
  *  - Al cerrar: fecha no futura; los materiales son productos con stock (MATERIAL_SERVICIO), hay stock
  *    suficiente y se descuenta; los equipos instalados solo en órdenes de INSTALACION; la visita de
  *    mantenimiento queda REALIZADA.
- *  - Solo se factura una orden REALIZADA, una vez, y solo con servicios (mano de obra): los materiales
+ *  - Solo una orden REALIZADA puede tener una venta vigente, y solo con servicios (mano de obra): los materiales
  *    ya descontaron stock al cerrar la orden.
  */
 @Service
@@ -59,10 +61,12 @@ public class OrdenTrabajoService {
     private final VentaService ventaService;
     private final MantenimientoService mantenimientoService;
     private final EquipoInstaladoService equipoService;
+    private final JdbcTemplate jdbc;
 
     public OrdenTrabajoService(OrdenTrabajoRepository ordenRepository, ClienteService clienteService,
                                SedeClienteService sedeService, ProductoService productoService, VentaService ventaService,
-                               MantenimientoService mantenimientoService, EquipoInstaladoService equipoService) {
+                               MantenimientoService mantenimientoService, EquipoInstaladoService equipoService,
+                               JdbcTemplate jdbc) {
         this.ordenRepository = ordenRepository;
         this.clienteService = clienteService;
         this.sedeService = sedeService;
@@ -70,6 +74,7 @@ public class OrdenTrabajoService {
         this.ventaService = ventaService;
         this.mantenimientoService = mantenimientoService;
         this.equipoService = equipoService;
+        this.jdbc = jdbc;
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +90,7 @@ public class OrdenTrabajoService {
     @Transactional(readOnly = true)
     public OrdenDTO.Response obtener(Long id) {
         OrdenTrabajo orden = buscar(id);
-        return aDto(orden, tarifaContrato(orden));
+        return aDtoConFacturacion(orden, tarifaContrato(orden));
     }
 
     @Transactional(readOnly = true)
@@ -222,16 +227,21 @@ public class OrdenTrabajoService {
         if (o.getEstado() != OrdenTrabajo.Estado.REALIZADA) {
             throw new ReglaNegocioException("Solo se factura una orden REALIZADA. La #" + id + " está " + o.getEstado() + ".");
         }
-        if (o.getVentaFacturadaId() != null) {
-            throw new ReglaNegocioException("La orden #" + id + " ya se facturó en la venta #" + o.getVentaFacturadaId() + ".");
+        Long ventaAnterior = o.getVentaFacturadaId();
+        if (ventaAnterior != null) {
+            if (ventaService.obtenerPorIdPublico(ventaAnterior).getEstado() != Venta.EstadoVenta.ANULADA) {
+                throw new ReglaNegocioException("La orden #" + id + " ya se facturó en la venta #" + ventaAnterior + ".");
+            }
+            ventaService.vincularOrdenDeOrigen(ventaAnterior, id);
         }
         OrdenDTO.TarifaContrato tarifa = tarifaContrato(o);
         VentaResponseDTO venta = tarifa == null
                 ? facturarPorCatalogo(o, dto, vendedorId, vendedorNombre)
                 : facturarVisitaDeContrato(o, dto, tarifa, vendedorId, vendedorNombre);
+        ventaService.vincularOrdenDeOrigen(venta.id(), id);
         o.setVentaFacturadaId(venta.id());
         log.info("Orden de trabajo {} facturada con la venta {}", id, venta.id());
-        return aDto(ordenRepository.save(o), tarifa);
+        return aDtoConFacturacion(ordenRepository.save(o), tarifa);
     }
 
     private VentaResponseDTO facturarVisitaDeContrato(OrdenTrabajo orden, OrdenDTO.Facturacion dto,
@@ -288,6 +298,7 @@ public class OrdenTrabajoService {
         if (fin > 24 * 60) {
             throw new IllegalArgumentException("La visita terminaría después de medianoche: revise la hora o la duración.");
         }
+        bloquearHorario(o.getFechaProgramada(), o.getTecnico());
         for (OrdenTrabajo otra : ordenRepository.programadasDelTecnico(o.getTecnico(), o.getFechaProgramada())) {
             if (otra.getId().equals(o.getId()) || otra.minutoInicio() == null) continue;
             int otraInicio = otra.minutoInicio();
@@ -296,6 +307,19 @@ public class OrdenTrabajoService {
                 throw new ReglaNegocioException(o.getTecnico() + " ya tiene la orden #" + otra.getId() + " ("
                         + otra.getCliente().getNombreORazonSocial() + ") el " + otra.getFechaProgramada() + " de "
                         + otra.getHoraInicio() + " a " + hhmm(otraFin) + ". Elija otra hora u otro técnico.");
+            }
+        }
+    }
+
+    private void bloquearHorario(LocalDate fecha, String tecnico) {
+        String clave = fecha + "|" + tecnico.trim();
+        String bloquear = "UPDATE RESERVAS_AGENDA SET CLAVE = CLAVE WHERE CLAVE = LOWER(?)";
+        if (jdbc.update(bloquear, clave) == 0) {
+            try {
+                jdbc.update("INSERT INTO RESERVAS_AGENDA (CLAVE) VALUES (LOWER(?))", clave);
+            } catch (DuplicateKeyException otraReservaCreoLaFila) {
+                // La otra transacción creó la fila. El UPDATE espera su turno antes de consultar la agenda.
+                jdbc.update(bloquear, clave);
             }
         }
     }
@@ -406,8 +430,20 @@ public class OrdenTrabajoService {
     }
 
     private OrdenDTO.Response aDto(OrdenTrabajo o, OrdenDTO.TarifaContrato tarifa) {
+        return aDto(o, tarifa, List.of());
+    }
+
+    private OrdenDTO.Response aDtoConFacturacion(OrdenTrabajo o, OrdenDTO.TarifaContrato tarifa) {
+        Long ventaActual = o.getVentaFacturadaId();
+        if (ventaActual == null) return aDto(o, tarifa);
+        return aDto(o, tarifa, ventaService.ventasAnuladasDeOrden(o.getId(), ventaActual));
+    }
+
+    private OrdenDTO.Response aDto(OrdenTrabajo o, OrdenDTO.TarifaContrato tarifa, List<Long> anuladas) {
+        boolean actualAnulada = o.getVentaFacturadaId() != null && anuladas.contains(o.getVentaFacturadaId());
         return OrdenDTO.Response.desdeEntidad(o,
-                o.getTipo() == OrdenTrabajo.Tipo.INSTALACION ? equipoService.deOrden(o.getId()) : List.of(), tarifa);
+                o.getTipo() == OrdenTrabajo.Tipo.INSTALACION ? equipoService.deOrden(o.getId()) : List.of(),
+                tarifa, actualAnulada, anuladas);
     }
 
     private OrdenDTO.TarifaContrato tarifaContrato(OrdenTrabajo orden) {

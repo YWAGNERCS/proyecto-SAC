@@ -53,6 +53,10 @@ BEGIN
     conceder('SELECT, INSERT',
         sys.odcivarchar2list('DETALLE_VENTA', 'ITEMS_PROFORMA', 'DETALLE_COMPRA', 'DETALLE_COBRO', 'MATERIALES_ORDEN',
             'AJUSTES_INVENTARIO', 'ENVIOS_SUNAT', 'INTENTOS_CORREO', 'HISTORIAL_CAMBIOS'), 'rol_sgejd_operacion');
+    FOR t IN (SELECT table_name FROM all_tables
+              WHERE owner = 'JDREFRIGERACION' AND table_name IN ('CONFIGURACION_EMPRESA', 'RESERVAS_AGENDA')) LOOP
+        conceder('SELECT, INSERT, UPDATE', sys.odcivarchar2list(t.table_name), 'rol_sgejd_operacion');
+    END LOOP;
     ejecutar('GRANT EXECUTE ON jdrefrigeracion.sp_registrar_venta TO rol_sgejd_operacion');
     ejecutar('GRANT EXECUTE ON jdrefrigeracion.fn_total_venta TO rol_sgejd_operacion');
     conceder('SELECT',

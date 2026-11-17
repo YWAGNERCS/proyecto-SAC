@@ -117,12 +117,15 @@ public final class OrdenDTO {
             List<MaterialResponse> materiales,
             List<EquipoDTO.Response> equiposInstalados,
             Long ventaFacturadaId,
+            boolean ventaFacturadaAnulada,
+            List<Long> ventasAnuladas,
             String registradoPor,
             String cerradoPor,
             String motivoCancelacion,
             TarifaContrato tarifaContrato
     ) {
-        public static Response desdeEntidad(OrdenTrabajo o, List<EquipoDTO.Response> equiposInstalados, TarifaContrato tarifaContrato) {
+        public static Response desdeEntidad(OrdenTrabajo o, List<EquipoDTO.Response> equiposInstalados,
+                                          TarifaContrato tarifaContrato, boolean ventaFacturadaAnulada, List<Long> ventasAnuladas) {
             return new Response(
                     o.getId(),
                     o.getTipo().name(),
@@ -153,6 +156,8 @@ public final class OrdenDTO {
                             .toList(),
                     equiposInstalados,
                     o.getVentaFacturadaId(),
+                    ventaFacturadaAnulada,
+                    ventasAnuladas,
                     o.getRegistradoPor(),
                     o.getCerradoPor(),
                     o.getMotivoCancelacion(),

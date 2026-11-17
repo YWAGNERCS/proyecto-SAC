@@ -18,6 +18,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public interface VentaRepository extends JpaRepository<Venta, Long>, JpaSpecificationExecutor<Venta> {
+    @Query("""
+            SELECT v.id FROM Venta v
+            WHERE (v.ordenTrabajoOrigenId = :ordenId OR v.id = :ultimaVentaId)
+              AND v.estado = com.bomerp.ventas.venta.entity.Venta.EstadoVenta.ANULADA
+            ORDER BY v.id
+            """)
+    List<Long> idsAnuladosDeOrden(@Param("ordenId") Long ordenId, @Param("ultimaVentaId") Long ultimaVentaId);
+
     // Las consultas de cobranza y reportes reciben el estado de la venta para excluir las ANULADAS
     List<Venta> findByEstadoAndEstadoPago(Venta.EstadoVenta estado, Venta.EstadoPago estadoPago);
 

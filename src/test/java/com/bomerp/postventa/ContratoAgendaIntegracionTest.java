@@ -21,17 +21,24 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 @SpringBootTest(properties = {
         "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:1/keys",
@@ -48,6 +55,7 @@ class ContratoAgendaIntegracionTest {
     @Autowired OrdenTrabajoService ordenes;
     @Autowired ProductoService productos;
     @Autowired VentaService ventas;
+    @Autowired JdbcTemplate jdbc;
     @MockitoBean KeycloakAdminClient keycloak;
 
     @DynamicPropertySource
@@ -196,7 +204,7 @@ class ContratoAgendaIntegracionTest {
     }
 
     @Test
-    void unaOrdenSinContratoConservaElPrecioDelCatalogo() {
+    void unaOrdenSinContratoConservaElPrecioDelCatalogoAlVolverAFacturar() {
         Long cliente = cliente();
         LocalDate hoy = LocalDate.now();
         var orden = ordenes.crear(orden(cliente, null, hoy), "prueba");
@@ -213,7 +221,54 @@ class ContratoAgendaIntegracionTest {
         var factura = new OrdenDTO.Facturacion(List.of(new OrdenDTO.ItemFactura(servicioId, 1, BigDecimal.ZERO)),
                 Venta.TipoPago.CREDITO, 30, Venta.Moneda.SOLES, new BigDecimal("3.70"));
         var facturada = ordenes.facturar(orden.id(), factura, "prueba", "Prueba");
-        assertThat(ventas.obtenerPorIdPublico(facturada.ventaFacturadaId()).calcularTotal()).isEqualByComparingTo("212.40");
+        Long ventaOriginal = facturada.ventaFacturadaId();
+        assertThat(ventas.obtenerPorIdPublico(ventaOriginal).calcularTotal()).isEqualByComparingTo("212.40");
+
+        ventas.anular(ventaOriginal, "Prueba de refacturación", "prueba");
+        var pendiente = ordenes.obtener(orden.id());
+        assertThat(pendiente.ventaFacturadaAnulada()).isTrue();
+        assertThat(pendiente.ventasAnuladas()).containsExactly(ventaOriginal);
+
+        var reemplazo = ordenes.facturar(orden.id(), factura, "prueba", "Prueba");
+        assertThat(reemplazo.ventaFacturadaId()).isNotEqualTo(ventaOriginal);
+        assertThat(reemplazo.ventaFacturadaAnulada()).isFalse();
+        assertThat(ordenes.obtener(orden.id()).ventasAnuladas()).containsExactly(ventaOriginal);
+        assertThat(ventas.obtenerPorIdPublico(ventaOriginal).getEstado()).isEqualTo(Venta.EstadoVenta.ANULADA);
+        assertThat(ventas.obtenerPorIdPublico(reemplazo.ventaFacturadaId()).getOrdenTrabajoOrigenId()).isEqualTo(orden.id());
+        assertThatThrownBy(() -> ordenes.facturar(orden.id(), factura, "prueba", "Prueba"))
+                .isInstanceOf(ReglaNegocioException.class).hasMessageContaining("ya se facturó");
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void soloUnaReservaConcurrenteObtieneElMismoHorario() throws Exception {
+        assumeFalse("1".equals(System.getenv("AGENDA_PRUEBA_ORACLE_LOCAL")), "Esta prueba confirma y limpia datos solo en H2.");
+        Long cliente = cliente();
+        LocalDate fecha = LocalDate.now().plusDays(2);
+        String tecnico = "Técnico prueba concurrente " + cliente;
+        var inicio = new CyclicBarrier(2);
+        Callable<Boolean> reservar = () -> {
+            inicio.await(5, TimeUnit.SECONDS);
+            try {
+                ordenes.crear(new OrdenDTO.Request(OrdenTrabajo.Tipo.MANTENIMIENTO, cliente, null, null, null, null,
+                        fecha, "09:00", 60, tecnico, null, "Prueba de agenda"), "prueba");
+                return true;
+            } catch (ReglaNegocioException conflicto) {
+                assertThat(conflicto).hasMessageContaining("ya tiene la orden");
+                return false;
+            }
+        };
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var primera = executor.submit(reservar);
+            var segunda = executor.submit(reservar);
+            assertThat(List.of(primera.get(20, TimeUnit.SECONDS), segunda.get(20, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(true, false);
+            assertThat(ordenes.agenda(fecha, fecha)).filteredOn(orden -> tecnico.equals(orden.tecnico())).hasSize(1);
+        } finally {
+            jdbc.update("DELETE FROM ORDENES_TRABAJO WHERE CLIENTE_ID = ?", cliente);
+            clientes.eliminar(cliente);
+        }
     }
 
     @Test

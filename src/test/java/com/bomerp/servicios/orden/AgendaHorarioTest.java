@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -43,6 +44,7 @@ class AgendaHorarioTest {
     @Mock VentaService ventaService;
     @Mock MantenimientoService mantenimientoService;
     @Mock EquipoInstaladoService equipoService;
+    @Mock JdbcTemplate jdbc;
     @InjectMocks OrdenTrabajoService service;
 
     private final LocalDate dia = LocalDate.now().plusDays(3);
@@ -55,6 +57,7 @@ class AgendaHorarioTest {
         cliente.setNombreORazonSocial("Cliente de prueba");
         cliente.setDireccion("Av. Prueba 123");
         when(clienteService.obtenerPorId(5L)).thenReturn(cliente);
+        when(jdbc.update(anyString(), anyString())).thenReturn(1);
         when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(i -> {
             OrdenTrabajo o = i.getArgument(0);
             if (o.getId() == null) o.setId(99L);

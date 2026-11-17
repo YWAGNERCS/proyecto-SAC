@@ -42,6 +42,10 @@ public class Venta {
     @JoinColumn(name = "proforma_id")
     private Proforma proformaOrigen;
 
+    /** Orden que originó la venta, incluso cuando la venta se anula y se vuelve a facturar. */
+    @Column(name = "orden_trabajo_origen_id")
+    private Long ordenTrabajoOrigenId;
+
     @Column(name = "fecha_venta", nullable = false)
     private LocalDate fechaVenta = LocalDate.now();
 

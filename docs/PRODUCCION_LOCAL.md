@@ -65,7 +65,9 @@ docker cp scripts/prod/esquema_jdrefrigeracion.sql sge-jd-oracle-prod:/tmp/esque
 "alter session set current_schema=JDREFRIGERACION;`n@/tmp/esquema.sql" | docker exec -i -e ORACLE_PDB_SID=FREEPDB1 sge-jd-oracle-prod sqlplus -s / as sysdba
 ```
 
-Debe decir 26 veces `Table created.`, 10 `Index created.` y 44 `Table altered.` (comprobado el 07/11/2026 en un esquema vacío: mismas columnas, índices y restricciones que la base de desarrollo, que desde la auditoría B7 tampoco tiene la tabla `USUARIOS`).
+Comprueba que SQL*Plus haya creado las tablas, los índices y las claves sin errores.
+
+Si la base existente es anterior al 07/11/2026, aplica las migraciones históricas antes del paso 3b. Ejecuta `migracion_comprobante_reemplazo.sql`, `migracion_venta_anulacion.sql`, `migracion_costos_precios.sql`, `migracion_envio_correo.sql` y `migracion_ambiente_emision.sql`, en ese orden. Usa los comandos del paso 3c con esos cinco archivos de la raíz del repositorio.
 
 **3b. Migración BD2** (tablespace de ventas, reglas y PL/SQL, auditoría de ventas, índices, usuarios `JD_APP` y `JD_REPORTES` con roles, auditoría unificada y redo de 200 MB). Va después del esquema, en una base nueva o en la que ya existe, con el backend detenido y un respaldo previo. Está probada en una copia de desarrollo (220 pruebas en verde) y aplicada en desarrollo el 10/11/2026. Detalle en [migracion_bd2/README.md](../migracion_bd2/README.md).
 
@@ -77,14 +79,22 @@ Debe decir 26 veces `Table created.`, 10 `Index created.` y 44 `Table altered.` 
 .\migracion_bd2\migrar.ps1 -Contenedor sge-jd-oracle-prod -Secretos .env.prod
 ```
 
-**Base de producción ya creada antes del 07/11/2026:** en lugar del paso 3, aplicar una vez `migracion_comprobante_reemplazo.sql`, `migracion_venta_anulacion.sql`, `migracion_costos_precios.sql`, `migracion_envio_correo.sql` y `migracion_ambiente_emision.sql`, en ese orden (se pueden ejecutar varias veces) antes de encender el backend nuevo; si no, `ddl-auto=validate` no lo deja arrancar. Se aplican igual que esta, cambiando el nombre del archivo:
+**3c. Actualizar una base existente a esta versión.** Con el backend detenido, el respaldo hecho y los roles del paso 3b creados, aplica estas migraciones en orden. El esquema del paso 3 ya incluye sus cambios para una instalación nueva.
 
 ```powershell
-docker cp migracion_comprobante_reemplazo.sql sge-jd-oracle-prod:/tmp/m.sql
-```
-
-```powershell
-"alter session set current_schema=JDREFRIGERACION;`n@/tmp/m.sql" | docker exec -i -e ORACLE_PDB_SID=FREEPDB1 sge-jd-oracle-prod sqlplus -s / as sysdba
+$migraciones = @(
+    'scripts/prod/migracion_condiciones_proforma.sql'
+    'scripts/prod/migracion_configuracion_empresa.sql'
+    'scripts/prod/migracion_agenda_refacturacion.sql'
+)
+foreach ($ruta in $migraciones) {
+    $archivo = Split-Path -Leaf $ruta
+    docker cp $ruta "sge-jd-oracle-prod:/tmp/$archivo"
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo copiar $archivo" }
+    "whenever sqlerror exit failure`nalter session set current_schema=JDREFRIGERACION;`n@/tmp/$archivo`nexit" |
+        docker exec -i -e ORACLE_PDB_SID=FREEPDB1 sge-jd-oracle-prod sqlplus -s / as sysdba
+    if ($LASTEXITCODE -ne 0) { throw "Falló $archivo" }
+}
 ```
 
 **4. Crear el realm, los roles, los clientes y los usuarios** (las claves de Lisandro y Lucy quedan en `.env.prod`):
@@ -103,8 +113,8 @@ docker compose -f compose-prod.yml --env-file .env.prod up -d --build backend
 docker logs -f sge-jd-backend-prod
 ```
 
-Debe terminar en `Started BomerpApplication`. Si el esquema no coincide con las entidades, no arranca y dice
-qué tabla o columna falta (`ddl-auto=validate`): regenerar el script del paso 3.
+Debe terminar en `Started BomerpApplication`. Si Hibernate indica que falta una tabla o columna
+(`ddl-auto=validate`), verifica qué script corresponde a tu instalación y revisa los permisos del paso 3b.
 
 **6. Construir y servir el frontend** (desde `bomerp-frontend`):
 

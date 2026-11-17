@@ -110,7 +110,6 @@ class StockProductoTest {
 
     @Test
     void editarUnProductoNoCambiaSuStock() {
-        when(productoRepository.findById(17L)).thenReturn(java.util.Optional.of(gas));
         when(productoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(categoriaService.obtenerPorId(any())).thenReturn(new com.bomerp.catalogo.categoria.entity.Categoria());
 
@@ -120,5 +119,6 @@ class StockProductoTest {
 
         assertThat(editado.getStockActual()).isEqualTo(10);
         assertThat(editado.getNombre()).isEqualTo("Gas R410A 11.3 kg");
+        org.mockito.Mockito.verify(entityManager).refresh(eq(gas), eq(LockModeType.PESSIMISTIC_WRITE), anyMap());
     }
 }

@@ -61,7 +61,7 @@ public class ProductoService {
      */
     @Transactional
     public Producto actualizar(Long id, ProductoRequestDTO dto) {
-        Producto producto = obtenerPorId(id);
+        Producto producto = bloquearParaStock(List.of(id)).get(id);
         Integer stock = producto.getStockActual();
         java.math.BigDecimal precioAntes = producto.getCostoBase() != null && producto.getMargenPorcentaje() != null
                 ? producto.calcularPrecioVenta() : null;
