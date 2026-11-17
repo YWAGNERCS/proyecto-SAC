@@ -84,7 +84,7 @@
     <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tContrato"
           [formGroup]="form" (ngSubmit)="guardar()" (click)="$event.stopPropagation()" novalidate>
       <h3 id="tContrato">Nuevo contrato de mantenimiento</h3>
-      <p class="muted" style="margin: 0 0 14px;">Al guardarlo se programan sus visitas desde hoy hasta el fin del contrato.</p>
+      <p class="muted" style="margin: 0 0 14px;">El calendario parte de la fecha de inicio. Se programan las visitas desde hoy y antes de la fecha de fin.</p>
       <div class="campos">
         <div style="grid-column: span 2;">
           <label class="form-label" for="cCli">Cliente *</label>

@@ -113,17 +113,14 @@ export class ProformaListComponent implements OnInit {
     this.cargarProformas();
   }
 
-  /** Envía por WhatsApp y correo y muestra qué salió y qué no (el backend lo informa). */
+  /** Envía la proforma por correo con su PDF. */
   enviar(id: number) {
     this.limpiarAvisos();
     this.accionEnCurso.set(id);
-    this.proformaService.enviar(id).subscribe({
+    this.proformaService.enviar(id, false, true).subscribe({
       next: (r) => {
         this.accionEnCurso.set(null);
-        const salioAlgo = r.correo === 'ENVIADO' || r.whatsapp === 'SIMULADO';
-        const fallo = r.correo === 'FALLO' || r.correo === 'SIN_CORREO' || r.correo === 'ENVIADO_SIN_PDF'
-          || r.whatsapp === 'SIN_TELEFONO';
-        if (salioAlgo && !fallo) this.mensaje.set(r.mensaje);
+        if (r.correo === 'ENVIADO') this.mensaje.set(r.mensaje);
         else this.error.set(r.mensaje);
         this.cargarProformas();
       },

@@ -68,9 +68,9 @@ export class ContratoListComponent implements OnInit {
     clienteId: this.fb.control<number | null>(null, Validators.required),
     sedeId: this.fb.control<number | null>(null),
     fechaInicio: this.fb.nonNullable.control(this.hoy, Validators.required),
-    fechaFin: this.fb.nonNullable.control(this.iso(new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate() - 1)),
+    fechaFin: this.fb.nonNullable.control(this.iso(new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate())),
       Validators.required),
-    frecuenciaMeses: this.fb.nonNullable.control(1, Validators.required),
+    frecuenciaMeses: this.fb.nonNullable.control(3, Validators.required),
     montoVisita: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01)]),
     moneda: this.fb.nonNullable.control<'SOLES' | 'DOLARES'>('SOLES'),
     descripcion: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(300)]),
@@ -81,11 +81,15 @@ export class ContratoListComponent implements OnInit {
   private readonly valor = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
   readonly vistaPrevia = computed(() => {
     const v = this.valor();
-    if (!v.fechaInicio || !v.fechaFin || !v.frecuenciaMeses) return null;
+    if (!v.fechaInicio || !v.fechaFin || !v.frecuenciaMeses || v.frecuenciaMeses < 1) return null;
     let visitas = 0;
-    const fin = new Date(v.fechaFin + 'T00:00');
-    for (let f = new Date(v.fechaInicio + 'T00:00'); f <= fin; f = new Date(f.getFullYear(), f.getMonth() + Number(v.frecuenciaMeses), f.getDate())) {
-      if (this.iso(f) >= this.hoy) visitas++;
+    const inicio = new Date(v.fechaInicio + 'T00:00');
+    for (let indice = 0; ; indice++) {
+      const mes = inicio.getMonth() + indice * v.frecuenciaMeses;
+      const ultimoDia = new Date(inicio.getFullYear(), mes + 1, 0).getDate();
+      const fecha = this.iso(new Date(inicio.getFullYear(), mes, Math.min(inicio.getDate(), ultimoDia)));
+      if (fecha >= v.fechaFin) break;
+      if (fecha >= this.hoy) visitas++;
     }
     return { visitas, total: visitas * (Number(v.montoVisita) || 0) };
   });

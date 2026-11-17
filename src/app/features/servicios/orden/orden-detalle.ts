@@ -40,6 +40,7 @@ export class OrdenDetalleComponent {
   readonly puedeServicios = computed(() => this.auth.puede('SERVICIOS'));
 
   readonly orden = signal<OrdenTrabajo | null>(null);
+  readonly tarifaContrato = computed(() => this.orden()?.tarifaContrato);
   readonly productos = signal<Producto[]>([]);
   readonly error = signal('');
   readonly mensaje = signal('');
@@ -154,10 +155,7 @@ export class OrdenDetalleComponent {
     this.totalFactura.set(0);
     this.mezclaMonedas.set(false);
     this.items.clear();
-    this.items.push(this.fb.group({
-      productoId: this.fb.control<number | null>(null, Validators.required),
-      cantidad: this.fb.nonNullable.control(1, [Validators.required, Validators.min(1)]),
-    }));
+    this.agregarServicio();
     this.abrir('FACTURAR');
   }
 
@@ -201,7 +199,7 @@ export class OrdenDetalleComponent {
       items: v.items.map((i) => ({ productoId: i.productoId!, cantidad: Number(i.cantidad), descuentoPorcentaje: null })),
       tipoPago: v.tipoPago,
       diasCredito: v.tipoPago === 'CREDITO' ? Number(v.diasCredito) : null,
-    }), (r) => `Orden #${r.id} facturada con la venta #${r.ventaFacturadaId}. Si el servicio supera S/ 700, la venta ya incluye la detracción.`);
+    }), (r) => `Orden #${r.id} vinculada a la venta #${r.ventaFacturadaId}.`);
   }
 
   // ── Cancelar ──

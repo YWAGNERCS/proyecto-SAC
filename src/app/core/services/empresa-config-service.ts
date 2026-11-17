@@ -3,10 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { ApiService } from './api-service';
 
 export interface ConfiguracionEmpresa {
-  whatsapp: string;
-  cuentaBcp: string;
-  cciBcp: string;
-  cuentaNacion: string;
+  whatsapp: string | null;
+  cuentaBcp: string | null;
+  cciBcp: string | null;
+  cuentaNacion: string | null;
+  cuentaDetracciones: string | null;
   actualizadoPor: string | null;
   fechaActualizacion: string | null;
 }
@@ -20,7 +21,7 @@ export class EmpresaConfigService {
     return this.http.get<ConfiguracionEmpresa>(this.api.buildUrl('/v1/admin/empresa/configuracion'));
   }
 
-  guardar(datos: { whatsapp: string; cuentaBcp: string; cciBcp: string; cuentaNacion: string }) {
-    return this.http.put<ConfiguracionEmpresa>(this.api.buildUrl('/v1/admin/empresa/configuracion'), datos);
+  guardarWhatsapp(whatsapp: string) {
+    return this.http.put<ConfiguracionEmpresa>(this.api.buildUrl('/v1/admin/empresa/configuracion'), { whatsapp });
   }
 }

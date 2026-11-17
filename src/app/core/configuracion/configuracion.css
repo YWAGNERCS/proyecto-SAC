@@ -149,3 +149,29 @@ kbd {
   margin: 0;
   width: 150px;
 }
+
+.titulo-cuentas {
+  border-top: 1px solid var(--border-color);
+  font-size: 0.95rem;
+  margin: 16px 0 10px;
+  padding-top: 14px;
+}
+
+.cuentas-empresa {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.cuentas-empresa dt {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 400;
+}
+
+.cuentas-empresa dd {
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}

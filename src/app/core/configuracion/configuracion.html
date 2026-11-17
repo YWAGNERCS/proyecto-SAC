@@ -140,47 +140,46 @@
       @if (errorTopes()) { <div class="alert alert-danger" role="alert">{{ errorTopes() }}</div> }
     </section>
 
-    <!-- Contacto y cuentas bancarias: solo el administrador los cambia -->
+    <!-- El administrador edita WhatsApp y consulta las cuentas activas. -->
     <section class="tarjeta">
       <div class="titulo-con-icono">
         <span class="icono-caja" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="iconos.cobranza" /></svg></span>
         <div><h2>Contacto y Cuentas Bancarias</h2><p>Solo el administrador</p></div>
       </div>
-      <p class="texto">Número de WhatsApp y cuentas bancarias oficiales para proformas (PDF y correo).
-        Cualquier cambio se refleja inmediatamente en los nuevos documentos sin reiniciar el sistema.</p>
       <form class="topes" (ngSubmit)="guardarConfigEmpresa()" novalidate>
-        @if (configEmpresa() && (!whatsappEmpresa.trim() || (!cuentaBcp.trim() && !cuentaNacion.trim()))) {
-          <p class="alert alert-warning" role="status">Complete los datos oficiales de JD. Las cuentas vacías se omiten del PDF y el botón de WhatsApp se oculta si falta el número.</p>
-        }
         <div class="form-group">
           <label class="form-label" for="whatsappEmpresa">WhatsApp / Celular de Proformas</label>
           <input id="whatsappEmpresa" name="whatsappEmpresa" type="text" class="form-control"
                  placeholder="Ej. 912345678" [(ngModel)]="whatsappEmpresa" [disabled]="guardandoEmpresa()">
           <small class="muted" style="display:block;margin-top:4px;">A este número se abrirá el chat de WhatsApp al hacer clic en el botón del correo.</small>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="cuentaBcp">Cuenta Corriente BCP (Soles)</label>
-          <input id="cuentaBcp" name="cuentaBcp" type="text" class="form-control"
-                 placeholder="Ej. 193-12345678-0-12" [(ngModel)]="cuentaBcp" [disabled]="guardandoEmpresa()">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="cciBcp">Código de Cuenta Interbancario (CCI) BCP</label>
-          <input id="cciBcp" name="cciBcp" type="text" class="form-control"
-                 placeholder="Ej. 002-193-001234567890-12" [(ngModel)]="cciBcp" [disabled]="guardandoEmpresa()">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="cuentaNacion">Cuenta Banco de la Nación</label>
-          <input id="cuentaNacion" name="cuentaNacion" type="text" class="form-control"
-                 placeholder="Ej. 00-012-345678" [(ngModel)]="cuentaNacion" [disabled]="guardandoEmpresa()">
-        </div>
         <button type="submit" class="btn btn-primary" [disabled]="guardandoEmpresa() || !configEmpresa()">
-          {{ guardandoEmpresa() ? 'Guardando…' : 'Guardar datos de contacto y cuentas' }}
+          {{ guardandoEmpresa() ? 'Guardando…' : 'Guardar WhatsApp' }}
         </button>
       </form>
       @if (configEmpresa()?.actualizadoPor; as quien) {
-        <p class="muted">Último cambio: {{ quien }}, {{ fechaCambioEmpresa() }}.</p>
-      } @else if (configEmpresa()) {
-        <p class="muted">Datos de la configuración inicial. Confirme los datos oficiales antes de enviar proformas.</p>
+        <p class="muted">Última actualización de contacto por {{ quien }} el {{ fechaCambioEmpresa() }}.</p>
+      }
+      @if (configEmpresa(); as empresa) {
+        <h3 class="titulo-cuentas">Cuentas del servidor</h3>
+        <dl class="cuentas-empresa">
+          <div>
+            <dt>Cuenta BCP en soles</dt>
+            <dd>{{ empresa.cuentaBcp ?? 'Sin configurar' }}</dd>
+          </div>
+          <div>
+            <dt>CCI del BCP</dt>
+            <dd>{{ empresa.cciBcp ?? 'Sin configurar' }}</dd>
+          </div>
+          <div>
+            <dt>Cuenta general del Banco de la Nación</dt>
+            <dd>{{ empresa.cuentaNacion ?? 'Sin configurar' }}</dd>
+          </div>
+          <div>
+            <dt>Cuenta de detracciones del Banco de la Nación</dt>
+            <dd>{{ empresa.cuentaDetracciones ?? 'Sin configurar' }}</dd>
+          </div>
+        </dl>
       }
       @if (mensajeEmpresa()) { <div class="alert alert-success" role="status" style="margin-top:12px;">{{ mensajeEmpresa() }}</div> }
       @if (errorEmpresa()) { <div class="alert alert-danger" role="alert" style="margin-top:12px;">{{ errorEmpresa() }}</div> }

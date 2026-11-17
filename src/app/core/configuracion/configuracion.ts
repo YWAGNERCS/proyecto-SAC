@@ -67,13 +67,10 @@ export class ConfiguracionComponent {
   readonly mensajeTopes = signal('');
   readonly errorTopes = signal('');
 
-  // -- Contacto y cuentas bancarias: solo el administrador los cambia --
+  // -- Contacto editable y cuentas de solo lectura --
   private readonly empresaConfigService = inject(EmpresaConfigService);
   readonly configEmpresa = signal<ConfiguracionEmpresa | null>(null);
   whatsappEmpresa = '';
-  cuentaBcp = '';
-  cciBcp = '';
-  cuentaNacion = '';
   readonly guardandoEmpresa = signal(false);
   readonly mensajeEmpresa = signal('');
   readonly errorEmpresa = signal('');
@@ -143,10 +140,8 @@ export class ConfiguracionComponent {
       next: (c) => {
         this.configEmpresa.set(c);
         this.whatsappEmpresa = c.whatsapp || '';
-        this.cuentaBcp = c.cuentaBcp || '';
-        this.cciBcp = c.cciBcp || '';
-        this.cuentaNacion = c.cuentaNacion || '';
       },
+      error: () => this.errorEmpresa.set('No se pudo cargar la configuración empresarial.'),
     });
   }
 
@@ -154,16 +149,11 @@ export class ConfiguracionComponent {
     this.mensajeEmpresa.set('');
     this.errorEmpresa.set('');
     this.guardandoEmpresa.set(true);
-    this.empresaConfigService.guardar({
-      whatsapp: this.whatsappEmpresa.trim(),
-      cuentaBcp: this.cuentaBcp.trim(),
-      cciBcp: this.cciBcp.trim(),
-      cuentaNacion: this.cuentaNacion.trim(),
-    }).subscribe({
+    this.empresaConfigService.guardarWhatsapp(this.whatsappEmpresa.trim()).subscribe({
       next: (c) => {
         this.guardandoEmpresa.set(false);
         this.configEmpresa.set(c);
-        this.mensajeEmpresa.set('Datos de contacto y cuentas bancarias guardados. Rigen de inmediato en nuevas proformas y correos.');
+        this.mensajeEmpresa.set('WhatsApp guardado para los próximos correos de proformas.');
       },
       error: (err: HttpErrorResponse) => {
         this.guardandoEmpresa.set(false);

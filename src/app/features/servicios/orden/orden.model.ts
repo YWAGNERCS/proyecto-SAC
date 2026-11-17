@@ -45,6 +45,12 @@ export interface OrdenTrabajo {
   registradoPor: string | null;
   cerradoPor: string | null;
   motivoCancelacion: string | null;
+  tarifaContrato?: {
+    contratoId: number;
+    montoSinIgv: number;
+    moneda: 'SOLES' | 'DOLARES';
+    totalConIgv: number;
+  } | null;
 }
 
 export interface OrdenRequest {

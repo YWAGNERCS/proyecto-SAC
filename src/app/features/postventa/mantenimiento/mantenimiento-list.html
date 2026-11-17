@@ -122,10 +122,12 @@
             <td class="text-center">
               @if (m.estado === 'PENDIENTE') {
                 <div class="acciones">
-                  <a class="btn btn-sm btn-primary" [routerLink]="['/servicios/ordenes/nueva']"
-                     [queryParams]="{ mantenimientoId: m.id, clienteId: m.clienteId, fecha: m.fechaProgramada }"
-                     title="Programar la visita con técnico: al cerrar la orden queda realizada">Orden</a>
-                  <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REALIZADO')"><app-icono nombre="aceptar" [tamano]="14" /> Realizado</button>
+                  @if (!m.ordenTrabajoId) {
+                    <a class="btn btn-sm btn-primary" [routerLink]="['/servicios/ordenes/nueva']"
+                       [queryParams]="{ mantenimientoId: m.id, clienteId: m.clienteId, fecha: m.fechaProgramada }"
+                       title="Programar la visita con técnico: al cerrar la orden queda realizada">Orden</a>
+                    <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REALIZADO')"><app-icono nombre="aceptar" [tamano]="14" /> Realizado</button>
+                  }
                   <button class="btn btn-sm btn-secondary" (click)="abrir(m, 'REPROGRAMAR')">Reprogramar</button>
                 </div>
               } @else {

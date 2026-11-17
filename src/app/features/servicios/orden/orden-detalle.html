@@ -199,10 +199,13 @@
     <form class="card dialogo" role="dialog" aria-modal="true" aria-labelledby="tFacturar"
           [formGroup]="facturaForm" (ngSubmit)="confirmarFactura()" (click)="$event.stopPropagation()" novalidate>
       <h3 id="tFacturar">Facturar la orden #{{ orden()?.id }}</h3>
-      <p class="muted" style="margin: 0 0 14px;">
-        Se crea una venta con la mano de obra (servicios). Los materiales ya se descontaron al cerrar la orden.
-        Si supera S/ 700, la venta incluye la detracción del 12 %.
-      </p>
+      @if (tarifaContrato(); as tarifa) {
+        <p class="muted">Visita del contrato #{{ tarifa.contratoId }} ·
+          {{ tarifa.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ tarifa.montoSinIgv | number: '1.2-2' }} sin IGV.
+          Seleccione el servicio que figurará en el comprobante.</p>
+      } @else {
+        <p class="muted">Se crea una venta con la mano de obra. Los materiales ya se descontaron al cerrar la orden.</p>
+      }
       <table class="table" formArrayName="items">
         <tbody>
           @for (g of items.controls; track $index; let i = $index) {
@@ -210,13 +213,17 @@
               <td>
                 <select class="form-select" formControlName="productoId" (change)="recalcular()" [attr.aria-label]="'Servicio ' + (i + 1)">
                   <option [ngValue]="null">-- Servicio --</option>
-                  @for (p of servicios(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} ({{ p.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ p.precioVenta | number: '1.2-2' }})</option> }
+                  @for (p of servicios(); track p.id) {
+                    <option [ngValue]="p.id">{{ p.nombre }}@if (!tarifaContrato()) { ({{ p.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ p.precioVenta | number: '1.2-2' }}) }</option>
+                  }
                 </select>
               </td>
-              <td style="width: 110px;"><input type="number" min="1" class="form-control text-end" formControlName="cantidad" (input)="recalcular()"
+              @if (!tarifaContrato()) {
+                <td style="width: 110px;"><input type="number" min="1" class="form-control text-end" formControlName="cantidad" (input)="recalcular()"
                      [attr.aria-label]="'Cantidad del servicio ' + (i + 1)"></td>
-              <td style="width: 50px;">@if (items.length > 1) {
-                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="items.removeAt(i); recalcular()" aria-label="Quitar"><app-icono nombre="rechazar" [tamano]="14" /></button> }</td>
+                <td style="width: 50px;">@if (items.length > 1) {
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="items.removeAt(i); recalcular()" aria-label="Quitar"><app-icono nombre="rechazar" [tamano]="14" /></button> }</td>
+              }
             </tr>
           }
         </tbody>
@@ -224,7 +231,9 @@
       @if (servicios().length === 0) {
         <p class="muted">No hay servicios en el catálogo: créelos en Productos con el sector "Servicio (mano de obra)".</p>
       }
-      <button type="button" class="btn btn-sm btn-secondary" (click)="agregarServicio()">+ Servicio</button>
+      @if (!tarifaContrato()) {
+        <button type="button" class="btn btn-sm btn-secondary" (click)="agregarServicio()">+ Servicio</button>
+      }
       <div class="campos" style="margin-top: 12px;">
         <div>
           <label class="form-label" for="fPago">Pago</label>
@@ -237,9 +246,16 @@
           <div><label class="form-label" for="fDias">Días de crédito</label>
             <input id="fDias" type="number" min="1" max="365" class="form-control" formControlName="diasCredito"></div>
         }
-        <div><span class="form-label">Total aprox. (con IGV)</span>
-          <strong>{{ monedaFactura() === 'DOLARES' ? 'US$' : 'S/' }} {{ totalFactura() | number: '1.2-2' }}</strong>
-          @if (mezclaMonedas()) { <div class="muted">Hay servicios en soles y en dólares: la venta los convierte con el tipo de cambio del día.</div> }</div>
+        <div>
+          @if (tarifaContrato(); as tarifa) {
+            <span class="form-label">Total del contrato por visita (con IGV)</span>
+            <strong>{{ tarifa.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ tarifa.totalConIgv | number: '1.2-2' }}</strong>
+          } @else {
+            <span class="form-label">Total aprox. (con IGV)</span>
+            <strong>{{ monedaFactura() === 'DOLARES' ? 'US$' : 'S/' }} {{ totalFactura() | number: '1.2-2' }}</strong>
+            @if (mezclaMonedas()) { <div class="muted">Hay servicios en soles y en dólares: la venta los convierte con el tipo de cambio del día.</div> }
+          }
+        </div>
       </div>
       @if (errorDialogo()) {
         <div class="alert alert-danger" role="alert" style="margin-top: 12px;">{{ errorDialogo() }}</div>
