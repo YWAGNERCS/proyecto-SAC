@@ -69,6 +69,7 @@ export class ProformaFormComponent implements OnInit {
     clienteId: [null as number | null, [Validators.required]],
     moneda: ['SOLES'],
     diasVigencia: [15, [Validators.min(1)]],
+    condicionesPago: ['', [Validators.maxLength(1000)]],
     tipoCambio: [null as number | null, [Validators.min(1)]],
     items: this.fb.array<ItemForm>([], [Validators.minLength(1)]),
   });
@@ -206,6 +207,11 @@ export class ProformaFormComponent implements OnInit {
     this.errorMessage.set('');
     const v = this.form.getRawValue();
 
+    if (this.form.controls.condicionesPago.invalid) {
+      this.mostrarError('Las condiciones de pago admiten hasta 1000 caracteres.');
+      return;
+    }
+
     if (!v.clienteId) {
       this.mostrarError('Debe seleccionar un cliente.');
       return;
@@ -234,6 +240,7 @@ export class ProformaFormComponent implements OnInit {
 
     const payload: ProformaRequest = {
       clienteId: v.clienteId,
+      condicionesPago: v.condicionesPago.trim() || null,
       moneda: v.moneda,
       diasVigencia: v.diasVigencia || 15,
       tipoCambio: v.tipoCambio || null,

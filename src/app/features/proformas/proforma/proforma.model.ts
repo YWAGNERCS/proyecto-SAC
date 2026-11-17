@@ -12,6 +12,7 @@ export interface ProformaItemDTO {
 
 // Modelo que devuelve el Backend (para la Lista)
 export interface ProformaResponse {
+  condicionesPago?: string | null;
   id: number;
   clienteNombre?: string;
   cliente?: Cliente;
@@ -44,6 +45,7 @@ export interface ResultadoEnvio {
 
 // Modelo que recibe el Backend (para Crear/Editar)
 export interface ProformaRequest {
+  condicionesPago?: string | null;
   clienteId: number | null;
   moneda: string;
   diasVigencia: number;

@@ -117,6 +117,9 @@
 
       <div class="resumen">
         <div><span>Cliente</span><strong>{{ p.clienteNombre || p.cliente?.nombreORazonSocial }}</strong></div>
+        @if (p.condicionesPago) {
+          <div><span>Condiciones de pago</span><p style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ p.condicionesPago }}</p></div>
+        }
         @if (p.items?.length) {
           <div><span>Productos</span><strong>{{ p.items?.length }} línea(s)</strong></div>
         }

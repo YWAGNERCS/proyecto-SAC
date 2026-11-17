@@ -153,10 +153,6 @@ export class ConfiguracionComponent {
   guardarConfigEmpresa() {
     this.mensajeEmpresa.set('');
     this.errorEmpresa.set('');
-    if (!this.whatsappEmpresa.trim()) {
-      this.errorEmpresa.set('El número de WhatsApp no puede estar vacío.');
-      return;
-    }
     this.guardandoEmpresa.set(true);
     this.empresaConfigService.guardar({
       whatsapp: this.whatsappEmpresa.trim(),

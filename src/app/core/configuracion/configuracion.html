@@ -149,6 +149,9 @@
       <p class="texto">Número de WhatsApp y cuentas bancarias oficiales para proformas (PDF y correo).
         Cualquier cambio se refleja inmediatamente en los nuevos documentos sin reiniciar el sistema.</p>
       <form class="topes" (ngSubmit)="guardarConfigEmpresa()" novalidate>
+        @if (configEmpresa() && (!whatsappEmpresa.trim() || (!cuentaBcp.trim() && !cuentaNacion.trim()))) {
+          <p class="alert alert-warning" role="status">Complete los datos oficiales de JD. Las cuentas vacías se omiten del PDF y el botón de WhatsApp se oculta si falta el número.</p>
+        }
         <div class="form-group">
           <label class="form-label" for="whatsappEmpresa">WhatsApp / Celular de Proformas</label>
           <input id="whatsappEmpresa" name="whatsappEmpresa" type="text" class="form-control"
@@ -177,7 +180,7 @@
       @if (configEmpresa()?.actualizadoPor; as quien) {
         <p class="muted">Último cambio: {{ quien }}, {{ fechaCambioEmpresa() }}.</p>
       } @else if (configEmpresa()) {
-        <p class="muted">Son los valores por defecto del sistema (aún no se han personalizado).</p>
+        <p class="muted">Datos de la configuración inicial. Confirme los datos oficiales antes de enviar proformas.</p>
       }
       @if (mensajeEmpresa()) { <div class="alert alert-success" role="status" style="margin-top:12px;">{{ mensajeEmpresa() }}</div> }
       @if (errorEmpresa()) { <div class="alert alert-danger" role="alert" style="margin-top:12px;">{{ errorEmpresa() }}</div> }
