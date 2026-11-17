@@ -1,7 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { OrdenService } from '../orden/orden-service';
 import { OrdenTrabajo } from '../orden/orden.model';
+import { Subscription } from 'rxjs';
 
 interface Dia {
   fecha: string;
@@ -24,6 +25,7 @@ interface Dia {
 export class AgendaComponent {
   private readonly ordenService = inject(OrdenService);
   private readonly router = inject(Router);
+  private consultaSemana?: Subscription;
 
   /** Lunes de la semana que se ve. */
   readonly lunes = signal(this.lunesDe(new Date()));
@@ -79,14 +81,17 @@ export class AgendaComponent {
   });
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.consultaSemana?.unsubscribe());
     this.cargar();
   }
 
   cargar() {
     const d = this.dias();
+    this.consultaSemana?.unsubscribe();
+    this.ordenes.set([]);
     this.cargando.set(true);
     this.error.set('');
-    this.ordenService.agenda(d[0].fecha, d[6].fecha).subscribe({
+    this.consultaSemana = this.ordenService.agenda(d[0].fecha, d[6].fecha).subscribe({
       next: (l) => {
         this.ordenes.set(l);
         this.cargando.set(false);

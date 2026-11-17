@@ -74,7 +74,7 @@
               @if (o.equipoNombre) { <div class="muted">{{ o.equipoNombre }}</div> }</td>
             <td>{{ o.tecnico }}</td>
             <td><span [class]="claseEstado(o.estado)">{{ o.estado }}</span>
-              @if (o.ventaFacturadaId) { <div class="muted">Facturada: venta #{{ o.ventaFacturadaId }}</div> }
+              @if (o.ventaFacturadaId) { <div class="muted">Última venta: #{{ o.ventaFacturadaId }}</div> }
               @else if (o.estado === 'REALIZADA') { <div class="muted">Por facturar</div> }</td>
             <td class="text-end"><a class="btn btn-sm btn-outline-secondary" [routerLink]="['/servicios/ordenes', o.id]">Ver</a></td>
           </tr>

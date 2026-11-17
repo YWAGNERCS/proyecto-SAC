@@ -17,7 +17,7 @@
         @if (puedeServicios()) { <button type="button" class="btn btn-outline-secondary" (click)="abrirCancelar()">Cancelar orden</button> }
         <a [routerLink]="['/servicios/ordenes', o.id, 'editar']" class="btn btn-secondary">Editar</a>
         <button type="button" class="btn btn-primary" (click)="abrirCerrar()">Cerrar orden</button>
-      } @else if (o.estado === 'REALIZADA' && !o.ventaFacturadaId) {
+      } @else if (o.estado === 'REALIZADA' && (!o.ventaFacturadaId || o.ventaFacturadaAnulada)) {
         <button type="button" class="btn btn-primary" (click)="abrirFacturar()">Facturar servicio</button>
       }
     </div>
@@ -52,7 +52,12 @@
           <div><span class="muted">Recibido por</span><div>{{ o.recibidoPor }}</div></div>
           <div><span class="muted">Cerró</span><div>{{ o.cerradoPor ?? '—' }}</div></div>
           <div><span class="muted">Facturación</span><div>
-            @if (o.ventaFacturadaId) { Venta #{{ o.ventaFacturadaId }} } @else { <span class="badge badge-warning">Por facturar</span> }</div></div>
+            @if (o.ventaFacturadaId && !o.ventaFacturadaAnulada) { Venta #{{ o.ventaFacturadaId }} }
+            @else { <span class="badge badge-warning">Por facturar</span> }
+            @if (o.ventasAnuladas?.length) {
+              <div class="muted">Ventas anuladas: #{{ o.ventasAnuladas?.join(', #') }}</div>
+            }
+          </div></div>
         </div>
         <span class="muted">Trabajo realizado</span>
         <p style="margin: 2px 0 0;">{{ o.trabajoRealizado }}</p>

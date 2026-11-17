@@ -42,6 +42,8 @@ export interface OrdenTrabajo {
   materiales: { productoId: number; productoNombre: string; cantidad: number; costoUnitario: number; moneda: string }[];
   equiposInstalados: Equipo[];
   ventaFacturadaId: number | null;
+  ventaFacturadaAnulada?: boolean;
+  ventasAnuladas?: number[];
   registradoPor: string | null;
   cerradoPor: string | null;
   motivoCancelacion: string | null;
