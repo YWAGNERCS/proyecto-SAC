@@ -20,18 +20,18 @@ public class ConfiguracionEmpresaService {
     public ConfiguracionEmpresaDTO obtener() {
         return repository.findById(ConfiguracionEmpresa.ID_UNICO)
                 .map(c -> new ConfiguracionEmpresaDTO(
-                        valorO(c.getWhatsapp(), props.telefono(), "912345678"),
-                        valorO(c.getCuentaBcp(), props.cuentaBcp(), "193-12345678-0-12"),
-                        valorO(c.getCciBcp(), props.cciBcp(), "002-193-001234567890-12"),
-                        valorO(c.getCuentaNacion(), props.cuentaNacion(), "00-012-345678"),
+                        limpiar(c.getWhatsapp()),
+                        limpiar(c.getCuentaBcp()),
+                        limpiar(c.getCciBcp()),
+                        limpiar(c.getCuentaNacion()),
                         c.getActualizadoPor(),
                         c.getFechaActualizacion()
                 ))
                 .orElseGet(() -> new ConfiguracionEmpresaDTO(
-                        props.telefono() != null && !props.telefono().isBlank() ? props.telefono() : "912345678",
-                        props.cuentaBcp() != null && !props.cuentaBcp().isBlank() ? props.cuentaBcp() : "193-12345678-0-12",
-                        props.cciBcp() != null && !props.cciBcp().isBlank() ? props.cciBcp() : "002-193-001234567890-12",
-                        props.cuentaNacion() != null && !props.cuentaNacion().isBlank() ? props.cuentaNacion() : "00-012-345678",
+                        limpiar(props.telefono()),
+                        limpiar(props.cuentaBcp()),
+                        limpiar(props.cciBcp()),
+                        limpiar(props.cuentaNacion()),
                         null,
                         null
                 ));
@@ -59,12 +59,6 @@ public class ConfiguracionEmpresaService {
                 entidad.getActualizadoPor(),
                 entidad.getFechaActualizacion()
         );
-    }
-
-    private static String valorO(String val, String fallback, String porDefecto) {
-        if (val != null && !val.isBlank()) return val.trim();
-        if (fallback != null && !fallback.isBlank()) return fallback.trim();
-        return porDefecto;
     }
 
     private static String limpiar(String s) {

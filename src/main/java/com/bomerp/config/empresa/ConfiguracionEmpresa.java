@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 /**
  * Datos dinámicos de contacto y cuentas bancarias de JD Refrigeración S.A.C.
  * que el administrador puede modificar desde la pantalla de Configuración (tabla CONFIGURACION_EMPRESA, fila única ID=1).
- * Si no existe fila en BD o algún campo es nulo, el sistema utiliza los valores por defecto de EmpresaProperties.
+ * Si no existe fila en BD, se utilizan los valores de EmpresaProperties. Una fila guardada permite dejar campos vacíos.
  */
 @Entity
 @Table(name = "CONFIGURACION_EMPRESA")

@@ -15,8 +15,15 @@ public class ProformaRequest {
             Integer diasVigencia,
             // @Valid en cada ítem: sin él, el @Min(1) de la cantidad nunca se revisaba
             @NotEmpty(message = "La proforma debe tener al menos un producto") List<@Valid ItemDTO> items,
-            java.math.BigDecimal tipoCambio          // opcional: soles por dólar (null = SUNAT del día)
-    ) {}
+            java.math.BigDecimal tipoCambio,          // opcional: soles por dólar (null = SUNAT del día)
+            @jakarta.validation.constraints.Size(max = 1000, message = "Las condiciones de pago admiten hasta 1000 caracteres")
+            String condicionesPago
+    ) {
+        public CrearProformaDTO(Long clienteId, Proforma.Moneda moneda, Integer diasVigencia,
+                                List<ItemDTO> items, java.math.BigDecimal tipoCambio) {
+            this(clienteId, moneda, diasVigencia, items, tipoCambio, null);
+        }
+    }
 
     public record ItemDTO(
             @NotNull Long productoId,

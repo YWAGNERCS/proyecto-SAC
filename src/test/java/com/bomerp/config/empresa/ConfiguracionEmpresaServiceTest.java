@@ -58,6 +58,24 @@ class ConfiguracionEmpresaServiceTest {
         assertThat(repository.saved.getCuentaBcp()).isEqualTo("191-99999999-0-99");
     }
 
+    @Test
+    void borrarDatosLosMantieneVaciosAunqueExistanProperties() {
+        service.cambiar(new ConfiguracionEmpresaDTO(" ", null, null, null, null, null), "admin");
+        ConfiguracionEmpresaDTO resultado = service.obtener();
+        assertThat(resultado.whatsapp()).isNull();
+        assertThat(resultado.cuentaBcp()).isNull();
+        assertThat(resultado.cciBcp()).isNull();
+        assertThat(resultado.cuentaNacion()).isNull();
+    }
+
+    @Test
+    void sinConfiguracionNoInventaCuentasNiTelefono() {
+        service = new ConfiguracionEmpresaService(repository, new EmpresaProperties("JD", "123", "Lima", null));
+        assertThat(service.obtener().cuentaBcp()).isNull();
+        assertThat(service.obtener().cuentaNacion()).isNull();
+        assertThat(service.obtener().whatsapp()).isNull();
+    }
+
     static class FakeConfiguracionEmpresaRepository implements ConfiguracionEmpresaRepository {
         ConfiguracionEmpresa saved = null;
 

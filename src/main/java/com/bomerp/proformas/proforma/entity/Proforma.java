@@ -60,6 +60,10 @@ public class Proforma {
     @Column(name = "tipo_cambio", precision = 10, scale = 4)
     private BigDecimal tipoCambio;
 
+    /** Acuerdo comercial de esta cotización, conservado para su consulta y PDF. */
+    @Column(name = "condiciones_pago", length = 1000)
+    private String condicionesPago;
+
     @OneToMany(mappedBy = "proforma", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemProforma> items = new ArrayList<>();
 

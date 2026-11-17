@@ -52,7 +52,7 @@ class ProformaHtmlEmailTest {
     }
 
     @Test
-    void enlaceWhatsAppSinTelefonoConfiguradoUsaFallback() {
+    void omiteWhatsAppSinTelefonoConfigurado() {
         EmpresaProperties empresa = new EmpresaProperties("JD REFRIGERACIÓN S.A.C.", "20521632268", "Lima", null,
                 null, null, null);
         ProformaService servicio = new ProformaService(null, null, null, null, null, null, null, null, null, null, empresa);
@@ -63,7 +63,10 @@ class ProformaHtmlEmailTest {
 
         String enlace = servicio.construirEnlaceWhatsApp(proforma);
 
-        assertThat(enlace).startsWith("https://wa.me/51912345678?text=");
-        assertThat(enlace).contains("200");
+        assertThat(enlace).isNull();
+        Cliente cliente = new Cliente();
+        cliente.setNombreORazonSocial("Cliente");
+        proforma.setCliente(cliente);
+        assertThat(servicio.generarHtmlProforma(proforma)).doesNotContain("wa.me", "cid:whatsapp");
     }
 }

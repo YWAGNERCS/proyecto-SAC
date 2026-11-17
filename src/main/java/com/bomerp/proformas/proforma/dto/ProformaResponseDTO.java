@@ -19,7 +19,8 @@ public record ProformaResponseDTO(
         Long ventaId,
         boolean enviadoCorreo,
         boolean enviadoWhatsApp,
-        List<ItemResponseDTO> items
+        List<ItemResponseDTO> items,
+        String condicionesPago
 ) {
     public record ItemResponseDTO(
             String productoNombre,
@@ -63,7 +64,8 @@ public record ProformaResponseDTO(
                 c.getVentaId(),
                 c.isEnviadoCorreo(),
                 c.isEnviadoWhatsApp(),
-                items
+                items,
+                c.getCondicionesPago()
         );
     }
 }

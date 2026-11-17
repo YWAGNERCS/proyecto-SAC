@@ -156,6 +156,11 @@ public class ProformaService {
         proforma.setCliente(cliente);
         proforma.setMoneda(request.moneda());
         proforma.setFechaEmision(LocalDate.now());
+        String condiciones = request.condicionesPago();
+        if (condiciones != null && condiciones.length() > 1000) {
+            throw new IllegalArgumentException("Las condiciones de pago admiten hasta 1000 caracteres.");
+        }
+        proforma.setCondicionesPago(condiciones == null || condiciones.isBlank() ? null : condiciones.strip());
 
         int dias = request.diasVigencia() != null ? request.diasVigencia() : 15; // 15 días por defecto
         proforma.setFechaVencimiento(LocalDate.now().plusDays(dias));
@@ -363,8 +368,10 @@ public class ProformaService {
         String enlaceWhatsApp = construirEnlaceWhatsApp(proforma);
         sb.append("<div style='margin-top: 40px; background-color: #2b2b2b; padding: 20px; border-radius: 8px; border: 1px solid #444;'>");
         sb.append("<h4 style='color: #ffffff; margin-top: 0;'>Aprobación</h4>");
-        sb.append("<p style='color: #cccccc; font-size: 14px;'>Para aceptar esta proforma, puede responder a este correo o coordinar directamente con nuestro asesor vía WhatsApp:</p>");
-        sb.append("<a href='").append(enlaceWhatsApp).append("' target='_blank' rel='noopener noreferrer' style='display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 6px; font-weight: bold; font-size: 15px; margin-top: 10px;'><img src='cid:whatsapp' alt='WhatsApp' width='20' height='20' style='vertical-align: middle; margin-right: 8px; border: 0;' />Coordinar aprobación por WhatsApp &gt;</a>");
+        sb.append("<p style='color: #cccccc; font-size: 14px;'>Para aceptar esta proforma, puede responder a este correo.</p>");
+        if (enlaceWhatsApp != null) {
+            sb.append("<a href='").append(enlaceWhatsApp).append("' target='_blank' rel='noopener noreferrer' style='display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 6px; font-weight: bold; font-size: 15px; margin-top: 10px;'><img src='cid:whatsapp' alt='WhatsApp' width='20' height='20' style='vertical-align: middle; margin-right: 8px; border: 0;' />Coordinar aprobación por WhatsApp &gt;</a>");
+        }
         sb.append("</div>");
         
         sb.append("</div></body></html>");
@@ -375,9 +382,11 @@ public class ProformaService {
     String construirEnlaceWhatsApp(Proforma proforma) {
         String tel = (configuracionEmpresaService != null)
                 ? configuracionEmpresaService.obtener().whatsapp()
-                : ((empresa != null && empresa.telefono() != null && !empresa.telefono().isBlank()) ? empresa.telefono() : "912345678");
+                : (empresa != null ? empresa.telefono() : null);
+        if (tel == null || tel.isBlank()) return null;
         String digitos = tel.replaceAll("\\D", "");
-        String numero = digitos.length() == 9 ? "51" + digitos : (digitos.isBlank() ? "51912345678" : digitos);
+        if (digitos.isBlank()) return null;
+        String numero = digitos.length() == 9 ? "51" + digitos : digitos;
         String clienteNombre = (proforma.getCliente() != null && proforma.getCliente().getNombreORazonSocial() != null)
                 ? proforma.getCliente().getNombreORazonSocial() : "";
         String mensaje = "Hola, deseo coordinar la aprobación de la proforma N° " + proforma.getId()
