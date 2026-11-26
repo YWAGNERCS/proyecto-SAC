@@ -20,11 +20,19 @@ public record CobroRequestDTO(
         @NotNull(message = "Indique cómo pagó el cliente") Cobro.MetodoPago metodoPago,
         @Size(max = 100) String referencia,
         @Size(max = 300) String notas,
-        @NotEmpty(message = "Indique al menos una venta a la que abonar") List<@Valid AbonoDTO> abonos
+        @NotEmpty(message = "Indique al menos una venta a la que abonar") List<@Valid AbonoDTO> abonos,
+        @DecimalMin(value = "0", inclusive = false) BigDecimal tipoCambioRetencion
 ) {
+    public CobroRequestDTO(Long clienteId, LocalDate fecha, Venta.Moneda moneda, Cobro.MetodoPago metodoPago,
+            String referencia, String notas, List<AbonoDTO> abonos) {
+        this(clienteId, fecha, moneda, metodoPago, referencia, notas, abonos, null);
+    }
     public record AbonoDTO(
             @NotNull Long ventaId,
             @NotNull @DecimalMin(value = "0", inclusive = false, message = "El monto debe ser mayor que 0")
-            BigDecimal monto
-    ) {}
+            BigDecimal monto,
+            @DecimalMin(value = "0", inclusive = false) BigDecimal baseRetencion
+    ) {
+        public AbonoDTO(Long ventaId, BigDecimal monto) { this(ventaId, monto, null); }
+    }
 }

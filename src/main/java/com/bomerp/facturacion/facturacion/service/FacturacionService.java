@@ -26,6 +26,14 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Slf4j
 public class FacturacionService implements ComprobantesDeVenta {
+    @Transactional(readOnly = true)
+    public java.util.List<Comprobante> comprobantesEntre(java.time.LocalDate desde, java.time.LocalDate hasta) {
+        return comprobanteRepository.findByFechaEmisionBetween(desde, hasta);
+    }
+    @Transactional(readOnly = true)
+    public java.util.List<NotaCredito> notasEntre(java.time.LocalDate desde, java.time.LocalDate hasta) {
+        return notaCreditoRepository.findByFechaEmisionBetween(desde, hasta);
+    }
 
     private final ComprobanteRepository comprobanteRepository;
     private final VentaService ventaService;
@@ -51,6 +59,19 @@ public class FacturacionService implements ComprobantesDeVenta {
     private String serieNotaFactura;
     @org.springframework.beans.factory.annotation.Value("${app.facturacion.series.nota-boleta:BC01}")
     private String serieNotaBoleta;
+
+    @org.springframework.beans.factory.annotation.Value("${app.empresa.cuenta-detracciones:}")
+    private String cuentaDetracciones;
+
+    @org.springframework.beans.factory.annotation.Value("${app.tributos.medio-pago-detraccion:003}")
+    private String medioPagoDetraccion = "003";
+
+    @jakarta.annotation.PostConstruct
+    void validarMedioPagoDetraccion() {
+        if (!java.util.Set.of("001", "003").contains(medioPagoDetraccion)) {
+            throw new IllegalArgumentException("El medio de pago de detracción debe ser 001 (depósito) o 003 (transferencia).");
+        }
+    }
 
     public FacturacionService(ComprobanteRepository comprobanteRepository, VentaService ventaService, EnvioSunatService envioSunat, com.bomerp.facturacion.correo.service.EntregaComprobanteService entrega, GeneradorPdfFacturacionService generadorPdfFacturacionService, NotaCreditoRepository notaCreditoRepository,
                               CorrelativoService correlativoService, EnvioSunatRegistroRepository registrosEnvio,
@@ -180,6 +201,12 @@ public class FacturacionService implements ComprobantesDeVenta {
         comprobante.setReemplazaA(reemplazaA);
         comprobante.setTotal(venta.calcularTotal());
         comprobante.fijarReceptor(venta.getCliente());
+
+        if (venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION) {
+            comprobante.setCuentaDetraccionesEmision(cuentaDetracciones != null && !cuentaDetracciones.isBlank()
+                    ? cuentaDetracciones.trim() : null);
+            comprobante.setMedioPagoDetraccion(medioPagoDetraccion); // Se conserva el medio al emitir.
+        }
 
         if (venta.getCliente().getTipo() == Cliente.TipoCliente.EMPRESA) {
             comprobante.setTipo(Comprobante.TipoComprobante.FACTURA);

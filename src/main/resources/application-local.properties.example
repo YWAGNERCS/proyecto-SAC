@@ -2,6 +2,7 @@
 spring.datasource.password=
 spring.mail.username=
 spring.mail.password=
+migo.token=
 decolecta.token=
 # true para trabajar sin internet (RUC/DNI con datos de prueba)
 app.consulta-documentos.simulado=false

@@ -45,16 +45,16 @@ public class GeneradorPdfFacturacionService {
         String fileName = comprobante.getTipo().name() + "_" + comprobante.getSerie() + "-" + comprobante.getNumero() + ".pdf";
         File pdfFile = File.createTempFile("Comprobante_", "_" + fileName);
         
-        try (Document document = new Document(PageSize.A4)) {
+        try (Document document = new Document(PageSize.A4, 32, 32, 28, 28)) {
             PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
             document.open();
 
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, Color.BLACK);
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.BLACK);
             Font redTitleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.RED);
-            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.DARK_GRAY);
-            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.BLACK);
-            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 12, Color.BLACK);
-            Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.GRAY);
+            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.DARK_GRAY);
+            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.BLACK);
+            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
+            Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 9, new Color(70, 85, 95));
 
             // Tabla principal para el Header (Logo Izquierda, Cuadro RUC Derecha)
             PdfPTable headerTable = new PdfPTable(2);
@@ -66,7 +66,7 @@ public class GeneradorPdfFacturacionService {
             leftCell.setBorder(Rectangle.NO_BORDER);
             try {
                 Image logo = logo();
-                logo.scaleToFit(140, 140);
+                logo.scaleToFit(125, 55);
                 logo.setAlignment(Element.ALIGN_LEFT);
                 leftCell.addElement(logo);
             } catch (Exception e) {
@@ -99,8 +99,12 @@ public class GeneradorPdfFacturacionService {
             
             headerTable.addCell(rightCell);
             document.add(headerTable);
+            if (comprobante.getAmbienteEmision() == Comprobante.AmbienteEmision.SIMULADO
+                    || comprobante.getAmbienteEmision() == Comprobante.AmbienteEmision.BETA) {
+                document.add(new Paragraph("DOCUMENTO DE PRUEBA - SIN VALIDEZ TRIBUTARIA", redTitleFont));
+            }
             
-            document.add(new Paragraph(" "));
+            espacio(document);
             
             // Datos del Cliente
             // El receptor tal como se emitió el comprobante: debe coincidir con el XML que recibió SUNAT, aunque
@@ -121,15 +125,17 @@ public class GeneradorPdfFacturacionService {
                 document.add(new Paragraph("DIRECCIÓN: " + direccion, normalFont));
             }
             document.add(new Paragraph("FECHA DE EMISIÓN: " + comprobante.getFechaEmision(), normalFont));
-            document.add(new Paragraph("MONEDA: " + comprobante.getVenta().getMoneda(), normalFont));
-            if (comprobante.getVenta().getTipoCambio() != null) {
+            document.add(new Paragraph("MONEDA: " + (comprobante.getVenta().getMoneda() == Venta.Moneda.DOLARES ? "DÓLARES (USD)" : "SOLES (PEN)"), normalFont));
+            if (comprobante.getVenta().getMoneda() == Venta.Moneda.DOLARES && comprobante.getVenta().getTipoCambio() != null) {
                 // SUNAT exige el tipo de cambio cuando el comprobante es en moneda extranjera
                 document.add(new Paragraph("TIPO DE CAMBIO: S/ " + comprobante.getVenta().getTipoCambio()
                         .setScale(3, java.math.RoundingMode.HALF_UP) + " por US$ 1", normalFont));
             }
             
-            document.add(new Paragraph(" "));
+            espacio(document);
             
+            agregarCondicionesPago(document, comprobante.getVenta(), boldFont, normalFont, smallFont);
+
             // Tabla de Detalles
             PdfPTable table = new PdfPTable(5);
             table.setWidthPercentage(100);
@@ -145,59 +151,63 @@ public class GeneradorPdfFacturacionService {
                 // El nombre guardado al vender, el mismo que va en el XML (renombrar el producto no lo cambia)
                 agregarCeldaItem(table, item.getDescripcion(), normalFont, Element.ALIGN_LEFT);
                 agregarCeldaItem(table, String.valueOf(item.getCantidad()), normalFont, Element.ALIGN_CENTER);
-                agregarCeldaItem(table, comprobante.getVenta().getMoneda() + " " + item.getPrecioUnitario().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
+                agregarCeldaItem(table, dinero(comprobante.getVenta(), item.getPrecioUnitario()), normalFont, Element.ALIGN_RIGHT);
                 agregarCeldaItem(table, porcentaje(item.getDescuentoPorcentaje()), normalFont, Element.ALIGN_CENTER);
-                agregarCeldaItem(table, comprobante.getVenta().getMoneda() + " " + item.calcularSubtotalDetalle().setScale(2, java.math.RoundingMode.HALF_UP), normalFont, Element.ALIGN_RIGHT);
+                agregarCeldaItem(table, dinero(comprobante.getVenta(), item.calcularSubtotalDetalle()), normalFont, Element.ALIGN_RIGHT);
             }
             document.add(table);
             
             // Tabla de Totales
-            document.add(new Paragraph(" "));
+            espacio(document);
             PdfPTable totalesTable = new PdfPTable(2);
-            totalesTable.setWidthPercentage(40);
+            totalesTable.setWidthPercentage(65);
             totalesTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            totalesTable.setWidths(new float[]{1f, 1f});
+            totalesTable.setWidths(new float[]{3.4f, 2.1f});
             
             agregarCeldaTotal(totalesTable, "OP. GRAVADA:", normalFont);
-            agregarCeldaTotal(totalesTable, comprobante.getVenta().getMoneda() + " " + comprobante.getVenta().calcularSubtotal(), normalFont);
+            agregarCeldaTotal(totalesTable, dinero(comprobante.getVenta(), comprobante.getVenta().calcularSubtotal()), normalFont);
             
             agregarCeldaTotal(totalesTable, "IGV (18%):", normalFont);
-            agregarCeldaTotal(totalesTable, comprobante.getVenta().getMoneda() + " " + comprobante.getVenta().calcularIgv(), normalFont);
+            agregarCeldaTotal(totalesTable, dinero(comprobante.getVenta(), comprobante.getVenta().calcularIgv()), normalFont);
             
             agregarCeldaTotal(totalesTable, "IMPORTE TOTAL:", boldFont);
-            agregarCeldaTotal(totalesTable, comprobante.getVenta().getMoneda() + " " + comprobante.getVenta().calcularTotal(), boldFont);
+            agregarCeldaTotal(totalesTable, dinero(comprobante.getVenta(), comprobante.getVenta().calcularTotal()), boldFont);
 
             // Detracción (SPOT) o retención del IGV: lo que el cliente no le paga a JD directamente
             Venta venta = comprobante.getVenta();
             boolean conDeduccion = venta.getTipoDeduccion() != null && venta.getTipoDeduccion() != Venta.TipoDeduccion.NINGUNA;
             if (conDeduccion) {
-                String nombre = venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION ? "DETRACCIÓN" : "RETENCIÓN";
+                String nombre = venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION ? "DETRACCIÓN" : "RETENCIÓN PREVISTA";
                 agregarCeldaTotal(totalesTable, nombre + " (" + porcentaje(venta.getPorcentajeDeduccion()) + "):", normalFont);
-                agregarCeldaTotal(totalesTable, venta.getMoneda() + " " + venta.getMontoDeduccion(), normalFont);
-                agregarCeldaTotal(totalesTable, "NETO A PAGAR:", boldFont);
-                agregarCeldaTotal(totalesTable, venta.getMoneda() + " " + venta.calcularNetoACobrar(), boldFont);
+                agregarCeldaTotal(totalesTable, dinero(venta, venta.getMontoDeduccion()), normalFont);
+                agregarCeldaTotal(totalesTable, venta.getTipoDeduccion() == Venta.TipoDeduccion.RETENCION
+                        ? "NETO ESTIMADO:" : "PAGO DIRECTO A JD:", boldFont);
+                agregarCeldaTotal(totalesTable, dinero(venta, venta.calcularNetoACobrar()), boldFont);
             }
             
             document.add(totalesTable);
 
             if (conDeduccion && venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION) {
-                String cuenta = empresa.cuentaDetracciones() != null && !empresa.cuentaDetracciones().isBlank()
-                        ? empresa.cuentaDetracciones() : "(cuenta por confirmar)";
-                document.add(new Paragraph(" "));
-                document.add(new Paragraph("Operación sujeta al Sistema de Pago de Obligaciones Tributarias (SPOT): detracción de "
-                        + porcentaje(venta.getPorcentajeDeduccion()) + " por " + venta.getMoneda() + " " + venta.getMontoDeduccion()
-                        + ", a depositar en la cuenta de detracciones del Banco de la Nación N° " + cuenta + ".", smallFont));
+                agregarDetraccion(document, comprobante, boldFont, smallFont);
             } else if (conDeduccion) {
-                document.add(new Paragraph(" "));
-                document.add(new Paragraph("Operación sujeta a retención del IGV (" + porcentaje(venta.getPorcentajeDeduccion())
-                        + "): el cliente, agente de retención, entrega el comprobante de retención por "
-                        + venta.getMoneda() + " " + venta.getMontoDeduccion() + ".", smallFont));
+                espacio(document);
+                document.add(new Paragraph("Retención prevista del IGV (" + porcentaje(venta.getPorcentajeDeduccion())
+                        + "): importe estimado para el pago total de " + venta.getMoneda() + " " + venta.getMontoDeduccion()
+                        + ". Se calcula sobre cada pago y se acredita con el comprobante de retención del cliente. "
+                        + "Información conservada del documento histórico.", smallFont));
             }
-            
+            if (empresa.cuentaBcp() != null && !empresa.cuentaBcp().isBlank()) {
+                espacio(document);
+                document.add(new Paragraph("Pago directo a JD - cuenta BCP en soles: " + empresa.cuentaBcp(), smallFont));
+                if (empresa.cciBcp() != null && !empresa.cciBcp().isBlank()) {
+                    document.add(new Paragraph("CCI BCP: " + empresa.cciBcp(), smallFont));
+                }
+            }
+
             // Texto final
-            document.add(new Paragraph(" "));
+            espacio(document);
             document.add(new Paragraph("Representación impresa de la " + tipoTexto + ".", smallFont));
-            document.add(new Paragraph("Consulte su documento electrónico en nuestro portal.", smallFont));
+            document.add(new Paragraph("Conserve el PDF, el XML y la constancia de detracción cuando corresponda.", smallFont));
             
         } catch (Exception e) {
             throw new RuntimeException("Error al generar el PDF de facturación", e);
@@ -206,8 +216,71 @@ public class GeneradorPdfFacturacionService {
         return pdfFile;
     }
     
+    private static void espacio(Document document) throws DocumentException {
+        Paragraph espacio = new Paragraph(" "); espacio.setLeading(6); document.add(espacio);
+    }
+
+    private static String dinero(Venta venta, java.math.BigDecimal importe) {
+        return (venta.getMoneda() == Venta.Moneda.DOLARES ? "US$ " : "S/ ")
+                + importe.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private void agregarCondicionesPago(Document document, Venta venta, Font bold, Font normal, Font small) throws Exception {
+        document.add(new Paragraph("CONDICIONES DE PAGO", bold));
+        if (venta.getTipoPago() != Venta.TipoPago.CREDITO) {
+            document.add(new Paragraph("Forma de pago: Contado", normal));
+            espacio(document);
+            return;
+        }
+        document.add(new Paragraph("Forma de pago: Crédito"
+                + (venta.getDiasCredito() != null ? " - Plazo: " + venta.getDiasCredito() + " días" : ""), normal));
+        document.add(new Paragraph("Monto neto del crédito: " + dinero(venta, venta.calcularNetoACobrar()), normal));
+        document.add(new Paragraph("Cuota 001 - Vencimiento: "
+                + (venta.getFechaLimitePago() != null
+                    ? venta.getFechaLimitePago().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "por confirmar")
+                + " - Importe: " + dinero(venta, venta.calcularNetoACobrar()), small));
+        espacio(document);
+    }
+
+    private void agregarDetraccion(Document document, Comprobante comprobante, Font bold, Font small) throws Exception {
+        Venta venta = comprobante.getVenta();
+        String cuenta = comprobante.getCuentaDetraccionesEmision() != null ? comprobante.getCuentaDetraccionesEmision()
+                : empresa.cuentaDetracciones();
+        String codigo = venta.getCodigoDetraccion() != null ? venta.getCodigoDetraccion() : "020";
+        String medio = comprobante.getMedioPagoDetraccion() != null ? comprobante.getMedioPagoDetraccion() : "001";
+        PdfPTable bloque = new PdfPTable(1);
+        bloque.setWidthPercentage(100);
+        bloque.setSpacingBefore(12);
+        PdfPCell celda = new PdfPCell();
+        celda.setPadding(10);
+        celda.setBorderColor(new Color(184, 204, 216));
+        celda.setBackgroundColor(new Color(245, 249, 251));
+        celda.addElement(new Paragraph("OPERACIÓN SUJETA AL SPOT - DETRACCIÓN", bold));
+        celda.addElement(new Paragraph("Tipo de operación: 1001 - Operación sujeta al Sistema de Pago de Obligaciones Tributarias", small));
+        celda.addElement(new Paragraph("Código de bien/servicio: " + codigo + " - Porcentaje: "
+                + porcentaje(venta.getPorcentajeDeduccion()), small));
+        celda.addElement(new Paragraph("Cuenta de detracciones del Banco de la Nación: "
+                + (cuenta != null && !cuenta.isBlank() ? cuenta : "por confirmar"), small));
+        celda.addElement(new Paragraph("Medio de pago: " + medio + switch (medio) {
+            case "001" -> " - Depósito en cuenta";
+            case "003" -> " - Transferencia de fondos";
+            default -> "";
+        }, small));
+        celda.addElement(new Paragraph("Monto a depositar en soles: S/ " + venta.detraccionEnSoles().setScale(2).toPlainString(), bold));
+        celda.addElement(new Paragraph("Importe de la operación: " + dinero(venta, venta.calcularTotal()), small));
+        if (venta.getMoneda() == Venta.Moneda.DOLARES) {
+            celda.addElement(new Paragraph("Equivalente en la moneda del comprobante: " + dinero(venta, venta.getMontoDeduccion())
+                    + " - Tipo de cambio utilizado: S/ " + venta.getTipoCambio(), small));
+        }
+        celda.addElement(new Paragraph("Pago directo a JD: " + dinero(venta, venta.calcularNetoACobrar()), bold));
+        celda.addElement(new Paragraph("El depósito en el Banco de la Nación y el pago directo a JD son partes del importe total; "
+                + "la constancia se registra por separado en Cobranza.", small));
+        bloque.addCell(celda);
+        document.add(bloque);
+    }
+
     private static String porcentaje(java.math.BigDecimal descuento) {
-        return descuento.signum() > 0 ? descuento.stripTrailingZeros().toPlainString() + " %" : "—";
+        return descuento != null && descuento.signum() > 0 ? descuento.stripTrailingZeros().toPlainString() + " %" : "—";
     }
 
     private void agregarCeldaCabecera(PdfPTable table, String texto, Font font) {

@@ -109,6 +109,7 @@ public class ProductoService {
         producto.setDescripcion(dto.descripcion());
         producto.setCategoria(categoria);
         producto.setSector(dto.sector());
+        producto.setClasificacionDetraccion(dto.sector() == Producto.Sector.SERVICIO ? dto.clasificacionDetraccion() : null);
         producto.setCostoBase(dto.costoBase());
         producto.setMargenPorcentaje(dto.margenPorcentaje());
         producto.setMoneda(dto.moneda());

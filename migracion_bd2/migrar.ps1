@@ -1,4 +1,4 @@
-# Migracion BD2 -> base real: aplica en orden los 7 scripts de esta carpeta sobre un contenedor Oracle.
+# Migracion BD2 -> base real: aplica en orden los scripts de esta carpeta sobre un contenedor Oracle.
 # Entra como SYSDBA dentro del contenedor (autenticacion del sistema operativo): no necesita la clave de SYS.
 #
 #   .\migracion_bd2\migrar.ps1 -Contenedor sge-jd-bd2 -Secretos bd2\.env.bd2     # ensayo en la base de practica
@@ -13,7 +13,7 @@ param(
     [Parameter(Mandatory)][string]$Contenedor,
     [Parameter(Mandatory)][string]$Secretos,
     [int]$Desde = 1,
-    [int]$Hasta = 7
+    [int]$Hasta = 8
 )
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

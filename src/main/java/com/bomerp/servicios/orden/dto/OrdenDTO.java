@@ -63,8 +63,14 @@ public final class OrdenDTO {
             @NotBlank(message = "Indique quién recibió el trabajo") @Size(max = 100) String recibidoPor,
             @Size(max = 500) String observaciones,
             List<@Valid MaterialRequest> materiales,
-            List<@Valid EquipoInstaladoRequest> equipos
-    ) {}
+            List<@Valid EquipoInstaladoRequest> equipos,
+            @Valid com.bomerp.servicios.recordatorio.RecordatorioService.Config recordatorio
+    ) {
+        public Cierre(LocalDate fechaRealizada,String trabajoRealizado,String recibidoPor,String observaciones,
+                      List<MaterialRequest> materiales,List<EquipoInstaladoRequest> equipos) {
+            this(fechaRealizada,trabajoRealizado,recibidoPor,observaciones,materiales,equipos,null);
+        }
+    }
 
     public record Cancelacion(@NotNull @Size(min = 5, max = 300, message = "Indique el motivo (5 a 300 caracteres)") String motivo) {}
 

@@ -44,6 +44,9 @@ class CobranzaServiceTest {
     @Mock VentaService ventaService;
     @Mock ClienteService clienteService;
     @Mock ComprobantesDeVenta comprobantesDeVenta;
+    @org.mockito.Spy com.bomerp.ventas.tributos.DeduccionTributariaService tributos =
+            new com.bomerp.ventas.tributos.DeduccionTributariaService(new com.bomerp.ventas.tributos.TributosProperties(
+                    new BigDecimal("12"), new BigDecimal("3"), new BigDecimal("700")));
     @InjectMocks CobranzaService service;
 
     private Cliente cliente;
@@ -78,6 +81,23 @@ class CobranzaServiceTest {
     private CobroRequestDTO cobro(String monto, String referencia, LocalDate fecha) {
         return new CobroRequestDTO(5L, fecha, Venta.Moneda.SOLES, Cobro.MetodoPago.TRANSFERENCIA, referencia, null,
                 List.of(new CobroRequestDTO.AbonoDTO(20L, new BigDecimal(monto))));
+    }
+
+    @Test
+    void cobranzaSepara102DeDetraccionY747Con60DePagoDirectoSegunElModeloJD() {
+        venta.setId(null); cliente.setTipo(Cliente.TipoCliente.EMPRESA);
+        venta.getDetalles().clear();
+        Producto p = new Producto(); p.setSector(Producto.Sector.SERVICIO);
+        p.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.OTROS_SERVICIOS_EMPRESARIALES);
+        venta.agregarDetalle(new DetalleVenta(p, 1, new BigDecimal("720")));
+        tributos.aplicar(venta); venta.setId(20L);
+        when(ventaService.listarPendientesDeCobro(5L)).thenReturn(List.of(venta));
+        when(comprobantesDeVenta.numeroComprobanteDeVenta(20L)).thenReturn(Optional.of("F001-DEMO"));
+        var cuenta = service.porCobrar(5L).getFirst();
+        assertThat(cuenta.total()).isEqualByComparingTo("849.60");
+        assertThat(cuenta.deduccionPendiente()).isEqualByComparingTo("102.00");
+        assertThat(cuenta.montoDetraccionSoles()).isEqualByComparingTo("102.00");
+        assertThat(cuenta.netoPorCobrar()).isEqualByComparingTo("747.60");
     }
 
     @Test
@@ -167,5 +187,80 @@ class CobranzaServiceTest {
         venta.setEstado(Venta.EstadoVenta.ANULADA);
 
         assertThatThrownBy(() -> service.anular(3L, "venta anulada", "lisandro")).hasMessageContaining("Devoluciones");
+    }
+
+    private void prepararRetencion() {
+        venta.setTipoDeduccion(Venta.TipoDeduccion.RETENCION);
+        venta.setPorcentajeDeduccion(new BigDecimal("3"));
+        venta.setMontoDeduccion(new BigDecimal("35.40"));
+        when(comprobantesDeVenta.numeroComprobanteDeVenta(20L)).thenReturn(Optional.of("F001-20"));
+        cliente.setTipo(Cliente.TipoCliente.EMPRESA);
+        cliente.setAgenteRetencion(true);
+        venta.getDetalles().getFirst().setPrecioUnitario(new BigDecimal("1000"));
+    }
+    private CobroRequestDTO retencion(String monto, String base) {
+        return new CobroRequestDTO(5L, null, Venta.Moneda.SOLES, Cobro.MetodoPago.RETENCION, "RET-1", null,
+                List.of(new CobroRequestDTO.AbonoDTO(20L, new BigDecimal(monto), base == null ? null : new BigDecimal(base))));
+    }
+    @Test
+    void retencionParcialSeCalculaSobreElPagoYConservaLaBase() {
+        prepararRetencion();
+        var respuesta = service.registrar(retencion("15", "500"), "lucy");
+        assertThat(respuesta.abonos().getFirst().baseRetencion()).isEqualByComparingTo("500");
+        assertThat(respuesta.montoTotal()).isEqualByComparingTo("15");
+        verify(ventaService, never()).marcarComoPagada(anyLong());
+    }
+    @Test
+    void rechazaRetenerTodaLaFacturaCuandoElPagoEsParcial() {
+        prepararRetencion();
+        assertThatThrownBy(() -> service.registrar(retencion("35.40", "500"), "lucy"))
+                .isInstanceOf(ReglaNegocioException.class).hasMessageContaining("15.00");
+        verify(cobroRepository, never()).save(any());
+    }
+    @Test
+    void exigeBaseDelPagoEnLaRetencion() {
+        prepararRetencion();
+        assertThatThrownBy(() -> service.registrar(retencion("15", null), "lucy"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("importe bruto");
+    }
+    @Test
+    void noAdmiteRetencionEnBoletaNiSobreDetraccion() {
+        prepararRetencion();
+        when(comprobantesDeVenta.numeroComprobanteDeVenta(20L)).thenReturn(Optional.of("B001-12"));
+        assertThatThrownBy(() -> service.registrar(retencion("15", "500"), "lucy"))
+                .isInstanceOf(ReglaNegocioException.class);
+        when(comprobantesDeVenta.numeroComprobanteDeVenta(20L)).thenReturn(Optional.of("F001-12"));
+        venta.setTipoDeduccion(Venta.TipoDeduccion.DETRACCION);
+        assertThatThrownBy(() -> service.registrar(retencion("15", "500"), "lucy"))
+                .isInstanceOf(ReglaNegocioException.class);
+    }
+    @Test
+    void noPermiteCrearRetencionNuevaAgrupandoFacturas() {
+        when(comprobantesDeVenta.numeroComprobanteDeVenta(20L)).thenReturn(Optional.of("F001-20"));
+        when(comprobantesDeVenta.numeroComprobanteDeVenta(21L)).thenReturn(Optional.of("F001-21"));
+        cliente.setTipo(Cliente.TipoCliente.EMPRESA);
+        cliente.setAgenteRetencion(true);
+        venta.getDetalles().getFirst().setPrecioUnitario(new BigDecimal("400"));
+        Venta otra = new Venta();
+        otra.setId(21L); otra.setCliente(cliente); otra.setMoneda(Venta.Moneda.SOLES);
+        otra.setFechaVenta(venta.getFechaVenta()); otra.setEstadoPago(Venta.EstadoPago.PENDIENTE);
+        otra.agregarDetalle(new DetalleVenta(venta.getDetalles().getFirst().getProducto(), 1, new BigDecimal("400")));
+        when(ventaService.obtenerPorIdPublico(21L)).thenReturn(otra);
+        when(cobroRepository.totalCobradoDeVenta(21L)).thenReturn(BigDecimal.ZERO);
+        var dto = new CobroRequestDTO(5L, null, Venta.Moneda.SOLES, Cobro.MetodoPago.RETENCION, "RET-GRUPO", null,
+                List.of(new CobroRequestDTO.AbonoDTO(20L, new BigDecimal("14.16"), new BigDecimal("472")),
+                        new CobroRequestDTO.AbonoDTO(21L, new BigDecimal("14.16"), new BigDecimal("472"))));
+        assertThatThrownBy(() -> service.registrar(dto, "lucy"))
+                .isInstanceOf(ReglaNegocioException.class).hasMessageContaining("ventas nuevas");
+        verify(cobroRepository, never()).save(any());
+    }
+
+    @Test
+    void noAcreditaRetencionSiTodaviaNoExisteFactura() {
+        prepararRetencion();
+        when(comprobantesDeVenta.numeroComprobanteDeVenta(20L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.registrar(retencion("15", "500"), "lucy"))
+                .isInstanceOf(ReglaNegocioException.class);
+        verify(cobroRepository, never()).save(any());
     }
 }

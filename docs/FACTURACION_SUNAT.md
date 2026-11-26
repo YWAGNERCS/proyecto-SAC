@@ -214,3 +214,98 @@ cuenta propia y registrar una venta de prueba con un cliente cuyo correo sea el 
   CDR: hay que verificarlo a mano en SUNAT. La consulta automática (getStatusCdr) solo existe en producción.
 - **Guías de remisión electrónicas**, retenciones y percepciones emitidas por JD.
 - **Resumen diario de boletas:** no hace falta; SUNAT acepta las boletas una por una (probado en beta).
+
+
+## 8. Factura con detraccion y alcance de la entrega (26/11/2026)
+
+La reunion del 23/11/2026 excluye de Clientes la opcion de retencion del 3 % y su
+verificacion automatica. No se integra el padron ni se calcula retencion en ventas
+nuevas. La API ignora esa marca en fichas nuevas y conserva el valor historico al
+editar los datos de contacto. Los tipos, importes, PDF y cobros historicos no se borran.
+Cobranza ofrece retencion solo para documentos que ya la tienen registrada.
+
+### Antes de desplegar
+
+Aplicar primero `scripts/prod/migracion_reglas_tributarias.sql` y despues
+`scripts/prod/migracion_factura_detraccion_credito.sql` como propietario
+JDREFRIGERACION. Ambas son aditivas y repetibles. Las nuevas bases reciben todas
+las columnas desde `scripts/prod/esquema_jdrefrigeracion.sql`. No reescriben importes
+ni asignan una cuenta bancaria actual a comprobantes historicos.
+
+### Configuracion del servicio y de la empresa
+
+En Catalogo, cada servicio indica su clasificacion: mantenimiento y reparacion de
+bienes muebles (020, 12 %), otros servicios empresariales (022, 12 %), demas servicios gravados (037, 12 %), construccion
+(030, 4 %), arrendamiento (019, 10 %) o no sujeto. Una factura sobre el umbral con un
+servicio sin clasificar pide completar el catalogo. La operacion debe tener una sola
+clasificacion; no se mezclan operaciones independientes de distinta clasificacion.
+Las boletas de consumidor final no reciben la detraccion automatica.
+
+Las cuentas oficiales se configuran en el servidor, en `app.empresa.*` / variables
+de entorno. No son campos editables de Clientes. La factura modelo ya se recibio;
+su cuenta de detracciones se configuro localmente. Las demas cuentas y los datos
+definitivos de produccion siguen pendientes de confirmar.
+
+### PDF, XML y cobranza
+
+- La factura muestra contado o credito, plazo, fecha de vencimiento y el importe de
+  la cuota unica. El neto del credito descuenta la detraccion del total.
+- El bloque SPOT muestra tipo de operacion 1001, codigo del servicio, porcentaje,
+  importe en soles, cuenta del Banco de la Nacion y medio 003 (transferencia de fondos),
+  segun la factura modelo E001-1901 recibida. `app.tributos.medio-pago-detraccion`
+  permite configurar 001 (deposito) o 003 (transferencia) desde el servidor.
+  Cada comprobante conserva el medio con el que se emitio; los historicos sin dato
+  conservan la presentacion anterior 001. La clasificacion 022 se elige en Catalogo;
+  no se asigna automaticamente a todos los servicios por aparecer en el ejemplo.
+- El codigo y los importes se guardan en la venta. La cuenta y el medio se guardan
+  en el comprobante al emitirlo; cambios posteriores de configuracion no los alteran.
+- Para nuevas ventas, JD sigue el redondeo a soles enteros de su factura modelo:
+  S/ 849.60 x 12 % = S/ 101.952, deposito S/ 102.00, neto a JD S/ 747.60.
+  Los importes se presentan con dos decimales. No se recalculan ventas historicas.
+  En dolares primero se calcula y redondea el deposito en PEN; su equivalente en
+  USD se determina con el cambio guardado y se redondea a centavos para el saldo.
+  El XML declara SPOT en PEN; la cuota y el saldo de cobranza siguen en USD.
+- Cobranza separa el pago directo del cliente de la constancia de detraccion. El
+  saldo completo no queda pagado solo por acreditar una de estas dos partes.
+- No se inventa un tipo de cambio. Se usa el guardado en la operacion. La equivalencia
+  mostrada corresponde a ese cambio; el tratamiento de diferencias cambiarias de
+  constancias reales se debe contrastar con Lucy.
+- Los documentos de prueba se identifican expresamente como tales. Las pruebas
+  automaticas generan un certificado temporal y no envian a SUNAT ni a correos.
+
+Fuentes: [Anexo de datos de factura al credito](https://www.sunat.gob.pe/legislacion/superin/2020/anexo1-193-2020.pdf),
+[ejemplo oficial de factura con detraccion](https://cpe.sunat.gob.pe/sites/default/files/inline-files/factura%20con%20detraccion_0.pdf),
+[preguntas frecuentes SPOT y redondeo](https://orientacion.sunat.gob.pe/preguntas-frecuentes-detracciones).
+
+La factura modelo E001-1901 del 25/11/2026 ya fue recibida y se usa para las pruebas
+de codigo 022, medio 003, redondeo y saldo. La cuenta recibida se configura localmente
+en el archivo ignorado, nunca en la plantilla del repositorio. Las otras cuentas
+siguen pendientes. No se importa esa factura como venta ni se replica su serie E001.
+La conformidad de Lucy y la aceptacion real de SUNAT siguen pendientes.
+
+## 9. Nota de crédito descargable (26/11/2026)
+
+En **Comercial → Ventas**, abra el detalle de una venta anulada. En la línea de su
+nota de crédito aparece **PDF nota de crédito**, junto a XML, CDR e historial de
+envíos. La descarga usa la sesión del usuario y funciona para ADMIN y ASISTENTE.
+El PDF identifica serie, número, fecha, motivo 01 (anulación total), cliente del
+comprobante original, comprobante referenciado, líneas, base, IGV y total.
+
+Anular una venta restaura el stock controlado, cancela las visitas pendientes y
+excluye la venta de cobranza. Si ya se pagó, el dinero queda pendiente de devolución
+en **Cobranza → Devoluciones**; descargar la nota no registra una devolución.
+La emisión es idempotente: una nota por comprobante. Un comprobante rechazado no
+se anula con nota; uno pendiente conserva la nota pendiente hasta aceptar el original.
+El rechazo de una cotización por el cliente tampoco genera una nota de crédito.
+
+La nota guarda el ambiente al aceptarla. Pendientes, rechazadas, BETA, SIMULADO y
+notas antiguas sin ambiente acreditado muestran un aviso de falta de validez
+tributaria acreditada. No se deduce el ambiente de la configuración actual.
+Su aceptación real se comprueba con XML/CDR e historial, no solo con la descarga.
+Esta entrega cubre anulación total, no notas parciales por descuentos o devoluciones.
+
+Antes de iniciar esta versión, aplicar también
+`scripts/prod/migracion_reunion_notas_recordatorios.sql`. Es repetible, crea la tabla
+de recordatorios y añade el ambiente de las notas sin reescribir documentos históricos.
+
+Referencia: [SUNAT: nota de crédito electrónica](https://cpe.sunat.gob.pe/tipos_de_comprobantes/nota_de_credito).

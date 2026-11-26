@@ -60,7 +60,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | 10 | Notificaciones (SMTP real + WhatsApp) | Integración | Aron | ⚠️ WhatsApp simulado |
 | 11 | Cobranza (abonos a ventas a crédito, saldos, historial, devoluciones) | Transaccional | Aron | ✅ `Cobro`–`DetalleCobro` (15/10/2026); "Registrar cobro" con `FormArray` y devoluciones de ventas anuladas (25/10/2026); anulación de cobros por el ADMIN, voucher duplicado y quién registró (28/10/2026) |
 | 12 | Seguridad (usuarios, roles, login) | Transversal | — (Keycloak) | ✅ **Keycloak** (S10b, 18/10/2026): realm `bomerp`, roles ADMIN/ASISTENTE; el backend es Resource Server y valida el JWT (RS256, `issuer-uri`) |
-| 13 | Servicios técnicos (órdenes de trabajo, sedes, equipos instalados, contratos) | Transaccional | Por asignar | ✅ (28/10/2026) `OrdenTrabajo`–`MaterialOrden`, `SedeCliente`, `EquipoInstalado` y `ContratoMantenimiento`; detracción y retención en Ventas y Cobranza |
+| 13 | Servicios técnicos (órdenes de trabajo, sedes, equipos instalados, contratos) | Transaccional | Por asignar | ✅ (28/10/2026) `OrdenTrabajo`–`MaterialOrden`, `SedeCliente`, `EquipoInstalado` y `ContratoMantenimiento`; detracción en Ventas y Cobranza; retención solo histórica |
 | — | Frontend (SPA Angular 22) | — | Cada responsable en su módulo | ✅ Operativa en todos los módulos, con login, roles y diseño responsivo (`bomerp-frontend`, rama `frontend`) |
 
 > **Reportes:** no son un módulo. Cada módulo expone sus consultas (decisión del equipo, alineada con el curso). Hoy `ventas-resumen`, `cobranza` y `proformas-pendientes` siguen en el paquete transitorio `reportes` (ver 5).
@@ -92,7 +92,7 @@ Desarrollar e implementar un sistema integral web (ERP/CRM) para JD Refrigeraci�
 | RF-21 | **Agenda de Postventa** (nuevo, 15/10/2026). | ✅ Vencidos, próximos N días, realizados y todos, con contacto del cliente y equipos; marcar realizado (fecha y trabajo hecho) o reprogramar (fecha ≥ hoy, con motivo). |
 | RF-22 | **Devolución al anular una venta pagada** (nuevo, 25/10/2026). | ✅ Antes de confirmar la anulación se muestra lo que el cliente ya pagó (al contado o con abonos). Al anular queda una devolución PENDIENTE en Cobranza › Devoluciones; el ADMIN registra fecha, método y N° de operación (DEVUELTA). Una venta solo pasa a PAGADO por sus abonos: ya no existe "marcar como pagada". |
 | RF-23 | **Anulación de cobros y control de pagos duplicados** (nuevo, 28/10/2026). | ✅ Un cobro mal registrado (monto o venta equivocados, pago duplicado, cheque rechazado) lo **anula el ADMIN con un motivo**: no se borra, queda ANULADO con fecha, motivo y usuario, deja de contar en el saldo y sus ventas PAGADAS vuelven a PENDIENTE. No se anula el cobro de una venta ya anulada (ese dinero va por Devoluciones, 409). Al registrar: el mismo N° de operación con el mismo método no entra dos veces (409, sin distinguir mayúsculas ni espacios), la fecha no puede ser anterior a la venta (400) y cada cobro guarda quién lo registró (del token). |
-| RF-24 | **Detracción (SPOT) y retención del IGV** (nuevo, 28/10/2026). | ✅ Sector `SERVICIO` (mano de obra) en productos y marca "agente de retención" en clientes. Al registrar la venta: si incluye servicios y supera S/ 700 → detracción del 12 % (en soles, redondeada a soles enteros); si no, y el cliente es agente de retención y supera S/ 700 → retención del 3 %. Porcentajes y umbral en `app.tributos.*`. La factura muestra la deducción, el neto y la leyenda del SPOT con la cuenta del Banco de la Nación (`app.empresa.cuenta-detracciones`, por confirmar). En Cobranza la constancia de detracción y el comprobante de retención se registran como abonos (métodos `DETRACCION` y `RETENCION`, con N° obligatorio, solo en ventas con esa deducción y hasta lo pendiente). Regla simplificada: confirmar con el contador. |
+| RF-24 | **Detraccion y comprobantes a credito**. | Clasificacion por servicio, cuenta BN, codigo, medio de pago, importe SPOT en soles y cuota neta. Retencion excluida de nuevas fichas y ventas segun reunion del 23/11/2026; documentos historicos conservados. Ver [Facturacion SUNAT, seccion 8](FACTURACION_SUNAT.md#8-factura-con-detraccion-y-alcance-de-la-entrega-26112026). |
 | RF-25 | **Órdenes de trabajo** (nuevo, 28/10/2026). | ✅ Instalación, mantenimiento, reparación o visita técnica con técnico, fecha, sede y dirección. PROGRAMADA → REALIZADA (lo hecho, quién lo recibió y materiales usados, que descuentan stock y salen en el kardex) o CANCELADA (solo ADMIN). Una instalación registra los equipos instalados; una de mantenimiento deja la visita REALIZADA. Se factura una vez, solo con servicios. |
 | RF-26 | **Sedes y equipos instalados** (nuevo, 28/10/2026). | ✅ Sedes por cliente (nombre único por cliente). Cada equipo instalado con sede, serie (única por modelo), ubicación, fecha, garantía (0 a 120 meses) y frecuencia de mantenimiento; filtro por garantía vigente; retirarlo (solo ADMIN) cancela sus visitas pendientes. |
 | RF-27 | **Mantenimiento configurable y contratos** (nuevo, 28/10/2026). | ✅ Plan por equipo cada 1, 2, 3, 4, 6 o 12 meses (se programa un año adelante y se extiende al hacer cada visita; reemplaza las visitas de la rutina de su venta). Contratos (solo ADMIN) con fechas (hasta 5 años), frecuencia y monto por visita: sus visitas se programan al crearlos y se cancelan al cancelarlos. |
@@ -1178,3 +1178,45 @@ Diferencias encontradas al comparar esta documentación, `CONTEXTO.md`, el códi
 40. ~~**Costo de compra sin actualizar (revisión externa, 05/11/2026).**~~ ✅ **Resuelto (08/11/2026, auditoría M1 y M2):** decidido con el cliente: el precio de venta no cambia solo. La compra guarda el último costo sin IGV en el producto; Ventas y Proformas avisan si supera el costo del catálogo y permiten **editar el precio de la línea** (solo subir, con motivo, ADMIN o `PERM_EDITAR_PRECIO`), con las dos cifras guardadas y el registro en el historial; la rentabilidad usa ese costo. Las compras separan subtotal e IGV.
 41. ~~**Listados sin paginación (revisión externa, 05/11/2026).**~~ ✅ **Resuelto (05/11/2026):** las pantallas de Ventas, Proformas y Compras piden de a 20 (o 50 / 100) con `GET /ventas/pagina`, `/proformas/pagina` y `/compras/pagina` (`pagina` desde 0, `tamano` máximo 100; respuesta `Pagina`: contenido, pagina, tamano, total, totalPaginas). En Proformas y Compras pagina la base de datos; en Ventas el servidor además calcula los totales por moneda y las anuladas de **todo** el filtro, así los indicadores no cambian al paginar. La respuesta de Ventas bajó de 194 KB a 16 KB. Los listados completos (`GET /ventas`, `/proformas`, `/compras`) se mantienen para el tablero, los avisos y los formularios que los usan.
 42. ~~**Stock y conversiones sin bloqueo (revisión externa, 05/11/2026).**~~ ✅ **Resuelto:** cantidades sumadas por producto, bloqueo de filas en productos, proformas, ventas (cobros) y compras (pagos), e índice único en `ventas.proforma_id`. Ver *Stock y operaciones simultáneas*.
+
+## Mejoras de la reunión del 23/11: notas, cierre mensual y recordatorios (26/11/2026)
+
+**Nota de crédito.** Comercial → Ventas → detalle de venta anulada → PDF nota de crédito.
+Conserva el vínculo con la factura o boleta original, motivo, número e importe. Descargar no
+confirma una devolución ni la aceptación de SUNAT. Consulte XML, CDR e historial de envíos.
+Ver [Facturación SUNAT, sección 9](FACTURACION_SUNAT.md#9-nota-de-crédito-descargable-26112026).
+
+**Cierre mensual.** Comercial → Cierre mensual → seleccione mes y año → Consultar.
+Muestra por moneda las ventas vigentes, compras registradas y su diferencia preliminar de IGV.
+El bloque documental considera solo comprobantes y notas aceptados/observados en PRODUCCION,
+por fecha de emisión. Una nota de este mes sobre una venta anterior se descuenta en el bloque
+documental de este mes; no se vuelve a restar de las ventas comerciales ya anuladas.
+Los documentos pendientes, rechazados o de prueba permanecen visibles, excluidos del bloque válido.
+Descargar Excel exporta el periodo que se está mostrando, con resumen, detalle y criterios.
+No suma soles y dólares, no declara impuestos ni bloquea meses. La compra registrada no acredita
+por sí sola crédito fiscal. Faltan el Excel de Lucy, sus reglas de renta, ajustes, saldos y la
+conversión fiscal de dólares. La comparación con ese modelo sigue pendiente.
+
+**Próximo mantenimiento.** Servicios → Órdenes de trabajo → Cerrar orden → activar
+Recordar el siguiente mantenimiento. Elija frecuencia (1 a 120 meses) y anticipación (0 a 30 días).
+Ejemplos: cada 3 meses, aviso 3 días antes; cada 6 meses, aviso 2 días antes.
+La fecha parte del día en que se realizó el servicio. Debe existir correo válido del cliente y
+`app.notificaciones.correo-oficina`. Si falta alguno, el cierre se revierte por completo para
+corregirlo o cerrar sin activar el recordatorio. También se puede configurar o desactivar desde
+el detalle de una orden REALIZADA. No crea otra orden, visita ni reserva de técnico.
+
+Se revisa diariamente a las 08:00 de Lima (`app.recordatorios.cron`), incluidos avisos atrasados
+por una parada del sistema. Cada destinatario conserva su estado: PENDIENTE, ENVIANDO, ENVIADO,
+FALLIDO o INCIERTO. ENVIADO significa aceptado por SMTP, no leído por el cliente. Un fallo confirmado
+se reintenta al día siguiente hasta 3 intentos. Un envío interrumpido o de resultado incierto
+requiere revisar y confirmar el reintento; no se repite automáticamente. Al reintentar solo salen
+los destinatarios no enviados. Cambiar fecha, anticipación o destinatario programa un aviso nuevo.
+Este correo se implementa como canal disponible, pendiente de conformidad de Lucy; no implica
+WhatsApp Business automático. El aviso de oficina de visitas ya agendadas continúa separado.
+
+**Migración antes del arranque.** Ejecutar, como propietario JDREFRIGERACION,
+`scripts/prod/migracion_reunion_notas_recordatorios.sql` después de las migraciones tributarias.
+Crea RECORDATORIOS_SERVICIO, añade NOTAS_CREDITO.AMBIENTE_EMISION y protege el ambiente con trigger.
+Las bases nuevas reciben lo mismo desde esquema_jdrefrigeracion.sql. No altera datos históricos
+ni activa recordatorios para órdenes antiguas sin intervención del usuario. Aplicar también en
+producción antes de desplegar la aplicación; validar desarrollo no despliega producción.

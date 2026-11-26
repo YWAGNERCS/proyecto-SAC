@@ -15,11 +15,11 @@ import java.util.function.Function;
  * Implementación que inyecta Spring en Clientes y Proveedores (@Primary).
  *
  * 1. Valida el formato (RUC de 11 dígitos, DNI de 8) → 400 si no cumple.
- * 2. Devuelve el resultado guardado si el número ya se consultó (evita el límite de apis.net.pe).
- * 3. Consulta apis.net.pe v1 (gratis, sin token).
- * 4. Si apis.net.pe no responde (429, tiempo agotado, error) o no encuentra el número,
- *    consulta Decolecta (solo si hay token).
- * 5. Si ningún proveedor pudo responder → 503 "intente en unos segundos" (no es lo mismo que "no existe").
+ * 2. Devuelve el resultado guardado si el número ya se consultó (evita límites de API).
+ * 3. Si Migo API está configurado con su token, consulta MIGO como proveedor prioritario.
+ * 4. Si Migo no está configurado o falla, consulta apis.net.pe v1 (gratis, sin token).
+ * 5. Si apis.net.pe no responde o no encuentra, consulta Decolecta (solo si hay token).
+ * 6. Si ningún proveedor pudo responder → 503 "intente en unos segundos".
  * Con app.consulta-documentos.simulado=true devuelve datos de prueba sin salir a internet.
  *
  * Principio D (SOLID): ClienteService y ProveedorService siguen dependiendo solo de la
@@ -32,6 +32,7 @@ public class ConsultaRucClientConRespaldo implements ConsultaRucClient {
 
     private static final int MAX_CACHE = 500;
 
+    private final ConsultaRucClientMigo migo;
     private final ConsultaRucClientApisNetPe apisNetPe;
     private final ConsultaRucClientDecolecta decolecta;
     private final ConsultaRucClientSimulado simulado;
@@ -41,16 +42,19 @@ public class ConsultaRucClientConRespaldo implements ConsultaRucClient {
     private final Map<String, DatosRuc> cacheRuc = new ConcurrentHashMap<>();
     private final Map<String, DatosDni> cacheDni = new ConcurrentHashMap<>();
 
-    public ConsultaRucClientConRespaldo(ConsultaRucClientApisNetPe apisNetPe,
+    public ConsultaRucClientConRespaldo(ConsultaRucClientMigo migo,
+                                        ConsultaRucClientApisNetPe apisNetPe,
                                         ConsultaRucClientDecolecta decolecta,
                                         ConsultaRucClientSimulado simulado,
                                         @Value("${app.consulta-documentos.simulado:false}") boolean usarSimulado) {
+        this.migo = migo;
         this.apisNetPe = apisNetPe;
         this.decolecta = decolecta;
         this.simulado = simulado;
         this.usarSimulado = usarSimulado;
         log.info("Consulta RUC/DNI: {}", usarSimulado ? "SIMULADA (sin internet)"
-                : "apis.net.pe v1" + (decolecta.estaConfigurado() ? " + respaldo Decolecta" : " (sin respaldo: falta DECOLECTA_TOKEN)"));
+                : (migo.estaConfigurado() ? "MIGO API v2" : "apis.net.pe v1")
+                + (decolecta.estaConfigurado() ? " + respaldo Decolecta" : ""));
     }
 
     @Override
@@ -59,7 +63,7 @@ public class ConsultaRucClientConRespaldo implements ConsultaRucClient {
             throw new IllegalArgumentException("El RUC debe tener 11 dígitos.");
         }
         if (usarSimulado) return simulado.consultar(ruc);
-        return consultarConRespaldo("RUC", ruc, cacheRuc, apisNetPe::consultar, decolecta::consultar);
+        return consultarConRespaldo("RUC", ruc, cacheRuc, migo::consultar, apisNetPe::consultar, decolecta::consultar);
     }
 
     @Override
@@ -68,20 +72,32 @@ public class ConsultaRucClientConRespaldo implements ConsultaRucClient {
             throw new IllegalArgumentException("El DNI debe tener 8 dígitos.");
         }
         if (usarSimulado) return simulado.consultarDni(dni);
-        return consultarConRespaldo("DNI", dni, cacheDni, apisNetPe::consultarDni, decolecta::consultarDni);
+        return consultarConRespaldo("DNI", dni, cacheDni, migo::consultarDni, apisNetPe::consultarDni, decolecta::consultarDni);
     }
 
     private <T> T consultarConRespaldo(String tipo, String numero, Map<String, T> cache,
-                                       Function<String, T> principal, Function<String, T> respaldo) {
+                                        Function<String, T> prioritario,
+                                        Function<String, T> principal,
+                                        Function<String, T> respaldo) {
         T guardado = cache.get(numero);
         if (guardado != null) return guardado;
 
-        boolean principalNoDisponible = false;
         T datos = null;
-        try {
-            datos = principal.apply(numero);
-        } catch (ProveedorDocumentosNoDisponibleException e) {
-            principalNoDisponible = true;
+        if (migo.estaConfigurado()) {
+            try {
+                datos = prioritario.apply(numero);
+            } catch (Exception e) {
+                log.warn("Migo API no respondió para {} {}, intentando con proveedores de respaldo: {}", tipo, numero, e.getMessage());
+            }
+        }
+
+        boolean principalNoDisponible = false;
+        if (datos == null) {
+            try {
+                datos = principal.apply(numero);
+            } catch (ProveedorDocumentosNoDisponibleException e) {
+                principalNoDisponible = true;
+            }
         }
         if (datos == null && decolecta.estaConfigurado()) {
             datos = respaldo.apply(numero);
@@ -92,7 +108,7 @@ public class ConsultaRucClientConRespaldo implements ConsultaRucClient {
             cache.put(numero, datos);
             return datos;
         }
-        if (principalNoDisponible && !decolecta.estaConfigurado()) {
+        if (principalNoDisponible && !decolecta.estaConfigurado() && !migo.estaConfigurado()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "El servicio de consulta de " + tipo + " está ocupado. Intente de nuevo en unos segundos.");
         }

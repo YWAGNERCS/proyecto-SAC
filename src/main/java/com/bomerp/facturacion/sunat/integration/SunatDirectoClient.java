@@ -66,7 +66,8 @@ public class SunatDirectoClient implements OseClient {
     public RespuestaOse emitir(Comprobante comprobante) {
         // Comprobantes que ya tenían número cuando faltaba la cuenta (antes del 07/11/2026): no se envían y
         // quedan PENDIENTES; al configurarla, el reintento automático los envía (si siguen en plazo).
-        if (motivoParaNoEmitir(comprobante.getVenta()) != null) {
+        if (motivoParaNoEmitir(comprobante.getVenta()) != null
+                && (comprobante.getCuentaDetraccionesEmision() == null || comprobante.getCuentaDetraccionesEmision().isBlank())) {
             circuito.registrarSinLlamada();   // no se llamó a SUNAT: no cuenta, y libera el turno de prueba
             return RespuestaOse.reintentar("No se envió: falta configurar la cuenta de detracciones de JD en el "
                     + "Banco de la Nación (CUENTA_DETRACCIONES). Se enviará sola cuando esté configurada.", null);

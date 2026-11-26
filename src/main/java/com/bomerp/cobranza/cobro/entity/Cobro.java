@@ -3,7 +3,8 @@ package com.bomerp.cobranza.cobro.entity;
 import com.bomerp.clientes.general.integration.Cliente;
 import com.bomerp.ventas.venta.entity.Venta;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
+import lombok.AccessLevel;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -73,6 +74,9 @@ public class Cobro {
     @Column(name = "anulado_por", length = 100)
     private String anuladoPor;
 
+    @Column(name = "tc_retencion", precision = 12, scale = 6)
+    private BigDecimal tipoCambioRetencion;
+
     @OneToMany(mappedBy = "cobro", cascade = CascadeType.ALL, orphanRemoval = true)
     @Setter(AccessLevel.NONE)
     private List<Abono> abonos = new ArrayList<>();
@@ -100,6 +104,12 @@ public class Cobro {
      * Las reglas que necesitan otros datos (saldo de la venta según lo ya cobrado, mismo cliente, fecha)
      * siguen en CobranzaService, que es quien los tiene.
      */
+    public Abono abonar(Venta venta, BigDecimal monto, BigDecimal baseRetencion) {
+        Abono abono = abonar(venta, monto);
+        abono.registrarBaseRetencion(baseRetencion);
+        return abono;
+    }
+
     public Abono abonar(Venta venta, BigDecimal monto) {
         if (monto == null || monto.signum() <= 0) {
             throw new IllegalArgumentException("El abono a la venta #" + venta.getId() + " debe ser mayor que cero.");

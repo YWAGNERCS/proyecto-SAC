@@ -2,7 +2,7 @@
 
 **SGE-JD · JD Refrigeración S.A.C. · Equipo CherryTree · Yoel Wagner Chambi Sirena · 10/11/2026**
 
-Lleva a la base real lo que el curso de BD2 probó en la base de práctica (`bd2/`). Son siete scripts que se aplican en orden con `migrar.ps1`. El ejecutor entra como SYSDBA dentro del contenedor, así que no necesita la clave de SYS. Cada script se puede repetir: lo que ya existe se informa y no se toca.
+Lleva a la base real lo que el curso de BD2 probó en la base de práctica (`bd2/`). Son ocho scripts que se aplican en orden con `migrar.ps1`. El ejecutor entra como SYSDBA dentro del contenedor, así que no necesita la clave de SYS. Cada script se puede repetir y completa los cambios que falten.
 
 | Orden | Script | Qué deja en la base | Origen |
 |---|---|---|---|
@@ -13,6 +13,27 @@ Lleva a la base real lo que el curso de BD2 probó en la base de práctica (`bd2
 | 5 | [05_usuarios_roles.sql](05_usuarios_roles.sql) | Roles `ROL_SGEJD_MAESTROS`, `_OPERACION` y `_CONSULTA`; usuarios `JD_APP` y `JD_REPORTES`; el dueño sin `DB_DEVELOPER_ROLE` | BD2 S1, S7 y S8 |
 | 6 | [06_auditoria_unificada.sql](06_auditoria_unificada.sql) | `POL_SGEJD_VENTAS` (9 acciones sobre 3 tablas), `POL_SGEJD_SESIONES`, `ORA_LOGON_FAILURES` | BD2 S9 |
 | 7 | [07_redo.sql](07_redo.sql) | Redo de 2 × 10 MB a 3 × 200 MB, sin reiniciar | BD2 S7 y S9 |
+| 8 | [08_distribucion_tablespaces.sql](08_distribucion_tablespaces.sql) | `TS_SGEJD_DATOS` para tablas generales y sus LOB; `TS_SGEJD_VENTAS` para ventas y detalles; `TS_SGEJD_AUDITORIA` para auditoría de ventas, historial de cambios y errores. Traslada índices y particiones y fija el tablespace predeterminado del propietario. Los datafiles nuevos comienzan con 100 MB y crecen en 50 MB hasta 2 GB. | Organización del almacenamiento |
+
+Para actualizar una base que ya tiene los siete pasos anteriores, haz un respaldo y ejecuta el paso 8 con el contenedor correspondiente.
+
+```powershell
+.\migracion_bd2\migrar.ps1 -Contenedor SGE-JD -Secretos .env -Desde 8 -Hasta 8
+```
+
+Comprueba la distribución como administrador de `FREEPDB1`.
+
+```sql
+SELECT table_name, tablespace_name, partitioned
+FROM dba_tables
+WHERE owner = 'JDREFRIGERACION'
+ORDER BY table_name;
+
+SELECT table_name, partition_name, tablespace_name
+FROM dba_tab_partitions
+WHERE table_owner = 'JDREFRIGERACION'
+ORDER BY table_name, partition_position;
+```
 
 ```powershell
 .\migracion_bd2\migrar.ps1 -Contenedor sge-jd-bd2 -Secretos bd2\.env.bd2       # ensayo (práctica)

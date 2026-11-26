@@ -31,6 +31,7 @@ public class ClienteService {
     @Transactional
     public Cliente guardar(Cliente cliente) {
         cliente.setId(null);
+        cliente.setAgenteRetencion(false); // Fuera del alcance de nuevas fichas; conservar solo historicos.
         validar(cliente);
         return clienteRepository.save(cliente);
     }
@@ -45,7 +46,7 @@ public class ClienteService {
         cliente.setDireccion(datos.getDireccion());
         cliente.setTelefono(datos.getTelefono());
         cliente.setCorreo(datos.getCorreo());
-        cliente.setAgenteRetencion(datos.isAgenteRetencion());
+        // La condicion historica de retencion no se modifica desde este formulario.
         validar(cliente);
         return clienteRepository.save(cliente);
     }

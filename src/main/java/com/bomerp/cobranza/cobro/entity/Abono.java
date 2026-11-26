@@ -37,6 +37,11 @@ public class Abono {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal monto;
 
+    @Column(name = "base_retencion", precision = 12, scale = 2)
+    private BigDecimal baseRetencion;
+
+    void registrarBaseRetencion(BigDecimal base) { this.baseRetencion = base; }
+
     Abono(Cobro cobro, Venta venta, BigDecimal monto) {
         this.cobro = cobro;
         this.venta = venta;

@@ -61,6 +61,7 @@ class PrecioEditadoIntegracionTest {
         Producto servicio = new Producto();
         servicio.setNombre("Gas de prueba (precio editado)");
         servicio.setSector(Producto.Sector.SERVICIO);
+        servicio.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         servicio.setCostoBase(new BigDecimal("500.00"));
         servicio.setMargenPorcentaje(new BigDecimal("5"));      // precio de catálogo 525.00
         servicio.setMoneda(Producto.Moneda.SOLES);

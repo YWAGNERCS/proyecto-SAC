@@ -60,6 +60,13 @@ public class Comprobante {
     @lombok.Setter(lombok.AccessLevel.NONE)
     private AmbienteEmision ambienteEmision;
 
+    /** Datos de detraccion del emisor, fijados al emitir; cambios de configuracion no reescriben el documento. */
+    @Column(name = "cuenta_detracciones_emision", length = 50, updatable = false)
+    private String cuentaDetraccionesEmision;
+
+    @Column(name = "medio_pago_detraccion", length = 3, updatable = false)
+    private String medioPagoDetraccion;
+
     /** Respuesta de SUNAT al último envío (código, mensaje, XML firmado y CDR). */
     @Embedded
     private EnvioSunat envio = new EnvioSunat();

@@ -69,6 +69,7 @@ class ProformaEnvioIntegracionTest {
         Producto p = new Producto();
         p.setNombre("Servicio de prueba (envío de proforma)");
         p.setSector(Producto.Sector.SERVICIO);
+        p.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         p.setCostoBase(new BigDecimal("100.00"));
         p.setMargenPorcentaje(new BigDecimal("10"));
         p.setMoneda(Producto.Moneda.SOLES);

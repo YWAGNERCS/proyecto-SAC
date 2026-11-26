@@ -11,6 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface ComprobanteRepository extends JpaRepository<Comprobante, Long> {
+    List<Comprobante> findByFechaEmisionBetween(java.time.LocalDate desde, java.time.LocalDate hasta);
     /** El comprobante vigente de la venta: el que no fue reemplazado (hay uno como máximo, por índice único). */
     Optional<Comprobante> findByVentaIdAndReemplazadoFalse(Long ventaId);
 

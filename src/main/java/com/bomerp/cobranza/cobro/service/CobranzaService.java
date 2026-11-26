@@ -40,6 +40,7 @@ import java.util.Set;
 @Slf4j
 public class CobranzaService {
 
+    private final com.bomerp.ventas.tributos.DeduccionTributariaService tributos;
     private final CobroRepository cobroRepository;
     private final VentaService ventaService;
     private final ClienteService clienteService;
@@ -47,7 +48,9 @@ public class CobranzaService {
     private final ComprobantesDeVenta comprobantesDeVenta;
 
     public CobranzaService(CobroRepository cobroRepository, VentaService ventaService,
-                           ClienteService clienteService, ComprobantesDeVenta comprobantesDeVenta) {
+                           ClienteService clienteService, ComprobantesDeVenta comprobantesDeVenta,
+                           com.bomerp.ventas.tributos.DeduccionTributariaService tributos) {
+        this.tributos = tributos;
         this.cobroRepository = cobroRepository;
         this.ventaService = ventaService;
         this.clienteService = clienteService;
@@ -86,7 +89,9 @@ public class CobranzaService {
                             v.getTipoDeduccion().name(),
                             v.getMontoDeduccion(),
                             deduccionPendiente,
-                            saldo.subtract(deduccionPendiente).max(BigDecimal.ZERO));
+                            saldo.subtract(deduccionPendiente).max(BigDecimal.ZERO),
+                            v.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION ? v.detraccionEnSoles() : null,
+                            v.getTipoCambio());
                 })
                 .filter(c -> c.saldo().signum() > 0)
                 .sorted(Comparator.comparing(CuentaPorCobrarDTO::fechaLimitePago,
@@ -145,6 +150,10 @@ public class CobranzaService {
         // superar juntos el saldo (el segundo espera y ve el abono del primero)
         dto.abonos().stream().map(CobroRequestDTO.AbonoDTO::ventaId).distinct().sorted()
                 .forEach(ventaService::obtenerParaCobro);
+        if (dto.metodoPago() == Cobro.MetodoPago.RETENCION) {
+            validarGrupoRetencion(dto);
+            cobro.setTipoCambioRetencion(dto.moneda() == Venta.Moneda.SOLES ? BigDecimal.ONE : dto.tipoCambioRetencion());
+        }
         for (CobroRequestDTO.AbonoDTO abono : dto.abonos()) {
             if (!vistas.add(abono.ventaId())) {
                 throw new IllegalArgumentException("La venta #" + abono.ventaId() + " está repetida en el cobro.");
@@ -153,7 +162,11 @@ public class CobranzaService {
             BigDecimal monto = abono.monto().setScale(2, RoundingMode.HALF_UP);
             validarAbono(venta, cliente, dto.moneda(), monto);
             if (dto.metodoPago().esDeduccion()) {
-                validarDeduccion(venta, dto.metodoPago(), monto);
+                if (dto.metodoPago() == Cobro.MetodoPago.RETENCION) {
+                    validarRetencion(venta, abono, monto);
+                } else {
+                    validarDeduccion(venta, dto.metodoPago(), monto);
+                }
             }
             if (fecha.isBefore(venta.getFechaVenta())) {
                 throw new IllegalArgumentException("La fecha del cobro (" + fecha + ") es anterior a la venta #"
@@ -165,7 +178,7 @@ public class CobranzaService {
                 throw new ReglaNegocioException("El abono de " + monto + " supera el saldo de la venta #"
                         + venta.getId() + " (" + saldo + " " + venta.getMoneda() + ").");
             }
-            cobro.abonar(venta, monto);   // ADR-007: el cobro crea el abono y suma su total
+            cobro.abonar(venta, monto, dto.metodoPago() == Cobro.MetodoPago.RETENCION ? abono.baseRetencion() : null);   // ADR-007: el cobro crea el abono y suma su total
             saldosFinales.put(venta.getId(), saldo.subtract(monto));
         }
         Cobro guardado = cobroRepository.save(cobro);
@@ -278,6 +291,48 @@ public class CobranzaService {
      * Una constancia de detracción o un comprobante de retención solo se registra en una venta que tiene
      * esa deducción, y por no más de lo que falta acreditar de ella.
      */
+    private void validarGrupoRetencion(CobroRequestDTO dto) {
+        if (dto.abonos().stream().map(CobroRequestDTO.AbonoDTO::ventaId).distinct().count() != dto.abonos().size()) {
+            throw new IllegalArgumentException("Una venta esta repetida en el cobro.");
+        }
+        BigDecimal cambio = dto.moneda() == Venta.Moneda.SOLES ? BigDecimal.ONE : dto.tipoCambioRetencion();
+        if (cambio == null || cambio.signum() <= 0) {
+            throw new IllegalArgumentException("Indique el tipo de cambio venta SBS de la fecha del pago para la retencion.");
+        }
+        BigDecimal operaciones = BigDecimal.ZERO;
+        for (var abono : dto.abonos()) {
+            Venta venta = ventaService.obtenerPorIdPublico(abono.ventaId());
+            String numero = comprobantesDeVenta.numeroComprobanteDeVenta(venta.getId()).orElse("");
+            if (!tributos.admiteRetencion(venta) || !numero.startsWith("F")) {
+                throw new ReglaNegocioException("La venta #" + venta.getId()
+                        + " no tiene una retencion historica registrada; esta funcion no se aplica a ventas nuevas.");
+            }
+            operaciones = operaciones.add(venta.calcularTotal());
+        }
+        if (operaciones.multiply(cambio).compareTo(tributos.umbralSoles()) <= 0) {
+            throw new ReglaNegocioException("Las facturas involucradas no superan el umbral de retencion en soles.");
+        }
+    }
+
+    private void validarRetencion(Venta venta, CobroRequestDTO.AbonoDTO abono, BigDecimal monto) {
+        BigDecimal base = abono.baseRetencion();
+        if (base == null || base.signum() <= 0 || base.compareTo(venta.calcularTotal()) > 0) {
+            throw new IllegalArgumentException("Indique el importe bruto del pago sujeto a retencion para la venta #" + venta.getId());
+        }
+        if (base.scale() > 2) throw new IllegalArgumentException("El importe bruto admite hasta dos decimales.");
+        BigDecimal porcentajeHistorico = venta.getPorcentajeDeduccion() != null ? venta.getPorcentajeDeduccion() : tributos.porcentajeRetencion();
+        BigDecimal esperado = base.multiply(porcentajeHistorico).movePointLeft(2).setScale(2, RoundingMode.HALF_UP);
+        if (monto.compareTo(esperado) != 0) {
+            throw new ReglaNegocioException("La retencion del pago de " + base + " debe ser " + esperado + ".");
+        }
+        BigDecimal registrada = deduccionesPorVenta(List.of(venta)).getOrDefault(venta.getId(), BigDecimal.ZERO);
+        BigDecimal maximo = venta.getMontoDeduccion() != null ? venta.getMontoDeduccion()
+                : venta.calcularTotal().multiply(porcentajeHistorico).movePointLeft(2).setScale(2, RoundingMode.HALF_UP);
+        if (registrada.add(monto).compareTo(maximo) > 0) {
+            throw new ReglaNegocioException("La retencion acumulada supera la prevista para la venta #" + venta.getId());
+        }
+    }
+
     private void validarDeduccion(Venta venta, Cobro.MetodoPago metodo, BigDecimal monto) {
         Venta.TipoDeduccion esperado = metodo == Cobro.MetodoPago.DETRACCION
                 ? Venta.TipoDeduccion.DETRACCION : Venta.TipoDeduccion.RETENCION;

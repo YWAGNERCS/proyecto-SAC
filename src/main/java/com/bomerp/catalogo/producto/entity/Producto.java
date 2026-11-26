@@ -39,6 +39,10 @@ public class Producto {
     @Column(nullable = false, length = 30)
     private Sector sector;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "clasificacion_detraccion", length = 30)
+    private com.bomerp.catalogo.producto.entity.ClasificacionDetraccion clasificacionDetraccion;
+
     /** Costo base, antes de aplicar el margen de ganancia */
     @NotNull
     @Column(name = "costo_base", nullable = false, precision = 12, scale = 2)
@@ -86,7 +90,7 @@ public class Producto {
 
     public enum Sector {
         CLIMATIZACION, REFRIGERACION, VENTILACION_FORZADA, MATERIAL_SERVICIO,
-        /** Mano de obra (instalación, mantenimiento, reparación): sin stock y sujeta a detracción. */
+        /** Mano de obra (instalación, mantenimiento, reparación): sin stock; la detracción depende de su clasificación. */
         SERVICIO
     }
 
@@ -141,7 +145,7 @@ public class Producto {
         return sector == Sector.CLIMATIZACION || sector == Sector.REFRIGERACION;
     }
 
-    /** Mano de obra: la operación está sujeta a detracción (SPOT). */
+    /** Identifica mano de obra; la clasificación tributaria se valida por separado. */
     public boolean esServicio() {
         return sector == Sector.SERVICIO;
     }

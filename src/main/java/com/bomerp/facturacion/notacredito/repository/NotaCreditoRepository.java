@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface NotaCreditoRepository extends JpaRepository<NotaCredito, Long> {
+    List<NotaCredito> findByFechaEmisionBetween(java.time.LocalDate desde, java.time.LocalDate hasta);
 
     Optional<NotaCredito> findByComprobanteReferencia_Id(Long comprobanteId);
 

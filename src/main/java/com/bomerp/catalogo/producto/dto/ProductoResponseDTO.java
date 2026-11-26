@@ -24,7 +24,8 @@ public record ProductoResponseDTO(
         boolean visibleEnCatalogo,
         /** Costo de la última compra, sin IGV y en la moneda del producto (null = nunca se compró). */
         BigDecimal ultimoCostoCompra,
-        java.time.LocalDate fechaUltimaCompra
+        java.time.LocalDate fechaUltimaCompra,
+        com.bomerp.catalogo.producto.entity.ClasificacionDetraccion clasificacionDetraccion
 ) {
     public static ProductoResponseDTO desdeEntidad(Producto p) {
         return new ProductoResponseDTO(
@@ -42,7 +43,8 @@ public record ProductoResponseDTO(
                 p.getStockMinimo(),
                 p.isVisibleEnCatalogo(),
                 p.getUltimoCostoCompra(),
-                p.getFechaUltimaCompra()
+                p.getFechaUltimaCompra(),
+                p.getClasificacionDetraccion()
         );
     }
 }

@@ -296,6 +296,7 @@ public class EnvioSunatService {
         return guardarRespuesta("nota de crédito " + id, r, () -> tx.execute(s -> {
             NotaCredito n = notas.bloquear(id).orElseThrow();
             n.setEstadoSunat(aplicar(n.getEnvio(), r));
+            if (n.getEstadoSunat().valido() && n.getAmbienteEmision() == null) n.setAmbienteEmision(ambiente);
             registros.save(EnvioSunatRegistro.deNota(n.getId(), r.resultado().name(), n.getEnvio(), r.xmlFirmado(), r.cdr())
                     .conAmbiente(ambiente == null ? null : ambiente.name()));
             if (r.enlacePdf() != null) n.setEnlacePdf(r.enlacePdf());

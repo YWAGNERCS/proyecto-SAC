@@ -62,11 +62,12 @@ public class OrdenTrabajoService {
     private final MantenimientoService mantenimientoService;
     private final EquipoInstaladoService equipoService;
     private final JdbcTemplate jdbc;
+    private final com.bomerp.servicios.recordatorio.RecordatorioService recordatorios;
 
     public OrdenTrabajoService(OrdenTrabajoRepository ordenRepository, ClienteService clienteService,
                                SedeClienteService sedeService, ProductoService productoService, VentaService ventaService,
                                MantenimientoService mantenimientoService, EquipoInstaladoService equipoService,
-                               JdbcTemplate jdbc) {
+                               JdbcTemplate jdbc, com.bomerp.servicios.recordatorio.RecordatorioService recordatorios) {
         this.ordenRepository = ordenRepository;
         this.clienteService = clienteService;
         this.sedeService = sedeService;
@@ -75,6 +76,7 @@ public class OrdenTrabajoService {
         this.mantenimientoService = mantenimientoService;
         this.equipoService = equipoService;
         this.jdbc = jdbc;
+        this.recordatorios = recordatorios;
     }
 
     @Transactional(readOnly = true)
@@ -180,6 +182,7 @@ public class OrdenTrabajoService {
         if (guardada.getMantenimientoId() != null) {
             mantenimientoService.realizarPorOrden(guardada.getMantenimientoId(), fecha, guardada.getTecnico(), guardada.getId());
         }
+        if (dto.recordatorio() != null) recordatorios.configurar(guardada.getId(), dto.recordatorio());
         log.info("Orden de trabajo {} realizada por {}: {} material(es), {} equipo(s) instalado(s)",
                 id, guardada.getTecnico(), materiales.size(), equipos.size());
         return aDto(guardada, tarifaContrato(guardada));

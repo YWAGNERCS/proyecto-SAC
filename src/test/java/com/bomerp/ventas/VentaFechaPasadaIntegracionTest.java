@@ -50,6 +50,7 @@ class VentaFechaPasadaIntegracionTest {
         Producto servicio = new Producto();
         servicio.setNombre("Visita de prueba (fecha pasada)");
         servicio.setSector(Producto.Sector.SERVICIO);
+        servicio.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         servicio.setCostoBase(new BigDecimal("100.00"));
         servicio.setMargenPorcentaje(BigDecimal.ZERO);
         servicio.setMoneda(Producto.Moneda.SOLES);

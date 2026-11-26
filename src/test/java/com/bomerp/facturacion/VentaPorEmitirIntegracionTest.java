@@ -70,6 +70,7 @@ class VentaPorEmitirIntegracionTest {
         Producto servicio = new Producto();
         servicio.setNombre("Instalación de prueba (detracción)");
         servicio.setSector(Producto.Sector.SERVICIO);
+        servicio.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         servicio.setCostoBase(new BigDecimal("1000.00"));
         servicio.setMargenPorcentaje(BigDecimal.ZERO);
         servicio.setMoneda(Producto.Moneda.SOLES);

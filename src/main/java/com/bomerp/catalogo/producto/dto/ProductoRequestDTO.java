@@ -44,5 +44,13 @@ public record ProductoRequestDTO(
         @Min(value = 0, message = "El stock mínimo no puede ser negativo")
         Integer stockMinimo,
 
-        Boolean visibleEnCatalogo
-) {}
+        Boolean visibleEnCatalogo,
+        com.bomerp.catalogo.producto.entity.ClasificacionDetraccion clasificacionDetraccion
+) {
+    public ProductoRequestDTO(String nombre, String descripcion, Long categoriaId, Producto.Sector sector,
+            BigDecimal costoBase, BigDecimal margenPorcentaje, Producto.Moneda moneda,
+            Integer stockActual, Integer stockMinimo, Boolean visibleEnCatalogo) {
+        this(nombre, descripcion, categoriaId, sector, costoBase, margenPorcentaje, moneda,
+                stockActual, stockMinimo, visibleEnCatalogo, null);
+    }
+}

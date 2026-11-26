@@ -45,6 +45,11 @@ public class NotaCredito {
     @Column(nullable = false, length = 15)
     private Comprobante.EstadoSunat estadoSunat = Comprobante.EstadoSunat.PENDIENTE;
 
+    /** Ambiente fijado al aceptar la nota; nunca se deduce de la configuración actual. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ambiente_emision", length = 13, updatable = true)
+    private Comprobante.AmbienteEmision ambienteEmision;
+
     @Column(length = 500)
     private String enlacePdf;
 

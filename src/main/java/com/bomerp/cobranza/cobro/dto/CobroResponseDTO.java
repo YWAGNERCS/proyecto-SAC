@@ -21,9 +21,10 @@ public record CobroResponseDTO(
         String registradoPor,
         LocalDate fechaAnulacion,
         String motivoAnulacion,
-        String anuladoPor
+        String anuladoPor,
+        BigDecimal tipoCambioRetencion
 ) {
-    public record AbonoResponseDTO(Long ventaId, BigDecimal monto) {}
+    public record AbonoResponseDTO(Long ventaId, BigDecimal monto, BigDecimal baseRetencion) {}
 
     public static CobroResponseDTO desdeEntidad(Cobro c) {
         return new CobroResponseDTO(
@@ -37,12 +38,12 @@ public record CobroResponseDTO(
                 c.getNotas(),
                 c.getMontoTotal(),
                 c.getAbonos().stream()
-                        .map(d -> new AbonoResponseDTO(d.getVenta().getId(), d.getMonto()))
+                        .map(d -> new AbonoResponseDTO(d.getVenta().getId(), d.getMonto(), d.getBaseRetencion()))
                         .toList(),
                 c.getEstado().name(),
                 c.getRegistradoPor(),
                 c.getFechaAnulacion(),
                 c.getMotivoAnulacion(),
-                c.getAnuladoPor());
+                c.getAnuladoPor(), c.getTipoCambioRetencion());
     }
 }

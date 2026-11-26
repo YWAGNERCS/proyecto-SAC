@@ -78,16 +78,19 @@ class XmlComprobante {
                 .cliente(receptor(comprobante))
                 .detalles(detalles(venta.getDetalles()));
 
-        if (venta.getTipoPago() == Venta.TipoPago.CREDITO && venta.getFechaLimitePago() != null) {
+        if (venta.getTipoPago() == Venta.TipoPago.CREDITO) {
+            if (venta.getFechaLimitePago() == null) throw new IllegalStateException("La factura a credito requiere fecha de vencimiento.");
             b.formaDePago(FormaDePago.builder()
                     .cuota(CuotaDePago.builder().importe(neto(venta)).fechaPago(venta.getFechaLimitePago()).build())
                     .build());
         }
         if (venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION && venta.getMontoDeduccion() != null) {
             b.detraccion(Detraccion.builder()
-                    .medioDePago(MEDIO_PAGO_DEPOSITO)
-                    .cuentaBancaria(empresa.cuentaDetracciones())
-                    .tipoBienDetraido(BIEN_DETRAIDO_MANTENIMIENTO)
+                    .medioDePago(comprobante.getMedioPagoDetraccion() != null ? comprobante.getMedioPagoDetraccion() : MEDIO_PAGO_DEPOSITO)
+                    .cuentaBancaria(comprobante.getCuentaDetraccionesEmision() != null
+                            ? comprobante.getCuentaDetraccionesEmision() : empresa.cuentaDetracciones())
+                    .tipoBienDetraido(venta.getCodigoDetraccion() != null
+                            ? venta.getCodigoDetraccion() : BIEN_DETRAIDO_MANTENIMIENTO)
                     .porcentaje(venta.getPorcentajeDeduccion().movePointLeft(2))
                     .monto(venta.getMontoDeduccion())
                     .build());
@@ -95,7 +98,50 @@ class XmlComprobante {
 
         Invoice invoice = b.build();
         enricher.enrich(invoice);
-        return firmar(plantillas.getInvoice().data(invoice).render(), certificado);
+        String contenido = plantillas.getInvoice().data(invoice).render();
+        if (venta.getTipoDeduccion() == Venta.TipoDeduccion.DETRACCION) {
+            contenido = detraccionEnMonedaNacional(contenido, venta.detraccionEnSoles());
+        }
+        return firmar(contenido, certificado);
+    }
+
+    /** xbuilder 5 usa la moneda del documento para SPOT; SUNAT exige PEN. Corregir ANTES de firmar. */
+    private static String detraccionEnMonedaNacional(String xml, BigDecimal soles) {
+        try {
+            var fabrica = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+            fabrica.setNamespaceAware(true);
+            fabrica.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            fabrica.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            fabrica.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+            var documento = fabrica.newDocumentBuilder().parse(new java.io.ByteArrayInputStream(
+                    xml.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            String cbc = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
+            var terminos = documento.getElementsByTagNameNS(
+                    "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2", "PaymentTerms");
+            int corregidos = 0;
+            for (int i = 0; i < terminos.getLength(); i++) {
+                var termino = (org.w3c.dom.Element) terminos.item(i);
+                var id = termino.getElementsByTagNameNS(cbc, "ID");
+                if (id.getLength() == 0 || !"Detraccion".equals(id.item(0).getTextContent())) continue;
+                var importes = termino.getElementsByTagNameNS(cbc, "Amount");
+                if (importes.getLength() != 1) throw new IllegalStateException("Importe de detraccion ambiguo");
+                var importe = (org.w3c.dom.Element) importes.item(0);
+                importe.setAttribute("currencyID", "PEN");
+                importe.setTextContent(soles.setScale(2, RoundingMode.HALF_UP).toPlainString());
+                corregidos++;
+            }
+            if (corregidos != 1) throw new IllegalStateException("Falta el bloque de detraccion");
+            var transformadores = javax.xml.transform.TransformerFactory.newInstance();
+            transformadores.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            transformadores.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+            var transformador = transformadores.newTransformer();
+            transformador.setOutputProperty(javax.xml.transform.OutputKeys.ENCODING, "UTF-8");
+            var salida = new java.io.StringWriter();
+            transformador.transform(new javax.xml.transform.dom.DOMSource(documento), new javax.xml.transform.stream.StreamResult(salida));
+            return salida.toString();
+        } catch (Exception e) {
+            throw new IllegalStateException("No se pudo generar la detraccion en soles", e);
+        }
     }
 
     /** Nota de crédito (07) que anula por completo el comprobante de referencia (catálogo 09: 01). */

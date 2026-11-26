@@ -19,10 +19,20 @@ public class ComprobanteController {
 
     private final FacturacionService facturacionService;
     private final EnvioSunatService envioSunat;
+    private final com.bomerp.facturacion.pdf.service.NotaCreditoPdfService notaPdf;
 
-    public ComprobanteController(FacturacionService facturacionService, EnvioSunatService envioSunat) {
+    public ComprobanteController(FacturacionService facturacionService, EnvioSunatService envioSunat,
+                                com.bomerp.facturacion.pdf.service.NotaCreditoPdfService notaPdf) {
         this.facturacionService = facturacionService;
         this.envioSunat = envioSunat;
+        this.notaPdf = notaPdf;
+    }
+
+    @GetMapping("/notas-credito/{id}/pdf")
+    public ResponseEntity<byte[]> pdfNota(@PathVariable Long id) {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename("nota_credito_"+id+".pdf").build().toString())
+                .body(notaPdf.descargar(id));
     }
 
     /** Estado ante SUNAT de los comprobantes (y notas de crédito) de varias ventas: ?ventaIds=1,2,3 (máx. 200). */

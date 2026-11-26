@@ -121,9 +121,27 @@ public class Venta {
     @Column(name = "porcentaje_deduccion", precision = 5, scale = 2)
     private BigDecimal porcentajeDeduccion;
 
-    /** En la moneda de la venta. */
+    /** Código SUNAT guardado al registrar la operación; no depende de cambios posteriores del catálogo. */
+    @Column(name = "codigo_detraccion", length = 3)
+    private String codigoDetraccion;
+
+    /** Importe en la moneda de la venta; previsión para la retención. */
     @Column(name = "monto_deduccion", precision = 12, scale = 2)
     private BigDecimal montoDeduccion;
+
+    /** Importe SPOT en soles guardado al registrar; la cobranza sigue en la moneda de la venta. */
+    @Column(name = "monto_detraccion_soles", precision = 12, scale = 2)
+    private BigDecimal montoDetraccionSoles;
+
+    public BigDecimal detraccionEnSoles() {
+        if (tipoDeduccion != TipoDeduccion.DETRACCION || montoDeduccion == null) return BigDecimal.ZERO;
+        if (montoDetraccionSoles != null) return montoDetraccionSoles;
+        if (moneda == Moneda.SOLES) return montoDeduccion;
+        if (tipoCambio == null || tipoCambio.signum() <= 0) {
+            throw new com.bomerp.config.ReglaNegocioException("Falta tipo de cambio para expresar la detraccion en soles.");
+        }
+        return montoDeduccion.multiply(tipoCambio).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
 
     /** Referencia al comprobante generado (se conecta con el módulo Facturación) */
     @Column(name = "comprobante_id")

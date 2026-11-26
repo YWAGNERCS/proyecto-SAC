@@ -74,6 +74,7 @@ class EnvioSunatConcurrenciaIntegracionTest {
         Producto p = new Producto();
         p.setNombre("Visita de prueba (envío simultáneo)");
         p.setSector(Producto.Sector.SERVICIO);
+        p.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         p.setCostoBase(new BigDecimal("100.00"));
         p.setMargenPorcentaje(BigDecimal.ZERO);
         p.setMoneda(Producto.Moneda.SOLES);

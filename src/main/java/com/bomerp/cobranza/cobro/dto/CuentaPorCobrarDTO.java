@@ -24,5 +24,7 @@ public record CuentaPorCobrarDTO(
         String tipoDeduccion,
         BigDecimal montoDeduccion,
         BigDecimal deduccionPendiente,
-        BigDecimal netoPorCobrar
+        BigDecimal netoPorCobrar,
+        BigDecimal montoDetraccionSoles,
+        BigDecimal tipoCambio
 ) {}

@@ -1,13 +1,15 @@
 # SGE-JD: qué hace hoy y qué todavía no
 
 **Para:** Lisandro y Lucy · JD Refrigeración S.A.C.
-**Versión del sistema:** 8 de noviembre de 2026
+**Versión del sistema:** 26 de noviembre de 2026
 
 Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cuáles todavía son una **simulación** o necesitan una decisión de ustedes. Léanla antes de usar SGE-JD con clientes reales.
 
 ---
 
 ## 1. Lo que ya funciona de verdad
+
+- **Reunión del 23/11, puntos 3 a 5 (implementación del 26/11):** nota de crédito PDF desde Ventas; cierre mensual con selector de periodo y Excel; recordatorios por correo al cliente y oficina después de cerrar una orden, con frecuencia y anticipación configurables. El reporte es preliminar: falta contrastarlo con el Excel y las reglas fiscales de Lucy. El canal elegido para esta implementación es correo; WhatsApp automático no está incluido. Las pruebas no envían mensajes reales.
 
 - Catálogo de productos y categorías, con precios calculados desde el costo y el margen.
 - Clientes y proveedores, con búsqueda del nombre y la dirección por RUC (SUNAT) o DNI (RENIEC).
@@ -16,7 +18,7 @@ Esta hoja dice con claridad qué partes del sistema ya funcionan de verdad y cu�
 - **Precio de una línea editable** al vender o cotizar (por ejemplo, si el proveedor subió el costo): solo puede subir, pide el motivo y lo puede hacer Lisandro o quien él autorice. El catálogo no cambia; la venta guarda los dos precios y el historial lo registra. Si la última compra salió más cara que el costo del catálogo, la línea lo avisa.
 - **Ventas con su fecha real** (hasta 30 días atrás) cuando se registran tarde: solo Lisandro o quien él autorice; la factura sale con la fecha de hoy.
 - **Topes de descuento:** Lisandro los fija en Configuración › Topes de descuento (nadie más puede cambiarlos).
-- Detracción (12 % en servicios) y retención del IGV (3 % si el cliente es agente de retención), con su registro en Cobranza.
+- Detracción según la clasificación del servicio, factura con crédito y registro separado en Cobranza. La retención se conserva solo para documentos históricos. Falta contrastar el formato con la factura modelo de Lucy. Ver [Facturación SUNAT, sección 8](FACTURACION_SUNAT.md#8-factura-con-detraccion-y-alcance-de-la-entrega-26112026).
 - Compras a proveedores, que suben el stock de los materiales, al contado o a crédito. Los precios se escriben como en la factura del proveedor (**con IGV**) y el sistema separa el subtotal y el IGV (crédito fiscal); cada compra deja en el producto su último costo.
 - **Cuentas por pagar:** lo que JD le debe a cada proveedor, lo vencido y lo que vence en 7 días, con pagos parciales.
 - Cobranza: abonos parciales, saldos por venta, días de atraso y recordatorio por WhatsApp. Un cobro mal registrado se anula con su motivo.

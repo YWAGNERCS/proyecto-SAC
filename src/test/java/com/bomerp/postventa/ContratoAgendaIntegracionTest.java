@@ -144,6 +144,7 @@ class ContratoAgendaIntegracionTest {
         Producto servicio = new Producto();
         servicio.setNombre("Mano de obra de prueba");
         servicio.setSector(Producto.Sector.SERVICIO);
+        servicio.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         servicio.setMoneda(Producto.Moneda.SOLES);
         servicio.setCostoBase(new BigDecimal("150.00"));
         servicio.setMargenPorcentaje(BigDecimal.ZERO);
@@ -183,6 +184,7 @@ class ContratoAgendaIntegracionTest {
         Producto servicio = new Producto();
         servicio.setNombre("Mano de obra con precio de catálogo");
         servicio.setSector(Producto.Sector.SERVICIO);
+        servicio.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         servicio.setMoneda(Producto.Moneda.SOLES);
         servicio.setCostoBase(new BigDecimal("180.00"));
         servicio.setMargenPorcentaje(BigDecimal.ZERO);
@@ -214,6 +216,7 @@ class ContratoAgendaIntegracionTest {
         Producto servicio = new Producto();
         servicio.setNombre("Mano de obra de catálogo");
         servicio.setSector(Producto.Sector.SERVICIO);
+        servicio.setClasificacionDetraccion(com.bomerp.catalogo.producto.entity.ClasificacionDetraccion.MANTENIMIENTO_REPARACION);
         servicio.setMoneda(Producto.Moneda.SOLES);
         servicio.setCostoBase(new BigDecimal("180.00"));
         servicio.setMargenPorcentaje(BigDecimal.ZERO);
