@@ -6,6 +6,7 @@
 }
 
 @if (orden(); as o) {
+  @if(o.estado === 'REALIZADA'){<app-recordatorio-servicio [ordenId]="o.id" />}
   <div class="page-header">
     <div>
       <h1 class="page-title">Orden de trabajo #{{ o.id }}</h1>
@@ -125,6 +126,14 @@
                  [class.is-invalid]="cierreForm.controls.recibidoPor.touched && cierreForm.controls.recibidoPor.invalid">
         </div>
       </div>
+      <fieldset class="card card-body"><legend>Recordar el siguiente mantenimiento</legend>
+        <label><input type="checkbox" formControlName="activarRecordatorio"> Enviar recordatorio por correo al cliente y a la oficina</label>
+        @if(cierreForm.controls.activarRecordatorio.value){
+          <div class="campos"><div><label for="cMeses" class="form-label">Cada cuántos meses</label><input id="cMeses" type="number" min="1" max="120" formControlName="frecuenciaRecordatorio" class="form-control"></div>
+          <div><label for="cAviso" class="form-label">Avisar días antes</label><input id="cAviso" type="number" min="0" max="30" formControlName="anticipacionRecordatorio" class="form-control"></div></div>
+          <p class="muted">La próxima fecha parte de la fecha realizada. Se requieren los correos del cliente y la oficina. Podrá ajustar el recordatorio después de cerrar.</p>
+        }
+      </fieldset>
       <label class="form-label" for="cTrabajo">Trabajo realizado *</label>
       <textarea id="cTrabajo" class="form-control" formControlName="trabajoRealizado" rows="2" maxlength="1000"
                 [class.is-invalid]="cierreForm.controls.trabajoRealizado.touched && cierreForm.controls.trabajoRealizado.invalid"></textarea>
@@ -140,7 +149,7 @@
           @for (g of materiales.controls; track $index; let i = $index) {
             <tr [formGroupName]="i">
               <td>
-                <select class="form-select" formControlName="productoId" [attr.aria-label]="'Material ' + (i + 1)">
+                <select appBuscable="Material" class="form-select" formControlName="productoId" [attr.aria-label]="'Material ' + (i + 1)">
                   <option [ngValue]="null">-- Material --</option>
                   @for (p of materialesDisponibles(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} (stock {{ p.stockActual }})</option> }
                 </select>
@@ -165,7 +174,7 @@
             <div class="campos" [formGroupName]="i" style="border-top: 1px solid var(--border-color); padding-top: 10px;">
               <div style="grid-column: span 2;">
                 <label class="form-label" [for]="'eq' + i">Equipo</label>
-                <select class="form-select" [id]="'eq' + i" formControlName="productoId">
+                <select appBuscable="Producto" class="form-select" [id]="'eq' + i" formControlName="productoId">
                   <option [ngValue]="null">-- Equipo --</option>
                   @for (p of equiposCatalogo(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
                 </select>
@@ -216,7 +225,7 @@
           @for (g of items.controls; track $index; let i = $index) {
             <tr [formGroupName]="i">
               <td>
-                <select class="form-select" formControlName="productoId" (change)="recalcular()" [attr.aria-label]="'Servicio ' + (i + 1)">
+                <select appBuscable="Producto" class="form-select" formControlName="productoId" (change)="recalcular()" [attr.aria-label]="'Servicio ' + (i + 1)">
                   <option [ngValue]="null">-- Servicio --</option>
                   @for (p of servicios(); track p.id) {
                     <option [ngValue]="p.id">{{ p.nombre }}@if (!tarifaContrato()) { ({{ p.moneda === 'DOLARES' ? 'US$' : 'S/' }} {{ p.precioVenta | number: '1.2-2' }}) }</option>

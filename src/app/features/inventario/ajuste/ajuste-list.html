@@ -16,7 +16,7 @@
 <section class="tarjeta sin-relleno">
   <div class="barra-filtros">
     <div><label class="form-label" for="fProd">Material</label>
-      <select id="fProd" class="form-select" [(ngModel)]="filtro.productoId" (ngModelChange)="buscar()">
+      <select appBuscable="Producto" id="fProd" class="form-select" [(ngModel)]="filtro.productoId" (ngModelChange)="buscar()">
         <option [ngValue]="null">Todos</option>
         @for (p of materiales(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
       </select></div>
@@ -66,7 +66,7 @@
 
       <div class="campos">
         <div class="ancho"><label class="form-label" for="nProd">Material</label>
-          <select id="nProd" class="form-select" name="producto" [(ngModel)]="nuevo.productoId">
+          <select appBuscable="Producto" id="nProd" class="form-select" name="producto" [(ngModel)]="nuevo.productoId">
             <option [ngValue]="null">— Elija —</option>
             @for (p of materiales(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} (stock {{ p.stockActual ?? 0 }})</option> }
           </select></div>

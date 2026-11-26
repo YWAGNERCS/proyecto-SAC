@@ -19,9 +19,9 @@
   <div class="barra-filtros">
     <div style="min-width: 260px;">
       <label class="form-label" for="kCliente">Cliente</label>
-      <select id="kCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+      <select appBuscable="Cliente" id="kCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
         <option [ngValue]="null">Todos</option>
-        @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+        @for (c of clientes(); track c.id) { <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option> }
       </select>
     </div>
     <div>
@@ -88,14 +88,14 @@
       <div class="campos">
         <div style="grid-column: span 2;">
           <label class="form-label" for="cCli">Cliente *</label>
-          <select id="cCli" class="form-select" formControlName="clienteId">
+          <select appBuscable="Cliente" id="cCli" class="form-select" formControlName="clienteId">
             <option [ngValue]="null">-- Seleccione --</option>
-            @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+            @for (c of clientes(); track c.id) { <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option> }
           </select>
         </div>
         <div>
           <label class="form-label" for="cSede">Sede</label>
-          <select id="cSede" class="form-select" formControlName="sedeId">
+          <select appBuscable="Sede" id="cSede" class="form-select" formControlName="sedeId">
             <option [ngValue]="null">Todas las sedes</option>
             @for (s of sedesDialogo(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
           </select>

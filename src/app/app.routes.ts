@@ -18,6 +18,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./core/layout/layout').then((m) => m.Layout),
     children: [
+      {path:'reportes/cierre-mensual',canActivate:[authGuard],loadComponent:()=>import('./features/reportes/mensual/cierre-mensual').then(m=>m.CierreMensualComponent),title:'Cierre mensual — SGE-JD'},
       {
         path: '',
         loadComponent: () => import('./core/inicio/inicio').then((m) => m.Inicio),

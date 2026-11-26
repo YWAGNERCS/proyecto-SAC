@@ -14,12 +14,18 @@
                     <label class="form-label" for="proveedorSelect">
                         Proveedor <span style="color: var(--danger);">*</span>
                     </label>
-                    <select id="proveedorSelect" class="form-select" formControlName="proveedorId">
+                    <div class="cliente-con-nuevo">
+                    <select appBuscable="Proveedor" id="proveedorSelect" class="form-select" formControlName="proveedorId">
                         <option [ngValue]="null">-- Seleccione un proveedor --</option>
-                        <option *ngFor="let p of proveedores()" [ngValue]="p.id">
-                            {{ p.nombreORazonSocial }}
+                        <option *ngFor="let p of proveedores()" [ngValue]="p.id" [attr.data-busqueda]="(p.dni ?? '') + ' ' + (p.ruc ?? '')">
+                            {{ p.nombreORazonSocial }}{{ p.ruc || p.dni ? ' · ' + (p.ruc || p.dni) : '' }}
                         </option>
                     </select>
+                    <button type="button" class="btn btn-outline-secondary btn-nuevo-cliente"
+                            (click)="creandoProveedor.set(true)">
+                        <app-icono nombre="nuevo" [tamano]="16" /> Nuevo proveedor
+                    </button>
+                    </div>
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label" for="fechaCompraInput">Fecha de Compra</label>
@@ -59,7 +65,7 @@
             <div class="row mb-3 align-items-end" style="background-color: var(--surface-muted); padding: 1.25rem; border: 1px solid var(--border-color); border-radius: 8px;">
                 <div class="col-md-4">
                     <label class="form-label">Producto</label>
-                    <select class="form-select" [formControl]="nuevoDetalle.controls.productoId">
+                    <select appBuscable="Producto" class="form-select" [formControl]="nuevoDetalle.controls.productoId">
                         <option [ngValue]="null">-- Seleccione --</option>
                         <option *ngFor="let p of productos()" [ngValue]="p.id">
                             {{ p.nombre }}
@@ -144,3 +150,10 @@
         </form>
     </div>
 </div>
+
+@if (creandoProveedor()) {
+    <div class="dialogo-fondo">
+        <app-proveedor-form [enDialogo]="true" (guardado)="proveedorCreado($event)"
+                            (cancelado)="creandoProveedor.set(false)" />
+    </div>
+}

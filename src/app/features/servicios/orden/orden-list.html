@@ -23,9 +23,9 @@
     </div>
     <div style="min-width: 240px;">
       <label class="form-label" for="oCliente">Cliente</label>
-      <select id="oCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+      <select appBuscable="Cliente" id="oCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
         <option [ngValue]="null">Todos</option>
-        @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+        @for (c of clientes(); track c.id) { <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option> }
       </select>
     </div>
     <div>

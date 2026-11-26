@@ -29,9 +29,9 @@
   <div class="barra-filtros">
     <div>
       <label class="form-label" for="fProv">Proveedor</label>
-      <select id="fProv" class="form-select" [(ngModel)]="proveedorId" (ngModelChange)="cargar()">
+      <select appBuscable="Proveedor" id="fProv" class="form-select" [(ngModel)]="proveedorId" (ngModelChange)="cargar()">
         <option [ngValue]="null">Todos</option>
-        @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.nombreORazonSocial }}</option> }
+        @for (p of proveedores(); track p.id) { <option [ngValue]="p.id" [attr.data-busqueda]="(p.dni ?? '') + ' ' + (p.ruc ?? '')">{{ p.nombreORazonSocial }}{{ p.ruc || p.dni ? ' · ' + (p.ruc || p.dni) : '' }}</option> }
       </select>
     </div>
     @if (pestana() === 'PENDIENTES') {

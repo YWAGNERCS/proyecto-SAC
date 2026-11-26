@@ -17,11 +17,11 @@
         <div class="col-md-6 mb-3">
           <label class="form-label" for="clienteSelect">Cliente <span style="color: var(--danger);">*</span></label>
           <div class="cliente-con-nuevo">
-            <select id="clienteSelect" class="form-select" formControlName="clienteId"
+            <select appBuscable="Cliente" id="clienteSelect" class="form-select" formControlName="clienteId"
                     [class.is-invalid]="form.controls.clienteId.invalid && form.controls.clienteId.touched">
               <option [ngValue]="0">-- Seleccione un cliente --</option>
               @for (c of clientes(); track c.id) {
-                <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
+                <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option>
               }
             </select>
             <button type="button" class="btn btn-outline-secondary btn-nuevo-cliente" (click)="creandoCliente.set(true)"

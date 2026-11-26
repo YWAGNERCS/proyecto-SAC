@@ -1,3 +1,5 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
+import { RecordatorioServicioComponent } from './recordatorio-servicio';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -28,7 +30,7 @@ type ServicioForm = FormGroup<{ productoId: FormControl<number | null>; cantidad
  */
 @Component({
   selector: 'app-orden-detalle',
-  imports: [IconoComponent, ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [RecordatorioServicioComponent, SelectBuscableDirective, IconoComponent, ReactiveFormsModule, RouterLink, DecimalPipe],
   templateUrl: './orden-detalle.html',
 })
 export class OrdenDetalleComponent {
@@ -57,6 +59,9 @@ export class OrdenDetalleComponent {
   readonly servicios = computed(() => this.productos().filter((p) => p.sector === 'SERVICIO'));
 
   readonly cierreForm = this.fb.nonNullable.group({
+    activarRecordatorio: [false],
+    frecuenciaRecordatorio: [3,[Validators.required,Validators.min(1),Validators.max(120)]],
+    anticipacionRecordatorio: [3,[Validators.required,Validators.min(0),Validators.max(30)]],
     fechaRealizada: [this.hoy, Validators.required],
     trabajoRealizado: ['', [Validators.required, Validators.maxLength(1000)]],
     recibidoPor: ['', [Validators.required, Validators.maxLength(100)]],
@@ -100,7 +105,7 @@ export class OrdenDetalleComponent {
 
   // ── Cerrar ──
   abrirCerrar() {
-    this.cierreForm.reset({ fechaRealizada: this.hoy });
+    this.cierreForm.reset({ fechaRealizada: this.hoy, activarRecordatorio:false, frecuenciaRecordatorio:3, anticipacionRecordatorio:3 });
     this.materiales.clear();
     this.equipos.clear();
     if (this.orden()?.tipo === 'INSTALACION') this.agregarEquipo();
@@ -138,6 +143,7 @@ export class OrdenDetalleComponent {
     }
     const v = this.cierreForm.getRawValue();
     this.enviar(this.ordenService.cerrar(o.id, {
+      recordatorio: v.activarRecordatorio ? {activo:true,frecuenciaMeses:Number(v.frecuenciaRecordatorio),anticipacionDias:Number(v.anticipacionRecordatorio)} : null,
       fechaRealizada: v.fechaRealizada || null,
       trabajoRealizado: v.trabajoRealizado.trim(),
       recibidoPor: v.recibidoPor.trim(),

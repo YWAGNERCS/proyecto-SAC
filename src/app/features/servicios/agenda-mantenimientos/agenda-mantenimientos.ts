@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -23,7 +24,7 @@ interface DiaMes {
 @Component({
   selector: 'app-agenda-mantenimientos',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [SelectBuscableDirective, CommonModule, FormsModule, RouterLink],
   templateUrl: './agenda-mantenimientos.html',
   styleUrl: './agenda-mantenimientos.css',
 })

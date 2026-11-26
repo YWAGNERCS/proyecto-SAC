@@ -434,8 +434,8 @@ export class VentaListComponent implements OnInit {
   }
 
   /** PDF del comprobante: el mismo que se adjunta al correo. */
-  descargarPdfComprobante(d: DocumentoSunat) {
-    this.descargaService.descargar(this.facturacion.rutaPdf(d.id), `${d.numero}.pdf`).subscribe({
+  descargarPdfComprobante(d: DocumentoSunat, esNota = false) {
+    this.descargaService.descargar(this.facturacion.rutaPdf(d.id, esNota), `${d.numero}.pdf`).subscribe({
       error: () => this.error.set(`No se pudo descargar el PDF de ${d.numero}.`),
     });
   }

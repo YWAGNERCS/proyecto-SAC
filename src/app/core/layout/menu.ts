@@ -92,6 +92,7 @@ export const GRUPOS: GrupoMenu[] = [
       { ruta: '/proformas', texto: 'Proformas', icono: ICONOS.proformas },
       { ruta: '/ventas', texto: 'Ventas', icono: ICONOS.ventas },
       { ruta: '/cobranza', texto: 'Cobranza', icono: ICONOS.cobranza },
+      { ruta: '/reportes/cierre-mensual', texto: 'Cierre mensual', icono: ICONOS.rentabilidad },
       { ruta: '/reportes/rentabilidad', texto: 'Rentabilidad', icono: ICONOS.rentabilidad, permiso: 'VER_RENTABILIDAD' },
     ],
   },

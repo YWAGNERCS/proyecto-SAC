@@ -12,7 +12,7 @@ type Tipo = Cliente['tipo'];
 
 @Component({
   selector: 'app-cliente-form',
-  imports: [IconoComponent, ReactiveFormsModule, RouterLink, SedesClienteComponent],
+  imports: [ IconoComponent, ReactiveFormsModule, RouterLink, SedesClienteComponent],
   templateUrl: './cliente-form.html',
 })
 export class ClienteFormComponent {
@@ -36,6 +36,7 @@ export class ClienteFormComponent {
   protected readonly avisoBusqueda = signal<string | null>(null);
   /** Si el documento buscado ya pertenece a un cliente registrado. */
   protected readonly yaRegistrado = signal<Cliente | null>(null);
+  private consultaDocumento = 0;
 
   protected readonly form = this.fb.nonNullable.group({
     tipo: ['EMPRESA' as Tipo],
@@ -44,7 +45,6 @@ export class ClienteFormComponent {
     direccion: ['', [Validators.maxLength(200)]],
     telefono: ['', [Validators.maxLength(20)]],
     correo: ['', [Validators.email, Validators.maxLength(100)]],
-    agenteRetencion: [false],
   });
 
   private readonly tipo = toSignal(this.form.controls.tipo.valueChanges, { initialValue: this.form.controls.tipo.value });
@@ -60,6 +60,13 @@ export class ClienteFormComponent {
       doc.updateValueAndValidity();
       this.avisoBusqueda.set(null);
       this.yaRegistrado.set(null);
+      this.invalidarConsulta();
+    });
+    let documentoAnterior = this.form.controls.documento.value.trim();
+    this.form.controls.documento.valueChanges.subscribe(valor => {
+      if (valor.trim() === documentoAnterior) return;
+      documentoAnterior = valor.trim();
+      this.invalidarConsulta();
     });
 
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -76,7 +83,6 @@ export class ClienteFormComponent {
             direccion: c.direccion ?? '',
             telefono: c.telefono ?? '',
             correo: c.correo ?? '',
-            agenteRetencion: !!c.agenteRetencion,
           });
           this.loading.set(false);
         },
@@ -95,6 +101,9 @@ export class ClienteFormComponent {
     doc.markAsTouched();
     if (doc.invalid) return;
 
+    const numero = doc.value;
+    const tipoBuscado = this.form.controls.tipo.value;
+    const secuencia = ++this.consultaDocumento;
     this.buscando.set(true);
     this.avisoBusqueda.set(null);
     this.yaRegistrado.set(null);
@@ -105,6 +114,7 @@ export class ClienteFormComponent {
 
     consulta.subscribe({
       next: (datos) => {
+        if (secuencia !== this.consultaDocumento || numero !== doc.value || tipoBuscado !== this.form.controls.tipo.value) return;
         this.buscando.set(false);
         if (datos.id && datos.id !== this.id()) {
           this.yaRegistrado.set(datos);
@@ -117,6 +127,7 @@ export class ClienteFormComponent {
         this.avisoBusqueda.set(`Datos obtenidos de ${this.esEmpresa() ? 'SUNAT' : 'RENIEC'}. Revíselos y complete el contacto.`);
       },
       error: (err: HttpErrorResponse) => {
+        if (secuencia !== this.consultaDocumento || numero !== doc.value || tipoBuscado !== this.form.controls.tipo.value) return;
         this.buscando.set(false);
         const tipo = this.etiquetaDocumento();
         this.error.set(
@@ -132,8 +143,15 @@ export class ClienteFormComponent {
     });
   }
 
+  private invalidarConsulta(): void {
+    this.consultaDocumento++;
+    this.buscando.set(false);
+    this.avisoBusqueda.set(null);
+    this.yaRegistrado.set(null);
+  }
+
   guardar(): void {
-    if (this.loading()) return;
+    if (this.loading() || this.buscando()) return;
     this.error.set(null);
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -148,8 +166,6 @@ export class ClienteFormComponent {
       direccion: v.direccion.trim() || null,
       telefono: v.telefono.trim() || null,
       correo: v.correo.trim() || null,
-      // Solo una empresa puede ser agente de retención
-      agenteRetencion: v.tipo === 'EMPRESA' && v.agenteRetencion,
     };
 
     const id = this.id();

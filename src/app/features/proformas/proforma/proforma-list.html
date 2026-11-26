@@ -10,10 +10,10 @@
 
 <div class="card card-filtro">
   <label class="form-label" for="clienteFilter" style="margin-bottom: 6px;">Filtrar por Cliente:</label>
-  <select class="form-select" id="clienteFilter" (change)="filtrarPorCliente($event)">
+  <select appBuscable="Cliente" class="form-select" id="clienteFilter" (change)="filtrarPorCliente($event)">
     <option value="">-- Todos los Clientes --</option>
     @for (cliente of clientes(); track cliente.id) {
-      <option [value]="cliente.id">{{ cliente.nombreORazonSocial }}</option>
+      <option [value]="cliente.id" [attr.data-busqueda]="(cliente.dni ?? '') + ' ' + (cliente.ruc ?? '')">{{ cliente.nombreORazonSocial }}{{ cliente.ruc || cliente.dni ? ' · ' + (cliente.ruc || cliente.dni) : '' }}</option>
     }
   </select>
 </div>

@@ -17,9 +17,9 @@
   <div class="barra-filtros">
     <div style="min-width: 260px;">
       <label class="form-label" for="eCliente">Cliente</label>
-      <select id="eCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+      <select appBuscable="Cliente" id="eCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
         <option [ngValue]="null">Todos</option>
-        @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+        @for (c of clientes(); track c.id) { <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option> }
       </select>
     </div>
     <div>
@@ -103,14 +103,14 @@
       <div class="campos">
         <div style="grid-column: span 2;">
           <label class="form-label" for="dCliente">Cliente *</label>
-          <select id="dCliente" class="form-select" formControlName="clienteId">
+          <select appBuscable="Cliente" id="dCliente" class="form-select" formControlName="clienteId">
             <option [ngValue]="null">-- Seleccione --</option>
-            @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+            @for (c of clientes(); track c.id) { <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option> }
           </select>
         </div>
         <div>
           <label class="form-label" for="dSede">Sede</label>
-          <select id="dSede" class="form-select" formControlName="sedeId">
+          <select appBuscable="Sede" id="dSede" class="form-select" formControlName="sedeId">
             <option [ngValue]="null">Sin sede</option>
             @for (s of sedesDialogo(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
           </select>
@@ -119,7 +119,7 @@
       <div class="campos">
         <div style="grid-column: span 2;">
           <label class="form-label" for="dProducto">Equipo *</label>
-          <select id="dProducto" class="form-select" formControlName="productoId">
+          <select appBuscable="Producto" id="dProducto" class="form-select" formControlName="productoId">
             <option [ngValue]="null">-- Equipo del catálogo --</option>
             @for (p of equiposCatalogo(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
           </select>

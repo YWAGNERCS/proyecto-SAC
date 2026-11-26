@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { DecimalPipe } from '@angular/common';
@@ -17,7 +18,7 @@ type FiltroCategoria = 'TODAS' | 'SIN_CATEGORIA' | number;
 
 @Component({
   selector: 'app-producto-list',
-  imports: [IconoComponent, OrdenComponent, RouterLink, FormsModule, DecimalPipe],
+  imports: [SelectBuscableDirective, IconoComponent, OrdenComponent, RouterLink, FormsModule, DecimalPipe],
   templateUrl: './producto-list.html',
 })
 export class ProductoList implements OnInit {

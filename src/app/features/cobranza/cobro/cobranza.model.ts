@@ -8,7 +8,6 @@ export const METODOS_PAGO: { valor: MetodoPago; etiqueta: string }[] = [
   { valor: 'YAPE_PLIN', etiqueta: 'Yape / Plin' },
   { valor: 'CHEQUE', etiqueta: 'Cheque' },
   { valor: 'DETRACCION', etiqueta: 'Constancia de detracción' },
-  { valor: 'RETENCION', etiqueta: 'Comprobante de retención' },
 ];
 
 /** Venta a crédito con saldo pendiente. */
@@ -31,6 +30,8 @@ export interface CuentaPorCobrar {
   deduccionPendiente: number;
   /** Lo que el cliente todavía debe pagarle directamente a JD. */
   netoPorCobrar: number;
+  montoDetraccionSoles?: number | null;
+  tipoCambio?: number | null;
 }
 
 export interface CobroRequest {
@@ -40,7 +41,8 @@ export interface CobroRequest {
   metodoPago: MetodoPago;
   referencia: string | null;
   notas: string | null;
-  abonos: { ventaId: number; monto: number }[];
+  tipoCambioRetencion?: number | null;
+  abonos: { ventaId: number; monto: number; baseRetencion?: number | null }[];
 }
 
 export interface Cobro {
@@ -53,7 +55,8 @@ export interface Cobro {
   referencia: string | null;
   notas: string | null;
   montoTotal: number;
-  abonos: { ventaId: number; monto: number }[];
+  tipoCambioRetencion?: number | null;
+  abonos: { ventaId: number; monto: number; baseRetencion?: number | null }[];
   /** VIGENTE cuenta en el saldo; ANULADO queda solo como registro (con fecha, motivo y usuario). */
   estado: 'VIGENTE' | 'ANULADO';
   registradoPor: string | null;

@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Moneda, TipoCambioService, convertir, simboloMoneda } from '../../../core/services/tipo-cambio-service';
 import { DescuentoService } from '../../../core/services/descuento-service';
@@ -31,7 +32,7 @@ type ItemForm = FormGroup<{
 @Component({
   selector: 'app-proforma-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, EditarPrecioComponent],
+  imports: [SelectBuscableDirective, IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, EditarPrecioComponent],
   templateUrl: './proforma-form.html'
 })
 export class ProformaFormComponent implements OnInit {

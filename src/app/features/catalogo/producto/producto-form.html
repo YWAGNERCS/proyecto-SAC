@@ -23,7 +23,7 @@
       <div class="row">
         <div class="col-md-6 form-group">
           <label class="form-label" for="categoria">Categoría <span style="color: var(--danger);">*</span></label>
-          <select id="categoria" class="form-select" formControlName="categoriaId"
+          <select appBuscable="Categoría" id="categoria" class="form-select" formControlName="categoriaId"
                   [class.is-invalid]="mensajeValidacion('categoriaId')">
             <option [ngValue]="null">-- Seleccione una categoría --</option>
             @for (c of categorias(); track c.id) {
@@ -46,6 +46,21 @@
         </div>
       </div>
 
+      @if (esServicio()) {
+        <div class="form-group">
+          <label class="form-label" for="clasificacionDetraccion">Clasificación de detracción</label>
+          <select id="clasificacionDetraccion" class="form-select" formControlName="clasificacionDetraccion">
+            <option [ngValue]="null">Pendiente de clasificar</option>
+            <option value="MANTENIMIENTO_REPARACION">020 · Mantenimiento y reparación de bienes muebles · 12 %</option>
+            <option value="OTROS_SERVICIOS_EMPRESARIALES">022 · Otros servicios empresariales · 12 %</option>
+            <option value="DEMAS_SERVICIOS">037 · Demás servicios gravados con IGV · 12 %</option>
+            <option value="CONSTRUCCION">030 · Contratos de construcción · 4 %</option>
+            <option value="ARRENDAMIENTO">019 · Arrendamiento de bienes · 10 %</option>
+            <option value="NO_SUJETO">Servicio no sujeto a detracción</option>
+          </select>
+          <small>Seleccione la categoría tributaria que corresponde al servicio. Se requiere para facturas que superan S/ 700.</small>
+        </div>
+      }
       <div class="form-group">
         <label class="form-label" for="descripcion">Descripción <span style="color: var(--text-muted); font-weight: 400;">(Opcional)</span></label>
         <textarea id="descripcion" class="form-control" formControlName="descripcion" rows="2"></textarea>

@@ -44,10 +44,10 @@
   }
   <div>
     <label class="form-label" for="fCliente">Cliente</label>
-    <select id="fCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+    <select appBuscable="Cliente" id="fCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
       <option [ngValue]="null">Todos</option>
       @for (c of clientes(); track c.id) {
-        <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
+        <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option>
       }
     </select>
   </div>

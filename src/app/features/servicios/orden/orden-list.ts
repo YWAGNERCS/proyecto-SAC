@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -22,7 +23,7 @@ const CAMPOS_ORDEN: CamposOrden<OrdenTrabajo> = {
 /** Órdenes de trabajo: agenda de los técnicos, con filtros por estado, cliente, técnico y fechas. */
 @Component({
   selector: 'app-orden-list',
-  imports: [IconoComponent, OrdenComponent, FormsModule, RouterLink],
+  imports: [SelectBuscableDirective, IconoComponent, OrdenComponent, FormsModule, RouterLink],
   templateUrl: './orden-list.html',
 })
 export class OrdenListComponent implements OnInit {

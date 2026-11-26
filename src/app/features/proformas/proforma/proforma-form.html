@@ -15,10 +15,10 @@
                         Cliente <span style="color: var(--danger);">*</span>
                     </label>
                     <div class="cliente-con-nuevo">
-                        <select id="clienteSelect" class="form-select" formControlName="clienteId">
+                        <select appBuscable="Cliente" id="clienteSelect" class="form-select" formControlName="clienteId">
                             <option [ngValue]="null">-- Seleccione un cliente --</option>
-                            <option *ngFor="let c of clientes()" [ngValue]="c.id">
-                                {{ c.nombreORazonSocial }}
+                            <option *ngFor="let c of clientes()" [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">
+                                {{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}
                             </option>
                         </select>
                         <button type="button" class="btn btn-outline-secondary btn-nuevo-cliente" (click)="creandoCliente.set(true)"
@@ -61,7 +61,7 @@
             <div class="row mb-3 align-items-end" style="background-color: var(--surface-muted); padding: 1.25rem; border: 1px solid var(--border-color); border-radius: 8px;">
                 <div class="col-md-6">
                     <label class="form-label">Producto del Catálogo</label>
-                    <select class="form-select" [formControl]="nuevoItem.controls.productoId">
+                    <select appBuscable="Producto" class="form-select" [formControl]="nuevoItem.controls.productoId">
                         <option [ngValue]="null">-- Seleccione un producto --</option>
                         <option *ngFor="let p of productos()" [ngValue]="p.id">
                             {{ p.nombre }}

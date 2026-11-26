@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -34,7 +35,7 @@ function sinProductosRepetidos(control: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-venta-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, RutinaMantenimientoComponent,
+  imports: [SelectBuscableDirective, IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ClienteFormComponent, RutinaMantenimientoComponent,
     EditarPrecioComponent],
   templateUrl: './venta-form.html',
   styleUrl: './venta-form.css',

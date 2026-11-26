@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -9,6 +10,7 @@ import { ProveedorService } from '../../proveedores/proveedor/proveedor-service'
 import { ProductoService } from '../../catalogo/producto/producto-service';
 import { CompraRequest } from './compra.model';
 import { Proveedor } from '../../proveedores/proveedor/proveedor.model';
+import { ProveedorFormComponent } from '../../proveedores/proveedor/proveedor-form';
 import { Producto } from '../../catalogo/producto/producto.model';
 import { IconoComponent } from '../../../core/layout/icono';
 
@@ -23,7 +25,7 @@ type DetalleForm = FormGroup<{
 @Component({
   selector: 'app-compra-form',
   standalone: true,
-  imports: [IconoComponent, CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [SelectBuscableDirective, IconoComponent, CommonModule, ReactiveFormsModule, RouterLink, ProveedorFormComponent],
   templateUrl: './compra-form.html'
 })
 export class CompraFormComponent implements OnInit {
@@ -37,6 +39,7 @@ export class CompraFormComponent implements OnInit {
   productos = signal<Producto[]>([]);
   errorMessage = signal('');
   loading = signal(false);
+  readonly creandoProveedor = signal(false);
 
   /** Hoy en hora local (toISOString usaría UTC y de noche daría el día siguiente). */
   readonly hoy = (() => {
@@ -86,6 +89,15 @@ export class CompraFormComponent implements OnInit {
       next: (data) => this.productos.set(data),
       error: (err: HttpErrorResponse) => console.error('Error al cargar productos:', err)
     });
+  }
+
+  proveedorCreado(proveedor: Proveedor) {
+    if (!proveedor.id) return;
+    this.proveedores.update(lista => [...lista.filter(p => p.id !== proveedor.id), proveedor]
+      .sort((a, b) => a.nombreORazonSocial.localeCompare(b.nombreORazonSocial)));
+    this.form.controls.proveedorId.setValue(proveedor.id);
+    this.form.controls.proveedorId.markAsTouched();
+    this.creandoProveedor.set(false);
   }
 
   agregarDetalle() {

@@ -161,8 +161,8 @@ export class FacturacionService {
   }
 
   /** Ruta del PDF del comprobante (el mismo que se adjunta al correo), para DescargaService. */
-  rutaPdf(id: number): string {
-    return `${this.endpoint}/${id}/pdf`;
+  rutaPdf(id: number, esNota = false): string {
+    return esNota ? `${this.endpoint}/notas-credito/${id}/pdf` : `${this.endpoint}/${id}/pdf`;
   }
 
   /** Emite el comprobante de reemplazo de uno que SUNAT rechazó con CDR (número nuevo, misma venta). */

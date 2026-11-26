@@ -1,6 +1,8 @@
-<div class="card card-form" style="--ancho-form: 760px">
+<div class="card card-form" style="--ancho-form: 760px" [class.dialogo]="enDialogo()"
+     [attr.role]="enDialogo() ? 'dialog' : null" [attr.aria-modal]="enDialogo() ? 'true' : null"
+     aria-labelledby="tituloProveedor">
   <div class="card-header">
-    <h2>{{ id() ? 'Editar Proveedor' : 'Nuevo Proveedor' }}</h2>
+    <h2 id="tituloProveedor">{{ id() ? 'Editar Proveedor' : 'Nuevo Proveedor' }}</h2>
     <p>Busque el RUC o DNI para traer los datos de SUNAT o RENIEC, revíselos y complete el contacto</p>
   </div>
 
@@ -11,7 +13,12 @@
     @if (yaRegistrado(); as p) {
       <div class="alert alert-info" role="status">
         <app-icono nombre="alerta" /> Este {{ etiquetaDocumento() }} ya está registrado como <strong>{{ p.nombreORazonSocial }}</strong>.
-        <a [routerLink]="['/proveedores', p.id, 'editar']" style="margin-left: 6px;">Ver / editar ese proveedor</a>
+        @if (enDialogo()) {
+          <button type="button" class="btn btn-sm btn-primary" style="margin-left: 6px;"
+                  (click)="guardado.emit(p)" [disabled]="loading()">Usar este proveedor</button>
+        } @else {
+          <a [routerLink]="['/proveedores', p.id, 'editar']" style="margin-left: 6px;">Ver / editar ese proveedor</a>
+        }
       </div>
     }
 
@@ -79,7 +86,11 @@
       </div>
 
       <div class="d-flex justify-content-end gap-2 mt-4">
-        <a routerLink="/proveedores" class="btn btn-outline-secondary">Cancelar</a>
+        @if (enDialogo()) {
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelar()" [disabled]="loading()">Cancelar</button>
+        } @else {
+          <a routerLink="/proveedores" class="btn btn-outline-secondary">Cancelar</a>
+        }
         <button type="submit" class="btn btn-primary" [disabled]="loading()">
           {{ id() ? 'Actualizar Proveedor' : 'Guardar Proveedor' }}
         </button>

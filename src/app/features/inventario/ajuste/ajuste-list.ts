@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -26,7 +27,7 @@ const CAMPOS_ORDEN: CamposOrden<AjusteInventario> = {
  */
 @Component({
   selector: 'app-ajuste-list',
-  imports: [DatePipe, FormsModule, RouterLink, OrdenComponent],
+  imports: [SelectBuscableDirective, DatePipe, FormsModule, RouterLink, OrdenComponent],
   templateUrl: './ajuste-list.html',
   styleUrl: './ajuste-list.css',
 })

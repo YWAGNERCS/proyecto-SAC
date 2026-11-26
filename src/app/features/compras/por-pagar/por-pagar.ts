@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +17,7 @@ import {
  */
 @Component({
   selector: 'app-por-pagar',
-  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [SelectBuscableDirective, DatePipe, DecimalPipe, FormsModule, RouterLink],
   templateUrl: './por-pagar.html',
   styleUrl: './por-pagar.css',
 })

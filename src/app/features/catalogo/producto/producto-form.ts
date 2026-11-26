@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -5,14 +6,14 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ProductoService } from './producto-service';
-import { Moneda, ProductoRequest, SECTORES, Sector, controlaStock } from './producto.model';
+import { ClasificacionDetraccion, Moneda, ProductoRequest, SECTORES, Sector, controlaStock } from './producto.model';
 import { CategoriaService } from '../categoria/categoria-service';
 import { Categoria } from '../categoria/categoria.model';
 import { IconoComponent } from '../../../core/layout/icono';
 
 @Component({
   selector: 'app-producto-form',
-  imports: [IconoComponent, ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [SelectBuscableDirective, IconoComponent, ReactiveFormsModule, RouterLink, DecimalPipe],
   templateUrl: './producto-form.html',
 })
 export class ProductoForm {
@@ -36,6 +37,7 @@ export class ProductoForm {
     descripcion: this.fb.nonNullable.control('', [Validators.maxLength(500)]),
     categoriaId: this.fb.control<number | null>(null, [Validators.required]),
     sector: this.fb.control<Sector | null>(null, [Validators.required]),
+    clasificacionDetraccion: this.fb.control<ClasificacionDetraccion | null>(null),
     moneda: this.fb.nonNullable.control<Moneda>('SOLES'),
     costoBase: this.fb.control<number | null>(null, [Validators.required, Validators.min(0)]),
     margenPorcentaje: this.fb.control<number | null>(25, [Validators.required, Validators.min(0)]),
@@ -52,6 +54,7 @@ export class ProductoForm {
     return Number(v.costoBase ?? 0) * (1 + Number(v.margenPorcentaje ?? 0) / 100);
   });
   protected readonly simbolo = computed(() => (this.valor().moneda === 'DOLARES' ? 'US$' : 'S/'));
+  protected readonly esServicio = computed(() => this.valor().sector === 'SERVICIO');
   protected readonly esMaterial = computed(() => controlaStock(this.valor().sector));
 
   constructor() {
@@ -72,6 +75,7 @@ export class ProductoForm {
             descripcion: p.descripcion ?? '',
             categoriaId: p.categoriaId ?? null,
             sector: p.sector ?? null,
+            clasificacionDetraccion: p.clasificacionDetraccion ?? null,
             moneda: p.moneda ?? 'SOLES',
             costoBase: p.costoBase,
             margenPorcentaje: p.margenPorcentaje,
@@ -114,6 +118,7 @@ export class ProductoForm {
       descripcion: v.descripcion,
       categoriaId: Number(v.categoriaId),
       sector: v.sector!,
+      clasificacionDetraccion: v.sector === 'SERVICIO' ? v.clasificacionDetraccion : null,
       moneda: v.moneda,
       costoBase: Number(v.costoBase),
       margenPorcentaje: Number(v.margenPorcentaje),

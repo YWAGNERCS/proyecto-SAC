@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -22,7 +23,7 @@ import { IconoComponent } from '../../../core/layout/icono';
  */
 @Component({
   selector: 'app-orden-form',
-  imports: [IconoComponent, ReactiveFormsModule, RouterLink],
+  imports: [SelectBuscableDirective, IconoComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './orden-form.html',
 })
 export class OrdenFormComponent {

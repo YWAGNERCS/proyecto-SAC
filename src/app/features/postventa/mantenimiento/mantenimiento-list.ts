@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -24,7 +25,7 @@ type Accion = 'REALIZADO' | 'REPROGRAMAR';
 @Component({
   selector: 'app-mantenimiento-list',
   standalone: true,
-  imports: [IconoComponent, OrdenComponent, CommonModule, FormsModule, RouterLink],
+  imports: [SelectBuscableDirective, IconoComponent, OrdenComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './mantenimiento-list.html',
   styleUrl: './mantenimiento-list.css',
 })

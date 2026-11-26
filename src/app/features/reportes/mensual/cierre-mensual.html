@@ -1,0 +1,150 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Cierre mensual</h1>
+    <p class="page-sub">Compras, ventas y documentos del periodo para revisar con Lucy.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form class="d-flex gap-2 align-items-end" (ngSubmit)="consultar()">
+      <div>
+        <label for="periodo" class="form-label">Mes y año</label
+        ><input
+          id="periodo"
+          name="periodo"
+          type="month"
+          class="form-control"
+          [(ngModel)]="periodo"
+          min="2000-01"
+          max="2099-12"
+          required
+          [disabled]="cargando()"
+        />
+      </div>
+      <button class="btn btn-primary" [disabled]="cargando()">
+        {{ cargando() ? 'Consultando…' : 'Consultar' }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="exportar()"
+        [disabled]="!datos() || exportando() || cargando()"
+      >
+        {{ exportando() ? 'Exportando…' : 'Descargar Excel' }}
+      </button>
+    </form>
+  </div>
+</div>
+@if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+}
+@if (datos(); as r) {
+  <div class="alert alert-info">
+    <strong>Reporte preliminar de {{ r.periodo }}.</strong> El IGV registrado en compras requiere
+    revisión. No es una declaración ni el impuesto definitivo a pagar.
+  </div>
+  @for (s of r.resumen; track s.moneda) {
+    <div class="card">
+      <div class="card-body">
+        <h2>{{ s.moneda === 'SOLES' ? 'Soles (PEN)' : 'Dólares (USD), sin convertir a soles' }}</h2>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Operación comercial</th>
+                <th class="text-end">Importe</th>
+                <th class="text-end">IGV registrado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ventas vigentes, excluye anuladas</td>
+                <td class="text-end">{{ s.ventasVigentes | number: '1.2-2' }}</td>
+                <td class="text-end">{{ s.igvVentasVigentes | number: '1.2-2' }}</td>
+              </tr>
+              <tr>
+                <td>Compras registradas</td>
+                <td class="text-end">{{ s.compras | number: '1.2-2' }}</td>
+                <td class="text-end">{{ s.igvComprasRegistradas | number: '1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong
+            >Diferencia operativa preliminar de IGV:
+            {{ s.diferenciaIgvOperativa | number: '1.2-2' }}</strong
+          >
+          (IGV de ventas vigentes menos IGV de compras registrado).
+        </p>
+        <h3>Documentos aceptados en producción</h3>
+        <p>
+          Comprobantes: {{ s.documentosValidos | number: '1.2-2' }} · Notas de crédito:
+          {{ s.notasValidas | number: '1.2-2' }} · IGV neto:
+          {{ s.igvDocumentosNeto | number: '1.2-2' }}
+        </p>
+        <p>
+          Diferencia documental referencial de IGV:
+          {{ s.diferenciaIgvReferencial | number: '1.2-2' }} (IGV neto de documentos menos IGV de
+          compras registrado; puede ser negativa).
+        </p>
+      </div>
+    </div>
+  }
+  <div class="card">
+    <div class="card-body">
+      <h2>Movimientos del periodo</h2>
+      <p class="muted">
+        Ventas y comprobantes son vistas distintas de la misma operación. No se suman entre sí.
+      </p>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Fecha / tipo</th>
+              <th>Documento / referencia</th>
+              <th>Cliente o proveedor</th>
+              <th>Estado</th>
+              <th>Moneda</th>
+              <th class="text-end">Base</th>
+              <th class="text-end">IGV</th>
+              <th class="text-end">Total</th>
+              <th>Incluido en su bloque</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of r.movimientos; track f.tipo + f.id) {
+              <tr>
+                <td>
+                  {{ f.fecha }}
+                  <div class="muted">{{ f.tipo }}</div>
+                </td>
+                <td>{{ f.numero ?? '#' + f.id }}</td>
+                <td>{{ f.tercero ?? '—' }}</td>
+                <td>
+                  {{ f.estado }}
+                  <div class="muted">{{ f.ambiente }}</div>
+                </td>
+                <td>{{ f.moneda }}</td>
+                <td class="text-end">{{ f.base | number: '1.2-2' }}</td>
+                <td class="text-end">{{ f.igv | number: '1.2-2' }}</td>
+                <td class="text-end">{{ f.total | number: '1.2-2' }}</td>
+                <td>{{ f.incluido ? 'Sí' : 'No' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9">No hay movimientos en este periodo.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <h3>Criterios del reporte</h3>
+      <ul>
+        @for (o of r.observaciones; track o) {
+          <li>{{ o }}</li>
+        }
+      </ul>
+    </div>
+  </div>
+}

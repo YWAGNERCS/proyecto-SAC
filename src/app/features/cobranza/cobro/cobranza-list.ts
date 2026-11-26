@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -45,6 +46,7 @@ type Vista = 'POR_COBRAR' | 'HISTORIAL' | 'DEVOLUCIONES';
 type AbonoForm = FormGroup<{
   ventaId: FormControl<number>;
   monto: FormControl<number | null>;
+  baseRetencion: FormControl<number | null>;
 }>;
 
 /** El cobro debe abonar algo a por lo menos una de las ventas listadas. */
@@ -58,7 +60,7 @@ const noFutura = (hoy: string): ValidatorFn => (c: AbstractControl): ValidationE
 @Component({
   selector: 'app-cobranza-list',
   standalone: true,
-  imports: [IconoComponent, OrdenComponent, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [SelectBuscableDirective, IconoComponent, OrdenComponent, CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './cobranza-list.html',
   styleUrl: './cobranza-list.css',
 })
@@ -182,6 +184,7 @@ export class CobranzaListComponent implements OnInit {
     metodoPago: ['TRANSFERENCIA' as MetodoPago, [Validators.required]],
     referencia: ['', [Validators.maxLength(100)]],
     notas: ['', [Validators.maxLength(300)]],
+    tipoCambioRetencion: this.fb.control<number | null>(null, [Validators.min(0.000001)]),
     abonos: this.fb.array<AbonoForm>([], [alMenosUnAbono]),
   });
 
@@ -290,6 +293,7 @@ export class CobranzaListComponent implements OnInit {
     for (const c of this.cuentasDialogo) {
       this.abonos.push(this.fb.group({
         ventaId: this.fb.nonNullable.control(c.ventaId),
+        baseRetencion: this.fb.control<number | null>(null),
         monto: this.fb.control<number | null>(
           c.ventaId !== cuenta.ventaId ? null : deduccion ? Number(c.deduccionPendiente) : Number(c.netoPorCobrar) || Number(c.saldo),
           [Validators.min(0.01), Validators.max(Number(c.saldo))]),
@@ -303,6 +307,13 @@ export class CobranzaListComponent implements OnInit {
     this.dialogo.set({ clienteNombre: cuenta.clienteNombre, clienteId: cuenta.clienteId, moneda: cuenta.moneda });
   }
 
+  /** La retencion solo esta disponible para saldar documentos historicos que ya la tienen. */
+  metodosCobro() {
+    return this.cuentasDialogo.some(c => c.tipoDeduccion === 'RETENCION')
+      ? [...this.metodos, { valor: 'RETENCION' as MetodoPago, etiqueta: 'Retención de documento histórico' }]
+      : this.metodos;
+  }
+
   /** Etiqueta del N° de operación según el método (constancia, comprobante o voucher). */
   etiquetaReferencia(): string {
     const m = this.cobroForm.controls.metodoPago.value;
@@ -313,7 +324,21 @@ export class CobranzaListComponent implements OnInit {
     if (!this.guardando()) this.dialogo.set(null);
   }
 
+  cambiarMetodo() {
+    this.abonos.controls.forEach(g => g.patchValue({ monto: null, baseRetencion: null }));
+  }
+
+  calcularRetencion(i: number) {
+    const g = this.abonos.at(i);
+    const base = Number(g.controls.baseRetencion.value);
+    g.controls.monto.setValue(base > 0 ? Math.round((base * 0.03 + Number.EPSILON) * 100) / 100 : null);
+  }
+
   pagarTodo(i: number) {
+    if (this.cobroForm.controls.metodoPago.value === 'RETENCION') {
+      this.errorDialogo.set('Ingrese el importe bruto del pago que figura en el comprobante de retención.');
+      return;
+    }
     this.abonos.at(i).controls.monto.setValue(Number(this.cuentasDialogo[i].saldo));
   }
 
@@ -328,7 +353,12 @@ export class CobranzaListComponent implements OnInit {
     const v = this.cobroForm.getRawValue();
     const abonos = v.abonos
       .filter((a) => (a.monto ?? 0) > 0)
-      .map((a) => ({ ventaId: a.ventaId, monto: Math.round(Number(a.monto) * 100) / 100 }));
+      .map((a) => ({ ventaId: a.ventaId, monto: Math.round(Number(a.monto) * 100) / 100,
+        baseRetencion: v.metodoPago === 'RETENCION' ? a.baseRetencion : null }));
+    if (v.metodoPago === 'RETENCION' && abonos.some(a => !a.baseRetencion || a.baseRetencion <= 0)) {
+      this.errorDialogo.set('Indique el importe bruto de cada pago sujeto a retención.');
+      return;
+    }
     this.guardando.set(true);
     this.errorDialogo.set('');
     this.cobranzaService.registrar({
@@ -336,6 +366,7 @@ export class CobranzaListComponent implements OnInit {
       fecha: v.fecha || null,
       moneda: d.moneda,
       metodoPago: v.metodoPago,
+      tipoCambioRetencion: v.metodoPago === 'RETENCION' ? v.tipoCambioRetencion : null,
       referencia: v.referencia.trim() || null,
       notas: v.notas.trim() || null,
       abonos,
@@ -456,7 +487,14 @@ export class CobranzaListComponent implements OnInit {
     return moneda === 'DOLARES' ? 'US$' : 'S/';
   }
 
+  metodosHistorial() {
+    return this.cobros().some(c => c.metodoPago === 'RETENCION')
+      ? [...this.metodos, { valor: 'RETENCION' as MetodoPago, etiqueta: 'Retención histórica' }]
+      : this.metodos;
+  }
+
   etiquetaMetodo(m: string): string {
+    if (m === 'RETENCION') return 'Retención histórica';
     return this.metodos.find((x) => x.valor === m)?.etiqueta ?? m;
   }
 

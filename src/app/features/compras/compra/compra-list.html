@@ -18,10 +18,10 @@
 <div class="card d-flex align-items-center gap-3" style="padding: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end;">
   <div>
     <label class="form-label" for="fProveedor">Proveedor</label>
-    <select id="fProveedor" class="form-select" [(ngModel)]="proveedorId">
+    <select appBuscable="Proveedor" id="fProveedor" class="form-select" [(ngModel)]="proveedorId">
       <option [ngValue]="null">Todos</option>
       @for (p of proveedores(); track p.id) {
-        <option [ngValue]="p.id">{{ p.nombreORazonSocial }}</option>
+        <option [ngValue]="p.id" [attr.data-busqueda]="(p.dni ?? '') + ' ' + (p.ruc ?? '')">{{ p.nombreORazonSocial }}{{ p.ruc || p.dni ? ' · ' + (p.ruc || p.dni) : '' }}</option>
       }
     </select>
   </div>

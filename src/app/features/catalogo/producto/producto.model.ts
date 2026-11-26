@@ -6,6 +6,7 @@ export interface Producto {
   categoriaId?: number | null;
   categoriaNombre?: string | null;
   sector?: Sector;
+  clasificacionDetraccion?: ClasificacionDetraccion | null;
   costoBase: number;
   margenPorcentaje: number;
   /** Precio sin IGV calculado por el backend. */
@@ -20,6 +21,7 @@ export interface Producto {
 }
 
 export type Sector = 'CLIMATIZACION' | 'REFRIGERACION' | 'VENTILACION_FORZADA' | 'MATERIAL_SERVICIO' | 'SERVICIO';
+export type ClasificacionDetraccion = 'MANTENIMIENTO_REPARACION' | 'OTROS_SERVICIOS_EMPRESARIALES' | 'DEMAS_SERVICIOS' | 'CONSTRUCCION' | 'ARRENDAMIENTO' | 'NO_SUJETO';
 export type Moneda = 'SOLES' | 'DOLARES';
 
 /** Lo que se envía al crear o editar (refleja ProductoRequestDTO del backend). */
@@ -28,6 +30,7 @@ export interface ProductoRequest {
   descripcion: string;
   categoriaId: number;
   sector: Sector;
+  clasificacionDetraccion?: ClasificacionDetraccion | null;
   costoBase: number;
   margenPorcentaje: number;
   moneda: Moneda;

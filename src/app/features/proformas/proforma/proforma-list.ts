@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
@@ -20,7 +21,7 @@ import { errorFechaVenta, fechaLarga, fechaMinimaVenta, fechaParaEnviar, hoyIso 
 @Component({
   selector: 'app-proforma-list',
   standalone: true,
-  imports: [PaginadorComponent, OrdenComponent, RutinaMantenimientoComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
+  imports: [SelectBuscableDirective, PaginadorComponent, OrdenComponent, RutinaMantenimientoComponent, IconoComponent, CommonModule, FormsModule, RouterLink],
   templateUrl: './proforma-list.html',
   styleUrl: './proforma-list.css'
 })

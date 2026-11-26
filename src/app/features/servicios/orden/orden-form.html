@@ -23,10 +23,10 @@
         </div>
         <div class="col-md-6 form-group">
           <label class="form-label" for="cliente">Cliente <span style="color: var(--danger);">*</span></label>
-          <select id="cliente" class="form-select" formControlName="clienteId" [class.is-invalid]="invalido('clienteId')"
+          <select appBuscable="Cliente" id="cliente" class="form-select" formControlName="clienteId" [class.is-invalid]="invalido('clienteId')"
                   [attr.disabled]="mantenimientoId() ? true : null">
             <option [ngValue]="null">-- Seleccione --</option>
-            @for (c of clientes(); track c.id) { <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option> }
+            @for (c of clientes(); track c.id) { <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option> }
           </select>
         </div>
       </div>
@@ -34,7 +34,7 @@
       <div class="row">
         <div class="col-md-6 form-group">
           <label class="form-label" for="sede">Sede</label>
-          <select id="sede" class="form-select" formControlName="sedeId">
+          <select appBuscable="Sede" id="sede" class="form-select" formControlName="sedeId">
             <option [ngValue]="null">{{ sedes().length ? 'Sin sede (dirección del cliente)' : 'El cliente no tiene sedes' }}</option>
             @for (s of sedes(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }
           </select>
@@ -69,7 +69,7 @@
       <div class="row">
         <div class="col-md-6 form-group">
           <label class="form-label" for="venta">Venta de origen</label>
-          <select id="venta" class="form-select" formControlName="ventaId">
+          <select appBuscable="Venta de origen" id="venta" class="form-select" formControlName="ventaId">
             <option [ngValue]="null">{{ esInstalacion() ? 'Sin venta (equipos de otro origen)' : 'Ninguna' }}</option>
             @for (v of ventasCliente(); track v.id) {
               <option [ngValue]="v.id">Venta #{{ v.id }} · {{ v.fechaVenta }} · {{ v.detalles[0]?.productoNombre }}{{ v.detalles.length > 1 ? ' y otros' : '' }}</option>
@@ -79,7 +79,7 @@
         </div>
         <div class="col-md-6 form-group">
           <label class="form-label" for="equipo">Equipo instalado</label>
-          <select id="equipo" class="form-select" formControlName="equipoId">
+          <select appBuscable="Equipo instalado" id="equipo" class="form-select" formControlName="equipoId">
             <option [ngValue]="null">{{ equipos().length ? 'Ninguno en particular' : 'El cliente no tiene equipos registrados' }}</option>
             @for (e of equipos(); track e.id) {
               <option [ngValue]="e.id">{{ e.productoNombre }}{{ e.numeroSerie ? ' · serie ' + e.numeroSerie : '' }}{{ e.sedeNombre ? ' · ' + e.sedeNombre : '' }}</option>

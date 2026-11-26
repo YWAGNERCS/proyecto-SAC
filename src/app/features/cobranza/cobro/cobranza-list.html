@@ -5,10 +5,10 @@
   </div>
   <div class="filtro-cliente">
     <label class="form-label" for="fCliente">Cliente</label>
-    <select id="fCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
+    <select appBuscable="Cliente" id="fCliente" class="form-select" [(ngModel)]="clienteId" (change)="cargar()">
       <option [ngValue]="null">Todos los clientes</option>
       @for (c of clientes(); track c.id) {
-        <option [ngValue]="c.id">{{ c.nombreORazonSocial }}</option>
+        <option [ngValue]="c.id" [attr.data-busqueda]="(c.dni ?? '') + ' ' + (c.ruc ?? '')">{{ c.nombreORazonSocial }}{{ c.ruc || c.dni ? ' · ' + (c.ruc || c.dni) : '' }}</option>
       }
     </select>
   </div>
@@ -137,6 +137,9 @@
               <td class="num"><strong>{{ simbolo(c.moneda) }} {{ c.saldo | number: '1.2-2' }}</strong>
                 @if (c.deduccionPendiente > 0) {
                   <div class="muted">{{ c.tipoDeduccion === 'DETRACCION' ? 'Detracción' : 'Retención' }}: {{ c.deduccionPendiente | number: '1.2-2' }}</div>
+                  @if (c.tipoDeduccion === 'DETRACCION' && c.moneda === 'DOLARES' && c.montoDetraccionSoles != null) {
+                    <div class="muted">Depósito BN del comprobante: S/ {{ c.montoDetraccionSoles | number: '1.2-2' }}</div>
+                  }
                   <div class="muted">Neto: {{ c.netoPorCobrar | number: '1.2-2' }}</div>
                 }
               </td>
@@ -181,7 +184,7 @@
         <label class="form-label" for="hMetodo">Método</label>
         <select id="hMetodo" class="form-select" [ngModel]="metodo()" (ngModelChange)="metodo.set($event)">
           <option value="">Todos</option>
-          @for (m of metodos; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+          @for (m of metodosHistorial(); track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
         </select>
       </div>
       @if (desde() || hasta() || metodo()) {
@@ -324,8 +327,14 @@
                 <button type="button" class="link" (click)="pagarTodo(i)">todo</button></td>
               <td class="num">
                 <input type="number" class="form-control text-end" min="0" step="0.01" [max]="c.saldo"
+                       [readOnly]="cobroForm.controls.metodoPago.value === 'RETENCION'"
                        formControlName="monto" [attr.aria-label]="'Abono a la venta ' + c.ventaId"
                        [class.is-invalid]="g.controls.monto.invalid">
+                @if (cobroForm.controls.metodoPago.value === 'RETENCION') {
+                  <label [for]="'baseRetencion' + i">Importe bruto del pago</label>
+                  <input [id]="'baseRetencion' + i" type="number" class="form-control" min="0.01" step="0.01"
+                         [max]="c.total" formControlName="baseRetencion" (input)="calcularRetencion(i)">
+                }
                 @if (g.controls.monto.hasError('max')) { <span class="error-text">Supera el saldo</span> }
                 @if (g.controls.monto.hasError('min')) { <span class="error-text">Debe ser mayor que 0</span> }
               </td>
@@ -344,8 +353,8 @@
         </div>
         <div>
           <label class="form-label" for="cMetodo">Método</label>
-          <select id="cMetodo" class="form-select" formControlName="metodoPago">
-            @for (m of metodos; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+          <select id="cMetodo" class="form-select" formControlName="metodoPago" (change)="cambiarMetodo()">
+            @for (m of metodosCobro(); track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
           </select>
         </div>
         <div>
@@ -353,6 +362,13 @@
           <input id="cRef" type="text" class="form-control" maxlength="100" formControlName="referencia">
         </div>
       </div>
+      @if (cobroForm.controls.metodoPago.value === 'RETENCION') {
+        <p class="muted">La retención es el 3 % del importe bruto de este pago, incluido IGV. Registre por separado el dinero recibido y el comprobante de retención.</p>
+        @if (d.moneda === 'DOLARES') {
+          <label class="form-label" for="tcRetencion">Tipo de cambio venta SBS de la fecha del pago</label>
+          <input id="tcRetencion" type="number" step="0.000001" min="0.000001" class="form-control" formControlName="tipoCambioRetencion">
+        }
+      }
       <label class="form-label" for="cNotas">Notas (opcional)</label>
       <input id="cNotas" type="text" class="form-control" maxlength="300" formControlName="notas">
 

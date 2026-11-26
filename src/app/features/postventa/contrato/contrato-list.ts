@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -31,7 +32,7 @@ const CAMPOS_ORDEN: CamposOrden<Contrato> = {
  */
 @Component({
   selector: 'app-contrato-list',
-  imports: [IconoComponent, OrdenComponent, FormsModule, ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [SelectBuscableDirective, IconoComponent, OrdenComponent, FormsModule, ReactiveFormsModule, RouterLink, DecimalPipe],
   templateUrl: './contrato-list.html',
 })
 export class ContratoListComponent implements OnInit {

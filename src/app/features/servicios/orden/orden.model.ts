@@ -71,6 +71,7 @@ export interface OrdenRequest {
 }
 
 export interface CierreRequest {
+  recordatorio?: {activo:boolean;frecuenciaMeses:number;anticipacionDias:number}|null;
   fechaRealizada: string | null;
   trabajoRealizado: string;
   recibidoPor: string;

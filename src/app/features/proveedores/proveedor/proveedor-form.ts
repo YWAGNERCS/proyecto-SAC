@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -15,6 +15,9 @@ type Tipo = Proveedor['tipo'];
   templateUrl: './proveedor-form.html',
 })
 export class ProveedorFormComponent {
+  readonly enDialogo = input(false);
+  readonly guardado = output<Proveedor>();
+  readonly cancelado = output<void>();
   private readonly fb = inject(FormBuilder);
   private readonly proveedorService = inject(ProveedorService);
   private readonly route = inject(ActivatedRoute);
@@ -146,7 +149,11 @@ export class ProveedorFormComponent {
     const peticion = id ? this.proveedorService.actualizar(id, proveedor) : this.proveedorService.crear(proveedor);
     this.loading.set(true);
     peticion.subscribe({
-      next: () => this.router.navigate(['/proveedores']),
+      next: (proveedor) => {
+        this.loading.set(false);
+        if (this.enDialogo()) this.guardado.emit(proveedor);
+        else this.router.navigate(['/proveedores']);
+      },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
         // 400: datos inválidos (documento, correo) · 409: RUC/DNI ya registrado
@@ -157,6 +164,10 @@ export class ProveedorFormComponent {
         );
       },
     });
+  }
+
+  protected cancelar(): void {
+    if (!this.loading()) this.cancelado.emit();
   }
 
   protected mensajeValidacion(campo: keyof typeof this.form.controls): string {

@@ -191,6 +191,9 @@
                       @if (!x.reemplazado && avisoPlazo(x.d); as plazo) { <span class="sunat-plazo">{{ plazo }}</span> }
                       @if (x.d.mensaje) { <span class="sunat-mensaje">{{ x.d.mensaje }}</span> }
                       <span class="sunat-acciones">
+                        @if (x.esNota) {
+                          <button class="btn btn-sm btn-outline-secondary" (click)="descargarPdfComprobante(x.d, true)" title="Descargar la nota de crédito y consultar su estado">PDF nota de crédito</button>
+                        }
                         @if (x.d.tieneXml) {
                           <button class="btn btn-sm btn-outline-secondary" (click)="descargarSunat(x.d, x.esNota, 'xml')" title="XML firmado tal como se envió a SUNAT">XML</button>
                         }

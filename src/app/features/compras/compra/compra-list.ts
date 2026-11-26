@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,7 +15,7 @@ import { Orden, OrdenComponent, ordenParaServidor } from '../../../core/layout/o
 @Component({
   selector: 'app-compra-list',
   standalone: true,
-  imports: [PaginadorComponent, OrdenComponent, IconoComponent, CommonModule, RouterLink, FormsModule],
+  imports: [SelectBuscableDirective, PaginadorComponent, OrdenComponent, IconoComponent, CommonModule, RouterLink, FormsModule],
   templateUrl: './compra-list.html'
 })
 export class CompraListComponent implements OnInit {

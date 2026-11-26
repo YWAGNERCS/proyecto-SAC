@@ -1,3 +1,4 @@
+import { SelectBuscableDirective } from '../../../core/layout/select-buscable';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -29,7 +30,7 @@ const CAMPOS_ORDEN: CamposOrden<Equipo> = {
  */
 @Component({
   selector: 'app-equipo-list',
-  imports: [IconoComponent, OrdenComponent, FormsModule, ReactiveFormsModule, RouterLink],
+  imports: [SelectBuscableDirective, IconoComponent, OrdenComponent, FormsModule, ReactiveFormsModule, RouterLink],
   templateUrl: './equipo-list.html',
 })
 export class EquipoListComponent implements OnInit {
