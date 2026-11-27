@@ -29,15 +29,12 @@ public class NotaCreditoPdfService {
         var c = n.getComprobanteReferencia();
         var v = c.getVenta();
         var out = new ByteArrayOutputStream();
-        Font normal = FontFactory.getFont(FontFactory.HELVETICA, 10);
-        Font bold = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11);
-        Font titulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 19, new Color(23,58,79));
-        try (Document d = new Document(PageSize.A4, 38, 38, 32, 32)) {
-            PdfWriter.getInstance(d, out); d.open();
-            d.add(new Paragraph(empresa.razonSocial(), bold));
-            d.add(new Paragraph("RUC: " + empresa.ruc() + " | " + empresa.direccion(), normal));
-            Paragraph t = new Paragraph("NOTA DE CRÉDITO ELECTRÓNICA", titulo); t.setSpacingBefore(20); t.setSpacingAfter(10); d.add(t);
-            d.add(new Paragraph(n.getSerie()+"-"+n.getNumero(), titulo));
+        Font normal = PdfEditorial.texto(9.5f);
+        Font bold = PdfEditorial.negrita(10);
+        Font titulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, PdfEditorial.TINTA);
+        try (Document d = new Document(PageSize.A4, 42, 42, 32, 52)) {
+            PdfEditorial.preparar(PdfWriter.getInstance(d, out)); d.open();
+            PdfEditorial.encabezado(d,empresa,"NOTA DE CRÉDITO ELECTRÓNICA",n.getSerie()+"-"+n.getNumero());
             d.add(new Paragraph("Fecha de emisión: " + n.getFechaEmision(), normal));
             d.add(new Paragraph("Estado SUNAT: " + n.getEstadoSunat(), bold));
             if (!n.getEstadoSunat().valido() || n.getAmbienteEmision() != Comprobante.AmbienteEmision.PRODUCCION) {
@@ -51,10 +48,15 @@ public class NotaCreditoPdfService {
             d.add(new Paragraph("Comprobante de referencia: " + n.getNumeroComprobanteReferencia(), bold));
             d.add(new Paragraph("Motivo (01 - Anulación de la operación): " + n.getMotivo(), normal));
             PdfPTable tabla = new PdfPTable(new float[]{5,1,2}); tabla.setWidthPercentage(100); tabla.setSpacingBefore(18);
-            for (String h : new String[]{"Descripción", "Cant.", "Base sin IGV"}) { PdfPCell cell = new PdfPCell(new Phrase(h,bold)); cell.setPadding(8); cell.setBackgroundColor(new Color(230,240,245)); tabla.addCell(cell); }
+            PdfEditorial.cabecera(tabla,"Descripción",Element.ALIGN_LEFT);
+            PdfEditorial.cabecera(tabla,"Cant.",Element.ALIGN_CENTER);
+            PdfEditorial.cabecera(tabla,"Base sin IGV",Element.ALIGN_RIGHT);
+            tabla.setHeaderRows(1);
+            int fila=0;
             for (var item : v.getDetalles()) {
-                tabla.addCell(new Phrase(item.getDescripcion(),normal)); tabla.addCell(new Phrase(String.valueOf(item.getCantidad()),normal));
-                tabla.addCell(new Phrase(item.calcularSubtotalDetalle().setScale(2,RoundingMode.HALF_UP).toPlainString(),normal));
+                PdfEditorial.item(tabla,item.getDescripcion(),Element.ALIGN_LEFT,fila);
+                PdfEditorial.item(tabla,String.valueOf(item.getCantidad()),Element.ALIGN_CENTER,fila);
+                PdfEditorial.item(tabla,item.calcularSubtotalDetalle().setScale(2,RoundingMode.HALF_UP).toPlainString(),Element.ALIGN_RIGHT,fila++);
             }
             d.add(tabla);
             String moneda = v.getMoneda().name().equals("DOLARES") ? "US$ " : "S/ ";

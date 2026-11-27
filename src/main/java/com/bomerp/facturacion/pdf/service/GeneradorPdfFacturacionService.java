@@ -33,72 +33,22 @@ public class GeneradorPdfFacturacionService {
         }
     }
 
-    /** Logo de JD desde el classpath: funciona igual en desarrollo y dentro de la imagen Docker. */
-    private static Image logo() throws Exception {
-        try (java.io.InputStream in = GeneradorPdfFacturacionService.class.getResourceAsStream("/static/images/logo.png")) {
-            if (in == null) throw new java.io.FileNotFoundException("static/images/logo.png");
-            return Image.getInstance(in.readAllBytes());
-        }
-    }
-
     public File generarFacturaPdf(Comprobante comprobante) throws Exception {
         String fileName = comprobante.getTipo().name() + "_" + comprobante.getSerie() + "-" + comprobante.getNumero() + ".pdf";
         File pdfFile = File.createTempFile("Comprobante_", "_" + fileName);
         
-        try (Document document = new Document(PageSize.A4, 32, 32, 28, 28)) {
-            PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
+        try (Document document = new Document(PageSize.A4, 42, 42, 32, 52)) {
+            PdfEditorial.preparar(PdfWriter.getInstance(document, new FileOutputStream(pdfFile)));
             document.open();
 
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.BLACK);
-            Font redTitleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.RED);
+            Font redTitleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(145, 85, 32));
             Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.DARK_GRAY);
-            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.BLACK);
-            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
+            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9.5f, PdfEditorial.TINTA);
+            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 9.5f, PdfEditorial.TINTA);
             Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 9, new Color(70, 85, 95));
 
-            // Tabla principal para el Header (Logo Izquierda, Cuadro RUC Derecha)
-            PdfPTable headerTable = new PdfPTable(2);
-            headerTable.setWidthPercentage(100);
-            headerTable.setWidths(new float[]{2f, 1.2f});
-            
-            // Celda Izquierda: Logo y Empresa
-            PdfPCell leftCell = new PdfPCell();
-            leftCell.setBorder(Rectangle.NO_BORDER);
-            try {
-                Image logo = logo();
-                logo.scaleToFit(125, 55);
-                logo.setAlignment(Element.ALIGN_LEFT);
-                leftCell.addElement(logo);
-            } catch (Exception e) {
-                leftCell.addElement(new Paragraph(empresa.razonSocial(), titleFont));
-            }
-            leftCell.addElement(new Paragraph(empresa.razonSocial(), boldFont));
-            leftCell.addElement(new Paragraph(empresa.direccion(), normalFont));
-            headerTable.addCell(leftCell);
-            
-            // Celda Derecha: Cuadro RUC y Número de Factura
-            PdfPCell rightCell = new PdfPCell();
-            rightCell.setBorder(Rectangle.BOX);
-            rightCell.setBorderWidth(1.5f);
-            rightCell.setPadding(10f);
-            rightCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            rightCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-            
-            Paragraph rucEmpresa = new Paragraph("RUC: " + empresa.ruc(), boldFont);
-            rucEmpresa.setAlignment(Element.ALIGN_CENTER);
-            rightCell.addElement(rucEmpresa);
-            
             String tipoTexto = comprobante.getTipo() == Comprobante.TipoComprobante.FACTURA ? "FACTURA ELECTRÓNICA" : "BOLETA ELECTRÓNICA";
-            Paragraph tipoComp = new Paragraph(tipoTexto, titleFont);
-            tipoComp.setAlignment(Element.ALIGN_CENTER);
-            rightCell.addElement(tipoComp);
-            
-            Paragraph numComp = new Paragraph(comprobante.getSerie() + "-" + comprobante.getNumero(), redTitleFont);
-            numComp.setAlignment(Element.ALIGN_CENTER);
-            rightCell.addElement(numComp);
-            
-            headerTable.addCell(rightCell);
-            document.add(headerTable);
+            PdfEditorial.encabezado(document, empresa, tipoTexto, comprobante.getSerie() + "-" + comprobante.getNumero());
             if (comprobante.getAmbienteEmision() == Comprobante.AmbienteEmision.SIMULADO
                     || comprobante.getAmbienteEmision() == Comprobante.AmbienteEmision.BETA) {
                 document.add(new Paragraph("DOCUMENTO DE PRUEBA - SIN VALIDEZ TRIBUTARIA", redTitleFont));
@@ -115,31 +65,28 @@ public class GeneradorPdfFacturacionService {
             String ruc = guardado ? ("6".equals(comprobante.getReceptorTipoDoc()) ? comprobante.getReceptorNumDoc() : null) : cliente.getRuc();
             String dni = guardado ? ("1".equals(comprobante.getReceptorTipoDoc()) ? comprobante.getReceptorNumDoc() : null) : cliente.getDni();
             String direccion = guardado ? comprobante.getReceptorDireccion() : cliente.getDireccion();
-            document.add(new Paragraph("SEÑOR(ES): " + nombreReceptor, boldFont));
-            if (ruc != null) {
-                document.add(new Paragraph("RUC: " + ruc, normalFont));
-            } else if (dni != null) {
-                document.add(new Paragraph("DNI: " + dni, normalFont));
-            }
-            if (direccion != null) {
-                document.add(new Paragraph("DIRECCIÓN: " + direccion, normalFont));
-            }
-            document.add(new Paragraph("FECHA DE EMISIÓN: " + comprobante.getFechaEmision(), normalFont));
-            document.add(new Paragraph("MONEDA: " + (comprobante.getVenta().getMoneda() == Venta.Moneda.DOLARES ? "DÓLARES (USD)" : "SOLES (PEN)"), normalFont));
-            if (comprobante.getVenta().getMoneda() == Venta.Moneda.DOLARES && comprobante.getVenta().getTipoCambio() != null) {
-                // SUNAT exige el tipo de cambio cuando el comprobante es en moneda extranjera
-                document.add(new Paragraph("TIPO DE CAMBIO: S/ " + comprobante.getVenta().getTipoCambio()
-                        .setScale(3, java.math.RoundingMode.HALF_UP) + " por US$ 1", normalFont));
-            }
-            
+            PdfPTable receptor = new PdfPTable(new float[]{2,1}); receptor.setWidthPercentage(100);
+            PdfPCell datos = new PdfPCell(); datos.setBorder(Rectangle.NO_BORDER); datos.setPaddingLeft(0);
+            datos.addElement(new Paragraph("SEÑOR(ES): " + nombreReceptor, boldFont));
+            if(ruc != null) datos.addElement(new Paragraph("RUC: " + ruc, normalFont));
+            else if(dni != null) datos.addElement(new Paragraph("DNI: " + dni, normalFont));
+            if(direccion != null) datos.addElement(new Paragraph("DIRECCIÓN: " + direccion, normalFont));
+            receptor.addCell(datos);
+            PdfPCell fechas = new PdfPCell(); fechas.setBorder(Rectangle.NO_BORDER); fechas.setPaddingLeft(10);
+            fechas.addElement(new Paragraph("FECHA DE EMISIÓN: " + comprobante.getFechaEmision(), normalFont));
+            fechas.addElement(new Paragraph("MONEDA: " + (comprobante.getVenta().getMoneda() == Venta.Moneda.DOLARES ? "DÓLARES (USD)" : "SOLES (PEN)"), normalFont));
+            if(comprobante.getVenta().getMoneda() == Venta.Moneda.DOLARES && comprobante.getVenta().getTipoCambio() != null)
+                fechas.addElement(new Paragraph("TIPO DE CAMBIO: S/ " + comprobante.getVenta().getTipoCambio().setScale(3, java.math.RoundingMode.HALF_UP) + " por US$ 1", normalFont));
+            receptor.addCell(fechas); document.add(receptor);
             espacio(document);
-            
             agregarCondicionesPago(document, comprobante.getVenta(), boldFont, normalFont, smallFont);
 
             // Tabla de Detalles
             PdfPTable table = new PdfPTable(5);
             table.setWidthPercentage(100);
             table.setWidths(new float[]{4f, 0.8f, 1.5f, 0.9f, 1.5f});
+            table.setHeaderRows(1);
+            table.setSpacingBefore(8);
 
             agregarCeldaCabecera(table, "Descripción", headerFont);
             agregarCeldaCabecera(table, "Cant.", headerFont);
@@ -253,8 +200,9 @@ public class GeneradorPdfFacturacionService {
         bloque.setSpacingBefore(12);
         PdfPCell celda = new PdfPCell();
         celda.setPadding(10);
-        celda.setBorderColor(new Color(184, 204, 216));
-        celda.setBackgroundColor(new Color(245, 249, 251));
+        celda.setBorder(Rectangle.TOP);
+        celda.setBorderColor(PdfEditorial.LINEA);
+        celda.setBackgroundColor(PdfEditorial.SUAVE);
         celda.addElement(new Paragraph("OPERACIÓN SUJETA AL SPOT - DETRACCIÓN", bold));
         celda.addElement(new Paragraph("Tipo de operación: 1001 - Operación sujeta al Sistema de Pago de Obligaciones Tributarias", small));
         celda.addElement(new Paragraph("Código de bien/servicio: " + codigo + " - Porcentaje: "
@@ -285,7 +233,8 @@ public class GeneradorPdfFacturacionService {
 
     private void agregarCeldaCabecera(PdfPTable table, String texto, Font font) {
         PdfPCell celda = new PdfPCell(new Phrase(texto, font));
-        celda.setBackgroundColor(new Color(230, 230, 230));
+        celda.setBorder(Rectangle.TOP | Rectangle.BOTTOM);
+        celda.setBorderColor(PdfEditorial.TINTA);
         celda.setPadding(8f);
         celda.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.addCell(celda);
@@ -293,7 +242,9 @@ public class GeneradorPdfFacturacionService {
     
     private void agregarCeldaItem(PdfPTable table, String texto, Font font, int alineacion) {
         PdfPCell celda = new PdfPCell(new Phrase(texto, font));
-        celda.setPadding(8f);
+        celda.setBorder(Rectangle.BOTTOM);
+        celda.setBorderColor(PdfEditorial.LINEA);
+        celda.setPadding(9f);
         celda.setHorizontalAlignment(alineacion);
         table.addCell(celda);
     }
@@ -301,7 +252,7 @@ public class GeneradorPdfFacturacionService {
     private void agregarCeldaTotal(PdfPTable table, String texto, Font font) {
         PdfPCell celda = new PdfPCell(new Phrase(texto, font));
         celda.setBorder(Rectangle.NO_BORDER);
-        celda.setPadding(5f);
+        celda.setPadding(3f);
         celda.setHorizontalAlignment(Element.ALIGN_RIGHT);
         table.addCell(celda);
     }
